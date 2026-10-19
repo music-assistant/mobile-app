@@ -186,6 +186,7 @@
   <string name="filter_favorites">Favorites</string>
   <string name="filter_genres">Genres</string>
   <string name="filter_none_selected">Any</string>
+  <string name="filter_providers">Music providers</string>
   <string name="filter_reset">Reset filters</string>
   <string name="filter_selected_count">%1$d selected</string>
   <string name="filter_sheet_title">Filters</string>
@@ -202,14 +203,14 @@
   <string name="home_shortcuts">Shortcuts</string>
   <string name="item_error">Error loading item</string>
   <string name="item_no_data">No data available</string>
+  <string name="item_subtitle_audio_source">Input</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Playlist</string>
   <string name="item_subtitle_playlist_dynamic">Dynamic playlist</string>
   <string name="item_subtitle_podcast">Podcast</string>
-  <string name="item_subtitle_series">Series</string>
   <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_series">Series</string>
   <string name="item_subtitle_sound_effect">AI host</string>
-  <string name="item_subtitle_audio_source">Input</string>
   <string name="item_subtitle_unknown">Unknown</string>
   <string name="kind_album">Albums</string>
   <string name="kind_artist">Artists</string>
@@ -238,6 +239,7 @@
   <string name="media_error_connection_lost">Connection lost</string>
   <string name="media_error_local_player_off">Local player is not enabled</string>
   <string name="media_error_reconnecting">Reconnecting…</string>
+  <string name="media_playback_stopped_connection_lost">Playback stopped: lost connection to the server</string>
   <string name="media_queue_now_playing">Now playing</string>
   <string name="media_toast_playing_players">You have playing players</string>
   <string name="media_type_albums">Albums</string>
@@ -323,8 +325,9 @@
   <string name="search_query_label">Search…</string>
   <string name="search_start">Start searching…</string>
   <string name="search_title">Global search</string>
-  <string name="sendspin_failed_server_rejected">The server refused this device as a player. Check the Music Assistant server log.</string>
+  <string name="sendspin_encryption_required_unavailable">Encrypted connection required, but this server does not support it. Update Music Assistant or disable the requirement.</string>
   <string name="sendspin_failed_incompatible_protocol">The server uses a Sendspin protocol version this app does not support. Check for app and server updates, then restart the local player. Share app logs if the problem persists.</string>
+  <string name="sendspin_failed_server_rejected">The server refused this device as a player. Check the Music Assistant server log.</string>
   <string name="sendspin_failed_setup">This device cannot start the local player. Send the app log to the developers.</string>
   <string name="sendspin_failed_unauthorized">The server did not accept this device as a player. Sign in again.</string>
   <string name="sendspin_failed_unpaired">The server removed this device. Pair it again in the settings.</string>

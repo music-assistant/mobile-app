@@ -31,6 +31,9 @@
   <string name="action_start_radio">Iniciar radio</string>
   <string name="action_unfavorite">Quitar de favoritos</string>
   <string name="action_view_all">Ver todo</string>
+  <string name="ai_radio_dj">Activar el DJ de radio con IA</string>
+  <string name="ai_radio_dj_off">Desactivado</string>
+  <string name="ai_radio_dj_on_air">Hay un programa en emisión</string>
   <string name="ai_radio_empty">Todavía no hay emisoras de IA. Crea una en la aplicación web de Music Assistant.</string>
   <string name="ai_radio_load_failed">No se han podido cargar las emisoras de IA</string>
   <string name="ai_radio_no_player">Selecciona primero un reproductor</string>
@@ -52,6 +55,14 @@
   <string name="all_podcasts">Todos los podcasts</string>
   <string name="all_radio">Todas las emisoras de radio</string>
   <string name="all_tracks">Todas las canciones</string>
+  <string name="ambient_sound_load_failed">No se han podido cargar los sonidos ambientales</string>
+  <string name="ambient_sound_menu_subtitle">%1$s · %2$d%</string>
+  <string name="ambient_sound_none_available">No hay sonidos ambientales disponibles</string>
+  <string name="ambient_sound_off">Desactivado</string>
+  <string name="ambient_sound_sound">Sonido</string>
+  <string name="ambient_sound_title">Sonido ambiental</string>
+  <string name="ambient_sound_volume">Volumen relativo: %1$d%</string>
+  <string name="ambient_sound_volume_hint">En relación con el volumen de la música. Al 100 %, el sonido tiene el mismo volumen que la música</string>
   <string name="announcement_chime">Reproducir primero el timbre</string>
   <string name="announcement_custom_volume">Volumen personalizado</string>
   <string name="announcement_failed">La notificación ha fallado</string>
@@ -69,6 +80,7 @@
   <string name="artist_section_all">Discografía</string>
   <string name="artist_section_in_library">En la biblioteca</string>
   <string name="artist_section_top">Canciones más populares</string>
+  <string name="artist_source_all">Todo</string>
   <string name="auth_authenticating">Autenticando…</string>
   <string name="auth_authorize_ha">Autorizar con Home Assistant</string>
   <string name="auth_hide_password">Ocultar contraseña</string>
@@ -95,6 +107,7 @@
   <string name="cd_add_playlist">Añadir lista de reproducción</string>
   <string name="cd_add_to_group">Añadir al grupo</string>
   <string name="cd_album_item">Álbum "%1$s" de %2$s</string>
+  <string name="cd_ambient_sound_on">Sonido ambiental activado</string>
   <string name="cd_applied">Aplicado</string>
   <string name="cd_autoplay_off">Reproducción automática desactivada</string>
   <string name="cd_autoplay_on">Reproducción automática activada</string>
@@ -133,6 +146,7 @@
   <string name="cd_sleep_timer_off">Temporizador de apagado desactivado</string>
   <string name="cd_sort_direction">Dirección de ordenación</string>
   <string name="cd_toggle_queue">Mostrar/ocultar cola</string>
+  <string name="cd_toggle_series_grouping">Agrupar series</string>
   <string name="cd_toggle_view_mode">Cambiar modo de vista</string>
   <string name="cd_unmute">Activar sonido</string>
   <string name="cd_view_all">Ver todo %1$s</string>
@@ -154,6 +168,7 @@
   <string name="common_clear">Borrar</string>
   <string name="common_create">Crear</string>
   <string name="common_delete">Eliminar</string>
+  <string name="common_dismiss">Descartar</string>
   <string name="common_done">Hecho</string>
   <string name="connection_lost">Desconectado — reconectando…</string>
   <string name="default_click_dialog_save">Guardar</string>
@@ -172,8 +187,10 @@
   <string name="filter_genres">Géneros</string>
   <string name="filter_none_selected">Cualquiera</string>
   <string name="filter_providers">Proveedor de música</string>
+  <string name="filter_reset">Restablecer filtros</string>
   <string name="filter_selected_count">%1$d seleccionado</string>
   <string name="filter_sheet_title">Filtros</string>
+  <string name="filter_sources">Fuentes de música</string>
   <string name="find_in_list_label">Buscar en la lista…</string>
   <string name="genre_filter_empty_all">Todo</string>
   <string name="genre_filter_empty_default">Predeterminado</string>
@@ -186,11 +203,13 @@
   <string name="home_shortcuts">Accesos directos</string>
   <string name="item_error">Error al cargar el elemento</string>
   <string name="item_no_data">No hay datos disponibles</string>
+  <string name="item_subtitle_audio_source">Entrada</string>
   <string name="item_subtitle_genre">Género</string>
   <string name="item_subtitle_playlist">Lista de reproducción</string>
   <string name="item_subtitle_playlist_dynamic">Lista de reproducción dinámica</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_series">Series</string>
   <string name="item_subtitle_sound_effect">Servidor de IA</string>
   <string name="item_subtitle_unknown">Desconocido</string>
   <string name="kind_album">Álbumes</string>
@@ -209,8 +228,10 @@
   <string name="loading">Cargando</string>
   <string name="lyrics_screen_wake_on">La activación de la pantalla está habilitada</string>
   <string name="media_action_forward">Avanzar 30 s</string>
+  <string name="media_action_next">Siguiente</string>
   <string name="media_action_next_player">Siguiente reproductor</string>
   <string name="media_action_open_app">Abrir aplicación</string>
+  <string name="media_action_previous">Anterior</string>
   <string name="media_action_repeat">Repetir</string>
   <string name="media_action_rewind">Retroceder 10 s</string>
   <string name="media_action_shuffle">Aleatorio</string>
@@ -255,10 +276,12 @@
   <string name="players_dsp_settings">Ajustes de DSP</string>
   <string name="players_group_settings">Ajustes del grupo</string>
   <string name="players_group_volume">Volumen del grupo %1$s</string>
+  <string name="players_hide_unavailable">Ocultar no disponibles</string>
   <string name="players_loading">Cargando reproductores…</string>
   <string name="players_none_available">No hay reproductores disponibles</string>
   <string name="players_nothing">Nada en reproducción</string>
   <string name="players_remote_volume_hint">Los botones de volumen solo funcionan con el reproductor local</string>
+  <string name="players_swipe_hint">Desliza hacia la izquierda o la derecha para cambiar de reproductor</string>
   <string name="players_title">Reproductores</string>
   <string name="playlist_add_button">Añadir lista de reproducción</string>
   <string name="playlist_add_new">Añadir nuevo</string>
@@ -287,6 +310,8 @@
   <string name="queue_no_other_players">No hay otros reproductores disponibles</string>
   <string name="queue_not_loaded">No cargado</string>
   <string name="queue_transfer">Cola de transferencia</string>
+  <string name="reconnect_dialog_message">Se ha perdido la conexión con el servidor, intentando volver a conectar</string>
+  <string name="reconnect_dialog_stop">Dejar de intentar</string>
   <string name="refresh">Actualizar</string>
   <string name="schema_incompatible_dialog_exit">Salida</string>
   <string name="schema_incompatible_dialog_message">Esta aplicación es demasiado antigua para conectarse a este servidor. Actualiza la aplicación para continuar.</string>
@@ -301,6 +326,7 @@
   <string name="search_start">Empezar a buscar…</string>
   <string name="search_title">Búsqueda global</string>
   <string name="sendspin_encryption_required_unavailable">Se requiere una conexión cifrada, pero este servidor no la admite. Actualiza Music Assistant o desactiva este requisito.</string>
+  <string name="sendspin_failed_incompatible_protocol">El servidor utiliza una versión del protocolo Sendspin que esta aplicación no admite. Comprueba si hay actualizaciones de la aplicación y del servidor y, después, reinicia el reproductor local. Si el problema persiste, comparte los registros de la aplicación.</string>
   <string name="sendspin_failed_server_rejected">El servidor ha rechazado este dispositivo como reproductor. Comprueba el registro del servidor de Music Assistant.</string>
   <string name="sendspin_failed_setup">Este dispositivo no puede iniciar el reproductor local. Envía el registro de la aplicación a los desarrolladores.</string>
   <string name="sendspin_failed_unauthorized">El servidor no ha aceptado este dispositivo como reproductor. Vuelve a iniciar sesión.</string>
@@ -392,8 +418,10 @@
   <string name="sleep_timer_stops_in">Se detiene en %1$s</string>
   <string name="sort_artist">Artista</string>
   <string name="sort_date_added">Fecha de incorporación</string>
+  <string name="sort_date_favorited">Fecha en que se añadió a favoritos</string>
   <string name="sort_date_modified">Fecha de modificación</string>
   <string name="sort_duration">Duración</string>
+  <string name="sort_exact_name">Nombre exacto</string>
   <string name="sort_last_played">Última reproducción</string>
   <string name="sort_name">Nombre</string>
   <string name="sort_original">Original</string>
@@ -411,4 +439,7 @@
   <string name="toast_marked_played">Marcar como reproducido</string>
   <string name="toast_marked_unplayed">Marcado como no reproducido</string>
   <string name="toast_no_uri">El elemento multimedia no tiene URI</string>
+  <string name="unsupported_install_description">Este servidor no se ha instalado mediante uno de los métodos de instalación compatibles. Es posible que algunas funciones no funcionen como se espera y que los problemas notificados se cierren sin ofrecer asistencia.</string>
+  <string name="unsupported_install_link">Métodos de instalación</string>
+  <string name="unsupported_install_title">Instalación no compatible</string>
 </resources>

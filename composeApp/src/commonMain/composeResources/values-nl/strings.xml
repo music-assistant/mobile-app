@@ -31,6 +31,9 @@
   <string name="action_start_radio">Start Endless Mix</string>
   <string name="action_unfavorite">Verwijder favoriet</string>
   <string name="action_view_all">Bekijk alle</string>
+  <string name="ai_radio_dj">AI Radio DJ inschakelen</string>
+  <string name="ai_radio_dj_off">Uit</string>
+  <string name="ai_radio_dj_on_air">Er wordt een programma uitgezonden</string>
   <string name="ai_radio_empty">Er zijn nog geen AI-stations. Maak er een aan in de Music Assistant-webapp.</string>
   <string name="ai_radio_load_failed">Kon AI-stations niet laden</string>
   <string name="ai_radio_no_player">Selecteer eerst een speler</string>
@@ -52,6 +55,14 @@
   <string name="all_podcasts">Alle podcasts</string>
   <string name="all_radio">Alle radiostations</string>
   <string name="all_tracks">Alle nummers</string>
+  <string name="ambient_sound_load_failed">De omgevingsgeluiden konden niet worden geladen</string>
+  <string name="ambient_sound_menu_subtitle">%1$s · %2$d%</string>
+  <string name="ambient_sound_none_available">Er zijn geen omgevingsgeluiden beschikbaar</string>
+  <string name="ambient_sound_off">Uit</string>
+  <string name="ambient_sound_sound">Geluid</string>
+  <string name="ambient_sound_title">Omgevingsgeluid</string>
+  <string name="ambient_sound_volume">Relatief volume: %1$d%</string>
+  <string name="ambient_sound_volume_hint">Relatief ten opzichte van het muziekvolume. Bij 100% is het geluid even luid als de muziek.</string>
   <string name="announcement_chime">Eerst gong afspelen</string>
   <string name="announcement_custom_volume">Aangepast volume</string>
   <string name="announcement_failed">Omroepbericht mislukt</string>
@@ -69,6 +80,7 @@
   <string name="artist_section_all">Alle</string>
   <string name="artist_section_in_library">In bibliotheek</string>
   <string name="artist_section_top">Top</string>
+  <string name="artist_source_all">Alle</string>
   <string name="auth_authenticating">Authenticeren…</string>
   <string name="auth_authorize_ha">Autoriseer met Home Assistant</string>
   <string name="auth_hide_password">Wachtwoord verbergen</string>
@@ -95,6 +107,7 @@
   <string name="cd_add_playlist">Afspeellijst toevoegen</string>
   <string name="cd_add_to_group">Voeg toe aan groep</string>
   <string name="cd_album_item">Album "%1$s" van de %2$s</string>
+  <string name="cd_ambient_sound_on">Omgevingsgeluid aan</string>
   <string name="cd_applied">Toegepast</string>
   <string name="cd_autoplay_off">Autoplay uit</string>
   <string name="cd_autoplay_on">Autoplay aan</string>
@@ -133,6 +146,7 @@
   <string name="cd_sleep_timer_off">Slaaptimer uit</string>
   <string name="cd_sort_direction">Sorteerrichting</string>
   <string name="cd_toggle_queue">Wachtrij omschakelen</string>
+  <string name="cd_toggle_series_grouping">Groepeer series</string>
   <string name="cd_toggle_view_mode">Weergavemodus schakelen</string>
   <string name="cd_unmute">Dempen opheffen</string>
   <string name="cd_view_all">Bekijk alle %1$s</string>
@@ -172,8 +186,10 @@
   <string name="filter_genres">Genres</string>
   <string name="filter_none_selected">Alle</string>
   <string name="filter_providers">Muziekproviders</string>
+  <string name="filter_reset">Filters resetten</string>
   <string name="filter_selected_count">%1$d geselecteerd</string>
   <string name="filter_sheet_title">Filters</string>
+  <string name="filter_sources">Muziekbronnen</string>
   <string name="find_in_list_label">Zoek in lijst…</string>
   <string name="genre_filter_empty_all">Alle</string>
   <string name="genre_filter_empty_default">Standaard</string>
@@ -186,11 +202,13 @@
   <string name="home_shortcuts">Snelkoppelingen</string>
   <string name="item_error">Fout bij laden item</string>
   <string name="item_no_data">Geen gegevens beschikbaar</string>
+  <string name="item_subtitle_audio_source">Invoer</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Afspeellijst</string>
   <string name="item_subtitle_playlist_dynamic">Dynamische afspeellijst</string>
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
+  <string name="item_subtitle_series">Serie</string>
   <string name="item_subtitle_sound_effect">AI-presentator</string>
   <string name="item_subtitle_unknown">Onbekend</string>
   <string name="kind_album">Albums</string>
@@ -209,8 +227,10 @@
   <string name="loading">Laden…</string>
   <string name="lyrics_screen_wake_on">Scherm blijft ingeschakeld</string>
   <string name="media_action_forward">30s vooruit</string>
+  <string name="media_action_next">Volgende</string>
   <string name="media_action_next_player">Volgende speler</string>
   <string name="media_action_open_app">App openen</string>
+  <string name="media_action_previous">Vorige</string>
   <string name="media_action_repeat">Herhalen</string>
   <string name="media_action_rewind">10s terug</string>
   <string name="media_action_shuffle">Shuffle</string>
@@ -260,6 +280,7 @@
   <string name="players_none_available">Geen spelers beschikbaar</string>
   <string name="players_nothing">Speelt niets af</string>
   <string name="players_remote_volume_hint">De volumeknoppen werken alleen voor de lokale speler</string>
+  <string name="players_swipe_hint">Veeg naar links of naar rechts om tussen spelers te wisselen</string>
   <string name="players_title">Spelers</string>
   <string name="playlist_add_button">Afspeellijst toevoegen</string>
   <string name="playlist_add_new">Nieuwe toevoegen</string>
@@ -302,6 +323,7 @@
   <string name="search_start">Begin met zoeken…</string>
   <string name="search_title">Globaal zoeken</string>
   <string name="sendspin_encryption_required_unavailable">Er is een versleutelde verbinding vereist, maar deze server ondersteunt dit niet. Werk Music Assistant bij of schakel deze vereiste uit.</string>
+  <string name="sendspin_failed_incompatible_protocol">De server maakt gebruik van een versie van het Sendspin-protocol die deze app niet ondersteunt. Controleer of er updates voor de app en de server beschikbaar zijn en start vervolgens de lokale speler opnieuw op. Deel de logbestanden van de app als het probleem zich blijft voordoen.</string>
   <string name="sendspin_failed_server_rejected">De server heeft dit apparaat geweigerd als speler. Controleer het serverlogboek van Music Assistant.</string>
   <string name="sendspin_failed_setup">Dit apparaat kan de lokale speler niet starten. Stuur het app-logboek naar de ontwikkelaars.</string>
   <string name="sendspin_failed_unauthorized">De server heeft dit apparaat niet als speler herkend. Meld je opnieuw aan.</string>
