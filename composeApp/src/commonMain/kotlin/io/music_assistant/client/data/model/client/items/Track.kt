@@ -2,8 +2,10 @@ package io.music_assistant.client.data.model.client.items
 
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
+import io.music_assistant.client.data.model.client.toLyrics
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
@@ -43,5 +45,8 @@ data class Track(
     override val subtitle = artists.joinToString(separator = ", ") { it.displayName }
     override val parentName: String? = album?.displayName
     override val defaultIcon = TrackIcon
+
+    /** Parsed once per instance: the player page reads it on every recomposition. */
+    val lyrics: Lyrics? by lazy { metadata?.toLyrics() }
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
 }

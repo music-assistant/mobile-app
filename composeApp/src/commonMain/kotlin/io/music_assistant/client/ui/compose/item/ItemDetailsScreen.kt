@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -742,26 +743,28 @@ private inline fun <T> LazyGridScope.tabListBody(
     emptyText: StringResource = Res.string.library_empty,
     crossinline items: LazyGridScope.(List<T>) -> Unit,
 ) {
-    val data = when (state) {
-        is DataState.Data -> state.data
-        is DataState.Stale -> state.data
-        is DataState.Error -> {
-            fullSpanItem(DETAIL_ERROR_KEY) {
-                CenteredText(
-                    text = stringResource(Res.string.library_error),
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-            return
+    if (state is DataState.Error) {
+        fullSpanItem(DETAIL_ERROR_KEY) {
+            CenteredText(
+                text = stringResource(Res.string.library_error),
+                color = MaterialTheme.colorScheme.error,
+            )
         }
-
-        else -> emptyList()
+        return
     }
+    val data = state.tabRows()
     if (data.isEmpty()) {
         fullSpanItem(DETAIL_EMPTY_KEY) { CenteredText(stringResource(emptyText)) }
     } else {
         items(data)
     }
+}
+
+/** The rows that [tabListBody] passes to its content: empty for every state without data. */
+private fun <T> DataState<List<T>>.tabRows(): List<T> = when (this) {
+    is DataState.Data -> data
+    is DataState.Stale -> data
+    else -> emptyList()
 }
 
 @Composable
@@ -780,10 +783,11 @@ private fun AlbumsTabContent(
     gridState: LazyGridState,
 ) {
     val viewMode = viewModeProvider(MediaType.ALBUM)
+    // Built here because the grid content below is not a @Composable scope.
+    val albumRows = albumsState.tabRows()
+    val albumKeys = remember(albumRows) { albumRows.lazyListOccurrenceKeys() }
     DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
         tabListBody(albumsState) { albums ->
-            // not a @Composable scope, so remember() is unavailable here
-            val albumKeys = albums.lazyListOccurrenceKeys()
             itemsIndexed(
                 items = albums,
                 key = { index, _ -> albumKeys[index] },
@@ -822,9 +826,10 @@ private fun ArtistsTabContent(
     gridState: LazyGridState,
 ) {
     val viewMode = viewModeProvider(MediaType.ARTIST)
+    val artistRows = artistsState.tabRows()
+    val artistKeys = remember(artistRows) { artistRows.lazyListOccurrenceKeys() }
     DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
         tabListBody(artistsState) { artists ->
-            val artistKeys = artists.lazyListOccurrenceKeys()
             itemsIndexed(
                 items = artists,
                 key = { index, _ -> artistKeys[index] },
@@ -929,16 +934,19 @@ private fun PlayablesTabContent(
     } else {
         Res.string.search_no_results
     }
+    val trackRows = playableItemsState.tabRows()
+    val trackKeys = remember(trackRows) { trackRows.playableLazyListOccurrenceKeys() }
+    // Section a multi-disc album by disc, but only in its natural ("Original") order —
+    // any other sort intentionally mixes discs, so headers would lie. Requiring every
+    // track to carry a disc number avoids a bogus "Disc null" header on partial tags.
+    val isOriginalOrder = playableItemsSortOption?.field == SortField.ORIGINAL
+    val sectionByDisc = remember(trackRows, parentItem is Album, isOriginalOrder) {
+        parentItem is Album && isOriginalOrder &&
+                trackRows.all { it is Track && it.discNumber != null } &&
+                trackRows.mapNotNull { (it as? Track)?.discNumber }.distinct().size > 1
+    }
     DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
         tabListBody(playableItemsState, emptyText) { tracks ->
-            val trackKeys = tracks.playableLazyListOccurrenceKeys()
-            // Section a multi-disc album by disc, but only in its natural ("Original") order —
-            // any other sort intentionally mixes discs, so headers would lie. Requiring every
-            // track to carry a disc number avoids a bogus "Disc null" header on partial tags.
-            val sectionByDisc = parentItem is Album &&
-                    playableItemsSortOption?.field == SortField.ORIGINAL &&
-                    tracks.all { it is Track && it.discNumber != null } &&
-                    tracks.mapNotNull { (it as? Track)?.discNumber }.distinct().size > 1
             if (sectionByDisc) {
                 tracks.forEachIndexed { index, track ->
                     // Gate guarantees a non-null disc; Original sort keeps discs contiguous.

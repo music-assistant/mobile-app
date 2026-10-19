@@ -90,7 +90,6 @@ import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTra
 import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Track
-import io.music_assistant.client.data.model.client.lyrics
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow

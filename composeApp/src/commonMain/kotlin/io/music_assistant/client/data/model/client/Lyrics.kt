@@ -1,6 +1,5 @@
 package io.music_assistant.client.data.model.client
 
-import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.utils.LrcParser
 
 /**
@@ -19,20 +18,18 @@ sealed interface Lyrics {
 data class LrcLine(val timeMs: Long, val text: String)
 
 /**
- * The lyrics a track carries, or null when it has none.
+ * The lyrics this metadata carries, or null when it has none.
  *
  * [Lyrics.Synced] wins over the plain text when the LRC payload parses to at least one line.
  */
-val Track.lyrics: Lyrics?
-    get() = metadata?.let { metadata ->
-        val plain = metadata.lyrics
-        val lrc = metadata.lrcLyrics
-        when {
-            !lrc.isNullOrBlank() -> LrcParser.parse(lrc).takeIf { it.isNotEmpty() }
-                ?.let { Lyrics.Synced(it) }
-                ?: Lyrics.Plain(lrc)
+internal fun Metadata.toLyrics(): Lyrics? {
+    val lrc = lrcLyrics
+    return when {
+        !lrc.isNullOrBlank() -> LrcParser.parse(lrc).takeIf { it.isNotEmpty() }
+            ?.let { Lyrics.Synced(it) }
+            ?: Lyrics.Plain(lrc)
 
-            !plain.isNullOrBlank() -> Lyrics.Plain(plain)
-            else -> null
-        }
+        !lyrics.isNullOrBlank() -> Lyrics.Plain(lyrics)
+        else -> null
     }
+}

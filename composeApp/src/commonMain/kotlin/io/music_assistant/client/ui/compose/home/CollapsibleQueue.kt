@@ -123,11 +123,14 @@ fun CollapsibleQueue(
         val items = (queueData?.data?.items as? DataState.Data)?.data
 
         val defaultLabel = stringResource(Res.string.queue_label)
-        val queueLabel = items?.let { list ->
-            val currentId = queueData.data.info.currentItem?.id
-            val currentPos = currentId?.let { id -> list.indexOfFirst { it.id == id } }
+        val currentId = queueData?.data?.info?.currentItem?.id
+        // Scans the queue only when it or the current item changes, not on every position tick.
+        val currentPos = remember(items, currentId) {
+            currentId?.let { id -> items?.indexOfFirst { it.id == id } }
                 ?.takeIf { it >= 0 }
                 ?.let { it + 1 }
+        }
+        val queueLabel = items?.let { list ->
             currentPos?.let { stringResource(Res.string.queue_label_with_position, it, list.size) }
         } ?: defaultLabel
 
