@@ -25,8 +25,14 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,6 +40,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.utils.WindowClass
 
 /**
@@ -46,9 +53,51 @@ fun AdaptiveNavigationBarLayout(
     showNavigation: Boolean = true,
     navigationBarHeight: Dp = 64.dp,
     navigationRailWidth: Dp = 80.dp,
+    // Android TV: a freshly composed root (cold start, or returning from Settings via the
+    // back arrow) doesn't reliably receive a focus grant once the window already holds focus,
+    // leaving the remote dead until a D-pad press. The caller attaches this requester to the
+    // currently-selected item so it can land initial focus there explicitly, and tracks whether
+    // the item actually holds focus (to know when the landing has stuck).
+    selectedItemFocusRequester: FocusRequester? = null,
+    selectedItemFocused: MutableState<Boolean>? = null,
+    // Android TV: the persistent mini-player sits below this nav rail/bar in its own overlay,
+    // not as an ordinary sibling, so default focus search doesn't reach it. Declaring an explicit
+    // DOWN link from the last nav item is the same pattern used throughout the Settings screen.
+    bottomFocusRequester: FocusRequester? = null,
     content: @Composable BoxScope.(contentPadding: PaddingValues) -> Unit,
 ) {
     val isWideScreen = WindowClass.isWide()
+
+    val selectedItemModifier = { isSelected: Boolean ->
+        if (isSelected && selectedItemFocusRequester != null) {
+            Modifier
+                .focusRequester(selectedItemFocusRequester)
+                .onFocusChanged { state -> selectedItemFocused?.value = state.isFocused }
+        } else {
+            Modifier
+        }
+    }
+
+    // Android TV: verified live on hardware that UP/DOWN between nav rail items was relying on
+    // Compose's default geometric search alone -- pressing UP from the last item didn't just fail
+    // to move focus, it dropped focus entirely (confirmed via the accessibility tree reporting no
+    // focused node afterward, not just an unchanged one). Every other TV screen in this app already
+    // declares explicit directional links instead of trusting geometry (see TvFocusFlow); the nav
+    // rail needs the same treatment for its own internal traversal, not just the DOWN-to-floating-
+    // bar link at the boundary.
+    val itemFocusRequesters = remember(navigationItems.size) { List(navigationItems.size) { FocusRequester() } }
+    val adjacencyModifier = { index: Int ->
+        Modifier
+            .focusRequester(itemFocusRequesters[index])
+            .focusProperties {
+                if (index > 0) up = itemFocusRequesters[index - 1]
+                if (index < navigationItems.lastIndex) {
+                    down = itemFocusRequesters[index + 1]
+                } else if (bottomFocusRequester != null) {
+                    down = bottomFocusRequester
+                }
+            }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val showRail = showNavigation && isWideScreen
@@ -76,12 +125,15 @@ fun AdaptiveNavigationBarLayout(
                 modifier = Modifier.width(navigationRailWidth),
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
-                navigationItems.forEach {
+                navigationItems.forEachIndexed { index, item ->
                     NavigationRailItem(
-                        selected = it.selected,
-                        onClick = it.onClick,
+                        modifier = selectedItemModifier(item.selected)
+                            .then(adjacencyModifier(index))
+                            .tvFocusRing(),
+                        selected = item.selected,
+                        onClick = item.onClick,
                         icon = {
-                            Icon(it.icon, contentDescription = it.label)
+                            Icon(item.icon, contentDescription = item.label)
                         },
                     )
                 }
@@ -107,6 +159,7 @@ fun AdaptiveNavigationBarLayout(
                 ) {
                     navigationItems.forEach {
                         NavigationBarItem(
+                            modifier = selectedItemModifier(it.selected),
                             selected = it.selected,
                             onClick = it.onClick,
                             icon = {

@@ -8,8 +8,6 @@ import android.content.Intent
 import android.os.Build
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
-import androidx.core.net.toUri
-import io.music_assistant.client.MainActivity
 import io.music_assistant.client.R
 import io.music_assistant.client.services.MainMediaPlaybackService.Companion.ACTION_NOTIFICATION_DISMISSED
 import io.music_assistant.client.services.MainMediaPlaybackService.Companion.ACTION_TRANSPORT_CUSTOM
@@ -30,17 +28,7 @@ class MediaNotificationManager(
      * them. [content] and [strings] are null before the session writer starts.
      */
     fun createNotification(content: NotificationContent?, strings: MediaSessionStrings?): Notification {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            data = "musicassistant://app/players".toUri()
-        }
-
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
+        val pendingIntent = openAppPendingIntent(context)
 
         val dismissIntent = Intent(ACTION_NOTIFICATION_DISMISSED).apply {
             setPackage("io.music_assistant.client")

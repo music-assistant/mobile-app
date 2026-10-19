@@ -12,6 +12,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -28,6 +30,7 @@ import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_remove
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_message
@@ -46,6 +49,7 @@ fun AlbumWithMenu(
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
     subtitle: AlbumSubtitle = AlbumSubtitle.ARTISTS,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -59,6 +63,7 @@ fun AlbumWithMenu(
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
     ) { mod, onClick, onLongClick ->
         when (viewMode) {
             ViewMode.LIST -> AlbumRowItem(
@@ -89,6 +94,7 @@ fun ArtistWithMenu(
     onPlayOption: PlayHandler<Artist>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -99,6 +105,7 @@ fun ArtistWithMenu(
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
     ) { mod, onClick, onLongClick ->
         when (viewMode) {
             ViewMode.LIST -> ArtistRowItem(
@@ -127,6 +134,7 @@ fun PlaylistWithMenu(
     onPlayOption: PlayHandler<Playlist>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -137,6 +145,7 @@ fun PlaylistWithMenu(
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
     ) { mod, onClick, onLongClick ->
         when (viewMode) {
             ViewMode.LIST -> PlaylistRowItem(
@@ -168,6 +177,7 @@ fun AudiobookWithMenu(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -181,6 +191,7 @@ fun AudiobookWithMenu(
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
         progressActions = progressActions,
+        firstItemFocusRequester = firstItemFocusRequester,
     ) { mod, onClick, onLongClick ->
         when (viewMode) {
             ViewMode.LIST -> AudiobookRowItem(
@@ -244,6 +255,7 @@ fun GenreWithMenu(
     onPlayOption: PlayHandler<Genre>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -254,6 +266,7 @@ fun GenreWithMenu(
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
     ) { mod, onClick, onLongClick ->
         when (viewMode) {
             ViewMode.LIST -> GenreRowItem(
@@ -282,6 +295,7 @@ fun PodcastWithMenu(
     onPlayOption: PlayHandler<Podcast>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     BrowsableItemWithMenu(
         modifier = when (viewMode) {
@@ -292,6 +306,7 @@ fun PodcastWithMenu(
         onNavigateClick = onNavigateClick,
         onPlayOption = onPlayOption,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
     ) { mod, onClick, onLongClick ->
         when (viewMode) {
             ViewMode.LIST -> PodcastRowItem(
@@ -365,6 +380,10 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
+    // Android TV: attached to the actual focusable leaf built by itemComposable, not the outer
+    // wrapper Box above -- that Box isn't focusable itself, so a requester there can't be used to
+    // requestFocus() into this item (verified live: it silently does nothing). See CategoryRow.kt.
+    firstItemFocusRequester: FocusRequester? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -393,10 +412,20 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         ?.let { item.navigationOptions(it, containerItem) }
         ?: emptyList()
 
-    Box(modifier = modifier) {
+    // Android TV: this wrapper Box isn't itself the focusable node -- the real clickable target
+    // is built several layers down by itemComposable (a different composable per media type/view
+    // mode) -- so tvFocusRing needs trackDescendants to see focus land on any of them.
+    Box(modifier = modifier.tvFocusRing(trackDescendants = true)) {
         // Browsable items stay navigable even when non-playable; dim + drop playback actions.
         val contentModifier = Modifier.align(Alignment.Center)
             .then(if (item.isPlayable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))
+            .then(
+                if (firstItemFocusRequester != null) {
+                    Modifier.focusRequester(firstItemFocusRequester)
+                } else {
+                    Modifier
+                },
+            )
         itemComposable(
             contentModifier,
             onNavigateClick,

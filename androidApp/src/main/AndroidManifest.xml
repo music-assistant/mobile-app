@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-feature android:name="android.hardware.camera"/>
+    <!-- ktor-client-webrtc declares this feature as implicitly required (no android:required
+         attribute); tools:node="replace" is needed so the manifest merger takes this app's
+         required="false" instead of the library's default. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" tools:node="replace"/>
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false"/>
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- Android TV / Google TV: devices have no touchscreen and are not required to have one. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
+    <uses-feature android:name="android.software.leanback" android:required="false"/>
     <!-- Hold-to-talk announcements. Not required, so devices without a microphone still install the app. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
@@ -15,6 +22,7 @@
     <application
         android:name=".MyApplication"
         android:allowBackup="true"
+        android:banner="@drawable/banner"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:hasCode="true"
@@ -39,6 +47,11 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Android TV / Google TV home-screen launcher row. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <!-- OAuth callback: musicassistant://auth/callback?code=... -->
             <intent-filter>
