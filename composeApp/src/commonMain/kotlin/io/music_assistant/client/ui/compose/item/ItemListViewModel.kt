@@ -11,9 +11,11 @@ import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,7 +36,8 @@ class ItemListViewModel(
             sortOption = sortOption,
             query = query,
         )
-    }.stateIn(
+    }.flowOn(Dispatchers.Default) // filter + sort per keystroke and per list change
+        .stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
             State(items = DataState.Loading(), sortOption = sortOption.value),
