@@ -62,6 +62,7 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.INACTIVE_ALPHA
+import io.music_assistant.client.ui.compose.common.LocalDislikeSupported
 import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -277,6 +278,7 @@ private fun ItemOverflow(
     val canonical = resolveDetailOverflowActions(
         item = item,
         canEditLibrary = LocalGrantedScopes.current.canEditLibrary,
+        dislikeSupported = LocalDislikeSupported.current,
         librarySupported = libraryActions != null && item !is Genre && item !is MediaCollection,
         canAddToPlaylist = playlistActions != null && item !is MediaCollection,
     ).map { action ->
@@ -285,9 +287,7 @@ private fun ItemOverflow(
                 ItemAction.AddToLibrary -> libraryActions?.onLibraryClick(item)
                 ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
 
-                ItemAction.Favorite,
-                ItemAction.Unfavorite,
-                    -> libraryActions?.onFavoriteClick(item)
+                is ItemAction.SetFavorite -> libraryActions?.onFavoriteChange(item, it.favorite)
 
                 ItemAction.AddToPlaylist -> showPlaylistDialog = true
                 else -> Unit

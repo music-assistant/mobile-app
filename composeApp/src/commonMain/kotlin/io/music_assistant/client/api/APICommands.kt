@@ -83,6 +83,7 @@ object APICommands {
     // Favorites commands
     const val MUSIC_FAVORITES_ADD_ITEM = "music/favorites/add_item"
     const val MUSIC_FAVORITES_REMOVE_ITEM = "music/favorites/remove_item"
+    const val MUSIC_FAVORITES_SET_ITEM = "music/favorites/set_item"
 
     // Mark commands
     const val MUSIC_MARK_PLAYED = "music/mark_played"

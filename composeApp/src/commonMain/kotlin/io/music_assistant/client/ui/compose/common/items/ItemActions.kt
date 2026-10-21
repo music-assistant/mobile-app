@@ -20,7 +20,9 @@ interface PlaylistActions {
 
 interface LibraryActions {
     fun onLibraryClick(item: AppMediaItem)
-    fun onFavoriteClick(item: AppMediaItem)
+
+    /** Sets the favorite state of [item]: true is a like, false is a dislike, null clears it. */
+    fun onFavoriteChange(item: AppMediaItem, favorite: Boolean?)
 }
 
 interface ProgressActions {

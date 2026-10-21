@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -84,7 +83,6 @@ import io.music_assistant.client.ui.compose.common.items.artistNavigation
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
-import io.music_assistant.client.ui.theme.favoriteTint
 import io.music_assistant.client.utils.formatDuration
 import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
@@ -303,7 +301,7 @@ fun FullPlayerItem(
     colors: PlayerColors,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     // Null hides the heart: the user cannot edit the library.
-    onFavoriteClick: ((AppMediaItem) -> Unit)?,
+    onFavoriteChange: ((AppMediaItem, Boolean?) -> Unit)?,
     onFavoriteStreamClick: (PlayerData) -> Unit = {},
     // See MainDataSource.canFavoriteCurrentlyPlaying: on-air song AND server support.
     canFavoriteStream: Boolean = false,
@@ -761,18 +759,13 @@ fun FullPlayerItem(
                         tint = colors.controlTint,
                     )
                 }
-            } else if (currentTrack?.canBeFavorited == true && onFavoriteClick != null) {
-                val isFavorite = currentTrack.favorite == true
-                IconButton(
+            } else if (currentTrack?.canBeFavorited == true && onFavoriteChange != null) {
+                PlayerFavoriteButton(
+                    item = currentTrack,
+                    tint = colors.controlTint,
+                    onFavoriteChange = onFavoriteChange,
                     modifier = Modifier.size(favoriteSlot),
-                    onClick = { onFavoriteClick(currentTrack) },
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = stringResource(Res.string.cd_favorite),
-                        tint = if (isFavorite) favoriteTint else colors.controlTint,
-                    )
-                }
+                )
             } else {
                 Spacer(Modifier.size(favoriteSlot)) // keep controls centered when heart is hidden
             }
@@ -844,7 +837,7 @@ private fun FullPlayerItemPoweredOffPreview() {
             item = PlayerDataFixtures.playerData(canPower = true, isPowered = false),
             colors = previewPoweredOffColors,
             playerAction = { _, _ -> },
-            onFavoriteClick = {},
+            onFavoriteChange = null,
             livePositionFlow = null,
         )
     }

@@ -24,6 +24,7 @@ fun resolveLongClickActions(
     item: AppMediaItem,
     clickContext: ClickContext? = null,
     canEditLibrary: Boolean,
+    dislikeSupported: Boolean,
     librarySupported: Boolean,
     canAddToPlaylist: Boolean,
     canRemoveFromPlaylist: Boolean,
@@ -41,9 +42,7 @@ fun resolveLongClickActions(
     if (!canEditLibrary) return@buildList
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
-        if (item.isInLibrary) {
-            add(if (item.favorite == true) ItemAction.Unfavorite else ItemAction.Favorite)
-        }
+        if (item.isInLibrary) addAll(favoriteActions(item.favorite, dislikeSupported))
     }
     if (canAddToPlaylist) add(ItemAction.AddToPlaylist)
     if (canRemoveFromPlaylist) add(ItemAction.RemoveFromPlaylist)
@@ -100,17 +99,26 @@ private fun MutableList<ItemAction>.addPlaybackActions(
 fun resolveDetailOverflowActions(
     item: AppMediaItem,
     canEditLibrary: Boolean,
+    dislikeSupported: Boolean,
     librarySupported: Boolean,
     canAddToPlaylist: Boolean,
 ): List<ItemAction> = buildList {
     if (!canEditLibrary) return@buildList
     if (librarySupported) {
         add(if (item.isInLibrary) ItemAction.RemoveFromLibrary else ItemAction.AddToLibrary)
-        if (item.isInLibrary) {
-            add(if (item.favorite == true) ItemAction.Unfavorite else ItemAction.Favorite)
-        }
+        if (item.isInLibrary) addAll(favoriteActions(item.favorite, dislikeSupported))
     }
     if (canAddToPlaylist) add(ItemAction.AddToPlaylist)
+}
+
+/**
+ * The favorite menu entries for the [favorite] state. With [dislikeSupported] (server 2.11), a
+ * dislike gets its own pair of entries, because the heart says "liked" only, like the web app.
+ * Without it, a false is "not a favorite".
+ */
+fun favoriteActions(favorite: Boolean?, dislikeSupported: Boolean): List<ItemAction.SetFavorite> = buildList {
+    add(if (favorite == true) ItemAction.Unfavorite else ItemAction.Favorite)
+    if (dislikeSupported) add(if (favorite == false) ItemAction.RemoveDislike else ItemAction.Dislike)
 }
 
 private fun AppMediaItem.isFullyPlayed(): Boolean = when (this) {

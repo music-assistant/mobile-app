@@ -7,6 +7,7 @@
   <string name="action_browse">Browse</string>
   <string name="action_choose_artist">Choose artist</string>
   <string name="action_customize">Customize…</string>
+  <string name="action_dislike">Dislike</string>
   <string name="action_favorite">Favorite</string>
   <string name="action_go_to_album">Go to album</string>
   <string name="action_go_to_artist">Go to artist</string>
@@ -24,6 +25,7 @@
   <string name="action_play_now">Play now</string>
   <string name="action_play_playlist_from_here">Play playlist from here</string>
   <string name="action_remove">Remove</string>
+  <string name="action_remove_dislike">Remove dislike</string>
   <string name="action_remove_from_library">Remove from library</string>
   <string name="action_remove_from_playlist">Remove from playlist</string>
   <string name="action_similar_artists">Similar artists</string>
@@ -118,6 +120,7 @@
   <string name="cd_current_player">Current player: %1$s</string>
   <string name="cd_customize_tabs">Customize categories</string>
   <string name="cd_delete_crash_logs">Delete crash logs</string>
+  <string name="cd_disliked">Disliked</string>
   <string name="cd_favorite">Favorite</string>
   <string name="cd_filter">Filters</string>
   <string name="cd_find_in_list">Search in list</string>

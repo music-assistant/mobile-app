@@ -73,10 +73,8 @@ class ActionsViewModel(
         }
     }
 
-    /**
-     * Sets exact or toggles favorite status of the item.
-     */
-    override fun onFavoriteClick(item: AppMediaItem) = dataSource.toggleFavorite(item)
+    override fun onFavoriteChange(item: AppMediaItem, favorite: Boolean?) =
+        dataSource.setFavorite(item, favorite)
 
     /** Favourites the on-air song for a radio stream. See [MainDataSource.favoriteCurrentlyPlaying]. */
     fun onFavoriteStreamClick(playerData: PlayerData) {

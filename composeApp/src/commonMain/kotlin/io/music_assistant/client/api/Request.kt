@@ -867,6 +867,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        /** Server 2.11 only: true is a like, false is a dislike, null clears the state. */
+        fun setFavorite(
+            itemUri: String,
+            favorite: Boolean?,
+        ) = Request(
+            command = APICommands.MUSIC_FAVORITES_SET_ITEM,
+            args = buildJsonObject {
+                put("item", JsonPrimitive(itemUri))
+                put("favorite", JsonPrimitive(favorite))
+            },
+        )
+
         fun itemByUri(uri: String) = Request(
             command = APICommands.MUSIC_ITEM_BY_URI,
             args = buildJsonObject {

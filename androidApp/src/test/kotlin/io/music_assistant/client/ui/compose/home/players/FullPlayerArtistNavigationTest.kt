@@ -85,7 +85,7 @@ class FullPlayerArtistNavigationTest {
                 item = player,
                 colors = PlayerColors(Color.Gray, Color.White),
                 playerAction = { _, _ -> },
-                onFavoriteClick = {},
+                onFavoriteChange = null,
                 livePositionFlow = null,
                 navigateToItem = { navigatedTo = it },
                 onChooseArtist = { chooserRequests++ },

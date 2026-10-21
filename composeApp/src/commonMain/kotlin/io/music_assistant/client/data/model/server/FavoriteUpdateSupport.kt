@@ -7,3 +7,10 @@ package io.music_assistant.client.data.model.server
  */
 fun sendsFavoriteUpdates(schemaVersion: Int?): Boolean =
     schemaVersion != null && schemaVersion >= SERVER_2_11_SCHEMA
+
+/**
+ * From server 2.11, a favorite has three states: true is a like, false is a dislike, null is no
+ * choice. An older server sends false for "not a favorite", so a false is a dislike only here.
+ */
+fun supportsDislike(schemaVersion: Int?): Boolean =
+    schemaVersion != null && schemaVersion >= SERVER_2_11_SCHEMA

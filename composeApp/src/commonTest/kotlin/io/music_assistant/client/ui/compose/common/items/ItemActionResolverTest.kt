@@ -18,6 +18,7 @@ class ItemActionResolverTest {
     private fun longClick(defaultAction: ItemAction?) = resolveLongClickActions(
         item = testTrack(),
         canEditLibrary = true,
+        dislikeSupported = false,
         librarySupported = false,
         canAddToPlaylist = false,
         canRemoveFromPlaylist = false,
@@ -102,6 +103,7 @@ class ItemActionResolverTest {
             item = folder,
             clickContext = ClickContext.BROWSE,
             canEditLibrary = true,
+            dislikeSupported = false,
             librarySupported = false,
             canAddToPlaylist = false,
             canRemoveFromPlaylist = false,
@@ -119,6 +121,8 @@ class ItemActionResolverTest {
         ItemAction.RemoveFromLibrary,
         ItemAction.Favorite,
         ItemAction.Unfavorite,
+        ItemAction.Dislike,
+        ItemAction.RemoveDislike,
         ItemAction.AddToPlaylist,
         ItemAction.RemoveFromPlaylist,
         ItemAction.MarkPlayed,
@@ -128,6 +132,7 @@ class ItemActionResolverTest {
     private fun longClickWrites(canEditLibrary: Boolean) = resolveLongClickActions(
         item = testPodcastEpisode(),
         canEditLibrary = canEditLibrary,
+        dislikeSupported = true,
         librarySupported = true,
         canAddToPlaylist = true,
         canRemoveFromPlaylist = true,
@@ -145,6 +150,7 @@ class ItemActionResolverTest {
         val actions = resolveLongClickActions(
             item = testTrack(),
             canEditLibrary = false,
+            dislikeSupported = false,
             librarySupported = true,
             canAddToPlaylist = true,
             canRemoveFromPlaylist = true,
@@ -159,11 +165,37 @@ class ItemActionResolverTest {
             resolveDetailOverflowActions(
                 item = testTrack(),
                 canEditLibrary = canEditLibrary,
+                dislikeSupported = false,
                 librarySupported = true,
                 canAddToPlaylist = true,
             )
         }
         assertTrue(overflow(true).isNotEmpty())
         assertEquals(emptyList(), overflow(false))
+    }
+
+    @Test
+    fun `favorite menu has a like pair and a dislike pair on server 2_11`() {
+        assertEquals(listOf(ItemAction.Favorite, ItemAction.Dislike), favoriteActions(null, dislikeSupported = true))
+        assertEquals(listOf(ItemAction.Unfavorite, ItemAction.Dislike), favoriteActions(true, dislikeSupported = true))
+        assertEquals(
+            listOf(ItemAction.Favorite, ItemAction.RemoveDislike),
+            favoriteActions(false, dislikeSupported = true),
+        )
+    }
+
+    // An older server sends false for "not a favorite", so it is never a dislike there.
+    @Test
+    fun `favorite menu is a like toggle without dislike support`() {
+        assertEquals(listOf(ItemAction.Favorite), favoriteActions(false, dislikeSupported = false))
+        assertEquals(listOf(ItemAction.Unfavorite), favoriteActions(true, dislikeSupported = false))
+    }
+
+    @Test
+    fun `favorite entries set the state that they name`() {
+        assertEquals(true, ItemAction.Favorite.favorite)
+        assertEquals(false, ItemAction.Dislike.favorite)
+        assertEquals(null, ItemAction.Unfavorite.favorite)
+        assertEquals(null, ItemAction.RemoveDislike.favorite)
     }
 }

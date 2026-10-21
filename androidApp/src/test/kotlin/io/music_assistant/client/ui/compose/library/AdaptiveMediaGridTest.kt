@@ -87,5 +87,5 @@ private class StubPlaylistActions : PlaylistActions {
 private class StubLibraryActions : LibraryActions {
     override fun onLibraryClick(item: AppMediaItem) = Unit
 
-    override fun onFavoriteClick(item: AppMediaItem) = Unit
+    override fun onFavoriteChange(item: AppMediaItem, favorite: Boolean?) = Unit
 }

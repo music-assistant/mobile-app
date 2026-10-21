@@ -381,6 +381,14 @@ Impact: parsing works on both versions. The app cannot show or set a dislike.
 Required change: keep the two-call path for 2.10. On 2.11, call `favorites/set_item` and add a
 dislike option to the favorite menu. Gate on the schema or on a feature probe.
 
+Status: done (issue #1187). `supportsDislike` uses `SERVER_2_11_SCHEMA`. On 2.11, each favorite
+menu has two pairs of entries, like the web frontend: "Favorite" or "Unfavorite", and "Dislike" or
+"Remove dislike". The heart of the full player opens the same menu, and a dislike shows a dislike
+icon in the place of the heart. A dislike sends `favorites/set_item` with false. A like and a clear
+keep `add_item` and `remove_item`, like the web frontend. On 2.10, the heart stays a toggle, and
+the app reads false as "not a favorite". Android Auto, CarPlay and Siri keep the like toggle. The
+app does not offer the `favorite=False` list filter.
+
 ### 5.3 The `favorite_updated` event replaces `favorite` in item events
 
 What changed: the server strips `favorite` from every `media_item_added`, `media_item_updated`

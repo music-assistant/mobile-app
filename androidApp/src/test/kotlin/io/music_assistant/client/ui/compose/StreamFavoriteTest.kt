@@ -66,7 +66,7 @@ class StreamFavoriteTest {
                 item = player,
                 colors = PlayerColors(Color.Gray, Color.White),
                 playerAction = { _, _ -> },
-                onFavoriteClick = { stationClicks++ },
+                onFavoriteChange = { _, _ -> stationClicks++ },
                 onFavoriteStreamClick = { streamClicks++ },
                 canFavoriteStream = supported && player.hasFavoritableStreamTrack(),
                 livePositionFlow = null,

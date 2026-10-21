@@ -89,6 +89,7 @@ class AudioSourceMappingTest {
         val actions = resolveLongClickActions(
             item = source(),
             canEditLibrary = true,
+            dislikeSupported = true,
             librarySupported = true,
             canAddToPlaylist = false,
             canRemoveFromPlaylist = false,

@@ -17,6 +17,7 @@ import compose.icons.tablericons.FolderMinus
 import compose.icons.tablericons.FolderPlus
 import compose.icons.tablericons.Heart
 import compose.icons.tablericons.HeartBroken
+import compose.icons.tablericons.ThumbDown
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
@@ -27,6 +28,7 @@ import musicassistantclient.composeapp.generated.resources.action_add_to_library
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
 import musicassistantclient.composeapp.generated.resources.action_add_to_queue
 import musicassistantclient.composeapp.generated.resources.action_customize
+import musicassistantclient.composeapp.generated.resources.action_dislike
 import musicassistantclient.composeapp.generated.resources.action_favorite
 import musicassistantclient.composeapp.generated.resources.action_insert_next
 import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
@@ -36,6 +38,7 @@ import musicassistantclient.composeapp.generated.resources.action_play_album_fro
 import musicassistantclient.composeapp.generated.resources.action_play_from_here
 import musicassistantclient.composeapp.generated.resources.action_play_now
 import musicassistantclient.composeapp.generated.resources.action_play_playlist_from_here
+import musicassistantclient.composeapp.generated.resources.action_remove_dislike
 import musicassistantclient.composeapp.generated.resources.action_remove_from_library
 import musicassistantclient.composeapp.generated.resources.action_remove_from_playlist
 import musicassistantclient.composeapp.generated.resources.action_start_endless_mix
@@ -51,8 +54,13 @@ sealed class ItemAction(val kind: Kind) {
 
     data object AddToLibrary : ItemAction(Kind.OTHER)
     data object RemoveFromLibrary : ItemAction(Kind.OTHER)
-    data object Favorite : ItemAction(Kind.OTHER)
-    data object Unfavorite : ItemAction(Kind.OTHER)
+
+    /** An entry of the favorite menu. [favorite] is the state that it sets. */
+    sealed class SetFavorite(val favorite: Boolean?) : ItemAction(Kind.OTHER)
+    data object Favorite : SetFavorite(true)
+    data object Unfavorite : SetFavorite(null)
+    data object Dislike : SetFavorite(false)
+    data object RemoveDislike : SetFavorite(null)
 
     data object AddToPlaylist : ItemAction(Kind.OTHER)
     data object RemoveFromPlaylist : ItemAction(Kind.OTHER)
@@ -84,6 +92,8 @@ fun ItemAction.title(context: ClickContext? = null): StringResource = when (this
     ItemAction.RemoveFromLibrary -> Res.string.action_remove_from_library
     ItemAction.Favorite -> Res.string.action_favorite
     ItemAction.Unfavorite -> Res.string.action_unfavorite
+    ItemAction.Dislike -> Res.string.action_dislike
+    ItemAction.RemoveDislike -> Res.string.action_remove_dislike
     ItemAction.AddToPlaylist -> Res.string.action_add_to_playlist
     ItemAction.RemoveFromPlaylist -> Res.string.action_remove_from_playlist
     ItemAction.MarkPlayed -> Res.string.action_mark_played
@@ -110,6 +120,9 @@ fun ItemAction.icon(context: ClickContext?): ImageVector = when (this) {
     ItemAction.RemoveFromLibrary -> TablerIcons.FolderMinus
     ItemAction.Favorite -> TablerIcons.Heart
     ItemAction.Unfavorite -> TablerIcons.HeartBroken
+    ItemAction.Dislike,
+    ItemAction.RemoveDislike,
+    -> TablerIcons.ThumbDown
     ItemAction.AddToPlaylist -> Icons.AutoMirrored.Filled.PlaylistAdd
     ItemAction.RemoveFromPlaylist -> Icons.Default.Delete
     ItemAction.MarkPlayed -> Icons.Default.Check

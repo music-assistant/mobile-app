@@ -45,6 +45,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.supportsAiRadio
+import io.music_assistant.client.data.model.server.supportsDislike
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -147,7 +148,7 @@ class MainDataSource(
         val sortedIds: List<String>?,
         val queues: List<QueueInfo>,
         val localData: PlayerData?,
-        val favoriteOverrides: Map<String, Boolean>,
+        val favoriteOverrides: Map<String, Boolean?>,
         val busyQueueIds: Set<String>,
     )
 
@@ -202,15 +203,22 @@ class MainDataSource(
             supported && scopes.hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
         }.stateIn(this, SharingStarted.Eagerly, false)
 
+    /** Whether the server keeps a dislike ([supportsDislike]). False while no session is up. */
+    val dislikeSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsDislike((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(this, SharingStarted.Eagerly, false)
+
     /**
      * Authoritative favorite state per track, keyed by [favKey]. The server's
      * queue payload reports a stale `favorite` for the now-playing track (it
      * lags behind, indefinitely, after a toggle), so it cannot be trusted.
      * This overlay is written optimistically on user toggle and reconciled by
      * the reliable server item changes ([MediaItemChange]), then re-applied on every rebuild in
-     * [buildPlayerDataList] so queue updates can't clobber it.
+     * [buildPlayerDataList] so queue updates can't clobber it. A key with a null value is an
+     * override to "no choice".
      */
-    private val _favoriteOverrides = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    private val _favoriteOverrides = MutableStateFlow<Map<String, Boolean?>>(emptyMap())
 
     private val _playersData = MutableStateFlow<DataState<List<PlayerData>>>(DataState.Loading())
     val playersData = _playersData.asStateFlow()
@@ -772,7 +780,7 @@ class MainDataSource(
         sortedIds: List<String>?,
         queues: List<QueueInfo>,
         localData: PlayerData?,
-        favoriteOverrides: Map<String, Boolean>,
+        favoriteOverrides: Map<String, Boolean?>,
         busyQueueIds: Set<String>,
         oldValues: DataState<List<PlayerData>>,
     ): List<PlayerData> {
@@ -879,39 +887,37 @@ class MainDataSource(
         item.uri ?: "${item.provider}:${item.itemId}"
 
     /**
-     * Optimistically set (or clear, when [favorite] is null) the favorite flag
-     * for [item] in [_favoriteOverrides]. Triggers a [_playersData] rebuild via
-     * the combine so the now-playing heart updates immediately.
+     * Optimistically set the favorite flag for [item] in [_favoriteOverrides]. Null is
+     * "no choice". Triggers a [_playersData] rebuild via the combine so the now-playing
+     * heart updates immediately.
      */
     fun setFavoriteOverride(item: AppMediaItem, favorite: Boolean?) {
-        _favoriteOverrides.update { current ->
-            if (favorite == null) current - favKey(item) else current + (favKey(item) to favorite)
+        _favoriteOverrides.update { it + (favKey(item) to favorite) }
+    }
+
+    /**
+     * Canonical favorite write for [item]: true is a like, false is a dislike ([dislikeSupported]
+     * only), null clears the choice. Optimistically sets the override (the server's queue
+     * payload reports a stale `favorite`), fires the request, and rolls the override back if
+     * the server rejects it. Reconciled later by the server item changes ([MediaItemChange]).
+     */
+    fun setFavorite(item: AppMediaItem, favorite: Boolean?) {
+        launch {
+            val request = when (favorite) {
+                true -> Request.Library.addFavorite(item.uri ?: return@launch)
+                false -> Request.Library.setFavorite(item.uri ?: return@launch, false)
+                null -> Request.Library.removeFavorite(item.itemId, item.mediaType)
+            }
+            setFavoriteOverride(item, favorite)
+            apiClient.sendRequest(request).onFailure { setFavoriteOverride(item, item.favorite) }
         }
     }
 
     /**
-     * Canonical favorite toggle for [item], shared by the in-app player heart and the
-     * media-session (Android Auto) favorite action. Optimistically flips the override
-     * (the server's queue payload reports a stale `favorite`), fires the add/remove
-     * request, and rolls the override back if the server rejects it. Reconciled later
-     * by the server item changes ([MediaItemChange]).
+     * Like toggle for [item], for the surfaces with one heart button (the media-session
+     * favorite action and the player on servers without dislike). A dislike toggles to a like.
      */
-    fun toggleFavorite(item: AppMediaItem) {
-        launch {
-            val newFavorite = item.favorite != true
-            val result = if (newFavorite) {
-                val uri = item.uri ?: return@launch
-                setFavoriteOverride(item, true)
-                apiClient.sendRequest(Request.Library.addFavorite(uri))
-            } else {
-                setFavoriteOverride(item, false)
-                apiClient.sendRequest(
-                    Request.Library.removeFavorite(item.itemId, item.mediaType),
-                )
-            }
-            result.onFailure { setFavoriteOverride(item, item.favorite) }
-        }
-    }
+    fun toggleFavorite(item: AppMediaItem) = setFavorite(item, if (item.favorite == true) null else true)
 
     /**
      * True when [playerData] has a real on-air stream song the connected server can
@@ -948,13 +954,15 @@ class MainDataSource(
     /** Overrides the now-playing track's favorite flag from [overrides]. */
     private fun applyFavoriteOverride(
         playerData: PlayerData,
-        overrides: Map<String, Boolean>,
+        overrides: Map<String, Boolean?>,
     ): PlayerData {
         val queueData = playerData.queue as? DataState.Data ?: return playerData
         val currentItem = queueData.data.info.currentItem ?: return playerData
         val track = currentItem.track
         val item = track as? AppMediaItem ?: return playerData
-        val override = overrides[favKey(item)] ?: return playerData
+        val key = favKey(item)
+        if (key !in overrides) return playerData
+        val override = overrides[key]
         if (track.favorite == override) return playerData
         return playerData.copy(
             queue = DataState.Data(
@@ -1511,8 +1519,8 @@ class MainDataSource(
             val track = change.item as? Track ?: return@collect
             when (change) {
                 // Reliable server truth — reconcile the optimistic overlay so it survives
-                // the stale queue payload. No choice (null) shows as "not a favorite".
-                is MediaItemChange.FavoriteUpdated -> setFavoriteOverride(track, track.favorite == true)
+                // the stale queue payload.
+                is MediaItemChange.FavoriteUpdated -> setFavoriteOverride(track, track.favorite)
                 is MediaItemChange.Updated ->
                     track.favorite?.takeIf { change.carriesFavorite }?.let { setFavoriteOverride(track, it) }
                 is MediaItemChange.Added -> Unit

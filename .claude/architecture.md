@@ -101,6 +101,11 @@ actual class PlatformFeature {
   `carriesFavorite` false must not change the heart of a row. Replace a row with
   `item.withFavorite(change.favoriteAfter(row.favorite))`. `MainDataSource` gets the added and updated
   tracks from `itemChanges` for the same reason.
+- **Dislike**: from server 2.11 (`supportsDislike`), a false `favorite` is a dislike and null is no choice.
+  On an older server, false is "not a favorite". Get the favorite menu entries from `favoriteActions`.
+  Each entry is an `ItemAction.SetFavorite` and holds the state that it sets. The phone and Android Auto
+  send each favorite write through `MainDataSource.setFavorite`. Compose reads `LocalDislikeSupported`,
+  which `App` provides.
 - **Scopes**: `MainDataSource.grantedScopes` (`GrantedScopes`) holds the scopes of the signed-in user. The
   app reads `auth/scopes` once for each new session and finds the role of the user in the table. Gate a
   write action on a scope. Do not gate it on the role name, because server 2.11 has custom roles.

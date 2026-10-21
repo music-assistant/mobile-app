@@ -25,6 +25,7 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.ConfirmationDialog
+import io.music_assistant.client.ui.compose.common.LocalDislikeSupported
 import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
@@ -244,6 +245,7 @@ private fun <T> PlayableItemWithMenu(
         item = item,
         clickContext = clickActionConfig.context,
         canEditLibrary = LocalGrantedScopes.current.canEditLibrary,
+        dislikeSupported = LocalDislikeSupported.current,
         librarySupported = true,
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
@@ -293,9 +295,7 @@ private fun <T> PlayableItemWithMenu(
                     ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)
                     ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
 
-                    ItemAction.Favorite,
-                    ItemAction.Unfavorite,
-                        -> libraryActions.onFavoriteClick(item)
+                    is ItemAction.SetFavorite -> libraryActions.onFavoriteChange(item, action.favorite)
 
                     ItemAction.AddToPlaylist -> showPlaylistDialog = true
                     ItemAction.RemoveFromPlaylist -> showRemovePlaylistConfirmation = true

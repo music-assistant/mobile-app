@@ -30,6 +30,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.SchemaVersionWarningViewModel
 import io.music_assistant.client.ui.SchemaWarning
+import io.music_assistant.client.ui.compose.common.ProvideDislikeSupport
 import io.music_assistant.client.ui.compose.common.ProvideGrantedScopes
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
@@ -95,8 +96,10 @@ fun App() {
                     .dismissKeyboardOnTap(),
             ) {
                 ProvideGrantedScopes {
-                    ProvideClickActionPrefs {
-                        TopLevelNavRoot()
+                    ProvideDislikeSupport {
+                        ProvideClickActionPrefs {
+                            TopLevelNavRoot()
+                        }
                     }
                 }
                 StatusBarScrim(darkTheme, Modifier.align(Alignment.TopCenter))
