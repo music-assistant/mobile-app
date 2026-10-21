@@ -611,32 +611,26 @@ object KmpHelper : KoinComponent {
     /**
      * Set the favorite flag on an [AppMediaItem]. Drives `INMediaAffinityIntent`
      * mapping from Swift: `like` ⇒ `favorite = true`, `dislike` ⇒ `favorite = false`.
-     * MA only tracks favorites as a boolean — dislike removes an existing favorite
-     * but cannot record an explicit "do not play this" signal. Adding requires a
-     * URI; removal works by id+mediaType.
+     * From server 2.11 ([MainDataSource.dislikeSupported]) a dislike is recorded as one;
+     * an older server has no dislike, so there it removes an existing favorite. Writes
+     * go through [MainDataSource.setFavorite], so the now-playing heart follows at once.
+     * A like and a dislike need a URI ([AppMediaItem.mediaUri]); removal works by
+     * id+mediaType.
      *
      * Returns `true` synchronously when the request was dispatched, `false` when
      * the user's role lacks `library.write` or we couldn't form a valid request
-     * (an add for an item with no URI). Network outcome is fire-and-forget — Swift
-     * uses the synchronous return to avoid lying to Siri about success.
+     * (a like or dislike for an item with no URI). Network outcome is fire-and-forget —
+     * Swift uses the synchronous return to avoid lying to Siri about success.
      */
     fun setFavorite(item: AppMediaItem, favorite: Boolean): Boolean {
         if (!mainDataSource.grantedScopes.value.canEditLibrary) return false
-        if (favorite) {
-            // Prefer plain `uri`; fall back to `mediaUri`. The base class uses
-            // `uri` directly; subclasses like Genre override `mediaUri` to
-            // synthesize one when the server didn't supply it.
-            val uri = item.uri ?: item.mediaUri ?: return false
-            mainScope.launch {
-                serviceClient.sendRequest(Request.Library.addFavorite(uri))
-            }
-        } else {
-            mainScope.launch {
-                serviceClient.sendRequest(
-                    Request.Library.removeFavorite(item.itemId, item.mediaType),
-                )
-            }
+        val state = when {
+            favorite -> true
+            mainDataSource.dislikeSupported.value -> false
+            else -> null
         }
+        if (state != null && item.mediaUri == null) return false
+        mainDataSource.setFavorite(item, state)
         return true
     }
 }

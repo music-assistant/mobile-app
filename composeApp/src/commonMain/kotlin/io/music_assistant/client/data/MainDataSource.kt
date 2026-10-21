@@ -904,8 +904,8 @@ class MainDataSource(
     fun setFavorite(item: AppMediaItem, favorite: Boolean?) {
         launch {
             val request = when (favorite) {
-                true -> Request.Library.addFavorite(item.uri ?: return@launch)
-                false -> Request.Library.setFavorite(item.uri ?: return@launch, false)
+                true -> Request.Library.addFavorite(item.mediaUri ?: return@launch)
+                false -> Request.Library.setFavorite(item.mediaUri ?: return@launch, false)
                 null -> Request.Library.removeFavorite(item.itemId, item.mediaType)
             }
             setFavoriteOverride(item, favorite)

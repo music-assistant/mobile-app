@@ -103,7 +103,7 @@ actual class PlatformFeature {
   tracks from `itemChanges` for the same reason.
 - **Dislike**: from server 2.11 (`supportsDislike`), a false `favorite` is a dislike and null is no choice.
   On an older server, false is "not a favorite". Get the favorite menu entries from `favoriteActions`.
-  Each entry is an `ItemAction.SetFavorite` and holds the state that it sets. The phone and Android Auto
+  Each entry is an `ItemAction.SetFavorite` and holds the state that it sets. The phone, Android Auto and Siri
   send each favorite write through `MainDataSource.setFavorite`. Compose reads `LocalDislikeSupported`,
   which `App` provides.
 - **Scopes**: `MainDataSource.grantedScopes` (`GrantedScopes`) holds the scopes of the signed-in user. The

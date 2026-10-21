@@ -58,7 +58,7 @@ The app conforms to three media-domain intents via a single class (`SiriIntentHa
 | Intent | Phrase | Behavior |
 |---|---|---|
 | `INPlayMediaIntent` | "Hey Siri, play X in Music Assistant" | Resolve → search MA → best-match → `KmpHelper.playMediaItem` → donate. |
-| `INUpdateMediaAffinityIntent` | "I love/like/dislike this song" | Resolve from prior donations or search → `KmpHelper.setFavorite`. Like ⇒ add, dislike ⇒ remove. MA has no negative signal. |
+| `INUpdateMediaAffinityIntent` | "I love/like/dislike this song" | Resolve from prior donations or search → `KmpHelper.setFavorite`. Like ⇒ add. Dislike ⇒ dislike from server 2.11, remove below it. |
 | `INSearchForMediaIntent` | "search for X in Music Assistant" | Resolve only — surface results, don't play. Follow-up "play that" routes through `INPlayMediaIntent`. |
 
 **Voice transport commands bypass `SiriIntentHandler` entirely.** "Hey Siri, skip this," "next track," "pause," and the steering-wheel buttons all flow through `MPRemoteCommand` (`nextTrackCommand`, `pauseCommand`, etc.), dispatched by `mediaremoted` from `com.apple.AssistantServices`. Those land in `NowPlayingManager.setupRemoteCommands()` and route to `NativeAudioController`'s `RemoteCommandHandler`, never hitting any of the three intents above. Confirmed empirically: a "Hey Siri, skip to next track" during in-car testing produced a `mediaremoted` log line `Received command from <com.apple.assistant_service>: NextTrack` with no `INPlayMediaIntent` activity at all.
@@ -142,11 +142,12 @@ In-app iOS playback (Compose UI) does **not** donate today — only CarPlay and 
 
 ### Favorites
 
-`KmpHelper.setFavorite(item, favorite)`:
-- `favorite=true` → `addFavorite(uri)`. Falls back to `mediaUri` if `uri` is nil (e.g. Genre, which synthesizes a URI).
-- `favorite=false` → `removeFavorite(itemId, mediaType)`. Server-side no-op if not currently favorited.
+`KmpHelper.setFavorite(item, favorite)` sends the write through `MainDataSource.setFavorite`, so the optimistic now-playing heart follows:
+- `favorite=true` → `addFavorite(mediaUri)`. `mediaUri` is `uri`, or a synthesized URI for a Genre.
+- `favorite=false` on server 2.11 (`MainDataSource.dislikeSupported`) → `favorites/set_item(mediaUri, false)`, a real dislike.
+- `favorite=false` on an older server → `removeFavorite(itemId, mediaType)`, because the server has no dislike. Server-side no-op if not currently favorited.
 
-Returns `Boolean` synchronously: `true` if the request was dispatched, `false` if it couldn't be formed (only known case: add for an item with neither `uri` nor `mediaUri`). Network outcome is fire-and-forget. Swift's affinity handler propagates `false` as `INUpdateMediaAffinityIntentResponseCode.failure` so the user hears Siri's failure tone instead of a false "Done."
+Returns `Boolean` synchronously: `true` if the request was dispatched, `false` if it couldn't be formed (only known case: a like or dislike for an item without `mediaUri`). Network outcome is fire-and-forget. Swift's affinity handler propagates `false` as `INUpdateMediaAffinityIntentResponseCode.failure` so the user hears Siri's failure tone instead of a false "Done."
 
 ---
 

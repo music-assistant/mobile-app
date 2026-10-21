@@ -386,8 +386,9 @@ menu has two pairs of entries, like the web frontend: "Favorite" or "Unfavorite"
 "Remove dislike". The heart of the full player opens the same menu, and a dislike shows a dislike
 icon in the place of the heart. A dislike sends `favorites/set_item` with false. A like and a clear
 keep `add_item` and `remove_item`, like the web frontend. On 2.10, the heart stays a toggle, and
-the app reads false as "not a favorite". Android Auto, CarPlay and Siri keep the like toggle. The
-app does not offer the `favorite=False` list filter.
+the app reads false as "not a favorite". Android Auto and CarPlay keep the like toggle. A Siri
+dislike sets a dislike on 2.11 and removes the favorite on 2.10. The app does not offer the
+`favorite=False` list filter.
 
 ### 5.3 The `favorite_updated` event replaces `favorite` in item events
 
