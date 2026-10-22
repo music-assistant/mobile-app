@@ -28,6 +28,7 @@ import io.music_assistant.sendspin.wire.EncryptedClientHelloMessage
 import io.music_assistant.sendspin.wire.EncryptedClientHelloPayload
 import io.music_assistant.sendspin.wire.GoodbyePayload
 import io.music_assistant.sendspin.wire.GoodbyeReason
+import io.music_assistant.sendspin.wire.MAX_HELLO_TEXT_BYTES
 import io.music_assistant.sendspin.wire.PairAbortMessage
 import io.music_assistant.sendspin.wire.PairAbortPayload
 import io.music_assistant.sendspin.wire.ServerActivatePayload
@@ -36,6 +37,7 @@ import io.music_assistant.sendspin.wire.UnpairedAccess
 import io.music_assistant.sendspin.wire.VersionedRole
 import io.music_assistant.sendspin.wire.WireCodec
 import io.music_assistant.sendspin.wire.pairMethods
+import io.music_assistant.sendspin.wire.truncateUtf8
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -185,13 +187,13 @@ internal class NoiseSession(
         val secure = channel ?: throw NoiseException("ciphertext before secure channel")
         val message = secure.decoder.decode(secure.noise.decrypt(bytes)) ?: return
         when {
-            message.type == NoiseFraming.TYPE_JSON ->
-                route(WireCodec.parse(message.payload.decodeToString()), scope, handler)
+            message.type == NoiseFraming.TYPE_JSON -> route(parseJson(message.payload), scope, handler)
 
             NoiseFraming.isPlayerAudioType(message.type) ->
                 when (val parsed = BinaryFrames.parse(config.wire, message.type, message.payload)) {
                     is BinaryFrame.Audio -> handler.onAudio(parsed.chunk)
-                    is BinaryFrame.Other, BinaryFrame.Malformed -> logger.w { "Ignoring binary frame $parsed" }
+                    BinaryFrame.Malformed -> protocolError("malformed audio message (${message.payload.size} bytes)")
+                    is BinaryFrame.Other -> logger.w { "Ignoring binary frame $parsed" }
                 }
 
             else -> logger.d { "Ignoring binary message type ${message.type}" }
@@ -206,7 +208,8 @@ internal class NoiseSession(
             is ServerMessage.PairFinalize -> endPairingAttempt { pairingHandler.completeAttempt() }
             is ServerMessage.PairAbort -> endPairingAttempt { pairingHandler.discardAttempt() }
             is ServerMessage.Management -> handleManagement(message)
-            is ServerMessage.Malformed -> logger.w { "Unparseable encrypted JSON message" }
+            is ServerMessage.BadEnvelope -> protocolError("malformed JSON message: ${message.reason}")
+            is ServerMessage.Malformed -> logger.w { "Undecodable encrypted JSON message: ${message.cause.message}" }
             is ServerMessage.Unknown -> if (message.type.isPairingType()) {
                 // PIN pairing is unimplemented: any other pairing message is out of sequence.
                 throw HandshakeFailedException("out-of-sequence pairing message ${message.type}")
@@ -219,6 +222,25 @@ internal class NoiseSession(
     }
 
     private fun String.isPairingType() = startsWith("pair/") || startsWith("server/pair-")
+
+    /** Spec 1.0.0-rc1: an ID 0 body must be a UTF-8 JSON object with a `type` string and a `payload` object. */
+    private fun parseJson(payload: ByteArray): ServerMessage {
+        val strict = config.wire == WireVersion.SPEC_1_0
+        val text = try {
+            payload.decodeToString(throwOnInvalidSequence = strict)
+        } catch (e: CharacterCodingException) {
+            throw NoiseFraming.ProtocolException("JSON message is not UTF-8", e) // Only thrown when strict.
+        }
+        return WireCodec.parse(text, requirePayload = strict)
+    }
+
+    /** Spec 1.0.0-rc1 closes the connection on a protocol error; the 9.x wire stays lenient. */
+    private fun protocolError(reason: String) {
+        when (config.wire) {
+            WireVersion.SPEC_1_0 -> throw NoiseFraming.ProtocolException(reason)
+            WireVersion.LEGACY_9 -> logger.w { "Ignoring protocol error: $reason" }
+        }
+    }
 
     private fun endPairingAttempt(action: () -> Unit) {
         pairingTimeout?.cancel()
@@ -269,7 +291,7 @@ internal class NoiseSession(
             if (message.type != NoiseFraming.TYPE_JSON) {
                 throw HandshakeFailedException("unexpected message type ${message.type} waiting for $what")
             }
-            return WireCodec.parse(message.payload.decodeToString())
+            return parseJson(message.payload)
         }
     }
 
@@ -284,10 +306,13 @@ internal class NoiseSession(
         )
     }
 
-    /** Spec 1.0.0-rc1 dropped `trust_level` and moved `supported_commands` to `client/state`. */
+    /**
+     * Spec 1.0.0-rc1 dropped `trust_level` and moved `supported_commands` to `client/state`.
+     * The text fields are capped in UTF-8 bytes; the player name is user input.
+     */
     private fun clientHello(trustLevel: TrustLevel) = EncryptedClientHelloPayload(
-        name = config.deviceName,
-        deviceInfo = config.deviceInfo,
+        name = config.deviceName.truncateUtf8(MAX_HELLO_TEXT_BYTES),
+        deviceInfo = config.deviceInfo?.capped(),
         trustLevel = trustLevel.wire.takeIf { config.wire == WireVersion.LEGACY_9 },
         supportedRoles = listOf(VersionedRole.PLAYER_V1),
         playerV1Support = config.playerSupport?.let { support ->

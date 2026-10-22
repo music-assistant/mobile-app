@@ -1,6 +1,7 @@
 package io.music_assistant.sendspin.session
 
 import io.music_assistant.sendspin.api.WireVersion
+import io.music_assistant.sendspin.fakes.FakeNoiseServer
 import io.music_assistant.sendspin.noise.HandshakeFailedException
 import io.music_assistant.sendspin.noise.NoiseFraming
 import io.music_assistant.sendspin.noise.PskCategory
@@ -31,6 +32,17 @@ import kotlin.test.assertTrue
  * [LegacyNoiseSessionTest] and [SpecNoiseSessionTest].
  */
 internal abstract class NoiseSessionScenarios(wire: WireVersion) : NoiseSessionTestHarness(wire) {
+    /** A Sentinel session past hello and activation, its two events consumed. */
+    protected suspend fun activated(f: Fixture): FakeNoiseServer {
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        server.completeHelloExchange()
+        server.activate()
+        assertIs<Event.Ready>(f.nextEvent())
+        assertIs<Event.Activated>(f.nextEvent())
+        return server
+    }
+
     protected fun payloadOf(json: String): JsonObject =
         SendspinJson.parseToJsonElement(json).jsonObject.getValue("payload").jsonObject
 
@@ -72,7 +84,7 @@ internal abstract class NoiseSessionScenarios(wire: WireVersion) : NoiseSessionT
         server.activate()
         server.sendJson("""{"type":"server/state","payload":{}}""")
         server.sendAudio(4, 77, byteArrayOf(9, 9, 9))
-        server.sendJson("""{"type":"stream/end"}""")
+        server.sendJson("""{"type":"stream/end","payload":{}}""")
 
         assertIs<Event.Ready>(f.nextEvent())
         assertIs<Event.Activated>(f.nextEvent())
@@ -369,6 +381,14 @@ internal class LegacyNoiseSessionTest : NoiseSessionScenarios(WireVersion.LEGACY
     }
 
     @Test
+    fun malformedMessagesAreIgnored() = sessionTest { f ->
+        val server = activated(f)
+        server.sendRawFrame(4, ByteArray(4))
+        server.sendJson("""{"type":"stream/end"}""")
+        assertIs<ServerMessage.StreamEnd>(f.nextMessage())
+    }
+
+    @Test
     fun unknownPskIdFailsSilentlyWithoutApplicationError() = sessionTest { f ->
         val server = FakeServer(f, ByteArray(32) { 0x55 })
         launch { runCatching { server.establish() } }
@@ -392,6 +412,48 @@ internal class SpecNoiseSessionTest : NoiseSessionScenarios(WireVersion.SPEC_1_0
         assertFalse(payload.getValue("player@v1_support").jsonObject.containsKey("supported_commands"))
         assertEquals(0, payload.getValue("supported_pair_methods").jsonObject.getValue("pairing_psk").jsonObject.size)
         assertFalse(clientHello.contains("null"), "a null optional field is rejected by the server: $clientHello")
+    }
+
+    @Test
+    fun helloCapsTheNameAt64Utf8BytesOnACodePointBoundary() = sessionTest(
+        deviceName = "Кухонний програвач 🎵".repeat(3),
+    ) { f ->
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        val name = payloadOf(server.completeHelloExchange()).getValue("name").jsonPrimitive.content
+        assertTrue(name.encodeToByteArray().size <= 64, "${name.encodeToByteArray().size} bytes")
+        assertTrue("Кухонний програвач 🎵".repeat(3).startsWith(name))
+        assertTrue(name.encodeToByteArray().size > 60, "no more than one code point dropped")
+    }
+
+    @Test
+    fun aJsonMessageWithoutAPayloadObjectClosesTheConnection() = sessionTest { f ->
+        val server = activated(f)
+        server.sendJson("""{"type":"stream/end"}""")
+        assertIs<NoiseFraming.ProtocolException>(f.awaitFailure())
+        assertTrue(f.transport.closed)
+    }
+
+    @Test
+    fun aJsonMessageThatIsNotUtf8ClosesTheConnection() = sessionTest { f ->
+        val server = activated(f)
+        server.sendRawFrame(NoiseFraming.TYPE_JSON, byteArrayOf(0xC3.toByte(), 0x28))
+        assertIs<NoiseFraming.ProtocolException>(f.awaitFailure())
+    }
+
+    @Test
+    fun anAudioMessageShorterThan13BytesClosesTheConnection() = sessionTest { f ->
+        val server = activated(f)
+        server.sendRawFrame(4, ByteArray(11))
+        assertIs<NoiseFraming.ProtocolException>(f.awaitFailure())
+    }
+
+    @Test
+    fun aPayloadThatDoesNotFitTheModelIsNotAProtocolError() = sessionTest { f ->
+        val server = activated(f)
+        server.sendJson("""{"type":"server/time","payload":{}}""")
+        server.sendJson("""{"type":"stream/end","payload":{}}""")
+        assertIs<ServerMessage.StreamEnd>(f.nextMessage())
     }
 
     @Test

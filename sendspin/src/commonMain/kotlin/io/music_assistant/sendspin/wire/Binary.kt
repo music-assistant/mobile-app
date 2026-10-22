@@ -29,6 +29,8 @@ internal class AudioChunk(
 internal sealed interface BinaryFrame {
     data class Audio(val chunk: AudioChunk) : BinaryFrame
     data class Other(val type: Int) : BinaryFrame
+
+    /** Shorter than its header, or a negative timestamp: a protocol error on spec 1.0.0-rc1. */
     data object Malformed : BinaryFrame
 }
 

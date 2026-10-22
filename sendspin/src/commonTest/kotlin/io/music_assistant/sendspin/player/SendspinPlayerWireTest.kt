@@ -46,6 +46,9 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
         val server = h.connectServer()
         h.awaitConnected()
         h.nextEvent()
+        assertTrue(server.clientStates.isEmpty(), "one burst is not convergence")
+        advanceTimeBy(1_000) // the second burst, 2 s after the first
+        runCurrent()
 
         val first = server.clientStates.single()
         assertEquals("true", first.getValue("available").jsonPrimitive.content)

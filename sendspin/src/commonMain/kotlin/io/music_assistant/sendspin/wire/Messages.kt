@@ -93,7 +93,36 @@ internal data class EncryptedDeviceInfo(
     @SerialName("product_name") val productName: String? = null,
     val manufacturer: String? = null,
     @SerialName("software_version") val softwareVersion: String? = null,
-)
+) {
+    fun capped() = EncryptedDeviceInfo(
+        productName = productName?.truncateUtf8(MAX_HELLO_TEXT_BYTES),
+        manufacturer = manufacturer?.truncateUtf8(MAX_HELLO_TEXT_BYTES),
+        softwareVersion = softwareVersion?.truncateUtf8(MAX_HELLO_TEXT_BYTES),
+    )
+}
+
+/** Spec cap, in UTF-8 bytes, on the `client/hello` `name` and on each `device_info` string. */
+internal const val MAX_HELLO_TEXT_BYTES = 64
+
+/** The longest prefix of whole code points that fits in [maxBytes] bytes of UTF-8. */
+internal fun String.truncateUtf8(maxBytes: Int): String {
+    var bytes = 0
+    var end = 0
+    while (end < length) {
+        val c = this[end]
+        val pair = c.isHighSurrogate() && end + 1 < length && this[end + 1].isLowSurrogate()
+        val size = when {
+            pair -> 4
+            c.code < 0x80 -> 1
+            c.code < 0x800 -> 2
+            else -> 3 // A lone surrogate encodes as U+FFFD, also 3 bytes.
+        }
+        if (bytes + size > maxBytes) break
+        bytes += size
+        end += if (pair) 2 else 1
+    }
+    return substring(0, end)
+}
 
 @Serializable
 internal data class PairMethodDescriptor(val method: String)

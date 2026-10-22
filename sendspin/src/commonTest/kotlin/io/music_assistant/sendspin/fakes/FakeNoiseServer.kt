@@ -235,10 +235,14 @@ internal class FakeNoiseServer(
         sendJson("""{"type":"server/activate","payload":{$fields}}""")
     }
 
+    /** The client's `client/hello` from [bringUp]. */
+    var clientHello: String? = null
+        private set
+
     /** Establishment, hello, and a playback activation in one go. */
     suspend fun bringUp() {
         establish()
-        completeHelloExchange()
+        clientHello = completeHelloExchange()
         activate()
     }
 
@@ -257,8 +261,10 @@ internal class FakeNoiseServer(
                 sendJson(
                     message("server/time") {
                         put("client_transmitted", t1)
-                        put("server_received", t1 + serverClockOffsetMicros)
-                        put("server_transmitted", t1 + serverClockOffsetMicros)
+                        // A 1 us one-way delay each way, folded into the server stamps because
+                        // virtual time does not pass: the time filter discards a zero max_error.
+                        put("server_received", t1 + serverClockOffsetMicros + 1)
+                        put("server_transmitted", t1 + serverClockOffsetMicros - 1)
                     },
                 )
             } else {

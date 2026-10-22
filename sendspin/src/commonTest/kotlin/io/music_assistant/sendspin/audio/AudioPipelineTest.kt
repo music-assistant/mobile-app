@@ -43,10 +43,10 @@ class AudioPipelineTest {
         val decoders = FakeDecoderFactory()
         val clockSync = ClockSync(clock).apply { if (synced) sync() }
 
-        /** One zero-RTT probe answered "now": server clock == local clock. */
+        /** One 2 us RTT probe answered "now": server clock == local clock. The filter discards a zero RTT. */
         fun ClockSync.sync() {
             val now = clock.nowMicros()
-            onReply(ServerTimePayload(now, now, now))
+            onReply(ServerTimePayload(now, now + 1, now - 1))
             endBurst()
         }
         val pipeline = AudioPipeline(sink, decoders, clockSync, clock, capacityBytes = 10_000_000)

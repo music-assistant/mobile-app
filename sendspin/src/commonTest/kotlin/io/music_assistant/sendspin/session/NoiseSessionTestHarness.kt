@@ -59,7 +59,11 @@ internal abstract class NoiseSessionTestHarness(protected val wire: WireVersion)
     protected fun FakeServer(f: Fixture, psk: ByteArray): FakeNoiseServer =
         FakeNoiseServer(f.crypto, f.transport, f.serverStatic, f.trustStore.identity.keyPair.publicKey, psk, wire)
 
-    private suspend fun TestScope.fixture(unpairedAccess: Boolean, pairingAttemptTimeoutMillis: Long): Fixture {
+    private suspend fun TestScope.fixture(
+        unpairedAccess: Boolean,
+        pairingAttemptTimeoutMillis: Long,
+        deviceName: String,
+    ): Fixture {
         val crypto = CryptographyKotlinNoiseCrypto()
         val trustStore = SendspinTrustStore.load(FakeSendspinKeyStore(), crypto)
         trustStore.setUnpairedAccessEnabled(unpairedAccess)
@@ -68,7 +72,7 @@ internal abstract class NoiseSessionTestHarness(protected val wire: WireVersion)
             transport = transport,
             config = SessionConfig(
                 wire = wire,
-                deviceName = "Enc Device",
+                deviceName = deviceName,
                 playerSupport = PlayerSupport(
                     supportedFormats = listOf(AudioFormatSpec(AudioCodec.OPUS, 2, 48000, 16)),
                     bufferCapacity = 1_000_000,
@@ -107,9 +111,10 @@ internal abstract class NoiseSessionTestHarness(protected val wire: WireVersion)
     protected fun sessionTest(
         unpairedAccess: Boolean = true,
         pairingAttemptTimeoutMillis: Long = 120_000,
+        deviceName: String = "Enc Device",
         block: suspend TestScope.(Fixture) -> Unit,
     ) = runTest {
-        val f = fixture(unpairedAccess, pairingAttemptTimeoutMillis)
+        val f = fixture(unpairedAccess, pairingAttemptTimeoutMillis, deviceName)
         try {
             block(f)
         } finally {

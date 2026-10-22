@@ -27,6 +27,7 @@ import io.music_assistant.sendspin.noise.SendspinPsk
 import io.music_assistant.sendspin.noise.crypto.CryptographyKotlinNoiseCrypto
 import io.music_assistant.sendspin.noise.crypto.X25519KeyPair
 import io.music_assistant.sendspin.transport.TransportConnector
+import io.music_assistant.sendspin.wire.SendspinJson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -41,6 +42,9 @@ import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -511,12 +515,13 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
 
     @Test
     fun aServerSilentOnClientTimeIsDroppedAfterThreeBursts() = playerTest { h ->
-        h.connectServer(silent = true) // 1.5 s: the first burst goes unanswered
+        // A burst ends 1.5 s after its unanswered probe; bursts start 2 s apart while warming up.
+        h.connectServer(silent = true) // 1.5 s: the first burst went unanswered
         h.awaitConnected()
-        advanceTimeBy(3_500) // 5.0 s: two silent bursts
+        advanceTimeBy(2_000) // 3.5 s: two silent bursts
         runCurrent()
         assertIs<PlayerState.Connected>(h.player.state.value, "two silent bursts are tolerated")
-        advanceTimeBy(3_500) // 8.5 s: the third ends the attempt
+        advanceTimeBy(2_000) // 5.5 s: the third ends the attempt
         runCurrent()
         assertIs<PlayerState.Reconnecting>(h.player.state.value)
         assertEquals(1, h.handedOut.size)
@@ -524,6 +529,18 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
         h.connectServer()
         h.awaitConnected()
         assertEquals(2, h.handedOut.size, "reconnected once the server answers")
+    }
+
+    @Test
+    fun helloListsThePreferredCodecThenTheGuaranteedPcmFormat() = playerTest { h ->
+        val server = h.connectServer()
+        val hello = SendspinJson.parseToJsonElement(server.clientHello ?: "").jsonObject
+        val formats = hello.getValue("payload").jsonObject.getValue("player@v1_support").jsonObject
+            .getValue("supported_formats").jsonArray.map { it.jsonObject }
+        assertEquals(listOf("flac", "pcm"), formats.map { it.getValue("codec").jsonPrimitive.content })
+        val pcm = formats.last()
+        assertEquals(16, pcm.getValue("bit_depth").jsonPrimitive.content.toInt())
+        assertEquals(48_000, pcm.getValue("sample_rate").jsonPrimitive.content.toInt())
     }
 
     @Test

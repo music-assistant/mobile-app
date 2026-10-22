@@ -6,6 +6,8 @@ import io.music_assistant.sendspin.wire.SendspinJson
 import io.music_assistant.sendspin.wire.ServerTimePayload
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
@@ -37,34 +39,70 @@ class ClockProbeTest {
         advanceTimeBy(100_000)
         runCurrent()
         assertIs<ServerSilentException>(run.await().exceptionOrNull())
-        assertEquals(3 * ClockProbe.PROBES_PER_BURST, sent.size)
+        // An unanswered probe ends its burst, so each silent burst sends one.
+        assertEquals(ClockProbe.SILENT_BURSTS_LIMIT, sent.size)
         assertEquals(0L, clientTransmitted(sent.first()))
     }
 
     @Test
-    fun repliesKeepTheAttemptAliveAndSlowToTheSteadyCadence() = runTest {
+    fun eachProbeWaitsForTheLastReplyAndBurstsStartWithinTheSpecBound() = runTest {
         val clock = MonotonicClock { currentTime * 1_000 }
         val sync = ClockSync(clock)
         val sendTimes = mutableListOf<Long>()
         val probe = ClockProbe(sync, clock) { json ->
             sendTimes += currentTime
-            // Replies land in the same virtual instant, so the server must report zero processing time.
             val t1 = clientTransmitted(json)
-            sync.onReply(ServerTimePayload(t1, t1 + 5_000, t1 + 5_000))
+            backgroundScope.launch {
+                delay(REPLY_MILLIS)
+                sync.onReply(ServerTimePayload(t1, t1 + 2_500, t1 + 2_500))
+            }
         }
         val run = async { runCatching { probe.run() } }
 
         advanceTimeBy(120_000)
         assertTrue(run.isActive, "answered probes never trip liveness")
-        assertTrue(sync.isSynced)
-        // Burst length: probes at 100 ms plus the 500 ms settle.
-        val burstMillis = ClockProbe.PROBES_PER_BURST * ClockProbe.PROBE_INTERVAL_MILLIS + ClockProbe.BURST_SETTLE_MILLIS
-        val warmupGap = burstMillis + ClockProbe.WARMUP_BURST_INTERVAL_MILLIS
-        val steadyGap = burstMillis + ClockProbe.BURST_INTERVAL_MILLIS
-        val burstStarts = sendTimes.filterIndexed { i, _ -> i % ClockProbe.PROBES_PER_BURST == 0 }
-        val gaps = burstStarts.zipWithNext { a, b -> b - a }
-        assertTrue(gaps.take(6).all { it == warmupGap }, "warm-up gaps $gaps")
-        assertTrue(gaps.drop(12).all { it == steadyGap }, "steady gaps $gaps")
+        assertTrue(sync.isConverged)
+        val bursts = sendTimes.chunked(ClockProbe.PROBES_PER_BURST)
+        assertTrue(bursts.dropLast(1).all { it.size == ClockProbe.PROBES_PER_BURST }, "burst sizes")
+        assertTrue(
+            bursts.dropLast(1).all { burst -> burst.zipWithNext { a, b -> b - a }.all { it == REPLY_MILLIS } },
+            "each probe goes out when the previous reply lands",
+        )
+        val gaps = bursts.map { it.first() }.zipWithNext { a, b -> b - a }
+        assertTrue(gaps.take(6).all { it == ClockProbe.WARMUP_BURST_INTERVAL_MILLIS }, "warm-up gaps $gaps")
+        assertTrue(gaps.drop(16).all { it == ClockProbe.BURST_INTERVAL_MILLIS }, "steady gaps $gaps")
+        assertTrue(gaps.all { it <= 10_000 }, "spec: bursts start at most 10 s apart: $gaps")
         run.cancel()
+    }
+
+    @Test
+    fun anUnansweredProbeEndsItsBurst() = runTest {
+        val clock = MonotonicClock { currentTime * 1_000 }
+        val sync = ClockSync(clock)
+        val sendTimes = mutableListOf<Long>()
+        val probe = ClockProbe(sync, clock) { json ->
+            sendTimes += currentTime
+            // The server answers only the first three probes of the first burst.
+            if (sendTimes.size <= 3) {
+                val t1 = clientTransmitted(json)
+                backgroundScope.launch {
+                    delay(REPLY_MILLIS)
+                    sync.onReply(ServerTimePayload(t1, t1 + 2_500, t1 + 2_500))
+                }
+            }
+        }
+        val run = async { runCatching { probe.run() } }
+
+        advanceTimeBy(1_600)
+        assertEquals(4, sendTimes.size, "three answered probes, then the unanswered one")
+        assertTrue(sync.isSynced, "the burst still fed its best reply")
+        advanceTimeBy(1_000)
+        assertEquals(5, sendTimes.size, "the next burst starts on the warm-up cadence")
+        assertEquals(ClockProbe.WARMUP_BURST_INTERVAL_MILLIS, sendTimes[4] - sendTimes[0])
+        run.cancel()
+    }
+
+    private companion object {
+        const val REPLY_MILLIS = 5L
     }
 }

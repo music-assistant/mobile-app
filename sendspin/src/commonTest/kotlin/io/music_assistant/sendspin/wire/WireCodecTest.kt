@@ -89,10 +89,16 @@ class WireCodecTest {
 
     @Test
     fun malformedInputNeverThrows() {
-        assertIs<ServerMessage.Malformed>(WireCodec.parse("not json"))
-        assertIs<ServerMessage.Malformed>(WireCodec.parse("""{"payload":{}}"""))
+        assertIs<ServerMessage.BadEnvelope>(WireCodec.parse("not json"))
+        assertIs<ServerMessage.BadEnvelope>(WireCodec.parse("""{"payload":{}}"""))
+        assertIs<ServerMessage.BadEnvelope>(WireCodec.parse("""{"type":5,"payload":{}}"""))
         assertIs<ServerMessage.Malformed>(WireCodec.parse("""{"type":"server/time","payload":{}}"""))
-        assertIs<ServerMessage.Malformed>(WireCodec.parse("""[1,2]"""))
+        assertIs<ServerMessage.BadEnvelope>(WireCodec.parse("""[1,2]"""))
+        assertIs<ServerMessage.StreamEnd>(WireCodec.parse("""{"type":"stream/end"}"""))
+        assertIs<ServerMessage.BadEnvelope>(WireCodec.parse("""{"type":"stream/end"}""", requirePayload = true))
+        assertIs<ServerMessage.BadEnvelope>(
+            WireCodec.parse("""{"type":"stream/end","payload":[]}""", requirePayload = true),
+        )
     }
 
     @Test
@@ -200,5 +206,15 @@ class WireCodecTest {
             """{"product_name":"App"}""",
             SendspinJson.encodeToString(EncryptedDeviceInfo(productName = "App")),
         )
+    }
+
+    @Test
+    fun truncateUtf8KeepsWholeCodePoints() {
+        val emoji = "\uD83C\uDFB5" // 4 bytes, a surrogate pair
+        assertEquals("a".repeat(60) + emoji, ("a".repeat(60) + emoji).truncateUtf8(64))
+        assertEquals("a".repeat(62), ("a".repeat(62) + emoji).truncateUtf8(64))
+        assertEquals("ї".repeat(32), "ї".repeat(40).truncateUtf8(64))
+        assertEquals("€".repeat(21), "€".repeat(30).truncateUtf8(64))
+        assertEquals("short", "short".truncateUtf8(64))
     }
 }

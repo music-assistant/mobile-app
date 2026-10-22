@@ -153,7 +153,7 @@ internal object NoiseFraming {
     }
 
     /** Raised on malformed frame sequences; the connection must be closed. */
-    class ProtocolException(message: String) : Exception(message)
+    class ProtocolException(message: String, cause: Throwable? = null) : Exception(message, cause)
 
     /**
      * Per-direction decoder over decrypted frame plaintexts. Returns null while a

@@ -3,10 +3,8 @@ package io.music_assistant.sendspin.wire
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 
 /** A server text message after exactly one parse. Handlers never touch JSON again. */
 internal sealed interface ServerMessage {
@@ -31,20 +29,38 @@ internal sealed interface ServerMessage {
     data class Management(val type: String, val payload: JsonObject?) : ServerMessage
 
     data class Unknown(val type: String) : ServerMessage
+
+    /** Not a JSON object with a `type` string (and, when required, a `payload` object). */
+    data class BadEnvelope(val reason: String) : ServerMessage
+
+    /** A valid envelope whose payload does not decode into this client's model. */
     data class Malformed(val cause: Throwable) : ServerMessage
 }
 
 internal object WireCodec {
-    /** Never throws: unparseable input is a [ServerMessage.Malformed] value. */
-    fun parse(text: String): ServerMessage = try {
-        val json = SendspinJson.parseToJsonElement(text).jsonObject
-        val type = json["type"]?.jsonPrimitive?.contentOrNull
-            ?: return ServerMessage.Malformed(SerializationException("missing 'type'"))
-        decode(type, json)
-    } catch (e: SerializationException) {
-        ServerMessage.Malformed(e)
-    } catch (e: IllegalArgumentException) {
-        ServerMessage.Malformed(e)
+    /**
+     * Never throws: unparseable input is a [ServerMessage.BadEnvelope] or
+     * [ServerMessage.Malformed] value. [requirePayload] makes a missing `payload`
+     * object a bad envelope (spec 1.0.0-rc1 encrypted messages).
+     */
+    fun parse(text: String, requirePayload: Boolean = false): ServerMessage {
+        val element = try {
+            SendspinJson.parseToJsonElement(text)
+        } catch (e: SerializationException) {
+            return ServerMessage.BadEnvelope("not JSON: ${e.message}")
+        }
+        val json = element as? JsonObject ?: return ServerMessage.BadEnvelope("not a JSON object")
+        val type = (json["type"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+            ?: return ServerMessage.BadEnvelope("missing 'type' string")
+        val payloadMissing = requirePayload && json["payload"] !is JsonObject
+        if (payloadMissing) return ServerMessage.BadEnvelope("missing 'payload' object")
+        return try {
+            decode(type, json)
+        } catch (e: SerializationException) {
+            ServerMessage.Malformed(e)
+        } catch (e: IllegalArgumentException) {
+            ServerMessage.Malformed(e)
+        }
     }
 
     inline fun <reified T : SendspinMessage> encode(message: T): String =

@@ -215,9 +215,14 @@ internal class SendspinPlayerImpl(
             wire = key.endpoint.wire,
             deviceName = key.deviceName,
             playerSupport = PlayerSupport(
-                supportedFormats = key.codecs.filter(deps.decoders::supports).flatMap { codec ->
-                    SAMPLE_RATES.flatMap { rate -> BIT_DEPTHS.map { depth -> AudioFormatSpec(codec, 2, rate, depth) } }
-                },
+                // PCM last: 16-bit PCM is the format every spec server must produce.
+                supportedFormats = (key.codecs + AudioCodec.PCM).distinct()
+                    .filter(deps.decoders::supports)
+                    .flatMap { codec ->
+                        SAMPLE_RATES.flatMap { rate ->
+                            BIT_DEPTHS.map { depth -> AudioFormatSpec(codec, 2, rate, depth) }
+                        }
+                    },
                 bufferCapacity = config.value?.bufferCapacityBytes ?: 0,
                 supportedCommands = emptyList(),
             ),
@@ -286,13 +291,13 @@ internal class SendspinPlayerImpl(
         }
 
         /**
-         * Spec 1.0.0-rc1: `available` only once the time filter has an estimate (the
+         * Spec 1.0.0-rc1: `available` only once the time filter has converged (the
          * server starts no stream before it), then again on every change. The reported
          * delay is informational for the server's send-ahead; the scheduler still applies
          * the signed [LocalPlayerConfig.userDelayMs] itself.
          */
         private suspend fun reportSpecState(session: NoiseSession) {
-            while (clockSync.snapshot() == null) delay(CLOCK_POLL_MILLIS)
+            while (!clockSync.isConverged) delay(CLOCK_POLL_MILLIS)
             config.filterNotNull().map { it.userDelayMs }.distinctUntilChanged().collect { delayMs ->
                 session.send(
                     WireCodec.encode(
