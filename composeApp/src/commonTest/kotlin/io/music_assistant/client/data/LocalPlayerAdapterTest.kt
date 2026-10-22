@@ -134,6 +134,21 @@ class LocalPlayerAdapterTest {
     }
 
     @Test
+    fun aStopHoldsAtOnceAndTheServerIdleReleasesIt() = runBlocking<Unit> {
+        val local = playing()
+
+        adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Stop)
+
+        assertEquals(STOP, client.sent.receive().command)
+        assertTrue(player.held.value)
+        assertFalse(adapter.localPlayerData.value?.player?.isPlaying == true)
+
+        adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
+        await { player.held.value.takeUnless { it } }
+        assertFalse(player.held.value)
+    }
+
+    @Test
     fun clearingTheStateDropsTheSessionWantButKeepsTheHold() = runBlocking<Unit> {
         playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
@@ -242,6 +257,7 @@ class LocalPlayerAdapterTest {
     private companion object {
         val PAUSE = APICommands.playersCmd("pause")
         val NEXT = APICommands.playersCmd("next")
+        val STOP = APICommands.playersCmd("stop")
         const val QUEUE_ID = "queue"
         const val EPISODE_POSITION_SEC = 1800.0
         const val TIMEOUT_MS = 5_000L

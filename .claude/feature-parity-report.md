@@ -203,7 +203,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
 | Play, pause, next, previous, seek | yes | yes | yes | yes | yes | Parity | |
-| Stop | yes | yes | no | no | no | Missing | Web shows Stop if the player cannot pause |
+| Stop | yes | yes | yes | no | no | Parity | Stop replaces Pause for a radio stream and for an input source without pause support |
 | Skip back and forward for long content | yes | yes | yes | yes | chapters | Parity | 2.11 web uses `player_queues/skip`. App seeks by delta |
 | Shuffle, repeat, crossfade, autoplay | yes | yes | yes | part | part | Parity | Cars show shuffle and repeat |
 | Autoplay locked by repeat indicator | no | yes | no | n/a | n/a | Missing | |
@@ -620,7 +620,6 @@ the app:
 | Dislike | `favorites/set_item` (2.11) | Easy | Three-state heart menu. Hide on 2.10 |
 | Save queue as playlist | `player_queues/save_as_playlist` | Easy | Menu item in the player overflow |
 | Queue move to next, move to end, item radio | `move_item`, `move_item_end` | Easy | Three more long-press actions in `CollapsibleQueue` |
-| Stop | `players/cmd/stop` | Easy | Show Stop if the player lacks `PlayerFeature.PAUSE` |
 | Replace next, play shuffled, play from beginning | `play_media` options | Easy | More `QueueOption` cases in `ItemActionResolver` |
 | Playlist rename, image, delete | `playlists/update`, `library/remove_item` | Easy | Needs `library.write`. Hide if the scope is absent |
 | Playlist sharing and collaboration | `playlists/set_access`, `config/providers/share_candidates` (2.11) | Medium | A dialog with a user picker. Needs the `Playlist.access` DTO |
@@ -691,7 +690,7 @@ Home Assistant panel history, onboarding, expert mode, and the guided tour.
 3. Read `auth/scopes` once and gate the write actions.
 4. Bump `LOCAL_SCHEMA_VERSION` to the 2.11.0 release schema. Add the unsupported install banner.
 5. Decide the Sendspin wire strategy for 2.11 and schedule the module update.
-6. Quick wins from section 7: track and radio screens, stop, save queue as playlist, queue
+6. Quick wins from section 7: track and radio screens, save queue as playlist, queue
    actions, dislike, playlist rename and delete, refresh item, genre search.
 7. Server-driven sort options on 2.11.
 8. Medium items by user demand: episode page with transcript, artist discography, profile and

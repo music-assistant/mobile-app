@@ -1072,6 +1072,15 @@ class MainDataSource(
                     )
                 }
 
+                PlayerAction.Stop -> {
+                    apiClient.sendRequest(
+                        Request.Player.simpleCommand(
+                            playerId = playerId,
+                            command = "stop",
+                        ),
+                    )
+                }
+
                 PlayerAction.Next -> {
                     apiClient.sendRequest(
                         Request.Player.simpleCommand(playerId = playerId, command = "next"),

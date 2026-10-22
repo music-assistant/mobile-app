@@ -39,6 +39,9 @@ class PlayerRequestFactory(
             PlayerAction.Pause ->
                 Request.Player.simpleCommand(playerId = data.playerId, command = "pause")
 
+            PlayerAction.Stop ->
+                Request.Player.simpleCommand(playerId = data.playerId, command = "stop")
+
             // Audiobook chapter jumps are already turned into SeekTo by resolve(); only the
             // plain track-boundary fallback reaches here.
             PlayerAction.Next ->

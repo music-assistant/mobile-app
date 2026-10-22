@@ -6,6 +6,9 @@ sealed interface PlayerAction {
     data object TogglePlayPause : PlayerAction
     data object Play : PlayerAction
     data object Pause : PlayerAction
+
+    /** Ends playback of content that cannot pause (`PlayerData.canPauseContent`). */
+    data object Stop : PlayerAction
     data object Next : PlayerAction
     data object Previous : PlayerAction
     data object VolumeUp : PlayerAction

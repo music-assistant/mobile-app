@@ -166,6 +166,30 @@ class LocalCommandQueueTest {
     }
 
     @Test
+    fun aStopWhileAPlayWaitsDropsThePlay() = runTest {
+        val queue = queue(backgroundScope)
+        ready.value = false
+        val play = async { queue.sendOrDrop(listOf(request("play"))) }
+        runCurrent()
+        queue.sendOrQueue(PlayerAction.Stop, request("stop"))
+        ready.value = true
+        settle()
+        assertFalse(play.await())
+        assertEquals(listOf("stop"), sent, "the later stop wins")
+    }
+
+    @Test
+    fun offlineDedupKeepsOnlyTheLastPauseOrStop() = runTest {
+        val queue = queue(backgroundScope)
+        ready.value = false
+        queue.sendOrQueue(PlayerAction.Pause, request("pause"))
+        queue.sendOrQueue(PlayerAction.Stop, request("stop"))
+        ready.value = true
+        settle()
+        assertEquals(listOf("stop"), sent)
+    }
+
+    @Test
     fun anAppPauseWhileAPlayWaitsKeepsThePlayLast() = runTest {
         val queue = queue(backgroundScope)
         ready.value = false

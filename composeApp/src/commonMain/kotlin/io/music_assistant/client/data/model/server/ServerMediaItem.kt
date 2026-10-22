@@ -67,6 +67,8 @@ data class ServerMediaItem(
     @SerialName("items") val items: List<ServerMediaItem>? = null,
     // BrowseFolder only: the server browse path to descend into (distinct from `uri`).
     @SerialName("path") val path: String? = null,
+    // AudioSource only
+    @SerialName("can_play_pause") val canPlayPause: Boolean? = null,
 ) {
     companion object {
         const val LIBRARY_PROVIDER = "library"

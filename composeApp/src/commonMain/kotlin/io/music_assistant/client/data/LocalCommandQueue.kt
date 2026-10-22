@@ -52,7 +52,7 @@ internal class LocalCommandQueue(
     /** True from the first queued command until the drain has sent it. */
     private val pending = MutableStateFlow(false)
 
-    /** Bumped by every Pause: a later pause cancels a [sendOrDrop] that still waits. */
+    /** Bumped by every Pause and Stop: a later one cancels a [sendOrDrop] that still waits. */
     @Volatile
     private var pauses = 0
 
@@ -69,7 +69,7 @@ internal class LocalCommandQueue(
             sendOrDrop(listOf(request))
             return
         }
-        if (action == PlayerAction.Pause && userIntent) pauses++
+        if (action.endsPlayback && userIntent) pauses++
         if (!isReady.value) {
             // Enqueue first: the drain must see the entry when readiness flips.
             enqueue(action, request)
@@ -86,7 +86,7 @@ internal class LocalCommandQueue(
      * Sends [requests] in order, or drops them all. It waits up to [SEND_OR_DROP_WAIT_MS]
      * for the session (and asks for it back) and for the queued commands to go first, so
      * an offline pause still lands before it. Then [beforeSend] runs and the requests are
-     * sent; a failure drops the rest. A Pause that arrives while it waits drops it too.
+     * sent; a failure drops the rest. A Pause or Stop that arrives while it waits drops it too.
      * Returns true when every request was sent.
      */
     suspend fun sendOrDrop(requests: List<Request>, beforeSend: () -> Unit = {}): Boolean {
@@ -135,8 +135,8 @@ internal class LocalCommandQueue(
             }
             when (action) {
                 PlayerAction.TogglePlayPause -> toggle { it is PlayerAction.TogglePlayPause }
-                PlayerAction.Pause -> {
-                    queue.removeAll { it.action is PlayerAction.Pause }
+                PlayerAction.Pause, PlayerAction.Stop -> {
+                    queue.removeAll { it.action.endsPlayback }
                     queue.add(entry)
                 }
 
@@ -162,6 +162,10 @@ internal class LocalCommandQueue(
         const val SEND_OR_DROP_WAIT_MS = 10_000L
     }
 }
+
+/** Pause and Stop: the last one queued wins, and either cancels a waiting [LocalCommandQueue.sendOrDrop]. */
+private val PlayerAction.endsPlayback: Boolean
+    get() = this == PlayerAction.Pause || this == PlayerAction.Stop
 
 /** Play, Next, Previous and seeks: sent at once or dropped, never queued (see [LocalCommandQueue]). */
 internal val PlayerAction.movesPlayback: Boolean

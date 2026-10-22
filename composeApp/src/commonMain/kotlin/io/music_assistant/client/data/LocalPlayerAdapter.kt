@@ -346,7 +346,8 @@ class LocalPlayerAdapter(
         when (action) {
             PlayerAction.TogglePlayPause -> if (data.player.isPlaying) optimisticPause() else optimisticPlay()
             PlayerAction.Play -> optimisticPlay()
-            PlayerAction.Pause -> optimisticPause()
+            // The server ends the stream on Stop; its idle update releases the hold.
+            PlayerAction.Pause, PlayerAction.Stop -> optimisticPause()
 
             is PlayerAction.ToggleShuffle -> updateOptimisticQueueInfo { it.copy(shuffleEnabled = !action.current) }
 

@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.ui.compose.common.DataState
 
 data class PlayerData(
@@ -17,6 +18,16 @@ data class PlayerData(
     val queueItems = ((queue as? DataState.Data)?.data?.items as? DataState.Data)?.data
     val queueId = queueInfo?.id
     val queueOrPlayerId = queueId ?: player.id
+
+    /**
+     * False for a live input without pause support and for a radio stream, like the web app:
+     * the player then offers Stop instead of Pause.
+     */
+    val canPauseContent: Boolean
+        get() = when (val track = queueInfo?.currentItem?.track) {
+            is AudioSource -> track.canPlayPause
+            else -> player.currentMedia?.mediaType != MediaType.RADIO
+        }
 
     fun updateFrom(other: PlayerData): PlayerData {
         return PlayerData(

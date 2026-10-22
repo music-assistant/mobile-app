@@ -192,6 +192,16 @@ class PlayerRequestFactoryTest {
     }
 
     @Test
+    fun stopSendsPlayerStopKeyedOnThePlayer() {
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+
+        val request = factory.buildRequest(playerDataWith(testTrack()), PlayerAction.Stop)
+
+        assertEquals("players/cmd/stop", request?.command)
+        assertEquals(JsonPrimitive("player-1"), request?.args?.get("player_id"))
+    }
+
+    @Test
     fun leaveGroupSendsUngroupKeyedOnThePlayerNotTheQueue() {
         // `players/cmd/ungroup` is player-scoped. Sending the queue id would target the
         // wrong entity, and the server — not the client — picks the successor, so no

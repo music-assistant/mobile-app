@@ -198,6 +198,7 @@ class MediaItemFactory(
                 uri = uri,
                 images = resolveImageInfo(image, metadata),
                 isPlayable = isPlayable == true,
+                canPlayPause = canPlayPause == true,
             )
 
             MediaType.AUDIOBOOK -> Audiobook(

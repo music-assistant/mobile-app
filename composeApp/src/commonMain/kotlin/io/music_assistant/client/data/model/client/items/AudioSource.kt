@@ -27,6 +27,8 @@ data class AudioSource(
     override val uri: String?,
     override val images: Map<ImageType, ImageInfo>,
     override val isPlayable: Boolean,
+    /** False for a source that cannot pause: the player offers Stop instead. */
+    val canPlayPause: Boolean,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.AUDIO_SOURCE
     override val favorite: Boolean? = null
