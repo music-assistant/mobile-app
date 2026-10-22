@@ -6,6 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import coil3.request.CachePolicy
 import coil3.request.ErrorResult
 import coil3.request.ImageRequest
+import coil3.request.ImageResult
 import coil3.request.SuccessResult
 import coil3.request.bitmapConfig
 import coil3.request.transformations
@@ -38,12 +39,12 @@ class ArtworkLoaderOwnershipRobolectricTest {
             runBlocking {
                 val context = ApplicationProvider.getApplicationContext<Context>()
                 val first = loader.execute(ImageRequest.Builder(context).data(http).build())
-                assertTrue(first is SuccessResult)
+                assertSuccess(first)
                 val duplicate = loader.execute(ImageRequest.Builder(context).data(http).build())
-                assertTrue(duplicate is SuccessResult)
+                assertSuccess(duplicate)
                 assertEquals(1, fake.calls.get())
                 val uppercase = loader.execute(ImageRequest.Builder(context).data(uppercaseHttp).build())
-                assertTrue(uppercase is SuccessResult)
+                assertSuccess(uppercase)
                 assertEquals(2, fake.calls.get())
                 assertEquals(listOf(http, normalizedUppercaseHttp), fake.requestedUrls)
 
@@ -55,7 +56,7 @@ class ArtworkLoaderOwnershipRobolectricTest {
                     val fileResult = loader.execute(
                         request.bitmapConfig(android.graphics.Bitmap.Config.RGB_565).build(),
                     )
-                    assertTrue(fileResult is SuccessResult)
+                    assertSuccess(fileResult)
                     assertEquals(2, fake.calls.get())
                 } finally {
                     file.delete()
@@ -64,7 +65,7 @@ class ArtworkLoaderOwnershipRobolectricTest {
                 val bytes = loader.execute(
                     ImageRequest.Builder(context).data(fixture.bytes).build(),
                 )
-                assertTrue(bytes is SuccessResult)
+                assertSuccess(bytes)
                 assertEquals(2, fake.calls.get())
 
                 for (malformed in listOf("mawebrtc://", "http://")) {
@@ -79,7 +80,7 @@ class ArtworkLoaderOwnershipRobolectricTest {
                         .networkCachePolicy(CachePolicy.READ_ONLY)
                         .build(),
                 )
-                assertTrue(cacheOnly is ErrorResult)
+                assertTrue("cache-only miss should fail: $cacheOnly", cacheOnly is ErrorResult)
                 assertEquals(2, fake.calls.get())
             }
         }
@@ -106,10 +107,10 @@ class ArtworkLoaderOwnershipRobolectricTest {
                         .memoryCachePolicy(CachePolicy.DISABLED)
                         .networkCachePolicy(cachePolicy)
                         .build()
-                    assertTrue(loader.execute(request(CachePolicy.ENABLED)) is SuccessResult)
+                    assertSuccess(loader.execute(request(CachePolicy.ENABLED)))
                     fake.enqueue(url, replacement)
-                    assertTrue(loader.execute(request(policy)) is SuccessResult)
-                    assertTrue(loader.execute(request(CachePolicy.ENABLED)) is SuccessResult)
+                    assertSuccess(loader.execute(request(policy)))
+                    assertSuccess(loader.execute(request(CachePolicy.ENABLED)))
                     assertEquals(expectedCalls, fake.calls.get())
                 }
             }
@@ -171,8 +172,8 @@ class ArtworkLoaderOwnershipRobolectricTest {
                 val first = loader.execute(request("caller-one")) as SuccessResult
                 val second = loader.execute(request("caller-two")) as SuccessResult
                 assertNotEquals(first.memoryCacheKey, second.memoryCacheKey)
-                assertTrue(first.memoryCacheKey?.key?.contains("caller-one") == true)
-                assertTrue(second.memoryCacheKey?.key?.contains("caller-two") == true)
+                assertTrue("key: ${first.memoryCacheKey}", first.memoryCacheKey?.key?.contains("caller-one") == true)
+                assertTrue("key: ${second.memoryCacheKey}", second.memoryCacheKey?.key?.contains("caller-two") == true)
                 assertEquals(1, fake.calls.get())
             }
         }
@@ -200,8 +201,15 @@ class ArtworkLoaderOwnershipRobolectricTest {
                 assertEquals(baseResult.memoryCacheKey?.key, sizedResult.memoryCacheKey?.key)
                 assertNotEquals(baseResult.memoryCacheKey, transformedResult.memoryCacheKey)
                 assertEquals(1, fake.calls.get())
-                assertTrue(baseResult.image != sizedResult.image)
+                assertNotEquals(baseResult.image, sizedResult.image)
             }
         }
+    }
+}
+
+/** Fails with the loader error as the cause, so the report shows why the load failed. */
+private fun assertSuccess(result: ImageResult) {
+    if (result !is SuccessResult) {
+        throw AssertionError("expected SuccessResult, got $result", (result as? ErrorResult)?.throwable)
     }
 }

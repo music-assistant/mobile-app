@@ -85,7 +85,7 @@ class ClearFocusOnScrollTest {
 
         composeTestRule.onNodeWithTag(COLUMN).performTouchInput { swipeUp() }
 
-        assertTrue(clearFocusCalls > 0)
+        assertTrue(clearFocusCalls > 0, "vertical drag did not clear focus")
     }
 
     private companion object {

@@ -23,7 +23,7 @@ fun radioStreamPlayer(title: String): PlayerData {
         isPlayable = true,
         isDynamic = false,
     )
-    assertTrue(station.canBeFavorited)
+    assertTrue(station.canBeFavorited, "station fixture cannot be favorited")
     val currentItem = station.toQueueTrack()
     val base = PlayerDataFixtures.playerData(listOf(currentItem).toQueue())
     val player = base.copy(player = base.player.copy(id = "player"))

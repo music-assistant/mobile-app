@@ -64,8 +64,8 @@ class AndroidAutoSessionIsolationTest {
     @Test
     fun `no car host means no isolation and no block`() = runTest(managerDispatcher) {
         runCurrent()
-        assertFalse(sharedSession.autoHostActive.value)
-        assertFalse(sharedSession.sessionBlocked.value)
+        assertFalse("car host active without a host", sharedSession.autoHostActive.value)
+        assertFalse("session blocked without a host", sharedSession.sessionBlocked.value)
     }
 
     @Test
@@ -73,12 +73,12 @@ class AndroidAutoSessionIsolationTest {
         runTest(managerDispatcher) {
             runCurrent()
             sharedSession.bindAutoHost(noOpHandler, isProjectionHost = true)
-            assertTrue(sharedSession.autoHostActive.value)
+            assertTrue("projection host not active after bind", sharedSession.autoHostActive.value)
 
             awaitBlocked(expected = true)
 
             sharedSession.unbindAutoHost()
-            assertFalse(sharedSession.autoHostActive.value)
+            assertFalse("car host active after unbind", sharedSession.autoHostActive.value)
             awaitBlocked(expected = false)
         }
 
@@ -87,21 +87,21 @@ class AndroidAutoSessionIsolationTest {
         runTest(managerDispatcher) {
             runCurrent()
             sharedSession.bindAutoHost(noOpHandler, isProjectionHost = false)
-            assertFalse(sharedSession.autoHostActive.value)
+            assertFalse("non-projection host became active", sharedSession.autoHostActive.value)
 
             awaitBlocked(expected = false)
 
             sharedSession.unbindAutoHost()
-            assertFalse(sharedSession.autoHostActive.value)
+            assertFalse("car host active after unbind", sharedSession.autoHostActive.value)
         }
 
     private fun awaitBlocked(expected: Boolean) {
         managerScope.testScheduler.advanceTimeBy(SESSION_BLOCK_DEBOUNCE_MS)
         managerScope.testScheduler.runCurrent()
         if (expected) {
-            assertTrue(sharedSession.sessionBlocked.value)
+            assertTrue("session not blocked", sharedSession.sessionBlocked.value)
         } else {
-            assertFalse(sharedSession.sessionBlocked.value)
+            assertFalse("session still blocked", sharedSession.sessionBlocked.value)
         }
     }
 }

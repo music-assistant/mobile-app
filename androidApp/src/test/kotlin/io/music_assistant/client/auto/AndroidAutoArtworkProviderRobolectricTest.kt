@@ -66,11 +66,14 @@ class AndroidAutoArtworkProviderRobolectricTest {
             val logs = logLines.joinToString("\\n")
             val providerLog = logLines.firstOrNull { it.contains("Unable to serve Android Auto artwork") }
                 ?: error("Provider failure log missing: $logs")
-            assertTrue(providerLog.matches(Regex(".*Unable to serve Android Auto artwork \\([A-Za-z0-9_.]+\\).*")))
-            assertTrue(!logs.contains(signedUrl))
-            assertTrue(!logs.contains(webrtcUrl))
-            assertTrue(!logs.contains("token-secret"))
-            assertTrue(!logs.contains(payload))
+            assertTrue(
+                "unexpected provider log: $providerLog",
+                providerLog.matches(Regex(".*Unable to serve Android Auto artwork \\([A-Za-z0-9_.]+\\).*")),
+            )
+            assertTrue("logs leak the signed URL: $logs", !logs.contains(signedUrl))
+            assertTrue("logs leak the WebRTC URL: $logs", !logs.contains(webrtcUrl))
+            assertTrue("logs leak the token: $logs", !logs.contains("token-secret"))
+            assertTrue("logs leak the payload: $logs", !logs.contains(payload))
         }
     }
 
@@ -96,10 +99,10 @@ class AndroidAutoArtworkProviderRobolectricTest {
 
             val bitmap = decodeBitmap(first)
             try {
-                assertTrue(bitmap.width > 0)
-                assertTrue(bitmap.height > 0)
-                assertTrue(bitmap.width <= MAX_ARTWORK_DIMENSION)
-                assertTrue(bitmap.height <= MAX_ARTWORK_DIMENSION)
+                assertTrue("bitmap is ${bitmap.width}x${bitmap.height}", bitmap.width > 0)
+                assertTrue("bitmap is ${bitmap.width}x${bitmap.height}", bitmap.height > 0)
+                assertTrue("bitmap is ${bitmap.width}x${bitmap.height}", bitmap.width <= MAX_ARTWORK_DIMENSION)
+                assertTrue("bitmap is ${bitmap.width}x${bitmap.height}", bitmap.height <= MAX_ARTWORK_DIMENSION)
             } finally {
                 bitmap.recycle()
             }

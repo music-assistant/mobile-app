@@ -45,7 +45,7 @@ class AutoMediaIdsTest {
         val ids = carTabCategories.map { MediaIds.tabIdOf(it) }
 
         assertEquals(carTabCategories.size, ids.toSet().size)
-        assertTrue(MediaIds.TAB_AI_RADIO in ids)
+        assertTrue(MediaIds.TAB_AI_RADIO in ids, "no AI Radio tab in $ids")
         assertEquals(MediaIds.TAB_AI_RADIO, MediaIds.tabIdOf(LibraryCategory.AI_RADIO))
     }
 
@@ -53,14 +53,14 @@ class AutoMediaIdsTest {
     fun `home tab has its own tab id`() {
         assertEquals(MediaIds.TAB_HOME, MediaIds.tabIdOf(LibraryCategory.HOME))
         assertNull(MediaIds.tabMediaTypeOf(MediaIds.TAB_HOME))
-        assertFalse(MediaIds.isHomeRowId(MediaIds.TAB_HOME))
+        assertFalse(MediaIds.isHomeRowId(MediaIds.TAB_HOME), "TAB_HOME parsed as a home row")
     }
 
     @Test
     fun `a home row id is not parsed as a sub-list, a parent ref or a station`() {
         val encoded = MediaIds.homeRowIdOf(homeFolder(provider = "ytmusic", itemId = "mixed__for__you"))
 
-        assertTrue(MediaIds.isHomeRowId(encoded))
+        assertTrue(MediaIds.isHomeRowId(encoded), "not a home row id: $encoded")
         assertNull(MediaIds.parseSubListId(encoded))
         assertNull(ParentRef.parse(encoded))
         assertNull(MediaIds.aiRadioStationOf(encoded))

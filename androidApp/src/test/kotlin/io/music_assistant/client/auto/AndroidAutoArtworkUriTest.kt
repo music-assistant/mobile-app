@@ -12,6 +12,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.items.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -54,7 +55,7 @@ class AndroidAutoArtworkUriTest {
             iconUri.authority,
         )
         assertEquals(remoteUrl, AndroidAutoArtwork.sourceFor(iconUri))
-        assertFalse(iconUri.toString().contains("tailnet.invalid"))
+        assertFalse("URI leaks the host: $iconUri", iconUri.toString().contains("tailnet.invalid"))
         assertNull(trackWithArtwork(remoteUrl).toMediaDescription(DEFAULT_ICON).iconBitmap)
     }
 
@@ -84,9 +85,9 @@ class AndroidAutoArtworkUriTest {
     fun `distinct artwork urls map to distinct uris`() {
         val codec = AutoArtworkTokenCodec(ByteArray(32) { it.toByte() })
 
-        assertFalse(
-            codec.uriFor(AUTHORITY, "https://host.invalid/a") ==
-                codec.uriFor(AUTHORITY, "https://host.invalid/b"),
+        assertNotEquals(
+            codec.uriFor(AUTHORITY, "https://host.invalid/a"),
+            codec.uriFor(AUTHORITY, "https://host.invalid/b"),
         )
     }
 
@@ -98,8 +99,8 @@ class AndroidAutoArtworkUriTest {
         val source = "https://tailnet.invalid/imageproxy/first?token=secret"
         val uri = requireNotNull(codec.uriFor(AUTHORITY, source))
 
-        assertFalse(uri.toString().contains("tailnet.invalid"))
-        assertFalse(uri.toString().contains("secret"))
+        assertFalse("URI leaks the host: $uri", uri.toString().contains("tailnet.invalid"))
+        assertFalse("URI leaks the token: $uri", uri.toString().contains("secret"))
         assertEquals(source, codec.sourceFor(AUTHORITY, uri))
         assertEquals(source, restoredCodec.sourceFor(AUTHORITY, uri))
         assertNull(AutoArtworkTokenCodec(ByteArray(32)).sourceFor(AUTHORITY, uri))
@@ -119,8 +120,11 @@ class AndroidAutoArtworkUriTest {
         assertNull(codec.uriFor(AUTHORITY, "content://private.provider/image"))
         assertNull(codec.uriFor(AUTHORITY, "https://user:password@example.com/image.jpg"))
         assertNull(codec.uriFor(AUTHORITY, "https://example.com/${"x".repeat(4_097)}"))
-        assertNotNull(codec.uriFor(AUTHORITY, "http://192.168.1.2:8095/imageproxy/id"))
-        assertNotNull(codec.uriFor(AUTHORITY, "mawebrtc://proxy/imageproxy/id?size=512&checksum="))
+        assertNotNull("LAN source rejected", codec.uriFor(AUTHORITY, "http://192.168.1.2:8095/imageproxy/id"))
+        assertNotNull(
+            "WebRTC source rejected",
+            codec.uriFor(AUTHORITY, "mawebrtc://proxy/imageproxy/id?size=512&checksum="),
+        )
     }
 
     @Test
@@ -133,9 +137,9 @@ class AndroidAutoArtworkUriTest {
             PackageManager.GET_META_DATA,
         )
 
-        assertNotNull(provider)
-        assertFalse(provider!!.exported)
-        assertTrue(provider.grantUriPermissions)
+        assertNotNull("artwork provider is not registered", provider)
+        assertFalse("artwork provider is exported", provider!!.exported)
+        assertTrue("artwork provider does not grant URI permissions", provider.grantUriPermissions)
     }
 
     @Test
@@ -151,11 +155,11 @@ class AndroidAutoArtworkUriTest {
             null,
             null,
         )!!.use { cursor ->
-            assertTrue(cursor.moveToFirst())
+            assertTrue("provider cursor is empty", cursor.moveToFirst())
             val name = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-            assertTrue(name.endsWith(".jpg"))
-            assertFalse(name.contains("tailnet.invalid"))
-            assertTrue(cursor.isNull(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE)))
+            assertTrue("display name is not a JPEG: $name", name.endsWith(".jpg"))
+            assertFalse("display name leaks the host: $name", name.contains("tailnet.invalid"))
+            assertTrue("provider reports a size", cursor.isNull(cursor.getColumnIndexOrThrow(OpenableColumns.SIZE)))
         }
     }
 
@@ -172,7 +176,10 @@ class AndroidAutoArtworkUriTest {
     fun `artwork grant accepts the trusted app uid`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        assertTrue(AndroidAutoArtwork.grantReadAccess(context, context.packageName, Process.myUid()))
+        assertTrue(
+            "grant refused for the app uid",
+            AndroidAutoArtwork.grantReadAccess(context, context.packageName, Process.myUid()),
+        )
         AndroidAutoArtwork.revokeReadAccess(context, context.packageName)
     }
 
@@ -181,6 +188,7 @@ class AndroidAutoArtworkUriTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         assertFalse(
+            "grant accepted for a foreign uid",
             AndroidAutoArtwork.grantReadAccess(context, context.packageName, Process.myUid() + 1),
         )
     }

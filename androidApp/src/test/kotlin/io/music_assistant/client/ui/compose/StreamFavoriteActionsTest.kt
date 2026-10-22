@@ -96,16 +96,16 @@ class StreamFavoriteActionsTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val vm = viewModel()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.streamFavoriteSupported.collect {} }
-        assertFalse(vm.streamFavoriteSupported.value)
+        assertFalse(vm.streamFavoriteSupported.value, "supported before a schema arrives")
         client.schema(26)
         runCurrent()
-        assertFalse(vm.streamFavoriteSupported.value)
+        assertFalse(vm.streamFavoriteSupported.value, "supported on schema 26")
         client.schema(27)
         runCurrent()
-        assertTrue(vm.streamFavoriteSupported.value)
+        assertTrue(vm.streamFavoriteSupported.value, "unsupported on schema 27")
         client.sessionState.value = SessionState.Disconnected.ByUser
         runCurrent()
-        assertFalse(vm.streamFavoriteSupported.value)
+        assertFalse(vm.streamFavoriteSupported.value, "supported after disconnect")
     }
 
     @Test
@@ -113,10 +113,16 @@ class StreamFavoriteActionsTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val dataSource = getKoin().get<MainDataSource>()
         client.schema(26)
-        assertTrue(dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Song")).isFailure)
+        assertTrue(
+            dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Song")).isFailure,
+            "schema 26 accepted a stream favorite",
+        )
         client.schema(27)
-        assertTrue(dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Station")).isFailure)
-        assertTrue(client.requests.isEmpty())
+        assertTrue(
+            dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Station")).isFailure,
+            "a missing stream title accepted a stream favorite",
+        )
+        assertTrue(client.requests.isEmpty(), "unexpected requests: ${client.requests}")
     }
 
     @Test
@@ -173,7 +179,10 @@ class StreamFavoriteActionsTest {
         client.result = protocolRefusal()
         assertTrue(client.result.isSuccess, "The transport itself received a response")
         val dataSource = getKoin().get<MainDataSource>()
-        assertTrue(dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Song")).isFailure)
+        assertTrue(
+            dataSource.favoriteCurrentlyPlaying(radioStreamPlayer("Song")).isFailure,
+            "protocol refusal became a success",
+        )
     }
 
     @Test
