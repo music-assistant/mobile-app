@@ -91,10 +91,30 @@ class LocalPlayerAdapter(
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 
-    private val _localPlayerData = MutableStateFlow<PlayerData?>(null)
+    /**
+     * The player data and the hold in one value: a reader never pairs the new state of one with the
+     * old state of the other. [held] mirrors the hold this adapter set on [player]; it masks the
+     * server's stale "playing", and it outlives the data ([clearState] keeps it).
+     */
+    private data class LocalState(val data: PlayerData? = null, val held: Boolean = false)
+
+    private val localState = MutableStateFlow(LocalState())
 
     /** The now-playing surfaces read `player.currentMedia`; fall back to the queued track before the first Play. */
-    val localPlayerData: StateFlow<PlayerData?> = _localPlayerData.mapState { it?.withNowPlayingFallback() }
+    val localPlayerData: StateFlow<PlayerData?> = localState.mapState { it.data?.withNowPlayingFallback() }
+
+    /**
+     * True while the local player plays, or while a local pause is not yet confirmed by the
+     * server. The hold is that pause: the server still streams until the queued pause lands,
+     * so the MA session must keep reconnecting instead of being torn down in the background.
+     * A stop forced by an empty buffer during an outage is such a pause, like a user's.
+     */
+    val wantsSession: StateFlow<Boolean> =
+        localState.mapState { state -> state.data?.let { it.player.isPlaying || state.held } == true }
+
+    private inline fun updateData(transform: (PlayerData?) -> PlayerData?) {
+        localState.update { it.copy(data = transform(it.data)) }
+    }
 
     private val _optimisticQueueChanges = Channel<QueueInfo>(Channel.BUFFERED)
     val optimisticQueueChanges: Flow<QueueInfo> = _optimisticQueueChanges.receiveAsFlow()
@@ -148,26 +168,12 @@ class LocalPlayerAdapter(
     private var pendingPlayTimeoutJob: Job? = null
     private var pausedByInterruption = false
 
-    /** Mirror of the hold this adapter set on [player]; it masks the server's stale "playing". */
-    private val held = MutableStateFlow(false)
-    private val outputHeld: Boolean get() = held.value
+    private val outputHeld: Boolean get() = localState.value.held
 
     private fun hold(held: Boolean) {
-        this.held.value = held
+        localState.update { it.copy(held = held) }
         player.hold(held)
     }
-
-    /**
-     * True while the local player plays, or while a local pause is not yet confirmed by the
-     * server. The hold is that pause: the server still streams until the queued pause lands,
-     * so the MA session must keep reconnecting instead of being torn down in the background.
-     * A stop forced by an empty buffer during an outage is such a pause, like a user's.
-     * Both sources are read live: `combine` can pair a new value of one with a stale value of
-     * the other, and a local pause (hold first, then not playing) would read as a short false.
-     */
-    val wantsSession: StateFlow<Boolean> = combine(_localPlayerData, held) { _, _ ->
-        _localPlayerData.value?.let { it.player.isPlaying || held.value } == true
-    }.stateIn(this, SharingStarted.Eagerly, false)
 
     init {
         launch { player.events.collect(::onPlayerEvent) }
@@ -177,7 +183,7 @@ class LocalPlayerAdapter(
             player.state.collect { state ->
                 if (state is PlayerState.Connected && state.playerId != settings.sendspinEffectivePlayerId.value) {
                     settings.setSendspinEffectivePlayerId(state.playerId)
-                    _localPlayerData.update { it?.copy(player = it.player.copy(id = state.playerId)) }
+                    updateData { it?.copy(player = it.player.copy(id = state.playerId)) }
                 }
             }
         }
@@ -326,7 +332,7 @@ class LocalPlayerAdapter(
         pendingPlayTimeoutJob?.cancel()
         pendingPlayTimeoutJob = launch {
             delay(PENDING_PLAY_TIMEOUT_MS)
-            _localPlayerData.update { current ->
+            updateData { current ->
                 if (current?.pendingPlay == true && !current.player.isPlaying) {
                     log.w { "Pending play timed out without confirmation; clearing spinner" }
                     current.copy(pendingPlay = false)
@@ -413,7 +419,7 @@ class LocalPlayerAdapter(
     /** The spinner is the only feedback an offline Play gives; [armPendingPlayTimeout] bounds it. */
     private fun optimisticPlay() {
         hold(false)
-        _localPlayerData.update { current -> current?.copy(pendingPlay = true) }
+        updateData { current -> current?.copy(pendingPlay = true) }
         armPendingPlayTimeout()
     }
 
@@ -424,7 +430,7 @@ class LocalPlayerAdapter(
     private fun optimisticPause() {
         hold(true)
         cancelPendingPlayTimeout()
-        _localPlayerData.update { current ->
+        updateData { current ->
             current?.copy(player = current.player.copy(isPlaying = false), pendingPlay = false)
         }
     }
@@ -438,10 +444,10 @@ class LocalPlayerAdapter(
             // The server caught up with the local pause: its next stream/start is a real play.
             hold(false)
         }
-        _localPlayerData.update { current ->
+        updateData { current ->
             if (current == null) {
-                if (!settings.sendspinEnabled.value) return@update null
-                return@update PlayerData(
+                if (!settings.sendspinEnabled.value) return@updateData null
+                return@updateData PlayerData(
                     player = player.copy(isPlaying = player.isPlaying && !outputHeld),
                     queue = DataState.NoData(),
                     parentBind = null,
@@ -469,7 +475,7 @@ class LocalPlayerAdapter(
     }
 
     fun onServerQueueUpdate(queueInfo: QueueInfo) {
-        _localPlayerData.update { current ->
+        updateData { current ->
             current?.copy(
                 queue = DataState.Data(
                     Queue(
@@ -482,7 +488,7 @@ class LocalPlayerAdapter(
     }
 
     fun onQueueItemsLoaded(queueInfo: QueueInfo, items: List<QueueTrack>) {
-        _localPlayerData.update { current ->
+        updateData { current ->
             current?.let {
                 val info = (it.queue as? DataState.Data)?.data?.info ?: queueInfo
                 it.copy(queue = DataState.Data(Queue(info = info, items = DataState.Data(items))))
@@ -494,12 +500,12 @@ class LocalPlayerAdapter(
 
     fun onInitialPlayersReceived(hasLocalPlayer: Boolean) {
         if (!settings.sendspinEnabled.value) {
-            _localPlayerData.update { null }
+            updateData { null }
             return
         }
-        if (!hasLocalPlayer && _localPlayerData.value == null) {
+        if (!hasLocalPlayer && localState.value.data == null) {
             log.i { "Injecting synthetic local player" }
-            _localPlayerData.update {
+            updateData {
                 PlayerData(
                     player = Player(
                         id = settings.sendspinEffectivePlayerId.value,
@@ -542,7 +548,7 @@ class LocalPlayerAdapter(
      * The hold stays: a pause lost here is sent again on the next stream/start while held.
      */
     fun clearState() {
-        _localPlayerData.update { null }
+        updateData { null }
         launch { commands.clear() }
     }
 
@@ -551,8 +557,8 @@ class LocalPlayerAdapter(
     /** Once Sendspin confirms audio is flowing, reflect it; the false direction stays with pause. */
     private fun confirmLocalPlaying() {
         cancelPendingPlayTimeout()
-        _localPlayerData.update { current ->
-            if (current == null || current.player.isPlaying) return@update current
+        updateData { current ->
+            if (current == null || current.player.isPlaying) return@updateData current
             current.copy(player = current.player.copy(isPlaying = true), pendingPlay = false)
         }
     }
@@ -583,16 +589,16 @@ class LocalPlayerAdapter(
     }
 
     private fun updateOptimisticQueueInfo(transform: (QueueInfo) -> QueueInfo) {
-        val newState = _localPlayerData.updateAndGet { current ->
-            current?.let { pd ->
-                val queueData = pd.queue as? DataState.Data ?: return@updateAndGet pd
+        val newState = localState.updateAndGet { state ->
+            state.copy(data = state.data?.let { pd ->
+                val queueData = pd.queue as? DataState.Data ?: return@let pd
                 val existingStamp = queueData.data.info.elapsedTimeLastUpdated ?: 0.0
                 val transformed = transform(queueData.data.info).copy(
                     elapsedTimeLastUpdated = existingStamp + OPTIMISTIC_BUMP_EPSILON_S,
                 )
                 pd.copy(queue = DataState.Data(queueData.data.copy(info = transformed)))
-            }
-        }
+            })
+        }.data
         (newState?.queue as? DataState.Data)?.data?.info?.let { _optimisticQueueChanges.trySend(it) }
     }
 
