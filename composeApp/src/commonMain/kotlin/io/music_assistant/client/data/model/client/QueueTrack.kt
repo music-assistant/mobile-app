@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client
 
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.server.AudioFidelity.Companion.QUALITY_HI_RES
 import io.music_assistant.client.data.model.server.AudioFidelity.Companion.QUALITY_LOSSLESS
@@ -15,6 +16,8 @@ data class QueueTrack(
     val format: AudioFormat?,
     val provider: String?,
     val audioProcessingChain: AudioProcessingChain? = null,
+    /** The container the item was played from (album, playlist, folder...). */
+    val origin: AppMediaItem? = null,
 )
 
 enum class QualityTier {

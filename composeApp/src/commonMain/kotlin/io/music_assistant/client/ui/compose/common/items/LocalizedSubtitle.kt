@@ -3,13 +3,18 @@ package io.music_assistant.client.ui.compose.common.items
 import androidx.compose.runtime.Composable
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.AudioSource
+import io.music_assistant.client.data.model.client.items.EpisodeNumberFormat
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.SoundEffect
+import io.music_assistant.client.data.model.client.items.subtitleWith
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.episode_number
+import musicassistantclient.composeapp.generated.resources.episode_number_season
 import musicassistantclient.composeapp.generated.resources.item_subtitle_audio_source
 import musicassistantclient.composeapp.generated.resources.item_subtitle_genre
 import musicassistantclient.composeapp.generated.resources.item_subtitle_playlist
@@ -21,11 +26,20 @@ import musicassistantclient.composeapp.generated.resources.item_subtitle_sound_e
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * Returns the item's `subtitle` if non-null; otherwise a localized fallback
- * for types whose subtitle is just the content-type label.
+ * Returns the item's `subtitle` (with the localized episode label for a podcast
+ * episode) if non-null; otherwise a localized fallback for types whose subtitle
+ * is just the content-type label.
  */
 @Composable
-fun AppMediaItem.localizedSubtitle(): String? = subtitle ?: when (this) {
+fun AppMediaItem.localizedSubtitle(): String? = when (this) {
+    is PodcastEpisode -> subtitleWith(
+        EpisodeNumberFormat(
+            seasonEpisode = stringResource(Res.string.episode_number_season),
+            episodeOnly = stringResource(Res.string.episode_number),
+        ),
+    )
+    else -> subtitle
+} ?: when (this) {
     is Playlist -> stringResource(if (this.isDynamic) Res.string.item_subtitle_playlist_dynamic else Res.string.item_subtitle_playlist)
     is Genre -> stringResource(Res.string.item_subtitle_genre)
     is MediaCollection -> stringResource(Res.string.item_subtitle_series)

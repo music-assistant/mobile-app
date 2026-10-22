@@ -155,6 +155,8 @@ class MediaItemFactory(
                 fullyPlayed = fullyPlayed,
                 resumePositionMs = resumePositionMs,
                 releaseDate = metadata?.releaseDate,
+                episodeNumber = episodeNumber,
+                season = season,
                 version = version,
                 position = intPosition,
                 source = server,

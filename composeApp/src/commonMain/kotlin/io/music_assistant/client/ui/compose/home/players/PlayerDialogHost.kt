@@ -113,6 +113,10 @@ fun PlayerDialogHost(
                 queueTrack = queueTrack,
                 player = player,
                 providerDetails = providerViewModel::getProviderDetails,
+                onOpenOrigin = { origin ->
+                    onDismiss()
+                    onNavigateToItem(origin)
+                },
                 onDismissRequest = onDismiss,
             )
         }

@@ -29,9 +29,11 @@ import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.clientSorted
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.EpisodeNumberFormat
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.isAiRadioShow
+import io.music_assistant.client.data.model.client.items.subtitleWith
 import io.music_assistant.client.data.model.client.toItemKind
 import io.music_assistant.client.data.model.server.ListSort
 import io.music_assistant.client.data.model.server.SearchResult
@@ -113,9 +115,13 @@ class AutoLibrary(
     @Volatile
     private var localPlayerOffLabel: String = "Local player is not enabled"
 
+    @Volatile
+    private var episodeNumbers: EpisodeNumberFormat = EpisodeNumberFormat.SOURCE
+
     init {
         scope.launch {
             localPlayerOffLabel = getString(Res.string.media_error_local_player_off)
+            episodeNumbers = EpisodeNumberFormat.load()
         }
         scope.launch {
             searchFlow
@@ -138,7 +144,7 @@ class AutoLibrary(
                         ),
                     )
                     answer.resultAs<SearchResult>()?.let {
-                        result.sendResult(it.toAutoMediaItems(mediaItemFactory, defaultIconUri))
+                        result.sendResult(it.toAutoMediaItems(mediaItemFactory, defaultIconUri, episodeNumbers))
                     } ?: result.sendResult(null)
                 }
         }
@@ -292,7 +298,7 @@ class AutoLibrary(
     private fun homeRowChildren(folder: RecommendationFolder): List<MediaItem> =
         folder.items.orEmpty()
             .filter { it.isHomeRowItem() && it !is Genre && it.isPlayable }
-            .map { it.toAutoMediaItem(allowBrowse = true, defaultIconUri) }
+            .map { it.toAutoMediaItem(allowBrowse = true, defaultIconUri, episodeNumbers) }
 
     // Populates AA's "For You" surface. Without this, AA scrapes the top of the
     // browse tree to derive its own suggestions. We serve favourite tracks ordered
@@ -441,7 +447,7 @@ class AutoLibrary(
             .fetchAllPages { apiClient.sendRequest(it).resultAs<List<ServerMediaItem>>() }
             ?.let { mediaItemFactory.createList(it) }
             ?.filter { it.isPlayable && !it.isAiRadioShow }
-            ?.map { it.toAutoMediaItem(true, defaultIconUri) }
+            ?.map { it.toAutoMediaItem(true, defaultIconUri, episodeNumbers) }
     }
 
     /** [sort] in the form of the connected server, or the list default if the server does not offer it. */
@@ -487,7 +493,7 @@ class AutoLibrary(
             context == SubItemContext.ALBUM_TRACKS || context == SubItemContext.PLAYLIST_ITEMS
         }
         return sorted.filter { it.isPlayable }
-            .map { it.toAutoMediaItem(true, defaultIconUri, parentUri = parentUri) }
+            .map { it.toAutoMediaItem(true, defaultIconUri, episodeNumbers, parentUri = parentUri) }
     }
 
     private fun actionsForItem(itemId: String, kind: ItemKind): List<MediaItem> =
@@ -1107,6 +1113,7 @@ internal data class ParentRef(
 private fun SearchResult.toAutoMediaItems(
     factory: MediaItemFactory,
     defaultIconUri: Uri,
+    episodeNumbers: EpisodeNumberFormat,
 ): List<MediaItem> = buildList {
     mapOf(
         tracks to "Tracks",
@@ -1115,7 +1122,7 @@ private fun SearchResult.toAutoMediaItems(
         playlists to "Playlists",
         radio to "Radio stations",
     ).forEach { (items, category) ->
-        addAll(items.mapNotNull { it.toAutoMediaItem(factory, true, defaultIconUri, category) })
+        addAll(items.mapNotNull { it.toAutoMediaItem(factory, true, defaultIconUri, episodeNumbers, category) })
     }
 }
 
@@ -1123,18 +1130,20 @@ private fun ServerMediaItem.toAutoMediaItem(
     factory: MediaItemFactory,
     allowBrowse: Boolean,
     defaultIconUri: Uri,
+    episodeNumbers: EpisodeNumberFormat,
     category: String? = null,
 ): MediaItem? =
-    factory.create(this)?.takeIf { it.isPlayable }?.toAutoMediaItem(allowBrowse, defaultIconUri, category)
+    factory.create(this)?.takeIf { it.isPlayable }?.toAutoMediaItem(allowBrowse, defaultIconUri, episodeNumbers, category)
 
 private fun AppMediaItem.toAutoMediaItem(
     allowBrowse: Boolean,
     defaultIconUri: Uri,
+    episodeNumbers: EpisodeNumberFormat,
     category: String? = null,
     parentUri: String? = null,
 ): MediaItem {
     return MediaItem(
-        toMediaDescription(defaultIconUri, category, parentUri),
+        toMediaDescription(defaultIconUri, category, parentUri, episodeNumbers = episodeNumbers),
         if (allowBrowse && mediaType.isBrowsableInAuto()) {
             MediaItem.FLAG_BROWSABLE
         } else {
@@ -1162,11 +1171,12 @@ fun AppMediaItem.toMediaDescription(
     category: String? = null,
     parentUri: String? = null,
     artworkUri: (String) -> Uri? = AndroidAutoArtwork::uriFor,
+    episodeNumbers: EpisodeNumberFormat = EpisodeNumberFormat.SOURCE,
 ): MediaDescriptionCompat {
     return MediaDescriptionCompat.Builder()
         .setMediaId("${itemId}__${uri}__${mediaType}__$provider")
         .setTitle((if (favorite == true) "♥ " else "") + displayName)
-        .setSubtitle(subtitle)
+        .setSubtitle(subtitleWith(episodeNumbers))
         .setMediaUri(uri?.let { Uri.parse(it) })
         .setIconUri(
             image(ImageType.THUMB)?.url?.let(artworkUri)

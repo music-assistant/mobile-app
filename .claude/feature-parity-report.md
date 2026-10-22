@@ -216,7 +216,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Waveform on the seek bar | yes | yes | no | no | no | Missing | `audio_analysis/wave_form` |
 | Visualizer | yes | yes | no | n/a | n/a | Not viable | WebGL and Web Audio in the browser |
 | Stream and quality details | yes | yes | yes | no | no | Parity | |
-| "Played from" container | no | yes | no | no | no | Missing | `QueueItem.origin` |
+| "Played from" container | no | yes | yes | no | no | Parity | `QueueItem.origin` |
 | Ambient sound overlay | yes | yes | yes | no | no | Parity | |
 | Announcements, text and voice | yes | yes | yes | no | no | Parity | Schema 46 and 48 |
 | Transfer queue, clear queue | yes | yes | yes | no | no | Parity | |
@@ -271,7 +271,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Chapters and chapter progress | yes | yes | yes | n/a | buttons | Parity | Preference `audiobook_chapter_progress` |
 | Mark played and unplayed | yes | yes | yes | no | no | Parity | |
 | Play episodes from here to the latest | yes | yes | no | no | no | Missing | |
-| Episode and season numbers | no | yes | no | no | no | Missing | `PodcastEpisode.episode_number`, `season` |
+| Episode and season numbers | no | yes | yes | yes | yes | Parity | `PodcastEpisode.episode_number`, `season` |
 | Transcript | no | yes | no | no | no | Missing | |
 | Next unplayed book in a series | yes | yes | yes | yes | yes | Parity | Server starts the first unfinished book |
 
@@ -556,6 +556,15 @@ URL on the PKCE path. See `.claude/settings-screen.md`.
 - New fields the app can show: `QueueItem.origin`, `Radio.is_endless`,
   `PodcastEpisode.episode_number` and `season`, `Playlist.access`, `PlayLogEntry.seek_position`,
   `AudioMetadata.camelot_key`.
+- `PodcastEpisode.episode_number` and `season` (schema 85) and `QueueItem.origin` (schema 90).
+  Status: done (issue #1188). An episode subtitle starts with "S2 E5", or with "E5" if the
+  episode has no season. The phone, Android Auto and CarPlay show it. The stream details dialog
+  shows "Playing from" with the container of `origin`. The text opens the details screen of the
+  container if the app has one. A folder shows as text only. An older server does not send the
+  fields, so the app shows nothing. These fields need no schema gate.
+- `Radio.is_endless` (schema 88) and the finite station tracklist moved to issue #1190. Only
+  AI Radio shows are finite. `radio_tracks` returns a new shuffled snapshot on each call, so the
+  list does not match the order that plays.
 - The frontend 2.11 refuses servers below schema 86. The app has no minimum of its own. The app
   constant `LOCAL_SCHEMA_VERSION` is 65 (`app/data/model/server/ServerInfo.kt:7`), because the app
   was checked against server 2.10.6 and 2.10.7. Both report 65, so they show no dialog. The nightly

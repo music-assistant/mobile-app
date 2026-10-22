@@ -1,5 +1,8 @@
 package io.music_assistant.client.carplay
 
+import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.EpisodeNumberFormat
+import io.music_assistant.client.data.model.client.items.subtitleWith
 import io.music_assistant.client.settings.DefaultClickOption
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_all_to_queue
@@ -55,12 +58,16 @@ class CarPlayStrings internal constructor(
     val radio: String,
     val aiRadio: String,
     val aiRadioEmpty: String,
+    private val episodeNumbers: EpisodeNumberFormat,
     private val albumsByArtistTemplate: String,
     private val bulkActionTitlesByName: Map<String, String>,
 ) {
     /** Localized "Albums by <artist>" drilldown title. */
     fun albumsByArtist(name: String): String =
         albumsByArtistTemplate.replace("%1\$s", name)
+
+    /** List-row detail text: the item subtitle with the localized episode label. */
+    fun subtitle(item: AppMediaItem): String? = item.subtitleWith(episodeNumbers)
 
     /** Localized title for a bulk-action name (DefaultClickAction.name); falls back to "Play all". */
     fun bulkActionTitle(name: String): String = bulkActionTitlesByName[name] ?: playAll
@@ -86,6 +93,7 @@ class CarPlayStrings internal constructor(
             radio = getString(Res.string.media_type_radio),
             aiRadio = getString(Res.string.ai_radio_title),
             aiRadioEmpty = getString(Res.string.ai_radio_empty),
+            episodeNumbers = EpisodeNumberFormat.load(),
             albumsByArtistTemplate = getString(Res.string.albums_by_artist),
             bulkActionTitlesByName = mapOf(
                 DefaultClickOption.PLAY_NOW.name to getString(Res.string.action_play_all),

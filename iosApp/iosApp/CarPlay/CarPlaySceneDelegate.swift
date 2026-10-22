@@ -134,6 +134,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             guard let self = self, self.connectionGen == gen,
                   self.interfaceController != nil else { return }
             self.strings = loaded
+            CarPlayContentManager.shared.strings = loaded
             self.readinessSubscription = KmpHelper.shared.observeReadiness { [weak self] ready in
                 self?.handleReadinessChange(ready.boolValue)
             }

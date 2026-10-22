@@ -124,6 +124,15 @@ actual class PlatformFeature {
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its
   rows again 1.5 s after the last event, like the web app.
+- **Episode numbers**: an episode subtitle starts with "S2 E5", or with "E5" if the episode has no
+  season. `EpisodeNumberFormat` (`model/client/items/`) holds the templates, and `subtitleWith` makes
+  the subtitle. The phone gets the templates in `localizedSubtitle`. Android Auto and CarPlay load
+  them once (`AutoLibrary`, `MediaSessionStrings`, `CarPlayStrings`), because their item builders are
+  synchronous. Do not format the label in a different place.
+- **Queue origin**: `QueueTrack.origin` is the container that the item was played from, from server
+  2.11. It is null on an older server, for a single track and for a live stream. The stream details
+  dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to
+  `opensItemDetails` when `ItemDetailsViewModel.getItemById` loads it.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

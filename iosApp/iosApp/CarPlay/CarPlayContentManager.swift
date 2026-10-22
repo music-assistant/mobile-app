@@ -17,6 +17,9 @@ class CarPlayImageLoader {
 class CarPlayContentManager {
     static let shared = CarPlayContentManager()
 
+    // Set by the scene delegate on each connect, before any template is built.
+    var strings: CarPlayStrings?
+
     // MARK: - API Calls
     // Fetchers return `[CPListItem]?`: nil = timeout, [] = empty result.
 
@@ -191,7 +194,7 @@ class CarPlayContentManager {
     
     private func mapToCPListItem(_ item: AppMediaItem) -> CPListItem? {
         let title = item.displayName
-        let subtitle = item.subtitle
+        let subtitle = strings?.subtitle(item: item) ?? item.subtitle
 
         let listItem = CPListItem(text: title, detailText: subtitle)
         listItem.userInfo = item

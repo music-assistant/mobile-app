@@ -14,6 +14,17 @@ data class ServerQueueItem(
     @SerialName("streamdetails") val streamDetails: StreamDetails? = null,
     @SerialName("image") val image: ServerMediaItemImage? = null,
     // @SerialName("index") val index: Int
+    // Server 2.11 (schema 90) and newer; null for a lone track or a live stream.
+    @SerialName("origin") val origin: ServerQueueItemOrigin? = null,
+)
+
+@Serializable
+data class ServerQueueItemOrigin(
+    // The ItemMapping of the album, playlist, folder or other container that the item was played from.
+    @SerialName("container") val container: ServerMediaItem? = null,
+    // The pin (the copy of the item in the container listing):
+    // @SerialName("provider_instance") val providerInstance: String? = null,
+    // @SerialName("item_id") val itemId: String? = null,
 )
 
 @Serializable

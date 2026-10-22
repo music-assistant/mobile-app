@@ -33,6 +33,7 @@ import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.ResolvedChapter
 import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.EpisodeNumberFormat
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
 import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
@@ -388,7 +389,10 @@ class SharedMediaSessionManager(
         return map { row ->
             when (row) {
                 is QueueDisplayRow.QueueItem -> MediaSessionCompat.QueueItem(
-                    (row.item.track as AppMediaItem).toMediaDescription(defaultIconUri)
+                    (row.item.track as AppMediaItem).toMediaDescription(
+                        defaultIconUri,
+                        episodeNumbers = strings?.episodeNumbers ?: EpisodeNumberFormat.SOURCE,
+                    )
                         .also { parentDescription = it },
                     row.sessionId,
                 )

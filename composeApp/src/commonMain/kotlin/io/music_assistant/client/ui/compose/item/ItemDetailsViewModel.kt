@@ -165,6 +165,7 @@ class ItemDetailsViewModel(
         }
     }
 
+    // A new type here also goes into `opensItemDetails` (ItemDetailsTab.kt).
     private suspend fun getItemById(
         itemId: String,
         mediaType: MediaType,

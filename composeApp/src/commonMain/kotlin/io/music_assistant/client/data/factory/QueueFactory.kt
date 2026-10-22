@@ -67,6 +67,7 @@ class QueueFactory(
                     format = streamDetails?.audioFormat,
                     provider = streamDetails?.provider,
                     audioProcessingChain = streamDetails?.audioProcessingChain,
+                    origin = origin?.container?.let(mediaItemFactory::create),
                 )
             } else {
                 Logger.w(

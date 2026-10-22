@@ -3,11 +3,14 @@ package io.music_assistant.client.data.model.server
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.utils.mediaItemEchoJson
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 /**
@@ -103,5 +106,50 @@ class ServerMediaItemSerializationTest {
             "itunes_podcasts--x://podcast/https://feed.example/rss",
             (factory.create(item) as Podcast).uri,
         )
+    }
+
+    private fun episodeJson(numbers: String) = """
+        {"item_id":"e1","provider":"podcastfeed--x","name":"Episode",
+         "media_type":"${MediaType.PODCAST_EPISODE.serverValue}","position":1$numbers}
+    """.trimIndent()
+
+    @Test
+    fun factoryCarriesEpisodeAndSeasonNumbers() {
+        val episode = factory.create(
+            myJson.decodeFromString<ServerMediaItem>(episodeJson(""","episode_number":5,"season":2""")),
+        ) as PodcastEpisode
+
+        assertEquals(5, episode.episodeNumber)
+        assertEquals(2, episode.season)
+    }
+
+    // Server 2.11 sends null for an episode the publisher does not number.
+    @Test
+    fun decodesNullEpisodeNumbers() {
+        val item = myJson.decodeFromString<ServerMediaItem>(episodeJson(""","episode_number":null,"season":null"""))
+
+        assertNull(item.episodeNumber)
+        assertNull(item.season)
+    }
+
+    // Server 2.10 sends neither key.
+    @Test
+    fun decodesEpisodeWithoutNumberKeys() {
+        val episode = factory.create(myJson.decodeFromString<ServerMediaItem>(episodeJson(""))) as PodcastEpisode
+
+        assertNull(episode.episodeNumber)
+        assertNull(episode.season)
+    }
+
+    // `music/mark_played` echoes the DTO back; a 2.10 server must get no new keys.
+    @Test
+    fun echoOmitsAbsentEpisodeNumbers() {
+        val echoed = mediaItemEchoJson.encodeToString(
+            ServerMediaItem.serializer(),
+            myJson.decodeFromString<ServerMediaItem>(episodeJson("")),
+        )
+
+        assertFalse("episode_number" in echoed)
+        assertFalse("season" in echoed)
     }
 }

@@ -1,5 +1,6 @@
 package io.music_assistant.client.services
 
+import io.music_assistant.client.data.model.client.items.EpisodeNumberFormat
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
@@ -40,6 +41,7 @@ class MediaSessionStrings internal constructor(
     val pause: String,
     val next: String,
     val previous: String,
+    val episodeNumbers: EpisodeNumberFormat,
     private val artistOnPlayerTemplate: String,
 ) {
     /** Localized "<artist> (on <player>)" for the multi-player artist suffix. */
@@ -62,6 +64,7 @@ class MediaSessionStrings internal constructor(
             pause = getString(Res.string.action_pause),
             next = getString(Res.string.media_action_next),
             previous = getString(Res.string.media_action_previous),
+            episodeNumbers = EpisodeNumberFormat.load(),
             artistOnPlayerTemplate = getString(Res.string.media_artist_on_player),
         )
     }
