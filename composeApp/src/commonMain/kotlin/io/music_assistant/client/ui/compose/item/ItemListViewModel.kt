@@ -14,6 +14,8 @@ import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -27,14 +29,18 @@ class ItemListViewModel(
     private val items = itemList(mediaItemRepository)
     private val sortOption = MutableStateFlow(settingsRepository.getSortOption(itemList.sortContext))
 
-    /** In-list text filter; null while the search field is closed, "" once opened. */
-    private val query = MutableStateFlow<String?>(null)
+    /**
+     * In-list text filter; null while the search field is closed, "" once opened. Exposed directly,
+     * not through [state]: the text field must read back its own value synchronously, or a stale
+     * value from the off-Main combine resets the cursor.
+     */
+    private val _query = MutableStateFlow<String?>(null)
+    val query: StateFlow<String?> = _query.asStateFlow()
 
-    val state = combine(items.asFlow(), sortOption, query) { items, sortOption, query ->
+    val state = combine(items.asFlow(), sortOption, _query) { items, sortOption, query ->
         State(
             items = items.map { it.clientFiltered(query.orEmpty()).clientSorted(sortOption, itemList.sortContext) },
             sortOption = sortOption,
-            query = query,
         )
     }.flowOn(Dispatchers.Default) // filter + sort per keystroke and per list change
         .stateIn(
@@ -56,12 +62,11 @@ class ItemListViewModel(
 
     /** null closes the filter and shows the full list again; any string filters live. */
     fun filter(query: String?) {
-        this.query.value = query
+        _query.value = query
     }
 
     data class State(
         val items: DataState<List<AppMediaItem>>,
         val sortOption: SortOption,
-        val query: String? = null,
     )
 }
