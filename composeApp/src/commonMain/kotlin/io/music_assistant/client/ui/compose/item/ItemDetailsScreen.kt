@@ -107,6 +107,7 @@ import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.toDisplayString
+import io.music_assistant.client.ui.compose.home.players.LyricsSheet
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.grid.gridItemMinSize
 import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel
@@ -125,6 +126,8 @@ import musicassistantclient.composeapp.generated.resources.cd_in_progress
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
+import musicassistantclient.composeapp.generated.resources.item_tab_similar_tracks
+import musicassistantclient.composeapp.generated.resources.item_tab_versions
 import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
@@ -275,6 +278,7 @@ fun ItemDetails(
                             is Audiobook,
                             is MediaCollection,
                             is Genre,
+                            is Track,
                                 -> {
                                 onNavigateToItem(item.itemId, item.mediaType, item.provider)
                             }
@@ -315,6 +319,8 @@ private fun ItemDetailsTab.stringResource(): StringResource? = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
     ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
     ItemDetailsTab.COLLECTION_ITEMS -> Res.string.media_type_audiobooks
+    ItemDetailsTab.TRACK_VERSIONS -> Res.string.item_tab_versions
+    ItemDetailsTab.SIMILAR_TRACKS -> Res.string.item_tab_similar_tracks
     else -> viewMediaType?.stringResource()
 }
 
@@ -354,6 +360,7 @@ private fun ItemContent(
     LaunchedEffect(showSimilarArtists) {
         if (showSimilarArtists) onLoadSimilarArtists()
     }
+    var showLyrics by rememberSaveable { mutableStateOf(false) }
 
     // Artwork-driven header colors. Library items carry no server palette, so colors are
     // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
@@ -403,6 +410,7 @@ private fun ItemContent(
                 playlistActions = playlistActions.takeIf { item.supportsAddToPlaylist },
                 navigateToItem = onNavigateClick,
                 onSimilarArtistsClick = { showSimilarArtists = true },
+                onLyricsClick = state.lyrics?.let { { showLyrics = true } },
                 // force_refresh is a playlist-tracks-only server argument, so no other
                 // media type gets the action.
                 onRefresh = onRefreshPlaylist.takeIf { item is Playlist },
@@ -503,6 +511,10 @@ private fun ItemContent(
             libraryActions = libraryActions,
             onDismiss = { showSimilarArtists = false },
         )
+    }
+
+    state.lyrics?.takeIf { showLyrics }?.let { lyrics ->
+        LyricsSheet(lyrics = lyrics, livePositionFlow = null, onDismiss = { showLyrics = false })
     }
 }
 
@@ -614,7 +626,9 @@ private fun TabContent(
     gridState: LazyGridState,
 ) {
     when (tab) {
-        ItemDetailsTab.GENRE_ALBUMS -> AlbumsTabContent(
+        ItemDetailsTab.GENRE_ALBUMS,
+        ItemDetailsTab.TRACK_ALBUMS,
+            -> AlbumsTabContent(
             albumsState = state.albumsState,
             parentItem = item,
             viewModeProvider = viewModeProvider,
@@ -638,6 +652,31 @@ private fun TabContent(
             parentItem = item,
             playableItemsSortOption = state.playableItemsSortOption,
             playableItemsQuery = state.playableItemsQuery,
+            viewModeProvider = viewModeProvider,
+            onNavigateClick = onNavigateClick,
+            onPlayChildClick = onPlayChildClick,
+            playlistActions = playlistActions,
+            progressActions = progressActions,
+            onRemoveFromPlaylist = onRemoveFromPlaylist,
+            libraryActions = libraryActions,
+            providerIconFetcher = providerIconFetcher,
+            contentPadding = contentPadding,
+            heroSlot = heroSlot,
+            tabsSlot = tabsSlot,
+            gridState = gridState,
+        )
+
+        ItemDetailsTab.TRACK_VERSIONS,
+        ItemDetailsTab.SIMILAR_TRACKS,
+            -> PlayablesTabContent(
+            playableItemsState = if (tab == ItemDetailsTab.TRACK_VERSIONS) {
+                state.trackVersionsState
+            } else {
+                state.similarTracksState
+            },
+            parentItem = item,
+            playableItemsSortOption = null,
+            playableItemsQuery = null,
             viewModeProvider = viewModeProvider,
             onNavigateClick = onNavigateClick,
             onPlayChildClick = onPlayChildClick,

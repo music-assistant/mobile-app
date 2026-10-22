@@ -25,6 +25,7 @@ import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
 import musicassistantclient.composeapp.generated.resources.cd_view_all
 import musicassistantclient.composeapp.generated.resources.find_in_list_label
+import musicassistantclient.composeapp.generated.resources.item_tab_versions
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_home
@@ -72,7 +73,13 @@ class ItemPage(
                     .assertIsNotDisplayed()
             }
 
-            MediaType.TRACK -> TODO()
+            MediaType.TRACK -> {
+                composeTestRule.onNode(isTab(Res.string.media_type_albums.get()))
+                    .assertIsDisplayed()
+                composeTestRule.onNode(isTab(Res.string.item_tab_versions.get()))
+                    .assertIsDisplayed()
+            }
+
             MediaType.PLAYLIST -> {
                 composeTestRule.onNode(isTab(Res.string.media_type_tracks.get()))
                     .assertIsDisplayed()

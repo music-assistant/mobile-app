@@ -5,8 +5,11 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.factory.MediaItemFactory
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.lyricsOf
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.FavoriteUpdatedEvent
@@ -49,6 +52,9 @@ interface MediaItemRepository {
     val itemChanges: SharedFlow<MediaItemChange>
     suspend fun search(request: Request): Result<SearchResultData>
     suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?>
+
+    /** The lyrics the server finds for [track]; `Result.success(null)` when it has none. */
+    suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?>
     fun publishLocalChange(change: MediaItemChange)
 }
 
@@ -118,6 +124,15 @@ class ServiceClientMediaItemRepository(
                 answer.resultAs<SearchResult>()
                     ?.let(factory::createSearchResult)
                     ?: error("Missing or undecodable search payload")
+            }
+        }
+
+    /** `metadata/get_track_lyrics` answers a `[lyrics, lrc_lyrics]` tuple. */
+    override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> =
+        withContext(workDispatcher) {
+            apiClient.sendRequest(Request.Metadata.getTrackLyrics(track)).map { answer ->
+                answer.resultAs<List<String?>>()
+                    ?.let { lyricsOf(plain = it.getOrNull(0), lrc = it.getOrNull(1)) }
             }
         }
 

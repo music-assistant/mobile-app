@@ -18,6 +18,7 @@ import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import musicassistantclient.composeapp.generated.resources.nav_home
 import org.junit.Rule
 import org.junit.Test
@@ -75,6 +76,36 @@ class ItemNavigationTest {
                 target = album,
                 navigationItem = Res.string.nav_home.get(),
             )
+    }
+
+    @Test
+    fun `can navigate from a track long-click menu to the track`() {
+        val album = ServerMediaItemFixtures.album()
+        val track = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addItems(track)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickItemNavigationOption(
+                serverMediaItem = track,
+                action = Res.string.action_go_to_track.get(),
+                target = track,
+                navigationItem = Res.string.nav_home.get(),
+            )
+            .assertMediaDisplayed(album)
+    }
+
+    @Test
+    fun `can navigate to the track from expanded player`() {
+        val track = ServerMediaItemFixtures.track()
+        serviceClient.addItems(track)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .playMedia(track)
+            .expandPlayer(player.displayName, playing = true, item = track.name)
+            .goToTrack(track.name, navigationItem = "Home")
     }
 
     @Test

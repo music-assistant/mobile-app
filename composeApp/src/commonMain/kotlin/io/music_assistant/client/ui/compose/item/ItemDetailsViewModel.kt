@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
@@ -28,9 +29,11 @@ import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,6 +50,7 @@ class ItemDetailsViewModel(
     private val mainDataSource: MainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
+    private val providerRepository: ProviderRepository,
     private val itemId: String,
     private val mediaType: MediaType,
     private val providerId: String,
@@ -58,6 +62,11 @@ class ItemDetailsViewModel(
         val artistsState: DataState<List<Artist>> = DataState.Loading(),
         /** Lazily loaded on demand from the artist overflow menu; NoData until then. */
         val similarArtistsState: DataState<List<Artist>> = DataState.NoData(),
+        val trackVersionsState: DataState<List<Track>> = DataState.NoData(),
+        /** NoData while no provider has [SIMILAR_TRACKS_FEATURE]: then the tab is not shown. */
+        val similarTracksState: DataState<List<Track>> = DataState.NoData(),
+        /** Lyrics of the loaded [Track]; null for other items and for a track without lyrics. */
+        val lyrics: Lyrics? = null,
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
         /** In-list text filter; null while the search field is closed, "" once opened. */
@@ -66,7 +75,12 @@ class ItemDetailsViewModel(
         val userSelectedTab: ItemDetailsTab? = null,
     ) {
         /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
-        val tabs: List<ItemDetailsTab> get() = itemOrNull()?.let { tabsFor(it) } ?: emptyList()
+        val tabs: List<ItemDetailsTab>
+            get() = itemOrNull()?.let { item ->
+                tabsFor(item).filterNot {
+                    it == ItemDetailsTab.SIMILAR_TRACKS && similarTracksState is DataState.NoData
+                }
+            } ?: emptyList()
 
         /** While any visible tab's backing list is still loading, defer the tabs bar entirely. */
         val subItemsLoading: Boolean get() = tabs.any { it.subState(this) is DataState.Loading }
@@ -178,6 +192,7 @@ class ItemDetailsViewModel(
             MediaType.AUDIOBOOK -> Request.Audiobook.get(itemId, providerId)
             MediaType.GENRE -> Request.Genre.get(itemId, providerId)
             MediaType.COLLECTION -> Request.Audiobook.getCollection(itemId)
+            MediaType.TRACK -> Request.Track.get(itemId, providerId)
             else -> return null
         }
 
@@ -258,6 +273,17 @@ class ItemDetailsViewModel(
                         playableItemsSortOption = null,
                     )
                 }
+            }
+
+            is Track -> {
+                _state.update {
+                    it.copy(
+                        playableItemsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = null,
+                    )
+                }
+                loadTrackDetails(item)
             }
 
             else -> {
@@ -385,6 +411,51 @@ class ItemDetailsViewModel(
             }
         }
     }
+
+    /** The albums, versions, similar tracks and lyrics of [track], each loaded on its own. */
+    private fun loadTrackDetails(track: Track) {
+        // Read once and fail closed: a provider list that never loads must not hold the tabs on Loading.
+        val similarSupported = providerRepository.providers.value.dataOrNull.orEmpty()
+            .any { it.available && SIMILAR_TRACKS_FEATURE in it.supportedFeatures }
+        _state.update {
+            it.copy(
+                albumsState = DataState.Loading(),
+                trackVersionsState = DataState.Loading(),
+                similarTracksState = if (similarSupported) DataState.Loading() else DataState.NoData(),
+            )
+        }
+        viewModelScope.launch {
+            val albums = fetchList<Album>(Request.Track.getAlbums(track.itemId, track.provider))
+            _state.update { it.copy(albumsState = albums) }
+        }
+        viewModelScope.launch {
+            val versions = fetchList<Track>(Request.Track.getVersions(track.itemId, track.provider))
+            _state.update { it.copy(trackVersionsState = versions) }
+        }
+        if (similarSupported) {
+            viewModelScope.launch {
+                // A provider can answer the track itself under another mapping.
+                val similar = fetchList<Track>(Request.Track.getSimilar(track.itemId, track.provider))
+                    .map { tracks -> tracks.filterNot { it.hasAnyMappingFrom(track) } }
+                _state.update { it.copy(similarTracksState = similar) }
+            }
+        }
+        viewModelScope.launch {
+            val lyrics = track.lyrics ?: mediaItemRepository.fetchTrackLyrics(track)
+                .onFailure { Logger.e("Failed to load track lyrics", it) }
+                .getOrNull()
+            _state.update { it.copy(lyrics = lyrics) }
+        }
+    }
+
+    private suspend inline fun <reified T : AppMediaItem> fetchList(request: Request): DataState<List<T>> =
+        mediaItemRepository.fetchMediaItems(request).fold(
+            onSuccess = { items -> DataState.Data(items.filterIsInstance<T>()) },
+            onFailure = {
+                Logger.e("Failed to load ${request.command}", it)
+                DataState.Error()
+            },
+        )
 
     /**
      * Fetches similar artists for the currently loaded [Artist]. Called both as a background
@@ -553,6 +624,14 @@ class ItemDetailsViewModel(
             }
 
             is PlayableItem -> {
+                (changed as? Track)?.let { track ->
+                    _state.update {
+                        it.copy(
+                            trackVersionsState = it.trackVersionsState.replacing(track, change),
+                            similarTracksState = it.similarTracksState.replacing(track, change),
+                        )
+                    }
+                }
                 // Non-null inputs mean Data or Data pending: the derivation runs off Main, so the
                 // state can still read Loading while the raw list is already set.
                 if (playableInputs.value == null) return
@@ -571,7 +650,17 @@ class ItemDetailsViewModel(
         }
     }
 
+    private fun DataState<List<Track>>.replacing(changed: Track, change: MediaItemChange): DataState<List<Track>> {
+        val tracks = (this as? DataState.Data)?.data
+            ?.takeIf { list -> list.any { it.itemId == changed.itemId } }
+            ?: return this
+        return DataState.Data(
+            tracks.map { if (it.itemId == changed.itemId) changed.withFavorite(change.favoriteAfter(it.favorite)) else it },
+        )
+    }
+
     companion object {
+        const val SIMILAR_TRACKS_FEATURE = "similar_tracks"
         const val ARTIST_SECTION_LIMIT = 10
     }
 }
@@ -590,7 +679,12 @@ private fun ItemDetailsViewModel.State.itemOrNull(): AppMediaItem? = when (itemS
 private fun ItemDetailsTab.subState(
     state: ItemDetailsViewModel.State,
 ): DataState<List<Any>> = when (this) {
-    ItemDetailsTab.GENRE_ALBUMS -> state.albumsState
+    ItemDetailsTab.GENRE_ALBUMS,
+    ItemDetailsTab.TRACK_ALBUMS,
+        -> state.albumsState
+
+    ItemDetailsTab.TRACK_VERSIONS -> state.trackVersionsState
+    ItemDetailsTab.SIMILAR_TRACKS -> state.similarTracksState
     ItemDetailsTab.ALBUM_TRACKS,
     ItemDetailsTab.PLAYLIST_ITEMS,
     ItemDetailsTab.PODCAST_EPISODES,

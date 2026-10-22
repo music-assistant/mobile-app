@@ -163,7 +163,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Artist audiobooks row | yes | yes | no | no | no | Missing | `artist_audiobooks` |
 | Album page | yes | yes | yes | drill | drill | Parity | Year shown in the header |
 | Album versions, review, more from artist | yes | yes | no | no | no | Missing | `album_versions` |
-| Track page | yes | yes | no | n/a | n/a | Missing | lyrics, albums, versions, similar tracks |
+| Track page | yes | yes | yes | n/a | n/a | Parity | Albums, versions and similar tracks tabs. Similar shows only if a provider has `similar_tracks`. Lyrics in the overflow menu. Open with "Go to track" or the player title |
 | Playlist page | yes | yes | yes | drill | drill | Parity | Force refresh in the header |
 | Playlist description and featured artists | part | yes | no | no | no | Missing | |
 | Podcast page | yes | yes | yes | drill | drill | Parity | Episode sort by name, date or duration |
@@ -610,7 +610,7 @@ the app:
 
 | Feature | API | Feasibility | Mobile constraint and sketch |
 |---|---|---|---|
-| Track detail screen | `tracks/get_track`, `track_albums`, `track_versions`, `similar_tracks`, `metadata/get_track_lyrics` | Easy | Add a `Track` case to `ItemDetailsScreen` with tabs for albums, versions and similar tracks |
+| Track detail screen | `tracks/get_track`, `track_albums`, `track_versions`, `similar_tracks`, `metadata/get_track_lyrics` | Easy | Done (issue #1189). A `Track` case in `ItemDetailsScreen` with tabs for albums, versions and similar tracks |
 | Radio detail screen | `radios/get_radio`, `radio_versions`, `radio_tracks` (2.11) | Easy | Same pattern. Show the tracklist for finite stations on 2.11 |
 | Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Episode page with steppers. Feed the cues into `LyricsSheet` timing |
 | Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Two more artist sections. Discography items carry provider `musicbrainz`. Show them dimmed and offer "Add to library" only |

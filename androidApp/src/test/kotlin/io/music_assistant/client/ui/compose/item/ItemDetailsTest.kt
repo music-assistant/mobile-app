@@ -2,6 +2,10 @@ package io.music_assistant.client.ui.compose.item
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
@@ -15,16 +19,26 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.client.Lyrics
+import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.support.get
+import io.music_assistant.client.support.isTab
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ExtractedColors
 import io.music_assistant.client.ui.compose.common.ExtractedColorsSource
 import io.music_assistant.client.ui.compose.support.inScrollable
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_choose_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_track
+import musicassistantclient.composeapp.generated.resources.action_lyrics
 import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.item_tab_similar_tracks
+import musicassistantclient.composeapp.generated.resources.item_tab_versions
+import musicassistantclient.composeapp.generated.resources.media_type_albums
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -175,4 +189,114 @@ class ItemDetailsTest {
             onNode(hasText(chapters[1].name)).assertIsDisplayed()
         }
     }
+
+    @Test
+    fun `track shows albums and versions but no similar tab without provider support`() {
+        val album = AppMediaItemFixtures.album(name = "On Album")
+        val track = AppMediaItemFixtures.track(name = "Song", album = album)
+        val version = AppMediaItemFixtures.track(name = "Song (Live)")
+
+        composeTestRule.setInspectableContent {
+            var state by remember {
+                mutableStateOf(
+                    trackState(
+                        track,
+                        albumsState = DataState.Data(listOf(album)),
+                        trackVersionsState = DataState.Data(listOf(version)),
+                    ),
+                )
+            }
+            ItemDetails(
+                state = state,
+                onTabSelected = { state = state.copy(userSelectedTab = it) },
+                fetchColors = NoColors,
+            )
+        }
+
+        composeTestRule.onNode(isTab(Res.string.media_type_albums.get())).assertIsDisplayed()
+        composeTestRule.onNode(isTab(Res.string.item_tab_versions.get())).assertIsDisplayed()
+        composeTestRule.onNode(isTab(Res.string.item_tab_similar_tracks.get())).assertDoesNotExist()
+        composeTestRule.inScrollable("LazyVerticalGrid") {
+            onNode(hasContentDescription(album.name, substring = true)).assertIsDisplayed()
+        }
+
+        composeTestRule.onNode(isTab(Res.string.item_tab_versions.get())).performClick()
+        composeTestRule.inScrollable("LazyVerticalGrid") {
+            onNode(hasContentDescription(version.name, substring = true)).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun `track shows the similar tab once similar tracks load`() {
+        val track = AppMediaItemFixtures.track(name = "Song")
+        val similar = AppMediaItemFixtures.track(name = "Like Song")
+
+        composeTestRule.setInspectableContent {
+            var state by remember {
+                mutableStateOf(
+                    trackState(
+                        track,
+                        albumsState = DataState.Data(listOf(AppMediaItemFixtures.album())),
+                        similarTracksState = DataState.Data(listOf(similar)),
+                    ),
+                )
+            }
+            ItemDetails(
+                state = state,
+                onTabSelected = { state = state.copy(userSelectedTab = it) },
+                fetchColors = NoColors,
+            )
+        }
+
+        composeTestRule.onNode(isTab(Res.string.item_tab_similar_tracks.get())).performClick()
+        composeTestRule.inScrollable("LazyVerticalGrid") {
+            onNode(hasContentDescription(similar.name, substring = true)).assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun `track overflow opens the lyrics and has no entry for the track itself`() {
+        val track = AppMediaItemFixtures.track(name = "Song", album = AppMediaItemFixtures.album())
+
+        composeTestRule.setInspectableContent {
+            ItemDetails(
+                state = trackState(track, lyrics = Lyrics.Plain("First line of the song")),
+                fetchColors = NoColors,
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_go_to_album.get()).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.action_go_to_track.get()).assertDoesNotExist()
+        composeTestRule.onNodeWithText(Res.string.action_lyrics.get()).performClick()
+
+        composeTestRule.onNodeWithText("First line of the song").assertIsDisplayed()
+    }
+
+    @Test
+    fun `track without lyrics has no lyrics entry`() {
+        val track = AppMediaItemFixtures.track(name = "Song")
+
+        composeTestRule.setInspectableContent {
+            ItemDetails(state = trackState(track), fetchColors = NoColors)
+        }
+
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_lyrics.get()).assertDoesNotExist()
+    }
+
+    private fun trackState(
+        track: Track,
+        albumsState: DataState<List<Album>> = DataState.Data(emptyList()),
+        trackVersionsState: DataState<List<Track>> = DataState.Data(emptyList()),
+        similarTracksState: DataState<List<Track>> = DataState.NoData(),
+        lyrics: Lyrics? = null,
+    ) = ItemDetailsViewModel.State(
+        itemState = DataState.Data(track),
+        albumsState = albumsState,
+        playableItemsState = DataState.NoData(),
+        trackVersionsState = trackVersionsState,
+        similarTracksState = similarTracksState,
+        lyrics = lyrics,
+    )
 }

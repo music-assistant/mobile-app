@@ -11,8 +11,10 @@
   <string name="action_favorite">Favorite</string>
   <string name="action_go_to_album">Go to album</string>
   <string name="action_go_to_artist">Go to artist</string>
+  <string name="action_go_to_track">Go to track</string>
   <string name="action_insert_next">Add next</string>
   <string name="action_insert_next_and_play">Add next and play</string>
+  <string name="action_lyrics">Lyrics</string>
   <string name="action_mark_played">Mark as played</string>
   <string name="action_mark_unplayed">Mark as unplayed</string>
   <string name="action_ok">OK</string>
@@ -215,6 +217,8 @@
   <string name="item_subtitle_series">Series</string>
   <string name="item_subtitle_sound_effect">AI host</string>
   <string name="item_subtitle_unknown">Unknown</string>
+  <string name="item_tab_similar_tracks">Similar tracks</string>
+  <string name="item_tab_versions">Versions</string>
   <string name="kind_album">Albums</string>
   <string name="kind_artist">Artists</string>
   <string name="kind_audiobook">Audiobooks</string>

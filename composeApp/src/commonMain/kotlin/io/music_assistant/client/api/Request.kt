@@ -763,6 +763,40 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 putListFilters(providers, genres)
             },
         )
+
+        fun get(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.get(APICommands.KIND_TRACKS, itemId, providerInstanceIdOrDomain)
+
+        fun getAlbums(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_TRACKS_TRACK_ALBUMS,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+
+        fun getVersions(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_TRACKS_TRACK_VERSIONS,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+
+        fun getSimilar(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+            limit: Int = 25,
+        ) = Library.subItems(
+            APICommands.MUSIC_TRACKS_SIMILAR_TRACKS,
+            itemId,
+            providerInstanceIdOrDomain,
+            limit = limit,
+        )
     }
 
     data object Browse {

@@ -74,6 +74,9 @@ object APICommands {
 
     // Track commands
     const val MUSIC_TRACKS_LIBRARY_ITEMS = "music/tracks/library_items"
+    const val MUSIC_TRACKS_TRACK_ALBUMS = "music/tracks/track_albums"
+    const val MUSIC_TRACKS_TRACK_VERSIONS = "music/tracks/track_versions"
+    const val MUSIC_TRACKS_SIMILAR_TRACKS = "music/tracks/similar_tracks"
 
     // Library commands
     const val MUSIC_LIBRARY_ADD_ITEM = "music/library/add_item"
@@ -137,6 +140,7 @@ object APICommands {
     const val CONFIG_DSP_PRESETS_GET = "config/dsp_presets/get"
 
     // Media type kinds
+    const val KIND_TRACKS = "tracks"
     const val KIND_ALBUMS = "albums"
     const val KIND_ARTISTS = "artists"
     const val KIND_PLAYLISTS = "playlists"

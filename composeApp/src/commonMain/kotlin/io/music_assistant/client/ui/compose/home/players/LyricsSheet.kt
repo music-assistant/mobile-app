@@ -169,6 +169,12 @@ fun LyricsSheet(
                         modifier = Modifier.fillMaxWidth().weight(1f),
                     )
 
+                    // Without a position every synced line would render dimmed, so show plain lines.
+                    is Lyrics.Synced if livePositionFlow == null -> PlainLyrics(
+                        text = lyrics.lines.joinToString("\n") { it.text },
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+
                     is Lyrics.Synced -> SyncedLyrics(
                         lines = lyrics.lines,
                         livePositionFlow = livePositionFlow,

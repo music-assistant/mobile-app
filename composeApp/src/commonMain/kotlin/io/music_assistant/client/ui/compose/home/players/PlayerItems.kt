@@ -48,8 +48,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -88,6 +90,7 @@ import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import musicassistantclient.composeapp.generated.resources.cd_ambient_sound_on
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_lyrics
@@ -393,11 +396,15 @@ fun FullPlayerItem(
         val timelinePosition =
             currentChapter?.relativeSec(displayPosition.toDouble())?.toFloat() ?: displayPosition
 
-        // The artist line does the overflow's "Go to artist"; a chapter name in that line has no artist.
+        val titleTrack = (item.queueInfo?.currentItem?.track as? Track)?.takeIf { !poweredOff }
+        // The title does the overflow's "Go to track".
         // Remembered: the position tick recomposes this item several times a second.
-        val artists = (item.queueInfo?.currentItem?.track as? Track)
-            ?.takeIf { !poweredOff && currentChapter == null }
-            ?.artists.orEmpty()
+        val onTitleClick = remember(titleTrack, navigateToItem) {
+            titleTrack?.let { track -> { navigateToItem(track) } }
+        }
+        val goToTrackLabel = stringResource(Res.string.action_go_to_track)
+        // The artist line does the overflow's "Go to artist"; a chapter name in that line has no artist.
+        val artists = titleTrack?.takeIf { currentChapter == null }?.artists.orEmpty()
         val onSubtitleClick = remember(artists, navigateToItem, onChooseArtist) {
             artistNavigation(artists, navigateToItem) { onChooseArtist() }
         }
@@ -408,7 +415,15 @@ fun FullPlayerItem(
                 .fillMaxWidth()
                 .clearAndSetSemantics {
                     contentDescription = trackContentDescription
-                    // The cleared subtree hides the line's own click, so expose it here.
+                    // The cleared subtree hides the lines' own clicks, so expose them here.
+                    onTitleClick?.let {
+                        customActions = listOf(
+                            CustomAccessibilityAction(goToTrackLabel) {
+                                it()
+                                true
+                            },
+                        )
+                    }
                     onSubtitleClick?.let {
                         onClick(goToArtistLabel) {
                         it()
@@ -421,6 +436,7 @@ fun FullPlayerItem(
             Text(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .then(onTitleClick?.let { Modifier.clickable(onClick = it) } ?: Modifier)
                     .fadingEdges()
                     .basicMarquee()
                     .padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)

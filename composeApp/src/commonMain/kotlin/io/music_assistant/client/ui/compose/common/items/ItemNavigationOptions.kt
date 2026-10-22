@@ -2,6 +2,7 @@ package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,10 +17,11 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * "Go to album" / "Go to artist" entries for [this] item.
+ * "Go to track" / "Go to album" / "Go to artist" entries for [this] item.
  *
  * @param containerItem the item whose screen this list belongs to. Its own entry is dropped,
  * because navigating there would push a duplicate of the screen the user already sees.
@@ -37,6 +39,15 @@ fun AppMediaItem.navigationOptions(
     }.otherThan(containerItem)
     val goToArtist = rememberArtistNavigation(artists, navigateToItem)
     return buildList {
+        if (item is Track && !item.isSameItemAs(containerItem)) {
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.action_go_to_track),
+                    icon = Icons.Default.MusicNote,
+                    onClick = { navigateToItem(item) },
+                ),
+            )
+        }
         if (item is Track && item.album != null && !item.album.isSameItemAs(containerItem)) {
             add(
                 OverflowMenuOption(

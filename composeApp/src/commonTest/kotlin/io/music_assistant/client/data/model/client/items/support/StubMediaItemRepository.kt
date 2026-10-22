@@ -1,7 +1,9 @@
 package io.music_assistant.client.data.model.client.items.support
 
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.SearchResultData
@@ -28,6 +30,10 @@ class StubMediaItemRepository : MediaItemRepository {
     }
 
     override suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> {
         TODO("Not yet implemented")
     }
 

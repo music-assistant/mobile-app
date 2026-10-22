@@ -66,6 +66,7 @@ import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
@@ -430,6 +431,7 @@ private fun mainNavEntryProvider(
                         is Audiobook,
                         is MediaCollection,
                         is Genre,
+                        is Track,
                             -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
@@ -507,6 +509,7 @@ private fun mainNavEntryProvider(
                         is Audiobook,
                         is MediaCollection,
                         is Genre,
+                        is Track,
                             -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
@@ -554,6 +557,7 @@ private fun mainNavEntryProvider(
                         is Audiobook,
                         is MediaCollection,
                         is Genre,
+                        is Track,
                         -> multiBackStack.add(
                             MainNav.ItemDetails(
                                 itemId = item.itemId,
@@ -589,6 +593,7 @@ private fun mainNavEntryProvider(
                         is Audiobook,
                         is MediaCollection,
                         is Genre,
+                        is Track,
                             -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(

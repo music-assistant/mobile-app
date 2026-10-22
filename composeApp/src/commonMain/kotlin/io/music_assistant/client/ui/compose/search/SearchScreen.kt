@@ -136,6 +136,7 @@ fun SearchScreen(
                         is Playlist,
                         is Podcast,
                         is Audiobook,
+                        is Track,
                             -> {
                             onNavigateToItem(item.itemId, item.mediaType, item.provider)
                         }

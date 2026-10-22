@@ -1,5 +1,8 @@
 package io.music_assistant.client.support.pages
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
@@ -9,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.withinTag
@@ -17,6 +21,7 @@ import io.music_assistant.client.ui.compose.home.FloatingBarSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer_off
@@ -57,6 +62,21 @@ class ExpandedPlayerPage(
         return ItemPage(
             album,
             MediaType.ALBUM,
+            navigationItem,
+            composeTestRule,
+        ).assertOnPage()
+    }
+
+    /** The title opens the track; the test drives it through its accessibility action. */
+    @OptIn(ExperimentalTestApi::class)
+    fun goToTrack(track: String, navigationItem: String): ItemPage {
+        composeTestRule.onNode(
+            hasContentDescription(track, substring = true)
+                .and(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)),
+        ).performCustomAccessibilityActionWithLabel(Res.string.action_go_to_track.get())
+        return ItemPage(
+            track,
+            MediaType.TRACK,
             navigationItem,
             composeTestRule,
         ).assertOnPage()

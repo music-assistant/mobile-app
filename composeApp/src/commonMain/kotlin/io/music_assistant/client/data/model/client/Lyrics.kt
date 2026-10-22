@@ -17,19 +17,19 @@ sealed interface Lyrics {
 /** A single timestamped LRC line. [timeMs] is the offset from track start. */
 data class LrcLine(val timeMs: Long, val text: String)
 
+/** The lyrics this metadata carries, or null when it has none. See [lyricsOf]. */
+internal fun Metadata.toLyrics(): Lyrics? = lyricsOf(plain = lyrics, lrc = lrcLyrics)
+
 /**
- * The lyrics this metadata carries, or null when it has none.
+ * The lyrics of a [plain] text and an [lrc] payload, or null when both are blank.
  *
  * [Lyrics.Synced] wins over the plain text when the LRC payload parses to at least one line.
  */
-internal fun Metadata.toLyrics(): Lyrics? {
-    val lrc = lrcLyrics
-    return when {
-        !lrc.isNullOrBlank() -> LrcParser.parse(lrc).takeIf { it.isNotEmpty() }
-            ?.let { Lyrics.Synced(it) }
-            ?: Lyrics.Plain(lrc)
+fun lyricsOf(plain: String?, lrc: String?): Lyrics? = when {
+    !lrc.isNullOrBlank() -> LrcParser.parse(lrc).takeIf { it.isNotEmpty() }
+        ?.let { Lyrics.Synced(it) }
+        ?: Lyrics.Plain(lrc)
 
-        !lyrics.isNullOrBlank() -> Lyrics.Plain(lyrics)
-        else -> null
-    }
+    !plain.isNullOrBlank() -> Lyrics.Plain(plain)
+    else -> null
 }

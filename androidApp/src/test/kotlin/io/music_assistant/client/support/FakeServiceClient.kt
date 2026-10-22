@@ -518,6 +518,46 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
+            APICommands.musicGet(APICommands.KIND_TRACKS) -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = findItem(request).enrichLibraryItem(),
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_TRACKS_TRACK_ALBUMS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = listOfNotNull(findItem(request).album),
+                    ),
+                )
+            }
+
+            // A version is another track with the same name.
+            APICommands.MUSIC_TRACKS_TRACK_VERSIONS -> {
+                val track = findItem(request)
+
+                Result.success(
+                    answer(
+                        request = request,
+                        result = mediaItemStore.query(mediaType = MediaType.TRACK)
+                            .filter { it.name == track.name && it.itemId != track.itemId },
+                    ),
+                )
+            }
+
+            APICommands.METADATA_GET_TRACK_LYRICS -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = listOf<String?>(null, null),
+                    ),
+                )
+            }
+
             else -> {
                 Result.failure(UnsupportedOperationException())
             }
