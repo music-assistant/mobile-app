@@ -590,14 +590,16 @@ class LocalPlayerAdapter(
 
     private fun updateOptimisticQueueInfo(transform: (QueueInfo) -> QueueInfo) {
         val newState = localState.updateAndGet { state ->
-            state.copy(data = state.data?.let { pd ->
+            state.copy(
+                data = state.data?.let { pd ->
                 val queueData = pd.queue as? DataState.Data ?: return@let pd
                 val existingStamp = queueData.data.info.elapsedTimeLastUpdated ?: 0.0
                 val transformed = transform(queueData.data.info).copy(
                     elapsedTimeLastUpdated = existingStamp + OPTIMISTIC_BUMP_EPSILON_S,
                 )
                 pd.copy(queue = DataState.Data(queueData.data.copy(info = transformed)))
-            })
+            },
+            )
         }.data
         (newState?.queue as? DataState.Data)?.data?.info?.let { _optimisticQueueChanges.trySend(it) }
     }
