@@ -22,7 +22,10 @@ class AndroidAutoEpisodeSubtitleTest {
         val description = episode.toMediaDescription(
             defaultIconUri = DEFAULT_ICON,
             artworkUri = { null },
-            episodeNumbers = EpisodeNumberFormat(seasonEpisode = "Staffel %1\$d, Folge %2\$d", episodeOnly = "Folge %1\$d"),
+            episodeNumbers = EpisodeNumberFormat(
+                seasonEpisode = "Staffel %1\$d, Folge %2\$d",
+                episodeOnly = "Folge %1\$d",
+            ),
         )
 
         assertEquals("Staffel 2, Folge 5", description.subtitle)

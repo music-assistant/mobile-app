@@ -1133,7 +1133,9 @@ private fun ServerMediaItem.toAutoMediaItem(
     episodeNumbers: EpisodeNumberFormat,
     category: String? = null,
 ): MediaItem? =
-    factory.create(this)?.takeIf { it.isPlayable }?.toAutoMediaItem(allowBrowse, defaultIconUri, episodeNumbers, category)
+    factory.create(
+        this,
+    )?.takeIf { it.isPlayable }?.toAutoMediaItem(allowBrowse, defaultIconUri, episodeNumbers, category)
 
 private fun AppMediaItem.toAutoMediaItem(
     allowBrowse: Boolean,
