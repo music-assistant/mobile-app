@@ -655,7 +655,15 @@ class ItemDetailsViewModel(
             ?.takeIf { list -> list.any { it.itemId == changed.itemId } }
             ?: return this
         return DataState.Data(
-            tracks.map { if (it.itemId == changed.itemId) changed.withFavorite(change.favoriteAfter(it.favorite)) else it },
+            tracks.map {
+                if (it.itemId == changed.itemId) {
+                    changed.withFavorite(
+                    change.favoriteAfter(it.favorite),
+                )
+                } else {
+                    it
+                }
+            },
         )
     }
 
