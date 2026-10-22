@@ -55,7 +55,10 @@ interface SinkHandle : AutoCloseable {
 data class SinkPosition(val framesPlayed: Long, val atMicros: Long)
 
 enum class SinkEvent {
-    /** Output taken away (focus loss, call, headphones unplugged): the stream ends. */
+    /**
+     * Output taken away (focus loss, call, headphones unplugged): the stream ends.
+     * The sink silences itself and keeps accepting writes, so a writer never blocks.
+     */
     FocusLost,
 
     /** The interruption that caused [FocusLost] is over; the app may resume playback. */

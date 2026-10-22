@@ -65,6 +65,8 @@ class AudioPipelineTest {
         }
 
         fun feed(vararg dueMillis: Long) = dueMillis.forEach { pipeline.onAudio(chunk(it)) }
+
+        fun drainEvents(): List<AudioEvent> = generateSequence { events.tryReceive().getOrNull() }.toList()
     }
 
     private fun pipelineTest(synced: Boolean = true, block: suspend TestScope.(Harness) -> Unit) = runTest {
@@ -460,32 +462,63 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun aDeadWriteYieldsToThePendingFocusLossBeforeReportingSinkDied() = pipelineTest { h ->
-        // The sink's own event is queued behind the writer on the single audio thread.
+    fun aFocusLossStopsAWriterThatTheDeviceNeverBlocks() = pipelineTest { h ->
+        // A muted track keeps accepting audio, so the writer never suspends on its own; the
+        // sink's event runs on the same audio thread and must still get a turn.
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()
-        h.handle.onWrite = {
-            h.handle.dead = true
-            h.handle.emit(SinkEvent.FocusLost)
-        }
-        h.feed(0)
+        h.handle.onWrite = { if (h.handle.writes.isEmpty()) h.handle.emit(SinkEvent.FocusLost) }
+        h.feed(*LongArray(50) { it * 10L })
         runCurrent()
-        assertEquals(AudioEvent.FocusLost, h.events.tryReceive().getOrNull())
-        assertEquals(StreamPhase.Ended, h.pipeline.phase)
-        advanceTimeBy(100)
-        runCurrent()
-        assertEquals(null, h.events.tryReceive().getOrNull(), "the cause is not overwritten by SinkDied")
+        assertEquals(listOf<AudioEvent>(AudioEvent.Started, AudioEvent.FocusLost), h.drainEvents())
+        assertTrue(h.handle.writes.size <= 2, "wrote ${h.handle.writes.size} chunks after the loss")
     }
 
     @Test
-    fun aDeadWriteWithNoSinkEventReportsSinkDied() = pipelineTest { h ->
+    fun aRepeatedFocusLossReportsOnce() = pipelineTest { h ->
+        // A call can arrive as a mode change and a focus loss; the app must see one stop.
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.handle.emit(SinkEvent.FocusLost)
+        h.handle.emit(SinkEvent.FocusLost)
+        runCurrent()
+        assertEquals(listOf<AudioEvent>(AudioEvent.FocusLost), h.drainEvents())
+        assertEquals(StreamPhase.Ended, h.pipeline.phase)
+    }
+
+    @Test
+    fun aSinkDeathAfterAFocusLossKeepsTheFocusLoss() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.handle.emit(SinkEvent.FocusLost)
+        h.handle.emit(SinkEvent.Died)
+        runCurrent()
+        assertEquals(listOf<AudioEvent>(AudioEvent.FocusLost), h.drainEvents())
+    }
+
+    @Test
+    fun aRegainReachesTheAppAfterAStreamStartWhileHeld() = pipelineTest { h ->
+        // The app holds on the loss; a stream/start in that window moves the generation
+        // but keeps the interrupted handle, and its regain must still reach the app.
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        val interrupted = h.handle
+        interrupted.emit(SinkEvent.FocusLost)
+        runCurrent()
+        h.pipeline.hold(true)
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        interrupted.emit(SinkEvent.FocusRegained)
+        runCurrent()
+        assertEquals(listOf<AudioEvent>(AudioEvent.FocusLost, AudioEvent.FocusRegained), h.drainEvents())
+    }
+
+    @Test
+    fun aDeadWriteReportsSinkDied() = pipelineTest { h ->
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()
         h.handle.onWrite = { h.handle.dead = true }
         h.feed(0)
-        runCurrent()
-        assertEquals(null, h.events.tryReceive().getOrNull(), "still waiting for an explanation")
-        advanceTimeBy(60)
         runCurrent()
         assertEquals(AudioEvent.SinkDied, h.events.tryReceive().getOrNull())
         assertEquals(StreamPhase.Ended, h.pipeline.phase)
