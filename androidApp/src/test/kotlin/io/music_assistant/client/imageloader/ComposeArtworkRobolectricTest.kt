@@ -42,7 +42,7 @@ class ComposeArtworkRobolectricTest {
         withArtworkKoin(fake) { _ ->
             var loaded by mutableStateOf(false)
             composeRule.setContent { Artwork(url, loaded) { loaded = true } }
-            composeRule.waitUntil(timeoutMillis = 10_000) {
+            composeRule.waitUntil("artwork loaded", timeoutMillis = 10_000) {
                 if (loaded) {
                     true
                 } else {

@@ -31,7 +31,7 @@ class SleepTimerPage(
     }
 
     fun assertClearOffered(offered: Boolean): SleepTimerPage {
-        composeTestRule.waitUntil {
+        composeTestRule.waitUntil("sleep timer Clear offered == $offered") {
             composeTestRule
                 .onNodeWithText(Res.string.sleep_timer_clear.get())
                 .isDisplayed() == offered

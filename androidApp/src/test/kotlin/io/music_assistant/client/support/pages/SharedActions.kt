@@ -127,7 +127,7 @@ fun <T : ComposePage> T.assertMediaDisplayed(
     provider: String? = null,
 ): T {
     val matcher = mediaItemMatcher(serverMediaItem, withinTag, provider)
-    composeTestRule.waitUntil {
+    composeTestRule.waitUntil("media '${serverMediaItem.name}' is displayed") {
         if (inScrollable != null) {
             composeTestRule.inScrollable(inScrollable) { onNode(matcher) }
         }
@@ -161,13 +161,13 @@ fun <T : ComposePage> T.assertPlayer(
     playing: Boolean = false,
     item: String? = null,
 ): T {
-    composeTestRule.waitUntil {
+    composeTestRule.waitUntil("current player is '$name'") {
         composeTestRule
             .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
             .isDisplayed()
     }
 
-    composeTestRule.waitUntil {
+    composeTestRule.waitUntil(if (playing) "Pause is displayed" else "Play is displayed") {
         if (playing) {
             composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get())
                 .isDisplayed()
@@ -178,13 +178,13 @@ fun <T : ComposePage> T.assertPlayer(
 
     // waitUntil — the track-name flow update can lag the play action.
     if (item != null) {
-        composeTestRule.waitUntil {
+        composeTestRule.waitUntil("player plays '$item'") {
             composeTestRule
                 .onNodeWithContentDescription(Res.string.cd_playing.get().format(item))
                 .isDisplayed()
         }
     } else {
-        composeTestRule.waitUntil {
+        composeTestRule.waitUntil("player shows nothing playing") {
             composeTestRule
                 .onNodeWithContentDescription(Res.string.players_nothing.get())
                 .isDisplayed()
@@ -204,7 +204,7 @@ fun <T : ComposePage> T.expandPlayer(
 }
 
 fun <T : ComposePage> T.assertFloatingBar(showing: Boolean): T {
-    composeTestRule.waitUntil {
+    composeTestRule.waitUntil("floating bar shown == $showing") {
         composeTestRule.onAllNodesWithTag(FloatingBarSemantics.TAG)
             .fetchSemanticsNodes().isNotEmpty() == showing
     }

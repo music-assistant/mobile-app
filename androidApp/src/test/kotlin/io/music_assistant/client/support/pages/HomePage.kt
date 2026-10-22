@@ -70,7 +70,7 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     }
 
     fun assertErrorLoadingData(): HomePage {
-        composeTestRule.waitUntil {
+        composeTestRule.waitUntil("library error is displayed") {
             composeTestRule.onNodeWithText(Res.string.library_error.get()).isDisplayed()
         }
         return this

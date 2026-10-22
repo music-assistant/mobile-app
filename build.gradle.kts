@@ -58,6 +58,12 @@ subprojects {
         jvmTarget = "17"
     }
 
+    // The default SHORT format prints only the exception class and the test-class line,
+    // without the assertion message or the page-object frames.
+    tasks.withType<Test>().configureEach {
+        testLogging.exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+
     // Detekt's default source detection doesn't reliably cover KMP modules (commonMain,
     // androidMain, iosMain) or Android-only modules (src/main/kotlin). Wire sources in
     // explicitly so the `detekt` task lints everything regardless of plugin layout.

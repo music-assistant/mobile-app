@@ -107,7 +107,7 @@ class ExpandedPlayerPage(
      */
     fun assertSleepTimerBadge(active: Boolean): ExpandedPlayerPage {
         val description = getSleepTimerBadgeContentDescription(active)
-        composeTestRule.waitUntil {
+        composeTestRule.waitUntil("sleep timer badge '$description' is displayed") {
             composeTestRule.onNodeWithContentDescription(description).isDisplayed()
         }
         return this

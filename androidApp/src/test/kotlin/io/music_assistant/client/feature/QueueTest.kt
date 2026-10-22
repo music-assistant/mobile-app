@@ -76,7 +76,7 @@ class QueueTest {
             .clickPlay()
             .expandPlayer(player1.displayName, playing = true, item = track.name)
             .transferQueue(player2.displayName) {
-                composeTestRule.waitUntil {
+                composeTestRule.waitUntil("'${player2.displayName}' plays '${track.name}'") {
                     serviceClient.getCurrentlyPlaying(player2.playerId) == track
                 }
             }
