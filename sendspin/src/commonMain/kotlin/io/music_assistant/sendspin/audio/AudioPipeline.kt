@@ -174,8 +174,13 @@ internal class AudioPipeline(
         }
     }
 
-    /** Sink-side failure reported by the scheduler: the stream is over. */
+    /**
+     * Sink-side failure reported by the scheduler: the stream is over. The first
+     * report names the cause; a later one for the same stream (a call and a focus
+     * loss, a native error and its dead write) changes nothing.
+     */
     internal fun onSinkFailure(event: AudioEvent) {
+        if (stream.value.phase != StreamPhase.Playing) return
         stream.update { it.copy(phase = StreamPhase.Ended) }
         buffer.clear(resetDedup = false)
         emit(event)

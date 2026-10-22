@@ -116,6 +116,19 @@ class LocalPlayerAdapterTest {
     }
 
     @Test
+    fun aFocusLossWhilePlayingResumesOnFocusRegained() = runBlocking<Unit> {
+        playing()
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.FocusLost))
+        assertEquals(PAUSE, client.sent.receive().command)
+
+        player.emit(PlayerEvent.FocusRegained)
+
+        // The play lifts the hold, so a resync pause goes first.
+        assertEquals(PAUSE, client.sent.receive().command)
+        assertEquals(PLAY, client.sent.receive().command)
+    }
+
+    @Test
     fun anOfflinePauseAsksForRecoveryAndKeepsTheSessionWantedUntilItLands() = runBlocking<Unit> {
         val local = playing()
         client.isReadyForCommands.value = false
@@ -256,6 +269,7 @@ class LocalPlayerAdapterTest {
 
     private companion object {
         val PAUSE = APICommands.playersCmd("pause")
+        val PLAY = APICommands.playersCmd("play")
         val NEXT = APICommands.playersCmd("next")
         val STOP = APICommands.playersCmd("stop")
         const val QUEUE_ID = "queue"

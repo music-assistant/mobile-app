@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
 import kotlin.math.abs
 
 /**
@@ -73,7 +74,12 @@ internal class Scheduler(
 
     suspend fun run(): Nothing = coroutineScope {
         try {
-            while (true) step(this)
+            // The sink-event collectors share this thread. While the device keeps accepting audio,
+            // a step never suspends, so it yields to let a focus loss end the stream.
+            while (true) {
+                step(this)
+                yield()
+            }
             @Suppress("UNREACHABLE_CODE")
             error("unreachable")
         } finally {
@@ -156,10 +162,12 @@ internal class Scheduler(
         lastWriteMicros = 0L
         val generation = state.generation
         // The collector lives with this handle, not with the scheduler, and an event that
-        // belongs to this stream must never end a later one.
+        // belongs to this stream must never end a later one. A regain ends nothing: it passes,
+        // because a stream/start while held moves the generation before this handle closes.
         handleEvents = scope.launch {
             opened.events.collect { event ->
-                if (pipeline.stream.value.generation != generation) return@collect
+                val stale = pipeline.stream.value.generation != generation
+                if (stale && event != SinkEvent.FocusRegained) return@collect
                 when (event) {
                     SinkEvent.FocusLost -> pipeline.onSinkFailure(AudioEvent.FocusLost)
                     SinkEvent.FocusRegained -> pipeline.emit(AudioEvent.FocusRegained)
@@ -290,7 +298,7 @@ internal class Scheduler(
         withTimeoutOrNull((micros / MICROS_PER_MILLI).coerceAtLeast(1)) { pipeline.wakeups.receive() }
     }
 
-    private suspend fun write(out: SinkHandle, pcm: ByteArray, offset: Int = 0, length: Int = pcm.size): Boolean {
+    private fun write(out: SinkHandle, pcm: ByteArray, offset: Int = 0, length: Int = pcm.size): Boolean {
         val fmt = format ?: return false
         checkLoopGap()
         var at = offset
@@ -299,7 +307,8 @@ internal class Scheduler(
             // The contract has no zero: a sink that accepts nothing is dead.
             val written = out.write(pcm, at, end - at)
             if (written <= 0) {
-                onDeadWrite(written)
+                logger.w { "Sink write returned $written" }
+                pipeline.onSinkFailure(AudioEvent.SinkDied)
                 return true
             }
             at += written
@@ -313,18 +322,6 @@ internal class Scheduler(
         }
         publish(AudioPhase.Playing, starved = false)
         return true
-    }
-
-    /**
-     * A dead write is usually an interruption the sink has already announced.
-     * That event is queued behind this coroutine on the single audio thread, so
-     * yield briefly and let it name the cause; only an unexplained death is
-     * reported as a sink failure.
-     */
-    private suspend fun onDeadWrite(written: Int) {
-        logger.w { "Sink write returned $written" }
-        waitOrWake(SINK_EVENT_GRACE_MICROS)
-        if (pipeline.stream.value.phase == StreamPhase.Playing) pipeline.onSinkFailure(AudioEvent.SinkDied)
     }
 
     /** One line per hard correction, capped per stream: every input of the lead it acted on. */
@@ -447,6 +444,5 @@ internal class Scheduler(
         const val CLOCK_POLL_MICROS = 50_000L
 
         /** How long a dead write waits for the sink's own event to explain it. */
-        const val SINK_EVENT_GRACE_MICROS = 50_000L
     }
 }

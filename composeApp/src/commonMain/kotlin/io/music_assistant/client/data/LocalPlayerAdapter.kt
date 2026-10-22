@@ -234,16 +234,24 @@ class LocalPlayerAdapter(
 
                 StopCause.FocusLost -> {
                     pausedByInterruption = localPlayerData.value?.player?.isPlaying == true
+                    log.i { "Playback stopped: audio focus lost, resume=$pausedByInterruption" }
                     pauseLocalIfPlaying()
                 }
 
-                StopCause.SinkFailed -> pauseLocalIfPlaying()
+                StopCause.SinkFailed -> {
+                    log.w { "Playback stopped: audio output failed" }
+                    pauseLocalIfPlaying()
+                }
+
                 StopCause.ServerEnded, StopCause.Cleared, StopCause.Disabled -> Unit
             }
 
-            PlayerEvent.FocusRegained -> if (pausedByInterruption) {
-                pausedByInterruption = false
-                localPlayerData.value?.let { handleLocalCommand(it, PlayerAction.Play) }
+            PlayerEvent.FocusRegained -> {
+                log.i { "Audio focus regained: resume=$pausedByInterruption" }
+                if (pausedByInterruption) {
+                    pausedByInterruption = false
+                    localPlayerData.value?.let { handleLocalCommand(it, PlayerAction.Play) }
+                }
             }
 
             PlayerEvent.ServerRefreshNeeded -> _needsServerRefresh.emit(Unit)

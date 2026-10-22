@@ -106,11 +106,7 @@ class AudioTrackSink(
         /** The head position wraps at 32 bits. */
         private val frames = MonotonicFrameCounter()
         private val head = SteppedHeadTracker(format.sampleRate)
-        private var interrupted = false
-
-        /** Set on the first interruption; the audio thread may be inside a blocking write at that moment. */
-        @Volatile
-        private var dead = false
+        private val interruption = SinkInterruption()
 
         override val events: Flow<SinkEvent> = sinkEvents
         override val latencyMicros: Long? = null
@@ -120,14 +116,14 @@ class AudioTrackSink(
             when (change) {
                 AudioManager.AUDIOFOCUS_GAIN -> {
                     runCatching { track.setVolume(1f) }
-                    if (interrupted) {
-                        interrupted = false
-                        sinkEvents.tryEmit(SinkEvent.FocusRegained)
-                    }
+                    if (interruption.focusGained()) sinkEvents.tryEmit(SinkEvent.FocusRegained)
                 }
 
-                AudioManager.AUDIOFOCUS_LOSS -> interrupt(resumable = false)
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> interrupt(resumable = true)
+                AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                    interruption.focusLost(transient = change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT)
+                    silence()
+                }
+
                 AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> runCatching { track.setVolume(DUCK_GAIN) }
             }
         }
@@ -139,17 +135,26 @@ class AudioTrackSink(
         // Headphones unplugged or Bluetooth gone: the output is no longer what the user hears.
         private val noisyReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) interrupt(resumable = false)
+                if (intent?.action != AudioManager.ACTION_AUDIO_BECOMING_NOISY) return
+                interruption.outputGone()
+                silence()
             }
         }
 
-        // Some Bluetooth and Android Auto routings deliver no focus loss on a call.
+        // Some Bluetooth and Android Auto routings deliver no focus loss on a call, so the end of
+        // call mode can be the only sign that the call is over.
         private val modeListener = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             AudioManager.OnModeChangedListener { mode ->
-                if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION) {
-                    interrupt(
-                        resumable = true,
-                    )
+                logger.i { "Audio mode change: $mode" }
+                when (mode) {
+                    AudioManager.MODE_IN_CALL, AudioManager.MODE_IN_COMMUNICATION -> {
+                        interruption.callStarted()
+                        silence()
+                    }
+
+                    AudioManager.MODE_NORMAL -> if (interruption.callEnded()) {
+                        sinkEvents.tryEmit(SinkEvent.FocusRegained)
+                    }
                 }
             }
         } else {
@@ -173,22 +178,14 @@ class AudioTrackSink(
             }
         }
 
-        private fun interrupt(resumable: Boolean) {
-            interrupted = resumable
-            dead = true
-            // A write blocked on a paused track never returns; stop() wakes it.
-            runCatching {
-                track.pause()
-                track.flush()
-                track.stop()
-            }
-            frames.reset()
-            head.reset()
+        // Mute, never pause, from this thread: a write blocked on a paused track never returns,
+        // and the audio thread must stay free to end the stream and apply the app's hold.
+        private fun silence() {
+            runCatching { track.setVolume(0f) }
             sinkEvents.tryEmit(SinkEvent.FocusLost)
         }
 
         override fun write(pcm: ByteArray, offset: Int, length: Int): Int {
-            if (dead) return -1
             val written = try {
                 track.write(pcm, offset, length)
             } catch (e: IllegalStateException) {
@@ -196,7 +193,6 @@ class AudioTrackSink(
                 return -1
             }
             return when {
-                dead -> -1
                 written < 0 -> {
                     logger.w { "AudioTrack write error $written" }
                     -1
