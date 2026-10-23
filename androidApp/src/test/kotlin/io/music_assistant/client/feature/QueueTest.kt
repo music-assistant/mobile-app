@@ -46,6 +46,27 @@ class QueueTest {
     }
 
     @Test
+    fun `can start an endless mix from a queue item`() {
+        val album = ServerMediaItemFixtures.album()
+        val track1 = ServerMediaItemFixtures.track(album = album)
+        val track2 = ServerMediaItemFixtures.track(album = album)
+        serviceClient.addItems(track1, track2)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        // The fake replaces the queue with the seed, so the queue shrinks to that one row.
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(album)
+            .clickPlay()
+            .expandPlayer(player.displayName, playing = true, item = track1.name)
+            .openQueue(1, 2)
+            .startEndlessMixFromQueue(track2.name)
+            .assertQueue(track2.name)
+            .assertNotInQueue(track1.name)
+    }
+
+    @Test
     fun `can clear current player queue`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)

@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.CellTower
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -79,6 +80,7 @@ import io.music_assistant.client.utils.formatDuration
 import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_playlist
+import musicassistantclient.composeapp.generated.resources.action_start_endless_mix
 import musicassistantclient.composeapp.generated.resources.cd_toggle_queue
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.item_subtitle_unknown
@@ -109,6 +111,8 @@ fun CollapsibleQueue(
     isCurrentPage: Boolean = true,
     contentPadding: PaddingValues,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
+    /** Replaces this queue with an endless mix seeded by the item, like the item menus elsewhere. */
+    onStartEndlessMix: ((AppMediaItem) -> Unit)? = null,
     onChapterClick: (Chapter) -> Unit = {},
     livePositionFlow: Flow<Double>? = null,
 ) {
@@ -174,6 +178,7 @@ fun CollapsibleQueue(
                 contentPadding = contentPadding,
                 queueAction = queueAction,
                 onAddToPlaylist = onAddToPlaylist,
+                onStartEndlessMix = onStartEndlessMix,
                 onChapterClick = onChapterClick,
                 livePositionFlow = livePositionFlow,
             )
@@ -192,6 +197,8 @@ fun Queue(
     contentPadding: PaddingValues,
     queueAction: (QueueAction) -> Unit,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
+    /** Replaces this queue with an endless mix seeded by the item, like the item menus elsewhere. */
+    onStartEndlessMix: ((AppMediaItem) -> Unit)? = null,
     onChapterClick: (Chapter) -> Unit = {},
     livePositionFlow: Flow<Double>? = null,
 ) {
@@ -532,6 +539,24 @@ fun Queue(
                                         onDismissRequest = { menuItemId = null },
                                     ) {
                                         val track = item.track as? Track
+                                        val mixSeed = (item.track as? AppMediaItem)?.takeIf { it.canStartEndlessMix }
+                                        if (mixSeed != null && onStartEndlessMix != null) {
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Text(stringResource(Res.string.action_start_endless_mix))
+                                                },
+                                                leadingIcon = {
+                                                    Icon(
+                                                        imageVector = Icons.Default.CellTower,
+                                                        contentDescription = null,
+                                                    )
+                                                },
+                                                onClick = {
+                                                    onStartEndlessMix(mixSeed)
+                                                    menuItemId = null
+                                                },
+                                            )
+                                        }
                                         if (track != null && onAddToPlaylist != null) {
                                             DropdownMenuItem(
                                                 text = {

@@ -408,20 +408,27 @@ class HomeScreenViewModel(
         option: QueueOption,
         radio: Boolean,
     ) {
-        dataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-            item.mediaUri?.let { mediaUri ->
-                Logger.withTag("PlayDispatch")
-                    .i { "HomeScreenViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
-                playDispatcher.play(
-                    PlayRequest(
-                        queueOrPlayerId = queueId,
-                        media = listOf(mediaUri),
-                        option = option,
-                        endlessMixMode = radio && item !is Genre,
-                    ),
-                )
-            }
-        }
+        dataSource.selectedPlayer?.queueOrPlayerId?.let { playOnQueue(it, item, option, radio) }
+    }
+
+    /** Plays [item] on the queue that the caller names, for a surface that shows several players. */
+    fun playOnQueue(
+        queueOrPlayerId: String,
+        item: AppMediaItem,
+        option: QueueOption,
+        radio: Boolean,
+    ) {
+        val mediaUri = item.mediaUri ?: return
+        Logger.withTag("PlayDispatch")
+            .i { "HomeScreenViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueOrPlayerId" }
+        playDispatcher.play(
+            PlayRequest(
+                queueOrPlayerId = queueOrPlayerId,
+                media = listOf(mediaUri),
+                option = option,
+                endlessMixMode = radio && item !is Genre,
+            ),
+        )
     }
 
     private fun updateRecommendationsIfNeeded(changed: Track, change: MediaItemChange) {

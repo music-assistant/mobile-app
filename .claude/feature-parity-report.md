@@ -235,8 +235,8 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
 | View, play index, reorder, remove | yes | yes | yes | yes | no | Parity | AA exposes the session queue |
-| Move to next, move to end | yes | yes | no | no | no | Missing | `move_item` with shift 0, `move_item_end` |
-| Radio from a queue item | yes | yes | no | no | no | Missing | |
+| Move to next, move to end | yes | yes | no | no | no | Decided | Drag reorders the queue (issue #1193) |
+| Radio from a queue item | yes | yes | yes | no | no | Parity | "Start endless mix" in the long-press menu replaces the queue; the web opens the radio playlist page |
 | Add a queue item to a playlist | no | no | yes | no | no | Parity | App extra |
 | Chapter jump from the queue | yes | yes | yes | n/a | buttons | Parity | |
 | Queue settings page | yes | yes | no | no | no | Out of scope | Scope `config.players.write` |
@@ -628,7 +628,6 @@ the app:
 | Server-driven sort options | `music/sort_options` (2.11) | Easy | Replace the static table on 2.11. Map `label_key` to local strings |
 | Dislike | `favorites/set_item` (2.11) | Easy | Three-state heart menu. Hide on 2.10 |
 | Save queue as playlist | `player_queues/save_as_playlist` | Easy | Menu item in the player overflow |
-| Queue move to next, move to end, item radio | `move_item`, `move_item_end` | Easy | Three more long-press actions in `CollapsibleQueue` |
 | Replace next, play shuffled, play from beginning | `play_media` options | Easy | More `QueueOption` cases in `ItemActionResolver` |
 | Playlist rename, image, delete | `playlists/update`, `library/remove_item` | Easy | Needs `library.write`. Hide if the scope is absent |
 | Playlist sharing and collaboration | `playlists/set_access`, `config/providers/share_candidates` (2.11) | Medium | A dialog with a user picker. Needs the `Playlist.access` DTO |
