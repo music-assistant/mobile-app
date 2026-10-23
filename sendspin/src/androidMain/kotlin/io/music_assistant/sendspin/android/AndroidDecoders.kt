@@ -1,7 +1,7 @@
 // PCM bit-depth literals (16/24) and codec frame-size hints are audio-format standards.
 @file:Suppress("MagicNumber")
 
-package io.music_assistant.client.player.local
+package io.music_assistant.sendspin.android
 
 import android.media.AudioFormat
 import android.media.MediaCodec
@@ -20,7 +20,7 @@ import kotlin.math.roundToInt
 import io.github.jaredmdobson.concentus.OpusDecoder as ConcentusOpusDecoder
 
 /** Android decoders: MediaCodec for FLAC, Concentus for Opus, pass-through for PCM. */
-class AndroidDecoderFactory : DecoderFactory {
+public class AndroidDecoderFactory : DecoderFactory {
     override fun supports(codec: AudioCodec): Boolean = true
 
     override fun create(codec: AudioCodec): AudioDecoder = when (codec) {

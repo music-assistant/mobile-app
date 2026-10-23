@@ -1,4 +1,4 @@
-package io.music_assistant.client.player.local
+package io.music_assistant.sendspin.android
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -41,7 +41,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
  * back as a fallback. The head moves in mixer-period steps, so
  * [SteppedHeadTracker] stamps each reading with the time the head last moved.
  */
-class AudioTrackSink(
+public class AudioTrackSink(
     context: Context,
     private val clock: MonotonicClock,
 ) : AudioSink {

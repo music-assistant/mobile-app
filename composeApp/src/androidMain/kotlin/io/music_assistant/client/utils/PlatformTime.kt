@@ -1,6 +1,7 @@
 package io.music_assistant.client.utils
 
 import android.os.SystemClock
+import io.music_assistant.sendspin.android.ElapsedRealtimeClock
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -24,7 +25,7 @@ actual fun monotonicMs(): Long =
     if (hasRealSystemClock) SystemClock.elapsedRealtime() else System.nanoTime() / NANOS_PER_MILLI
 
 actual fun monotonicMicros(): Long =
-    (if (hasRealSystemClock) SystemClock.elapsedRealtimeNanos() else System.nanoTime()) / NANOS_PER_MICRO
+    if (hasRealSystemClock) ElapsedRealtimeClock.nowMicros() else System.nanoTime() / NANOS_PER_MICRO
 
 actual fun formatIsoDate(isoDate: String): String = try {
     LocalDate.parse(isoDate.substringBefore("T"))

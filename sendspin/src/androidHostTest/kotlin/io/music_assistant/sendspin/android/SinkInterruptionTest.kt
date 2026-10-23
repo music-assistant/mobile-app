@@ -1,4 +1,4 @@
-package io.music_assistant.client.player.local
+package io.music_assistant.sendspin.android
 
 import kotlin.test.Test
 import kotlin.test.assertFalse

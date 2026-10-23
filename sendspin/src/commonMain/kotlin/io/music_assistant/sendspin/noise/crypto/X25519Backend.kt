@@ -24,7 +24,11 @@ internal interface X25519Backend {
     suspend fun sharedSecret(privateKey: ByteArray, publicKey: ByteArray): ByteArray
 }
 
-/** The backend for the current platform. */
+/**
+ * The backend for the current platform. This is the only `expect` declaration in the
+ * module: a pure-common `sendspin-core` split would have to publish [X25519Backend]
+ * behind an opt-in marker. A new platform difference goes through a `SendspinDeps` port.
+ */
 internal expect fun defaultX25519Backend(provider: CryptographyProvider): X25519Backend
 
 /**

@@ -1,4 +1,4 @@
-package io.music_assistant.client.player.local
+package io.music_assistant.sendspin.android
 
 /**
  * The OS interruptions of one sink handle, and when they are over. A call can take the

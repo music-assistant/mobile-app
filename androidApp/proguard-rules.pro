@@ -61,12 +61,6 @@
 -dontwarn coil3.**
 
 # ---------------------------------------------------------------------------
-# Concentus (Opus codec) — pure-Java but reflective entry points.
-# ---------------------------------------------------------------------------
--keep class org.concentus.** { *; }
--dontwarn org.concentus.**
-
-# ---------------------------------------------------------------------------
 # kmpalette — operates on android.graphics.Bitmap via platform glue.
 # ---------------------------------------------------------------------------
 -keep class com.kmpalette.** { *; }

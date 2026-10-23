@@ -91,7 +91,6 @@ kotlin {
             implementation(libs.cryptography.provider.jdk)
 
             implementation(libs.coil)
-            implementation(libs.concentus)
         }
 
         commonMain.dependencies {

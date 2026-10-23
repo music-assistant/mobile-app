@@ -23,6 +23,9 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
+        optimization {
+            consumerKeepRules.file("consumer-rules.pro")
+        }
         withHostTestBuilder {
         }
     }
@@ -56,6 +59,7 @@ kotlin {
             implementation(libs.cryptography.provider.jdk)
             // X25519, which the platform JCA registers only from API 33.
             implementation(libs.bouncycastle.provider)
+            // Opus decoding for AndroidDecoderFactory.
             implementation(libs.concentus)
         }
 

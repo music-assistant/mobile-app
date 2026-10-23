@@ -30,7 +30,9 @@ The module does not do this work:
   server, in the application. The module sends `player@v1` messages only.
 - **No WebRTC.** For a data-channel connection the application supplies
   `Endpoint.WebRtc(openChannel)`, and the module calls it once per attempt.
-- **No platform audio.** `AudioSink` and `DecoderFactory` are ports.
+- **No iOS audio.** `AudioSink` and `DecoderFactory` are ports. The module includes Android
+  implementations of them, see [Android ports](#android-ports). An iOS application implements
+  them itself.
 - **No settings and no text.** The module never writes application settings and holds no
   user-facing string. It reports codes, and the application maps them to resources.
 
@@ -97,6 +99,30 @@ call, the audio dispatcher, the `DeviceInfo` for `client/hello`, and an optional
 A decoder can be a **pass-through**: it returns `outputCodec != PCM`, and the sink decodes the
 bytes itself. iOS works this way. The scheduler then treats the bytes as opaque. It cannot trim,
 pad, or resample them, so it schedules open loop. See the KDoc on `Scheduler`.
+
+### Android ports
+
+On Android, the package `io.music_assistant.sendspin.android` has an implementation for most
+fields of `SendspinDeps`.
+
+| `SendspinDeps` field | Android implementation |
+| --- | --- |
+| `sink` | `AudioTrackSink(context, clock)` |
+| `decoders` | `AndroidDecoderFactory()`: MediaCodec for FLAC, Concentus for Opus, and PCM. |
+| `keyStore` | `SharedPreferencesSendspinKeyStore(context)` |
+| `online` | `connectivityOnline(context, scope)` |
+| `audioDispatcher` | `sendspinAudioDispatcher()` |
+| `clock` | `ElapsedRealtimeClock` |
+
+Give the same clock to `AudioTrackSink` and to `SendspinDeps.clock`. The application supplies
+`httpClient`, `approvePairing`, and `deviceInfo`. The module depends on `ktor-client-core` only,
+so add a Ktor engine to the application, for example `ktor-client-okhttp`.
+
+The module manifest declares `INTERNET` and `ACCESS_NETWORK_STATE`, and Gradle merges them into
+the application manifest. The AAR also contains the R8 rules of the module. The application owns
+the foreground service and the media session.
+
+The Android implementations use the `api` package only. No code in `commonMain` uses them.
 
 ### Authentication and pairing
 

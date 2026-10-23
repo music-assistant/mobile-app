@@ -1,4 +1,4 @@
-package io.music_assistant.client.player.local
+package io.music_assistant.sendspin.android
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
