@@ -91,7 +91,7 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
                 endpoint,
                 "Device",
                 listOf(AudioCodec.FLAC),
-                bufferCapacityBytes = 10_000_000,
+                bufferSeconds = 30,
                 userDelayMs = 0,
             ),
         )
@@ -541,19 +541,42 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
         val pcm = formats.last()
         assertEquals(16, pcm.getValue("bit_depth").jsonPrimitive.content.toInt())
         assertEquals(48_000, pcm.getValue("sample_rate").jsonPrimitive.content.toInt())
+        assertEquals(
+            30 * 192_000,
+            hello.getValue("payload").jsonObject.getValue("player@v1_support").jsonObject
+                .getValue("buffer_capacity").jsonPrimitive.content.toInt(),
+            "30 s of 16-bit stereo 48 kHz",
+        )
+    }
+
+    @Test
+    fun aBitDepthChangeRestartsWith24Then16AndABufferSizedFor24() = playerTest { h ->
+        h.connectServer()
+        h.awaitConnected()
+        h.config.value = h.config.value?.copy(bitDepth = 24)
+        runCurrent()
+        val server = h.connectServer()
+        assertEquals(2, h.handedOut.size, "the new depth needs a new hello")
+        val support = SendspinJson.parseToJsonElement(server.clientHello ?: "").jsonObject
+            .getValue("payload").jsonObject.getValue("player@v1_support").jsonObject
+        val formats = support.getValue("supported_formats").jsonArray.map {
+            it.jsonObject.getValue("codec").jsonPrimitive.content + it.jsonObject.getValue("bit_depth").jsonPrimitive.content
+        }
+        assertEquals(listOf("flac24", "flac16", "pcm16"), formats)
+        assertEquals(30 * 288_000, support.getValue("buffer_capacity").jsonPrimitive.content.toInt())
     }
 
     @Test
     fun aBufferChangeRestartsTheConnectionWithTheNewCapacity() = playerTest { h ->
         h.connectServer()
         h.awaitConnected()
-        h.config.value = h.config.value?.copy(bufferCapacityBytes = 2_000_000)
+        h.config.value = h.config.value?.copy(bufferSeconds = 10)
         runCurrent()
         val server = h.connectServer()
         assertEquals(2, h.handedOut.size, "the server reads buffer_capacity only from the hello")
         val support = SendspinJson.parseToJsonElement(server.clientHello ?: "").jsonObject
             .getValue("payload").jsonObject.getValue("player@v1_support").jsonObject
-        assertEquals(2_000_000, support.getValue("buffer_capacity").jsonPrimitive.content.toInt())
+        assertEquals(10 * 192_000, support.getValue("buffer_capacity").jsonPrimitive.content.toInt())
     }
 
     @Test

@@ -40,7 +40,7 @@ enum AudioDecoderFactory {
 
 // MARK: - PCM Passthrough Decoder
 
-/// PCM decoder - handles 16/24/32 bit formats
+/// PCM decoder - handles 16/24 bit formats
 class PCMPassthroughDecoder: NativeAudioDecoder {
     private let bitDepth: Int
     private let channels: Int
@@ -52,7 +52,7 @@ class PCMPassthroughDecoder: NativeAudioDecoder {
     
     func decode(_ data: Data) throws -> Data {
         switch bitDepth {
-        case 16, 32:
+        case 16:
             return data
         case 24:
             return try unpack24Bit(data)

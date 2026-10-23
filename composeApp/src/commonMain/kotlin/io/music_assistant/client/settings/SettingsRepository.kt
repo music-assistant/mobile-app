@@ -474,11 +474,11 @@ class SettingsRepository(
     private val _sendspinPlayerSettings = MutableStateFlow(
         SendspinPlayerSettings(
             name = settings.getStringOrNull("sendspin_device_name") ?: DEVICE_NAME,
-            // Advertised buffer_capacity, stored in MB (converted to bytes when building the client hello).
-            bufferCapacityMb = settings.getInt("sendspin_buffer_capacity_mb", BUFFER_MB_DEFAULT),
-            codecPreference = AudioCodec.entries.firstOrNull {
-                it.name.equals(settings.getString("sendspin_codec_preference", DEFAULT_CODEC.name), ignoreCase = true)
-            } ?: DEFAULT_CODEC,
+            bufferSeconds = settings.getInt("sendspin_buffer_seconds", BUFFER_SECONDS_DEFAULT)
+                .coerceIn(BUFFER_SECONDS_MIN, BUFFER_SECONDS_MAX),
+            codecPreference = storedCodecOrPinnedDefault(),
+            bitDepth = settings.getInt("sendspin_bit_depth", BIT_DEPTH_DEFAULT)
+                .takeIf { it == BIT_DEPTH_HI_RES } ?: BIT_DEPTH_DEFAULT,
             connectionOverride = SendspinConnectionSettings(
                 // Migration logic: if user has custom host or non-default port, they're using custom connection
                 enabled = settings.getBooleanOrNull("sendspin_use_custom_connection") ?: run {
@@ -498,10 +498,28 @@ class SettingsRepository(
     )
     val sendspinPlayerSettings = _sendspinPlayerSettings.asStateFlow()
 
+    /**
+     * The stored codec, or the default pinned on first read. A new install gets
+     * [DEFAULT_CODEC]. An install that has a server or used the local player had
+     * Opus as the default, so it keeps Opus: a silent switch would raise its
+     * remote-access bandwidth about tenfold.
+     */
+    private fun storedCodecOrPinnedDefault(): AudioCodec {
+        val stored = settings.getStringOrNull("sendspin_codec_preference")
+            ?.let { name -> AudioCodec.entries.firstOrNull { it.name.equals(name, ignoreCase = true) } }
+        return stored ?: run {
+            val existingInstall = secrets.hasKey("host") || settings.hasKey("sendspin_enabled")
+            (if (existingInstall) AudioCodec.OPUS else DEFAULT_CODEC)
+                .also { settings.putString("sendspin_codec_preference", it.name) }
+        }
+    }
+
     fun setSendspinPlayerSettings(value: SendspinPlayerSettings) {
         settings.putString("sendspin_device_name", value.name)
-        settings.putInt("sendspin_buffer_capacity_mb", value.bufferCapacityMb)
+        settings.putInt("sendspin_buffer_seconds", value.bufferSeconds)
+        settings.remove("sendspin_buffer_capacity_mb") // Replaced by the seconds above.
         settings.putString("sendspin_codec_preference", value.codecPreference.name)
+        settings.putInt("sendspin_bit_depth", value.bitDepth)
         with(value.connectionOverride) {
             settings.putBoolean("sendspin_use_custom_connection", enabled)
             settings.putBoolean("sendspin_use_tls", tls)
@@ -807,17 +825,19 @@ class SettingsRepository(
         )
 
         val CODECS: List<AudioCodec> = listOf(AudioCodec.OPUS, AudioCodec.FLAC, AudioCodec.PCM)
-        val DEFAULT_CODEC: AudioCodec = AudioCodec.OPUS
+        val DEFAULT_CODEC: AudioCodec = AudioCodec.FLAC
         const val DEVICE_NAME: String = "My Phone"
         const val DEFAULT_SENDSPIN_PORT: Int = 8095
         const val DEFAULT_SENDSPIN_PATH: String = "/sendspin"
 
-        // Advertised to the server in client/hello as `buffer_capacity`: a hard per-player
-        // limit in BYTES on queued audio, uniform across codecs. User slider limits, in MB.
+        // Seconds of audio the local player buffers; the module turns them into the
+        // `buffer_capacity` bytes. The server sends at most 30 s ahead.
+        const val BUFFER_SECONDS_MIN: Int = 5
+        const val BUFFER_SECONDS_MAX: Int = 30
+        const val BUFFER_SECONDS_STEP: Int = 5
+        const val BUFFER_SECONDS_DEFAULT: Int = 10
         const val BYTES_PER_MB: Int = 1_000_000
-        const val BUFFER_MB_MIN: Int = 5
-        const val BUFFER_MB_MAX: Int = 50
-        const val BUFFER_MB_STEP: Int = 5
-        const val BUFFER_MB_DEFAULT: Int = 15
+        const val BIT_DEPTH_DEFAULT: Int = 16
+        const val BIT_DEPTH_HI_RES: Int = 24
     }
 }

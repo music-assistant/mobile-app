@@ -6,7 +6,7 @@ import kotlinx.coroutines.channels.ReceiveChannel
  * Everything the player needs from the app. Supplied as `StateFlow<LocalPlayerConfig?>`;
  * `null` disables the player and is the only "stop".
  *
- * A change to [endpoint], [deviceName], [codecPreference], or [bufferCapacityBytes]
+ * A change to [endpoint], [deviceName], [codecPreference], [bitDepth], or [bufferSeconds]
  * restarts the connection. The audio pipeline is untouched. [userDelayMs] applies live.
  */
 data class LocalPlayerConfig(
@@ -14,8 +14,13 @@ data class LocalPlayerConfig(
     val deviceName: String,
     /** Ordered preference; formats are advertised only for codecs the [DecoderFactory] supports. */
     val codecPreference: List<AudioCodec>,
-    /** Advertised in `client/hello` as `buffer_capacity` and used as the local byte cap. */
-    val bufferCapacityBytes: Int,
+    /** 16 or 24: the depth offered for FLAC and PCM. Opus and the PCM fallback are always 16-bit. */
+    val bitDepth: Int = 16,
+    /**
+     * Seconds of audio to buffer. `buffer_capacity` and the local byte cap are this
+     * many seconds of the heaviest advertised format ([estimatedBytesPerSecond]).
+     */
+    val bufferSeconds: Int,
     /** Manual playback lag, added to every chunk's presentation time. */
     val userDelayMs: Int,
 )

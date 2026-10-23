@@ -353,7 +353,12 @@
   <string name="settings_app_version_info">Version %1$s, Build %2$s</string>
   <string name="settings_buffer_size">Buffer size</string>
   <string name="settings_buffer_size_hint">Larger values can prevent issues on unreliable connection, but increases app memory usage</string>
-  <string name="settings_buffer_size_value">%1$d MB</string>
+  <string name="settings_buffer_seconds_value">%1$d s</string>
+  <string name="settings_buffer_size_estimate">approx. %1$s MB</string>
+  <string name="settings_hi_res_audio">24-bit audio</string>
+  <string name="settings_hi_res_audio_hint">Uses 50% more bandwidth than 16-bit audio</string>
+  <string name="settings_hi_res_audio_lossless_only">Available with FLAC or PCM</string>
+  <string name="settings_hi_res_audio_unsupported">Needs Android 12 or newer</string>
   <string name="settings_car">Car (Android Auto / CarPlay)</string>
   <string name="settings_car_bulk_for">%1$s actions</string>
   <string name="settings_car_dsp">DSP presets</string>
