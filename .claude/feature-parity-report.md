@@ -62,7 +62,7 @@ Paths below use these prefixes:
 - `app/` = `composeApp/src/commonMain/kotlin/io/music_assistant/client/`
 - `aa/` = `androidApp/src/main/kotlin/io/music_assistant/client/`
 - `ios/` = `iosApp/iosApp/`
-- `sendspin/` = `sendspin/src/commonMain/kotlin/io/music_assistant/sendspin/`
+- `sendspin/` = `sendspin-kmp/src/commonMain/kotlin/io/music_assistant/sendspin/`
 - `server/` = `music_assistant/` in the server tree. "dev" marks the 2.11 tree.
 - `models/` = `music_assistant_models/` in the models package.
 

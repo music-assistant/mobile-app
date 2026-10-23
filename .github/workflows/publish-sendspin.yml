@@ -1,0 +1,68 @@
+name: Publish sendspin-kmp
+
+# Publishes the sendspin-kmp library to the GitHub Packages Maven registry of
+# this repository. Push the tag sendspin-v<version>, where <version> is
+# sendspinVersion in gradle.properties. A manual run must also target that tag:
+# GitHub Packages refuses a second upload of the same version (409).
+
+on:
+  push:
+    tags: [ 'sendspin-v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-sendspin
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # macOS: the iOS klibs need the Kotlin/Native Apple toolchain.
+    runs-on: macos-26
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Check that the tag matches sendspinVersion
+        run: |
+          set -euo pipefail
+          version=$(grep -E '^sendspinVersion=' gradle.properties | cut -d= -f2)
+          expected="sendspin-v${version}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ] || [ "${GITHUB_REF_NAME}" != "${expected}" ]; then
+            echo "::error::Run this workflow on the tag ${expected}, not ${GITHUB_REF_TYPE} ${GITHUB_REF_NAME}."
+            exit 1
+          fi
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # Read-only reuse of the caches that check-pr-ios.yml warms on main.
+      - name: Restore Gradle and Kotlin/Native caches
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: ios-simulator-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}-publish
+          restore-keys: |
+            ios-simulator-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}-
+            ios-simulator-v1-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Run module tests
+        run: ./gradlew :sendspin-kmp:testAndroidHostTest
+
+      - name: Publish to GitHub Packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :sendspin-kmp:publishAllPublicationsToGitHubPackagesRepository

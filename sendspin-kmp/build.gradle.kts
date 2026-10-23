@@ -5,7 +5,11 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.androidMultiplatformLibrary)
+    `maven-publish`
 }
+
+group = "io.github.music-assistant"
+version = providers.gradleProperty("sendspinVersion").get()
 
 kotlin {
     explicitApi()
@@ -66,6 +70,41 @@ kotlin {
         iosMain.dependencies {
             // Noise primitives backend (CryptoKit: X25519, ChaCha20-Poly1305).
             implementation(libs.cryptography.provider.cryptokit)
+        }
+    }
+}
+
+// KGP creates one publication per target plus the root `kotlinMultiplatform` one.
+publishing {
+    publications.withType<MavenPublication>().configureEach {
+        pom {
+            name.set("sendspin-kmp")
+            description.set("Kotlin Multiplatform Sendspin client for the player@v1 role")
+            url.set("https://github.com/music-assistant/mobile-app")
+            licenses {
+                license {
+                    name.set("Apache-2.0")
+                    url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                }
+            }
+            scm {
+                url.set("https://github.com/music-assistant/mobile-app")
+                connection.set("scm:git:https://github.com/music-assistant/mobile-app.git")
+            }
+        }
+    }
+    repositories {
+        // The package belongs to the repository that runs the publish workflow.
+        maven {
+            name = "GitHubPackages"
+            url = uri(
+                "https://maven.pkg.github.com/" +
+                    providers.environmentVariable("GITHUB_REPOSITORY").getOrElse("music-assistant/mobile-app"),
+            )
+            credentials {
+                username = providers.environmentVariable("GITHUB_ACTOR").orNull
+                password = providers.environmentVariable("GITHUB_TOKEN").orNull
+            }
         }
     }
 }

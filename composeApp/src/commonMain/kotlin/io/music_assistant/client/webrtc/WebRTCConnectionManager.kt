@@ -579,7 +579,7 @@ class WebRTCConnectionManager(
      *
      * This manager only holds the channel and logs its state. Every message on it belongs to
      * the local player: `LocalPlayerEndpoints` wraps the open channel in a `SendspinTransport`
-     * and the `:sendspin` module owns the protocol on top of it.
+     * and the `:sendspin-kmp` module owns the protocol on top of it.
      */
     private fun setupSendspinDataChannel(channel: DataChannelWrapper) {
         // Close previous sendspin channel if exists (reconnection edge case)

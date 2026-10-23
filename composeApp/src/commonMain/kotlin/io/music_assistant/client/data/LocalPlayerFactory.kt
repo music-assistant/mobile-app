@@ -29,7 +29,7 @@ fun interface LocalPlayerFactory {
     ): SendspinPlayerApi
 }
 
-/** The production player: the `:sendspin` module over the platform sink, decoders and key store. */
+/** The production player: the `:sendspin-kmp` module over the platform sink, decoders and key store. */
 class SendspinLocalPlayerFactory(
     private val sink: AudioSink,
     private val decoders: DecoderFactory,

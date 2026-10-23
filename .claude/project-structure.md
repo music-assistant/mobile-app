@@ -1,5 +1,14 @@
 # Project Structure
 
+## Modules
+
+| Module | Content |
+|--------|---------|
+| `composeApp` | Shared app code (Compose Multiplatform) |
+| `androidApp` | Android application |
+| `shared-icons` | Icon sets |
+| `sendspin-kmp` | Sendspin player library, published to GitHub Packages. Run its tests with `./gradlew :sendspin-kmp:testAndroidHostTest`. See `sendspin-kmp/README.md`. |
+
 ## Source Sets
 
 ```

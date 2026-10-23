@@ -243,7 +243,7 @@ When implementing new features or integrations:
 
 ### Sendspin Integration
 
-The built-in player is the `:sendspin` Gradle module (`io.music_assistant.sendspin`). The module is pure Kotlin Multiplatform. It has no Compose and no Koin dependency, and it is fully unit-tested with fakes.
+The built-in player is the `:sendspin-kmp` Gradle module (`io.music_assistant.sendspin`), published as `io.github.music-assistant:sendspin-kmp` (see `sendspin-kmp/README.md`). The module is pure Kotlin Multiplatform. It has no Compose and no Koin dependency, and it is fully unit-tested with fakes.
 
 **Public surface** (package `api`):
 - `SendspinPlayer(config: StateFlow<LocalPlayerConfig?>, deps, scope)` creates the player. A `null` config disables it. There is no start or stop call.

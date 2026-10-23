@@ -34,4 +34,4 @@ include(":composeApp")
 include(":androidApp")
 include(":shared-icons")
 
-include(":sendspin")
+include(":sendspin-kmp")

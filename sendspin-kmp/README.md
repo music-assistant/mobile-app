@@ -1,6 +1,6 @@
 # Sendspin local player
 
-The `:sendspin` module is a Sendspin client for the `player@v1` role. It connects to a Sendspin
+The `:sendspin-kmp` module is a Sendspin client for the `player@v1` role. It connects to a Sendspin
 server, keeps an encrypted session, and follows the server clock. It plays the audio stream in
 time with the other players in a group. The connection is always encrypted: there is no
 plaintext session.
@@ -44,6 +44,93 @@ The module does not do this work:
 4. Structured concurrency. Cancellation is the only teardown.
 5. The audio pipeline outlives the connection, so buffered audio drains through a reconnect.
 6. A small public surface, enforced by `internal` and checked by the compiler.
+
+## Consume the library
+
+The library is in the GitHub Packages Maven registry of the `music-assistant/mobile-app`
+repository. The coordinate is `io.github.music-assistant:sendspin-kmp`. GitHub Packages needs a
+token for each download, also for a public repository.
+
+1. Make a GitHub personal access token (classic) with the `read:packages` scope.
+2. Put your GitHub user name and the token in `~/.gradle/gradle.properties`:
+
+   ```properties
+   gpr.user=<github-user>
+   gpr.key=<token>
+   ```
+
+3. Add the repository to `settings.gradle.kts`:
+
+   ```kotlin
+   dependencyResolutionManagement {
+       repositories {
+           maven("https://maven.pkg.github.com/music-assistant/mobile-app") {
+               credentials {
+                   username = providers.gradleProperty("gpr.user").orNull
+                   password = providers.gradleProperty("gpr.key").orNull
+               }
+               content { includeGroup("io.github.music-assistant") }
+           }
+       }
+   }
+   ```
+
+4. Add the dependency. In a Kotlin Multiplatform project, add it to `commonMain`. In an Android
+   project, add it to `dependencies`. Gradle selects the Android variant, an AAR.
+
+   ```kotlin
+   implementation("io.github.music-assistant:sendspin-kmp:0.1.0")
+   ```
+
+### Android quick start
+
+This code builds a player from the [Android ports](#android-ports). It needs a Ktor engine, for
+example `io.ktor:ktor-client-okhttp`.
+
+```kotlin
+val scope = MainScope()
+val config = MutableStateFlow<LocalPlayerConfig?>(
+    LocalPlayerConfig(
+        endpoint = Endpoint.WebSocket("ws://192.168.1.10:8927/sendspin", WireVersion.SPEC_1_0),
+        deviceName = "Kitchen phone",
+        codecPreference = listOf(AudioCodec.FLAC, AudioCodec.OPUS),
+        bufferSeconds = 5,
+        userDelayMs = 0,
+    ),
+)
+val deps = SendspinDeps(
+    sink = AudioTrackSink(context, ElapsedRealtimeClock),
+    decoders = AndroidDecoderFactory(),
+    keyStore = SharedPreferencesSendspinKeyStore(context),
+    httpClient = HttpClient(OkHttp),
+    online = connectivityOnline(context, scope),
+    approvePairing = {},
+    audioDispatcher = sendspinAudioDispatcher(),
+    deviceInfo = DeviceInfo(productName = "My Player", manufacturer = "Example", softwareVersion = "1.0"),
+    clock = ElapsedRealtimeClock,
+)
+val player = SendspinPlayer(config, deps, scope)
+```
+
+Set the config to `null` to stop the player.
+
+### Versions
+
+- **Kotlin.** The library compiles with Kotlin 2.4 at language and API version 2.3. An Android
+  consumer needs Kotlin 2.3 or newer. An iOS consumer must use the same Kotlin version as the
+  library, because klib compatibility across Kotlin versions is not checked.
+- **Dependencies.** The library brings Ktor 3.5.2, kotlinx-coroutines 1.11.0, and Kermit 2.1.0.
+  It brings no Ktor engine.
+- **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists the changes of each version.
+
+### Publish a version
+
+1. Set `sendspinVersion` in the root `gradle.properties`.
+2. Add the version to `CHANGELOG.md`.
+3. Merge the change, then push the tag `sendspin-v<version>`.
+
+The `publish-sendspin.yml` workflow runs the module tests and publishes the version. Do not
+publish a version two times, because GitHub Packages refuses a second upload.
 
 ## Use the module
 
