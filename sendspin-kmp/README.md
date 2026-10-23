@@ -123,6 +123,23 @@ Set the config to `null` to stop the player.
   It brings no Ktor engine.
 - **Changes.** [`CHANGELOG.md`](CHANGELOG.md) lists the changes of each version.
 
+### Public API changes
+
+The file `api/sendspin-kmp.klib.api` holds the public API of the library. The
+`checkKotlinAbi` task compares the code with this file, and the iOS pull request check runs it.
+The file comes from the iOS klibs, so it covers `commonMain` only. It does not cover the
+[Android ports](#android-ports).
+
+To change the public API on purpose:
+
+1. Run `./gradlew :sendspin-kmp:updateKotlinAbi` on macOS.
+2. Commit the changed `api/sendspin-kmp.klib.api` file with the code.
+3. Add the change to `CHANGELOG.md`.
+
+A new `SendspinDeps` parameter with a default value keeps the source compatible. But it changes
+the constructor, so code that compiled against the old version breaks. Increase the minor
+version for this change, and write it in the changelog.
+
 ### Publish a version
 
 1. Set `sendspinVersion` in the root `gradle.properties`.
