@@ -72,7 +72,7 @@ import kotlinx.coroutines.launch
  * └─ config.enabled collector           collectLatest: "false" cancels everything below
  *    └─ runEnabled()                    trust store, clock sync, pipeline, connector
  *       ├─ pipeline.run()               on deps.audioDispatcher; outlives every connection
- *       ├─ live-config collectors       userDelayMicros, capacityBytes, hold
+ *       ├─ live-config collectors       userDelayMicros, hold
  *       └─ ConnectionSupervisor.run()   restarted when a reconnect-class field changes
  *          └─ one attempt at a time
  *             ├─ session.run()          reader coroutine
@@ -109,7 +109,17 @@ internal class SendspinPlayerImpl(
         this.held.value = held
     }
 
-    private data class ConnectionKey(val endpoint: Endpoint, val deviceName: String, val codecs: List<AudioCodec>)
+    /**
+     * `buffer_capacity` reaches the server only in `client/hello`, so the local cap changes with
+     * the connection. A smaller local cap than the advertised one evicts the future chunks that
+     * the server still sends, and every evicted chunk is a gap in the timeline.
+     */
+    private data class ConnectionKey(
+        val endpoint: Endpoint,
+        val deviceName: String,
+        val codecs: List<AudioCodec>,
+        val bufferCapacityBytes: Int,
+    )
 
     /** An unsupported endpoint never reaches a session, so its wire is moot. */
     private val Endpoint.wire: WireVersion
@@ -151,7 +161,7 @@ internal class SendspinPlayerImpl(
             deps.decoders,
             clockSync,
             deps.clock,
-            config.value?.bufferCapacityBytes ?: 0,
+            0,
         )
         val connector = connectorFactory(deps.httpClient)
         val supervisor = ConnectionSupervisor(
@@ -167,7 +177,6 @@ internal class SendspinPlayerImpl(
         launch {
             config.filterNotNull().collect {
                 pipeline.userDelayMicros = it.userDelayMs * 1_000L
-                pipeline.capacityBytes = it.bufferCapacityBytes
             }
         }
         launch { held.collect(pipeline::hold) }
@@ -176,9 +185,10 @@ internal class SendspinPlayerImpl(
         launch { session.watchStarvation() }
         try {
             config.filterNotNull()
-                .map { ConnectionKey(it.endpoint, it.deviceName, it.codecPreference) }
+                .map { ConnectionKey(it.endpoint, it.deviceName, it.codecPreference, it.bufferCapacityBytes) }
                 .distinctUntilChanged()
                 .collectLatest { key ->
+                    pipeline.capacityBytes = key.bufferCapacityBytes
                     supervisor.run(
                         endpoint = key.endpoint,
                         sessionConfig = session.sessionConfig(key),
@@ -223,7 +233,7 @@ internal class SendspinPlayerImpl(
                             BIT_DEPTHS.map { depth -> AudioFormatSpec(codec, 2, rate, depth) }
                         }
                     },
-                bufferCapacity = config.value?.bufferCapacityBytes ?: 0,
+                bufferCapacity = key.bufferCapacityBytes,
                 supportedCommands = emptyList(),
             ),
             deviceInfo = EncryptedDeviceInfo(

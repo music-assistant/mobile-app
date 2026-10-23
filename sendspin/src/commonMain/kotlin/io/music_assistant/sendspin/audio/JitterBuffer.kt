@@ -26,6 +26,8 @@ internal class JitterBuffer(@Volatile var capacityBytes: Int) {
     private var lastConsumedTs = Long.MIN_VALUE
     private var bytes = 0
 
+    /** Written under the lock, read by the audio thread for its stream stats. */
+    @Volatile
     var evicted = 0L
         private set
 

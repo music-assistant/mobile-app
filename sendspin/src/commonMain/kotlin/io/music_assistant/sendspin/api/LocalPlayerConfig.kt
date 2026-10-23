@@ -6,9 +6,8 @@ import kotlinx.coroutines.channels.ReceiveChannel
  * Everything the player needs from the app. Supplied as `StateFlow<LocalPlayerConfig?>`;
  * `null` disables the player and is the only "stop".
  *
- * A change to [endpoint], [deviceName], or [codecPreference] restarts the
- * connection. The audio pipeline is untouched. [userDelayMs] and
- * [bufferCapacityBytes] apply live.
+ * A change to [endpoint], [deviceName], [codecPreference], or [bufferCapacityBytes]
+ * restarts the connection. The audio pipeline is untouched. [userDelayMs] applies live.
  */
 data class LocalPlayerConfig(
     val endpoint: Endpoint,

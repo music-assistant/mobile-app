@@ -154,8 +154,8 @@ val offer = pc.createOffer()
 ```
 
 **Why both created?**
-- Channels must be in SDP offer
-- Creating them later requires renegotiation
+- The first channel adds `m=application` to the SDP offer
+- A later channel opens in-band, with no renegotiation
 - Unused channels are cheap (no data flows)
 
 ### Exposure (ServiceClient)

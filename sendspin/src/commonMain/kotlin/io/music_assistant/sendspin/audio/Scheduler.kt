@@ -62,6 +62,9 @@ internal class Scheduler(
     private var lateMicros = 0L
     private var insertedSilenceMicros = 0L
     private var underruns = 0
+
+    /** [JitterBuffer.evicted] when this stream's sink opened; the stats report the difference. */
+    private var evictedAtOpen = 0L
     private var correctionLogs = 0
     private var lastWriteMicros = 0L
     private var clockWaitSinceMicros: Long? = null
@@ -158,6 +161,7 @@ internal class Scheduler(
         lateMicros = 0
         insertedSilenceMicros = 0
         underruns = 0
+        evictedAtOpen = pipeline.buffer.evicted
         correctionLogs = 0
         lastWriteMicros = 0L
         val generation = state.generation
@@ -398,10 +402,12 @@ internal class Scheduler(
             logger.w { "Sink close failed: ${e.message}" }
         }
         handle = null
-        if (lateDrops > 0 || insertedSilenceMicros > 0 || underruns > 0) {
+        val evictions = pipeline.buffer.evicted - evictedAtOpen
+        if (lateDrops > 0 || insertedSilenceMicros > 0 || underruns > 0 || evictions > 0) {
             logger.w {
                 "Stream stats: lateDrops=$lateDrops lateMs=${lateMicros / MICROS_PER_MILLI} " +
-                    "insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI} underruns=$underruns"
+                    "insertedSilenceMs=${insertedSilenceMicros / MICROS_PER_MILLI} underruns=$underruns " +
+                    "evictions=$evictions"
             }
         }
     }

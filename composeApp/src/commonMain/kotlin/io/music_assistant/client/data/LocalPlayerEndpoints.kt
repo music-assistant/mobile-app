@@ -1,6 +1,7 @@
 package io.music_assistant.client.data
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.LABEL_ROUTED_CHANNELS_SCHEMA
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.ENCRYPTED_SENDSPIN_MIN_SCHEMA
 import io.music_assistant.client.data.model.server.sendspinWireFor
@@ -13,6 +14,7 @@ import io.music_assistant.client.utils.authenticatedToken
 import io.music_assistant.client.webrtc.DataChannelInbound
 import io.music_assistant.client.webrtc.DataChannelState
 import io.music_assistant.client.webrtc.DataChannelWrapper
+import io.music_assistant.client.webrtc.WebRTCConnectionManager
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.Frame
 import io.music_assistant.sendspin.api.SendspinTransport
@@ -30,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Derives the Sendspin [Endpoint] from the MA session. The endpoint follows the
@@ -81,16 +84,21 @@ class LocalPlayerEndpoints(
             connection.authProcessState is AuthProcessState.Failed
     }
 
-    /** The endpoint for a proven session, or null while authentication is still pending. */
+    /**
+     * The endpoint for a proven session, or null while the server info or the authentication
+     * is still pending. Without server info the wire is unknown, and a guessed wire replaced on
+     * `server/hello` would spend the single-use WebRTC channel and renegotiate in a loop.
+     */
     private fun connected(previous: Endpoint?, state: SessionState.Connected): Endpoint? {
-        val schema = state.serverInfo?.schemaVersion
+        val info = state.serverInfo ?: return null
+        val schema = info.schemaVersion
         // Missing schema is inconclusive, so let the wire handshake establish compatibility.
         if (schema != null && !supportsEncryptedSendspin(schema)) {
             return Endpoint.Unsupported(
                 "MA server schema $schema does not support encrypted Sendspin; requires schema $ENCRYPTED_SENDSPIN_MIN_SCHEMA",
             )
         }
-        val wire = sendspinWireFor(schema, state.serverInfo?.serverVersion)
+        val wire = sendspinWireFor(schema, info.serverVersion)
         return when (state) {
             is SessionState.Connected.WebRTC ->
                 (previous as? Endpoint.WebRtc)?.takeIf { it.wire == wire } ?: Endpoint.WebRtc(wire, ::openFreshChannel)
@@ -116,27 +124,51 @@ class LocalPlayerEndpoints(
 
     private var usedChannel: DataChannelWrapper? = null
 
+    /**
+     * The negotiated channel if no attempt used it yet, else a new channel on the live peer,
+     * else a renegotiated peer connection. Only the last one interrupts the MA session.
+     */
     private suspend fun openFreshChannel(): SendspinTransport {
-        val current = apiClient.webrtcSendspinChannel
-        val fresh = if (current != null && current !== usedChannel && current.state.value != DataChannelState.Closed) {
-            current
-        } else {
-            log.i { "Sendspin data channel spent; renegotiating WebRTC" }
-            apiClient.forceWebRTCReconnect()
-            withTimeout(CHANNEL_TIMEOUT_MILLIS) {
-                apiClient.sessionState.first {
-                    it is SessionState.Connected.WebRTC && apiClient.webrtcSendspinChannel.let { c -> c != null && c !== current }
-                }
-            }
-            checkNotNull(apiClient.webrtcSendspinChannel)
-        }
+        val fresh = unusedNegotiatedChannel() ?: reopenedChannel() ?: renegotiatedChannel()
         withTimeout(CHANNEL_TIMEOUT_MILLIS) { fresh.state.first { it == DataChannelState.Open } }
         usedChannel = fresh
         return DataChannelTransport(fresh)
     }
 
+    private fun unusedNegotiatedChannel(): DataChannelWrapper? = apiClient.webrtcSendspinChannel
+        ?.takeIf { it !== usedChannel && it.state.value != DataChannelState.Closed }
+
+    /**
+     * A new channel on the live peer, signalled in-band. The server bridges one `sendspin`
+     * channel for each peer and refuses a second one while the first is open, so the spent
+     * channel must close first. A server without label routing gets a renegotiation instead.
+     */
+    private suspend fun reopenedChannel(): DataChannelWrapper? {
+        val state = apiClient.sessionState.value as? SessionState.Connected.WebRTC ?: return null
+        val schema = state.serverInfo?.schemaVersion ?: return null
+        if (schema < LABEL_ROUTED_CHANNELS_SCHEMA) return null
+        usedChannel?.let { spent ->
+            withTimeoutOrNull(SPENT_CLOSE_TIMEOUT_MILLIS) { spent.state.first { it == DataChannelState.Closed } }
+        }
+        return apiClient.openWebRTCDataChannel(WebRTCConnectionManager.SENDSPIN_CHANNEL_LABEL)
+            ?.also { log.i { "Sendspin data channel reopened on the live peer" } }
+    }
+
+    private suspend fun renegotiatedChannel(): DataChannelWrapper {
+        val current = apiClient.webrtcSendspinChannel
+        log.i { "Sendspin data channel spent; renegotiating WebRTC" }
+        apiClient.forceWebRTCReconnect()
+        withTimeout(CHANNEL_TIMEOUT_MILLIS) {
+            apiClient.sessionState.first {
+                it is SessionState.Connected.WebRTC && apiClient.webrtcSendspinChannel.let { c -> c != null && c !== current }
+            }
+        }
+        return checkNotNull(apiClient.webrtcSendspinChannel)
+    }
+
     private companion object {
         const val CHANNEL_TIMEOUT_MILLIS = 30_000L
+        const val SPENT_CLOSE_TIMEOUT_MILLIS = 2_000L
     }
 }
 

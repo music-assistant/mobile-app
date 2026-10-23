@@ -101,9 +101,8 @@ class WebRTCConnectionManager(
     val incomingMessages: SharedFlow<String> = _incomingMessages.asSharedFlow()
 
     /**
-     * Sendspin data channel for audio streaming.
-     * Created during SDP negotiation, cannot be recreated dynamically.
-     * Null when not connected via WebRTC.
+     * Sendspin data channel for audio streaming, created with the offer.
+     * A later one opens in-band through [openDataChannel]. Null when not connected via WebRTC.
      */
     val sendspinDataChannel: DataChannelWrapper?
         get() = sendspinDataChannelInternal
@@ -419,7 +418,7 @@ class WebRTCConnectionManager(
             // (unreliable) was previously tried and caused ~15% packet loss with audible
             // distortion; reliable delivery is mandatory for the Opus framing.
             val sendspinChannel = pc.createDataChannel(
-                label = "sendspin",
+                label = SENDSPIN_CHANNEL_LABEL,
                 ordered = true,
             )
             setupSendspinDataChannel(sendspinChannel)
@@ -666,5 +665,8 @@ class WebRTCConnectionManager(
 
         // Matches the web frontend's own wait for a late-opened data channel.
         private const val CHANNEL_OPEN_TIMEOUT_MS = 10_000L
+
+        /** Label the server bridges to its Sendspin server. */
+        const val SENDSPIN_CHANNEL_LABEL = "sendspin"
     }
 }

@@ -40,8 +40,9 @@ private const val CHUNK_TYPE_TOKEN = "\"__chunk__\""
 private const val MAX_CHUNK_COUNT = 256
 
 // Server API schema that introduced label-based data-channel routing and the dedicated
-// `http_proxy` channel (music-assistant/server#5635, MA 2.10).
-private const val HTTP_PROXY_CHANNEL_SCHEMA = 49
+// `http_proxy` channel (music-assistant/server#5635, MA 2.10). From it, a channel opened on
+// the live peer reaches the handler of its label.
+internal const val LABEL_ROUTED_CHANNELS_SCHEMA = 49
 internal const val MAX_PENDING_CHUNK_GROUPS = 16
 private const val MAX_REASSEMBLED_BYTES = 16 * 1024 * 1024
 
@@ -314,13 +315,13 @@ class WebRTCTransport(
     /**
      * Opens the dedicated image channel once per connection, as soon as the server proves it
      * can route the label. `server_info` is the first frame on `ma-api` and carries the
-     * schema version; a server below [HTTP_PROXY_CHANNEL_SCHEMA] mistakes an unknown label
+     * schema version; a server below [LABEL_ROUTED_CHANNELS_SCHEMA] mistakes an unknown label
      * for the API channel and drops the whole session, so this must never be speculative.
      */
     private fun maybeOpenHttpProxyChannel(mgr: WebRTCConnectionManager, message: JsonObject) {
         if (httpProxyChannelRequested) return
         val schema = (message["schema_version"] as? JsonPrimitive)?.intOrNull ?: return
-        if (schema < HTTP_PROXY_CHANNEL_SCHEMA) {
+        if (schema < LABEL_ROUTED_CHANNELS_SCHEMA) {
             logger.i { "Server schema $schema predates the image channel — proxying over ma-api" }
             httpProxyChannelRequested = true
             return

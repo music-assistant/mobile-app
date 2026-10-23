@@ -100,7 +100,7 @@ val webrtcConfig = config.copy(
 
 **Critical:** Both "ma-api" and "sendspin" channels MUST be created BEFORE `createOffer()`.
 
-**Why:** Channels need to be in SDP offer sent to server. Creating them later requires renegotiation.
+**Why:** The first data channel adds `m=application` to the SDP offer. A later channel opens in-band on the live peer, with no renegotiation. `LocalPlayerEndpoints` opens a new `sendspin` channel this way when a Sendspin connection restarts (server schema 49 and later).
 
 **Location:** `WebRTCConnectionManager.handleConnected()` around line 307-314
 
@@ -272,7 +272,7 @@ MediaPlayerController
 
 **Alternative considered:** Create channel only when Sendspin enabled
 - ❌ Complex lifecycle
-- ❌ Would require WebRTC renegotiation
+- ❌ Needs a server that routes the label in-band (schema 49 and later)
 - ❌ Settings might change after connection
 
 ### Why Factory Starts Client?

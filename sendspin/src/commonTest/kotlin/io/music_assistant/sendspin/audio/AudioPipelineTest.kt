@@ -1,5 +1,8 @@
 package io.music_assistant.sendspin.audio
 
+import co.touchlab.kermit.LogWriter
+import co.touchlab.kermit.Logger
+import co.touchlab.kermit.Severity
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.MonotonicClock
@@ -138,6 +141,36 @@ class AudioPipelineTest {
         val seen = generateSequence { h.events.tryReceive().getOrNull() }.toList()
         assertEquals(listOf(AudioEvent.Ended, AudioEvent.Cleared, AudioEvent.Started), seen)
         assertEquals(StreamPhase.Playing, h.pipeline.phase)
+    }
+
+    @Test
+    fun theStreamStatsCountTheEvictionsOfTheirOwnStream() = pipelineTest { h ->
+        val lines = mutableListOf<String>()
+        val previous = Logger.config.logWriterList
+        Logger.setLogWriters(
+            object : LogWriter() {
+                override fun log(severity: Severity, message: String, tag: String, throwable: Throwable?) {
+                    lines += message
+                }
+            },
+        )
+        try {
+            h.pipeline.capacityBytes = 2 * h.chunk(0).length
+            h.pipeline.apply(StreamAction.StartFresh(flac))
+            runCurrent()
+            h.feed(1_000, 1_010, 1_020) // future audio: the third chunk is over the cap
+            runCurrent()
+
+            h.pipeline.apply(StreamAction.StartFresh(flac))
+            runCurrent()
+            assertEquals(listOf("evictions=1"), lines.mapNotNull { Regex("evictions=\\d+").find(it)?.value })
+
+            h.pipeline.apply(StreamAction.StartFresh(flac))
+            runCurrent()
+            assertEquals(1, lines.count { "Stream stats" in it }, "an earlier stream's evictions are not counted again")
+        } finally {
+            Logger.setLogWriters(previous)
+        }
     }
 
     @Test

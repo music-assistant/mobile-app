@@ -544,6 +544,19 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
     }
 
     @Test
+    fun aBufferChangeRestartsTheConnectionWithTheNewCapacity() = playerTest { h ->
+        h.connectServer()
+        h.awaitConnected()
+        h.config.value = h.config.value?.copy(bufferCapacityBytes = 2_000_000)
+        runCurrent()
+        val server = h.connectServer()
+        assertEquals(2, h.handedOut.size, "the server reads buffer_capacity only from the hello")
+        val support = SendspinJson.parseToJsonElement(server.clientHello ?: "").jsonObject
+            .getValue("payload").jsonObject.getValue("player@v1_support").jsonObject
+        assertEquals(2_000_000, support.getValue("buffer_capacity").jsonPrimitive.content.toInt())
+    }
+
+    @Test
     fun unsupportedCodecWarnsAndOpensNoSink() = playerTest { h ->
         val server = h.connectServer()
         h.awaitConnected()
