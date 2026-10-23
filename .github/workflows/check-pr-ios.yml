@@ -97,6 +97,11 @@ jobs:
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: ./gradlew iosSimulatorArm64Test
 
+      # The sendspin-kmp ABI dump comes from the iOS klibs, which need macOS.
+      - name: Check the sendspin-kmp public API
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        run: ./gradlew :sendspin-kmp:checkKotlinAbi
+
       - name: Run native XCTest suite
         if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
         run: ./scripts/test-ios.sh

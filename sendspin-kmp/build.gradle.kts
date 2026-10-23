@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+import org.jetbrains.kotlin.gradle.dsl.abi.ExperimentalAbiValidation
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -13,6 +14,11 @@ version = providers.gradleProperty("sendspinVersion").get()
 
 kotlin {
     explicitApi()
+
+    // checkKotlinAbi compares the public API with the committed dump in api/. The dump comes
+    // from the iOS klibs, so it covers commonMain but not the androidMain-only package.
+    @OptIn(ExperimentalAbiValidation::class)
+    abiValidation()
 
     // Metadata that a consumer one Kotlin minor behind can read.
     compilerOptions {

@@ -59,8 +59,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Run module tests
-        run: ./gradlew :sendspin-kmp:testAndroidHostTest
+      - name: Run module tests and the public API check
+        run: ./gradlew :sendspin-kmp:testAndroidHostTest :sendspin-kmp:checkKotlinAbi
 
       - name: Publish to GitHub Packages
         env:
