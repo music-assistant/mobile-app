@@ -12,6 +12,7 @@ import io.music_assistant.client.data.model.server.StubServiceClient
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.utils.SessionState
+import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinPlayer
@@ -64,6 +65,32 @@ class LocalPlayerAdapterTest {
     fun tearDown() {
         adapter.cancel()
         scope.cancel()
+    }
+
+    @Test
+    fun aCodecChangeWhilePlayingRestartsTheStreamOnceTheNewConnectionIsActive() = runBlocking<Unit> {
+        playing()
+        settings.setSendspinPlayerSettings(settings.sendspinPlayerSettings.value.copy(codecPreference = AudioCodec.PCM))
+        delay(SETTLE_MS)
+        assertTrue(client.sent.tryReceive().isFailure, "nothing before the new connection")
+
+        player.emit(PlayerEvent.ServerRefreshNeeded)
+
+        assertEquals(PAUSE, client.sent.receive().command)
+        assertEquals(PLAY, client.sent.receive().command)
+    }
+
+    @Test
+    fun aCodecChangeWhileNotPlayingRestartsNothing() = runBlocking<Unit> {
+        adapter.onInitialPlayersReceived(hasLocalPlayer = false)
+        await { adapter.localPlayerData.value?.player }
+        settings.setSendspinPlayerSettings(settings.sendspinPlayerSettings.value.copy(codecPreference = AudioCodec.PCM))
+        delay(SETTLE_MS)
+
+        player.emit(PlayerEvent.ServerRefreshNeeded)
+        delay(SETTLE_MS)
+
+        assertTrue(client.sent.tryReceive().isFailure)
     }
 
     @Test
