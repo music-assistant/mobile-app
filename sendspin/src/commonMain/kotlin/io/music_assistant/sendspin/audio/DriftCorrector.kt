@@ -7,8 +7,8 @@ import kotlin.math.roundToInt
 /**
  * Corrects small playback drift by gently resampling interleaved 16-bit or
  * 24-bit packed little-endian PCM (linear interpolation), bounded to
- * [maxCorrectionPpm] so the pitch change stays inaudible. Other bit depths
- * pass through: 32-bit output can be float, which integer interpolation breaks.
+ * [maxCorrectionPpm] so the pitch change stays inaudible. These are the only
+ * depths the client advertises; anything else passes through.
  *
  * The input is one continuous signal split into blocks. The last frame of a
  * block is carried into the next call so the interpolation runs across block

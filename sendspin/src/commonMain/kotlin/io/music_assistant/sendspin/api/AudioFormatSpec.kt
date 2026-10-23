@@ -1,4 +1,4 @@
-// PCM bit-depth literals (16/24/32) and sample-rate bounds are audio-format standards;
+// PCM bit-depth literals (16/24) and sample-rate bounds are audio-format standards;
 // naming them `BIT_DEPTH_16` etc. doesn't add clarity over the literal.
 @file:Suppress("MagicNumber")
 
@@ -17,7 +17,7 @@ data class AudioFormatSpec(
     init {
         require(channels in 1..32) { "Channels must be between 1 and 32" }
         require(sampleRate in 1..384_000) { "Sample rate must be between 1 and 384000 Hz" }
-        require(bitDepth in setOf(16, 24, 32)) { "Bit depth must be 16, 24, or 32" }
+        require(bitDepth in setOf(16, 24)) { "Bit depth must be 16 or 24" }
     }
 }
 

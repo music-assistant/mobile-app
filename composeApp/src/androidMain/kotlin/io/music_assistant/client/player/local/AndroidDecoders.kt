@@ -1,4 +1,4 @@
-// PCM bit-depth literals (16/24/32) and codec frame-size hints are audio-format standards.
+// PCM bit-depth literals (16/24) and codec frame-size hints are audio-format standards.
 @file:Suppress("MagicNumber")
 
 package io.music_assistant.client.player.local
@@ -15,6 +15,8 @@ import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.DecoderFactory
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.roundToInt
 import io.github.jaredmdobson.concentus.OpusDecoder as ConcentusOpusDecoder
 
 /** Android decoders: MediaCodec for FLAC, Concentus for Opus, pass-through for PCM. */
@@ -48,6 +50,11 @@ internal class PcmDecoder : AudioDecoder {
 /**
  * FLAC through the platform [MediaCodec]. Requests native bit depth on API 31+
  * (16-bit below), and reports what the codec actually produces.
+ *
+ * A 24-bit stream asks for float output and converts it back to 24-bit packed:
+ * the stock decoder (`C2SoftFlacDec`) produces only 16-bit or float, and for a
+ * 24-bit request the framework pads its 16-bit output. Float holds 24-bit
+ * samples exactly.
  */
 internal class FlacDecoder : AudioDecoder {
     private val logger = Logger.withTag("FlacDecoder")
@@ -58,10 +65,14 @@ internal class FlacDecoder : AudioDecoder {
         private set
     override val outputCodec: AudioCodec = AudioCodec.PCM
 
+    /** The codec outputs float, which [decode] converts to 24-bit packed. */
+    private var floatOutput = false
+
     override fun configure(format: AudioFormatSpec, codecHeader: ByteArray?) {
         release()
         require(format.channels in 1..8) { "FLAC supports 1-8 channels, got ${format.channels}" }
         outputBitDepth = format.bitDepth
+        floatOutput = false
         val mediaFormat = MediaFormat.createAudioFormat(
             MediaFormat.MIMETYPE_AUDIO_FLAC,
             format.sampleRate,
@@ -69,13 +80,11 @@ internal class FlacDecoder : AudioDecoder {
         ).apply {
             setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, MAX_INPUT_SIZE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // The framework converts to the requested encoding, so float is what arrives.
+                floatOutput = format.bitDepth == 24
                 setInteger(
                     MediaFormat.KEY_PCM_ENCODING,
-                    when (format.bitDepth) {
-                        24 -> AudioFormat.ENCODING_PCM_24BIT_PACKED
-                        32 -> AudioFormat.ENCODING_PCM_32BIT
-                        else -> AudioFormat.ENCODING_PCM_16BIT
-                    },
+                    if (format.bitDepth == 24) AudioFormat.ENCODING_PCM_FLOAT else AudioFormat.ENCODING_PCM_16BIT,
                 )
             } else {
                 outputBitDepth = 16
@@ -139,7 +148,7 @@ internal class FlacDecoder : AudioDecoder {
                         val pcm = ByteArray(bufferInfo.size)
                         buffer.position(bufferInfo.offset)
                         buffer.get(pcm, 0, bufferInfo.size)
-                        out.write(pcm)
+                        out.write(if (floatOutput) floatToPcm24(pcm) else pcm)
                         gotPcm = true
                     }
                     codec.releaseOutputBuffer(index, false)
@@ -148,9 +157,10 @@ internal class FlacDecoder : AudioDecoder {
                 index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
                     val format = codec.outputFormat
                     if (format.containsKey(MediaFormat.KEY_PCM_ENCODING)) {
-                        outputBitDepth = when (format.getInteger(MediaFormat.KEY_PCM_ENCODING)) {
-                            AudioFormat.ENCODING_PCM_24BIT_PACKED -> 24
-                            AudioFormat.ENCODING_PCM_32BIT, AudioFormat.ENCODING_PCM_FLOAT -> 32
+                        val encoding = format.getInteger(MediaFormat.KEY_PCM_ENCODING)
+                        floatOutput = encoding == AudioFormat.ENCODING_PCM_FLOAT
+                        outputBitDepth = when (encoding) {
+                            AudioFormat.ENCODING_PCM_24BIT_PACKED, AudioFormat.ENCODING_PCM_FLOAT -> 24
                             else -> 16
                         }
                     }
@@ -201,6 +211,22 @@ internal class FlacDecoder : AudioDecoder {
         /** Bound on waiting for a queued frame's output; one FLAC block is ~96 ms of audio. */
         const val OUTPUT_WAIT_US = 100_000L
     }
+}
+
+/**
+ * Native-order float PCM to 24-bit packed little-endian. A float holds a 24-bit
+ * sample exactly, so 24-bit sources round-trip bit for bit.
+ */
+internal fun floatToPcm24(floatPcm: ByteArray): ByteArray {
+    val samples = ByteBuffer.wrap(floatPcm).order(ByteOrder.nativeOrder()).asFloatBuffer()
+    val out = ByteArray(samples.remaining() * 3)
+    for (i in 0 until samples.remaining()) {
+        val v = (samples.get(i) * 8_388_608.0).roundToInt().coerceIn(-8_388_608, 8_388_607)
+        out[i * 3] = v.toByte()
+        out[i * 3 + 1] = (v shr 8).toByte()
+        out[i * 3 + 2] = (v shr 16).toByte()
+    }
+    return out
 }
 
 /** Opus through Concentus (pure Kotlin/Java libopus port); always 16-bit output. */

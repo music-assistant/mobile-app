@@ -59,7 +59,6 @@ class AudioTrackSink(
         val encoding = when {
             format.bitDepth == 16 -> AudioFormat.ENCODING_PCM_16BIT
             format.bitDepth == 24 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> AudioFormat.ENCODING_PCM_24BIT_PACKED
-            format.bitDepth == 32 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> AudioFormat.ENCODING_PCM_32BIT
             else -> throw IllegalArgumentException(
                 "unsupported bit depth ${format.bitDepth} on API ${Build.VERSION.SDK_INT}",
             )
