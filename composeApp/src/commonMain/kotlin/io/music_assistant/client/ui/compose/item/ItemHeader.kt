@@ -248,6 +248,7 @@ internal fun ItemTopBar(
                         navigateToItem = navigateToItem,
                         onSimilarArtistsClick = onSimilarArtistsClick,
                         onLyricsClick = onLyricsClick,
+                        onRemovedFromLibrary = onBack,
                     )
                 }
             },
@@ -263,6 +264,8 @@ private fun ItemOverflow(
     navigateToItem: (AppMediaItem) -> Unit,
     onSimilarArtistsClick: () -> Unit,
     onLyricsClick: (() -> Unit)?,
+    // The page shows the removed item, so it closes with the removal, like the web app.
+    onRemovedFromLibrary: () -> Unit,
 ) {
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
@@ -332,7 +335,10 @@ private fun ItemOverflow(
     if (showRemoveConfirmation) {
         RemoveFromLibraryConfirmationDialog(
             item = item,
-            onConfirm = { libraryActions?.onLibraryClick(item) },
+            onConfirm = {
+                libraryActions?.onLibraryClick(item)
+                onRemovedFromLibrary()
+            },
             onDismiss = { showRemoveConfirmation = false },
         )
     }
