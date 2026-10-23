@@ -134,7 +134,8 @@ class LocalPlayerAdapter(
             endpoint = endpoint,
             deviceName = playerSettings.name,
             codec = playerSettings.codecPreference,
-            bufferCapacityMb = playerSettings.bufferCapacityMb,
+            bitDepth = playerSettings.effectiveBitDepth(),
+            bufferSeconds = playerSettings.bufferSeconds,
             staticDelayMs = staticDelayMs,
         )
     }.stateIn(this, SharingStarted.Eagerly, null)
@@ -632,7 +633,8 @@ class LocalPlayerAdapter(
             endpoint: Endpoint?,
             deviceName: String,
             codec: AudioCodec,
-            bufferCapacityMb: Int,
+            bitDepth: Int,
+            bufferSeconds: Int,
             staticDelayMs: Int,
         ): LocalPlayerConfig? {
             if (!enabled || endpoint == null) return null
@@ -640,7 +642,8 @@ class LocalPlayerAdapter(
                 endpoint = endpoint,
                 deviceName = deviceName,
                 codecPreference = listOf(codec),
-                bufferCapacityBytes = bufferCapacityMb * SettingsRepository.BYTES_PER_MB,
+                bitDepth = bitDepth,
+                bufferSeconds = bufferSeconds,
                 userDelayMs = -staticDelayMs,
             )
         }

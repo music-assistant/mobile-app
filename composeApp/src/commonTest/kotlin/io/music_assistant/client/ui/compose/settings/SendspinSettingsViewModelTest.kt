@@ -36,6 +36,31 @@ class SendspinSettingsViewModelTest {
         update { it.copy(connectionOverride = it.connectionOverride.copy(enabled = enabled)) }
 
     @Test
+    fun aNewInstallPinsFlacAndAnExistingOneKeepsOpus() {
+        assertEquals(AudioCodec.FLAC, repository.sendspinPlayerSettings.value.codecPreference)
+        assertEquals("FLAC", store.getStringOrNull("sendspin_codec_preference"), "pinned, so a later server keeps it")
+
+        val existingSecrets = MapSettings().apply { putString("host", "ma.local") }
+        val existing = SettingsRepository(MapSettings(), existingSecrets)
+        assertEquals(AudioCodec.OPUS, existing.sendspinPlayerSettings.value.codecPreference)
+        val usedPlayer = SettingsRepository(
+            MapSettings().apply { putBoolean("sendspin_enabled", false) },
+            MapSettings(),
+        )
+        assertEquals(AudioCodec.OPUS, usedPlayer.sendspinPlayerSettings.value.codecPreference)
+    }
+
+    @Test
+    fun twentyFourBitAppliesOnlyToLosslessCodecsOnASupportingDevice() {
+        val hiRes = SendspinPlayerSettings(bitDepth = 24)
+        assertEquals(24, hiRes.copy(codecPreference = AudioCodec.FLAC).effectiveBitDepth(hiResSupported = true))
+        assertEquals(24, hiRes.copy(codecPreference = AudioCodec.PCM).effectiveBitDepth(hiResSupported = true))
+        assertEquals(16, hiRes.copy(codecPreference = AudioCodec.OPUS).effectiveBitDepth(hiResSupported = true))
+        assertEquals(16, hiRes.copy(codecPreference = AudioCodec.FLAC).effectiveBitDepth(hiResSupported = false))
+        assertEquals(16, SendspinPlayerSettings().effectiveBitDepth(hiResSupported = true), "16-bit by default")
+    }
+
+    @Test
     fun freshInstallMatchesDefaults() {
         val viewModel = viewModel()
 
@@ -75,7 +100,7 @@ class SendspinSettingsViewModelTest {
     fun revertedEditDisablesSave() {
         val viewModel = viewModel()
 
-        viewModel.update { it.copy(codecPreference = AudioCodec.FLAC) }
+        viewModel.update { it.copy(codecPreference = AudioCodec.PCM) }
         viewModel.update { it.copy(codecPreference = SettingsRepository.DEFAULT_CODEC) }
 
         assertFalse(viewModel.isSavable.value)
@@ -140,7 +165,7 @@ class SendspinSettingsViewModelTest {
 
     @Test
     fun resetWhilePlayerOffIsSavedAtOnce() {
-        repository.setSendspinPlayerSettings(SendspinPlayerSettings(name = "Kitchen", bufferCapacityMb = 30))
+        repository.setSendspinPlayerSettings(SendspinPlayerSettings(name = "Kitchen", bufferSeconds = 30))
         val viewModel = viewModel(enabled = false)
 
         viewModel.reset()
@@ -153,7 +178,7 @@ class SendspinSettingsViewModelTest {
 
     @Test
     fun resetWhilePlayingAppliesDefaultsAfterConfirmation() {
-        repository.setSendspinPlayerSettings(SendspinPlayerSettings(name = "Kitchen", bufferCapacityMb = 30))
+        repository.setSendspinPlayerSettings(SendspinPlayerSettings(name = "Kitchen", bufferSeconds = 30))
         playing = true
         val viewModel = viewModel()
 
@@ -184,8 +209,9 @@ class SendspinSettingsViewModelTest {
     fun savedSettingsSurviveRestart() {
         val saved = SendspinPlayerSettings(
             name = "Kitchen",
-            bufferCapacityMb = 30,
+            bufferSeconds = 30,
             codecPreference = AudioCodec.PCM,
+            bitDepth = 24,
         ).let { it.copy(connectionOverride = it.connectionOverride.copy(enabled = true, tls = true, port = 9000)) }
         repository.setSendspinPlayerSettings(saved)
 

@@ -3,7 +3,6 @@ package io.music_assistant.sendspin.player
 import co.touchlab.kermit.Logger
 import io.ktor.client.HttpClient
 import io.music_assistant.sendspin.api.AudioCodec
-import io.music_assistant.sendspin.api.AudioFormatSpec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.Endpoint
@@ -16,6 +15,8 @@ import io.music_assistant.sendspin.api.SendspinPlayer
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.api.WarningCode
 import io.music_assistant.sendspin.api.WireVersion
+import io.music_assistant.sendspin.api.advertisedFormats
+import io.music_assistant.sendspin.api.bufferCapacityBytes
 import io.music_assistant.sendspin.audio.AudioEvent
 import io.music_assistant.sendspin.audio.AudioPipeline
 import io.music_assistant.sendspin.audio.StreamAction
@@ -109,7 +110,16 @@ internal class SendspinPlayerImpl(
         this.held.value = held
     }
 
-    private data class ConnectionKey(val endpoint: Endpoint, val deviceName: String, val codecs: List<AudioCodec>)
+    private data class ConnectionKey(
+        val endpoint: Endpoint,
+        val deviceName: String,
+        val codecs: List<AudioCodec>,
+        val bitDepth: Int,
+    )
+
+    private fun LocalPlayerConfig.formats() = advertisedFormats(codecPreference, bitDepth, deps.decoders::supports)
+
+    private fun LocalPlayerConfig.capacityBytes() = bufferCapacityBytes(formats(), bufferSeconds)
 
     /** An unsupported endpoint never reaches a session, so its wire is moot. */
     private val Endpoint.wire: WireVersion
@@ -151,7 +161,7 @@ internal class SendspinPlayerImpl(
             deps.decoders,
             clockSync,
             deps.clock,
-            config.value?.bufferCapacityBytes ?: 0,
+            config.value?.capacityBytes() ?: 0,
         )
         val connector = connectorFactory(deps.httpClient)
         val supervisor = ConnectionSupervisor(
@@ -167,7 +177,7 @@ internal class SendspinPlayerImpl(
         launch {
             config.filterNotNull().collect {
                 pipeline.userDelayMicros = it.userDelayMs * 1_000L
-                pipeline.capacityBytes = it.bufferCapacityBytes
+                pipeline.capacityBytes = it.capacityBytes()
             }
         }
         launch { held.collect(pipeline::hold) }
@@ -176,7 +186,7 @@ internal class SendspinPlayerImpl(
         launch { session.watchStarvation() }
         try {
             config.filterNotNull()
-                .map { ConnectionKey(it.endpoint, it.deviceName, it.codecPreference) }
+                .map { ConnectionKey(it.endpoint, it.deviceName, it.codecPreference, it.bitDepth) }
                 .distinctUntilChanged()
                 .collectLatest { key ->
                     supervisor.run(
@@ -215,15 +225,8 @@ internal class SendspinPlayerImpl(
             wire = key.endpoint.wire,
             deviceName = key.deviceName,
             playerSupport = PlayerSupport(
-                // PCM last: 16-bit PCM is the format every spec server must produce.
-                supportedFormats = (key.codecs + AudioCodec.PCM).distinct()
-                    .filter(deps.decoders::supports)
-                    .flatMap { codec ->
-                        SAMPLE_RATES.flatMap { rate ->
-                            BIT_DEPTHS.map { depth -> AudioFormatSpec(codec, 2, rate, depth) }
-                        }
-                    },
-                bufferCapacity = config.value?.bufferCapacityBytes ?: 0,
+                supportedFormats = advertisedFormats(key.codecs, key.bitDepth, deps.decoders::supports),
+                bufferCapacity = config.value?.capacityBytes() ?: 0,
                 supportedCommands = emptyList(),
             ),
             deviceInfo = EncryptedDeviceInfo(
@@ -384,9 +387,6 @@ internal class SendspinPlayerImpl(
     }
 
     internal companion object {
-        // Hardcoding to 48kHz and 16-bit for now
-        val SAMPLE_RATES = listOf(48000)
-        val BIT_DEPTHS = listOf(16)
         const val STATE_REPORT_MILLIS = 2_000L
         const val CLOCK_UNSTABLE_MICROS = 60_000_000L
         const val CLOCK_POLL_MILLIS = 100L

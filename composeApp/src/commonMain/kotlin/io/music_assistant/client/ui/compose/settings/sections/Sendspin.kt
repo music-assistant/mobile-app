@@ -59,7 +59,9 @@ import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.displayName
 import io.music_assistant.client.ui.compose.common.localizedDescription
+import io.music_assistant.client.utils.supportsHiResAudio
 import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.estimatedBytesPerSecond
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_collapse_sendspin_advanced
 import musicassistantclient.composeapp.generated.resources.cd_expand_sendspin_advanced
@@ -67,11 +69,16 @@ import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.dialog_interrupting_playback
 import musicassistantclient.composeapp.generated.resources.dialog_interrupting_playback_confirm
 import musicassistantclient.composeapp.generated.resources.dialog_interrupting_playback_message
+import musicassistantclient.composeapp.generated.resources.settings_buffer_seconds_value
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size
+import musicassistantclient.composeapp.generated.resources.settings_buffer_size_estimate
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size_hint
-import musicassistantclient.composeapp.generated.resources.settings_buffer_size_value
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin
+import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio
+import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_hint
+import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_lossless_only
+import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_unsupported
 import musicassistantclient.composeapp.generated.resources.settings_host
 import musicassistantclient.composeapp.generated.resources.settings_local_player
 import musicassistantclient.composeapp.generated.resources.settings_local_player_clear_name
@@ -144,6 +151,10 @@ fun SendspinSettingsSection(
                 codec = settings.codecPreference,
                 onCodecChange = { codec -> onSettingsChange { it.copy(codecPreference = codec) } },
             )
+            HiResAudioSection(
+                settings = settings,
+                onBitDepthChange = { depth -> onSettingsChange { it.copy(bitDepth = depth) } },
+            )
             AdvancedConfigToggleSection(
                 expanded = showAdvancedConfig,
                 onToggle = { showAdvancedConfig = !showAdvancedConfig },
@@ -162,8 +173,8 @@ fun SendspinSettingsSection(
                         },
                     )
                     BufferSizeSection(
-                        bufferCapacityMb = settings.bufferCapacityMb,
-                        onBufferCapacityChange = { mb -> onSettingsChange { it.copy(bufferCapacityMb = mb) } },
+                        settings = settings,
+                        onBufferSecondsChange = { seconds -> onSettingsChange { it.copy(bufferSeconds = seconds) } },
                     )
                 }
             }
@@ -178,7 +189,7 @@ fun SendspinSettingsSection(
 }
 
 private fun SendspinPlayerSettings.hasNonDefaultAdvancedSettings(): Boolean =
-    bufferCapacityMb != SendspinPlayerSettings.defaults.bufferCapacityMb || connectionOverride.enabled
+    bufferSeconds != SendspinPlayerSettings.defaults.bufferSeconds || connectionOverride.enabled
 
 @Composable
 private fun InterruptPlaybackDialog(
@@ -466,13 +477,57 @@ private fun SingleLineText(text: String) {
 
 private const val MAX_PORT_LENGTH = 5
 
+/** One decimal, rounded: "1.9". */
+private fun Long.toMegabytes(): String {
+    val tenths = (this * TENTHS + SettingsRepository.BYTES_PER_MB / 2) / SettingsRepository.BYTES_PER_MB
+    return "${tenths / TENTHS}.${tenths % TENTHS}"
+}
+
+private const val TENTHS = 10
+
 private fun String.toPortOrDefault(): Int = toIntOrNull() ?: SettingsRepository.DEFAULT_SENDSPIN_PORT
 
 @Composable
-private fun BufferSizeSection(
-    bufferCapacityMb: Int,
-    onBufferCapacityChange: (Int) -> Unit,
+private fun HiResAudioSection(
+    settings: SendspinPlayerSettings,
+    onBitDepthChange: (Int) -> Unit,
 ) {
+    val available = settings.hiResAvailable()
+    ListItem(
+        headlineContent = { Text(stringResource(Res.string.settings_hi_res_audio)) },
+        supportingContent = {
+            Text(
+                stringResource(
+                    when {
+                        !supportsHiResAudio -> Res.string.settings_hi_res_audio_unsupported
+                        !available -> Res.string.settings_hi_res_audio_lossless_only
+                        else -> Res.string.settings_hi_res_audio_hint
+                    },
+                ),
+            )
+        },
+        trailingContent = {
+            Switch(
+                checked = settings.effectiveBitDepth() == SettingsRepository.BIT_DEPTH_HI_RES,
+                onCheckedChange = { hiRes ->
+                    onBitDepthChange(
+                        if (hiRes) SettingsRepository.BIT_DEPTH_HI_RES else SettingsRepository.BIT_DEPTH_DEFAULT,
+                    )
+                },
+                enabled = available,
+            )
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+@Composable
+private fun BufferSizeSection(
+    settings: SendspinPlayerSettings,
+    onBufferSecondsChange: (Int) -> Unit,
+) {
+    val seconds = settings.bufferSeconds
+    val estimateBytes = seconds.toLong() * estimatedBytesPerSecond(settings.codecPreference, settings.effectiveBitDepth())
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -485,17 +540,22 @@ private fun BufferSizeSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = stringResource(Res.string.settings_buffer_size_value, bufferCapacityMb),
+                text = stringResource(Res.string.settings_buffer_seconds_value, seconds),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground,
             )
         }
         Slider(
-            value = bufferCapacityMb.toFloat(),
-            onValueChange = { onBufferCapacityChange(it.roundToInt()) },
-            valueRange = SettingsRepository.BUFFER_MB_MIN.toFloat()..SettingsRepository.BUFFER_MB_MAX.toFloat(),
-            steps = (SettingsRepository.BUFFER_MB_MAX - SettingsRepository.BUFFER_MB_MIN) /
-                SettingsRepository.BUFFER_MB_STEP - 1,
+            value = seconds.toFloat(),
+            onValueChange = { onBufferSecondsChange(it.roundToInt()) },
+            valueRange = SettingsRepository.BUFFER_SECONDS_MIN.toFloat()..SettingsRepository.BUFFER_SECONDS_MAX.toFloat(),
+            steps = (SettingsRepository.BUFFER_SECONDS_MAX - SettingsRepository.BUFFER_SECONDS_MIN) /
+                SettingsRepository.BUFFER_SECONDS_STEP - 1,
+        )
+        Text(
+            text = stringResource(Res.string.settings_buffer_size_estimate, estimateBytes.toMegabytes()),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = stringResource(Res.string.settings_buffer_size_hint),
