@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Check that the tag matches sendspinVersion
         run: |
@@ -38,14 +38,14 @@ jobs:
           fi
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
 
       # Read-only reuse of the caches that check-pr-ios.yml warms on main.
       - name: Restore Gradle and Kotlin/Native caches
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             ~/.gradle/caches
