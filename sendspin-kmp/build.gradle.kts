@@ -28,6 +28,8 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
         optimization {
+            // The default already publishes a declared file; the API is incubating, so state it.
+            consumerKeepRules.publish = true
             consumerKeepRules.file("consumer-rules.pro")
         }
         withHostTestBuilder {
