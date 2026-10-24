@@ -155,7 +155,7 @@
   <string name="clickctx_artist">Artista</string>
   <string name="clickctx_browse">Explorar</string>
   <string name="clickctx_detail">Botón de reproducción</string>
-  <string name="clickctx_home">Home</string>
+  <string name="clickctx_discover">Home</string>
   <string name="clickctx_library">Biblioteca</string>
   <string name="clickctx_playlist">Lista de reproducción</string>
   <string name="clickctx_search">Buscar</string>
@@ -198,9 +198,9 @@
   <string name="genre_filter_media_type">Tipo de contenido</string>
   <string name="genre_filter_media_type_all">Todo</string>
   <string name="genre_filter_show">Mostrar géneros</string>
-  <string name="home_edit_rows">Editar filas</string>
-  <string name="home_save_rows">Guardar filas</string>
-  <string name="home_shortcuts">Accesos directos</string>
+  <string name="discover_edit_rows">Editar filas</string>
+  <string name="discover_save_rows">Guardar filas</string>
+  <string name="discover_shortcuts">Accesos directos</string>
   <string name="item_error">Error al cargar el elemento</string>
   <string name="item_no_data">No hay datos disponibles</string>
   <string name="item_subtitle_audio_source">Entrada</string>
@@ -256,7 +256,7 @@
   <string name="media_unknown_track">Canción desconocida</string>
   <string name="menu_default_label">Predeterminado</string>
   <string name="nav_browse">Explorar</string>
-  <string name="nav_home">Inicio</string>
+  <string name="nav_discover">Inicio</string>
   <string name="nav_library">Biblioteca</string>
   <string name="nav_search">Buscar</string>
   <string name="nav_settings">Ajustes</string>

@@ -13,7 +13,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.compose.KoinApplication
-import org.koin.core.KoinApplication
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
@@ -41,7 +40,7 @@ class SelectPlayerDialogTest {
                 )
             }),
                 content = {
-                SelectPlayerDialog(
+                SelectPlayerSheet(
                     selectedPlayer = players[0],
                     players,
                 )
@@ -99,7 +98,7 @@ class SelectPlayerDialogTest {
                     modules(module { singleOf(::MdiCodepoints) })
                 }),
                 content = {
-                    SelectPlayerDialog(
+                    SelectPlayerSheet(
                         selectedPlayer = selected,
                         players = players,
                         hideUnavailable = hideUnavailable,

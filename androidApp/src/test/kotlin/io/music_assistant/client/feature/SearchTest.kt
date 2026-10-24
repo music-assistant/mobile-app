@@ -18,7 +18,7 @@ import io.music_assistant.client.support.pages.enableFilter
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
-import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import org.junit.Rule
@@ -114,7 +114,7 @@ class SearchTest {
             .clickHome(
                 ItemPage(
                     album1,
-                    navigationItem = Res.string.nav_home.get(),
+                    navigationItem = Res.string.nav_discover.get(),
                     composeTestRule = composeTestRule,
                 ),
             )

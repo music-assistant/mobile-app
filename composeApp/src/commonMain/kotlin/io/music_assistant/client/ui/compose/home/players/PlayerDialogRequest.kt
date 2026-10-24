@@ -15,10 +15,6 @@ import io.music_assistant.client.data.model.client.items.Track
 sealed interface PlayerDialogRequest {
     val playerId: String
 
-    data class Select(override val playerId: String) : PlayerDialogRequest
-
-    data class Group(override val playerId: String) : PlayerDialogRequest
-
     data class Dsp(override val playerId: String) : PlayerDialogRequest
 
     data class SleepTimer(override val playerId: String) : PlayerDialogRequest

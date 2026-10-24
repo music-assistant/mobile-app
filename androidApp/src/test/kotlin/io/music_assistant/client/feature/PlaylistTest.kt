@@ -11,7 +11,7 @@ import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
 import io.music_assistant.client.support.pages.clickItemOption
-import io.music_assistant.client.support.pages.clickLibrary
+import io.music_assistant.client.support.pages.clickPlaylists
 import io.music_assistant.client.support.pages.playMedia
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
@@ -49,7 +49,6 @@ class PlaylistTest {
         serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickLibrary()
             .clickPlaylists()
             .clickOnMedia(playlist)
             .playMedia(track2)
@@ -71,7 +70,6 @@ class PlaylistTest {
         serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickLibrary()
             .clickPlaylists()
             .clickOnMedia(playlist)
             .clickItemOption(track2, Res.string.action_play_playlist_from_here.get())
@@ -92,7 +90,6 @@ class PlaylistTest {
         serviceClient.addPlayers(player)
 
         launchLoggedInApp(composeTestRule, serviceClient)
-            .clickLibrary()
             .clickPlaylists()
             .clickOnMedia(playlist)
             .openSearchInList()

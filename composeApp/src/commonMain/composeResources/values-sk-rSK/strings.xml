@@ -141,7 +141,7 @@
   <string name="clickctx_artist">Interpret</string>
   <string name="clickctx_browse">Prehliadať</string>
   <string name="clickctx_detail">Tlačidlo prehrávania</string>
-  <string name="clickctx_home">Domov</string>
+  <string name="clickctx_discover">Domov</string>
   <string name="clickctx_library">Knižnica</string>
   <string name="clickctx_playlist">Zoznam skladieb</string>
   <string name="clickctx_search">Hľadať</string>
@@ -181,9 +181,9 @@
   <string name="genre_filter_media_type">Typ médií</string>
   <string name="genre_filter_media_type_all">Všetky</string>
   <string name="genre_filter_show">Zobraziť žánre</string>
-  <string name="home_edit_rows">Upraviť riadky</string>
-  <string name="home_save_rows">Uložiť riadky</string>
-  <string name="home_shortcuts">Skratky</string>
+  <string name="discover_edit_rows">Upraviť riadky</string>
+  <string name="discover_save_rows">Uložiť riadky</string>
+  <string name="discover_shortcuts">Skratky</string>
   <string name="item_error">Chyba pri načítavaní položky</string>
   <string name="item_no_data">Nie sú dostupné žiadne údaje</string>
   <string name="item_subtitle_genre">Žáner</string>
@@ -235,7 +235,7 @@
   <string name="media_unknown_track">Neznáma skladba</string>
   <string name="menu_default_label">Predvolené</string>
   <string name="nav_browse">Prehliadať</string>
-  <string name="nav_home">Domov</string>
+  <string name="nav_discover">Domov</string>
   <string name="nav_library">Knižnica</string>
   <string name="nav_search">Hľadať</string>
   <string name="nav_settings">Nastavenia</string>

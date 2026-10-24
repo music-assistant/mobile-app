@@ -155,7 +155,7 @@
   <string name="clickctx_artist">Artiest</string>
   <string name="clickctx_browse">Bladeren</string>
   <string name="clickctx_detail">Afspeelknop</string>
-  <string name="clickctx_home">Home</string>
+  <string name="clickctx_discover">Home</string>
   <string name="clickctx_library">Bibliotheek</string>
   <string name="clickctx_playlist">Afspeellijst</string>
   <string name="clickctx_search">Zoeken</string>
@@ -197,9 +197,9 @@
   <string name="genre_filter_media_type">Mediatype</string>
   <string name="genre_filter_media_type_all">Alle</string>
   <string name="genre_filter_show">Genres tonen</string>
-  <string name="home_edit_rows">Rijen bewerken</string>
-  <string name="home_save_rows">Rijen opslaan</string>
-  <string name="home_shortcuts">Snelkoppelingen</string>
+  <string name="discover_edit_rows">Rijen bewerken</string>
+  <string name="discover_save_rows">Rijen opslaan</string>
+  <string name="discover_shortcuts">Snelkoppelingen</string>
   <string name="item_error">Fout bij laden item</string>
   <string name="item_no_data">Geen gegevens beschikbaar</string>
   <string name="item_subtitle_audio_source">Invoer</string>
@@ -255,7 +255,7 @@
   <string name="media_unknown_track">Onbekend Nummer</string>
   <string name="menu_default_label">Standaard</string>
   <string name="nav_browse">Bladeren</string>
-  <string name="nav_home">Home</string>
+  <string name="nav_discover">Home</string>
   <string name="nav_library">Bibliotheek</string>
   <string name="nav_search">Zoeken</string>
   <string name="nav_settings">Instellingen</string>

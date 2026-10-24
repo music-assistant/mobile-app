@@ -32,7 +32,7 @@ class AiRadioCategoryVisibilityTest {
         val hidden = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
 
         assertEquals(
-            libraryTabCategories.filterNot { it == LibraryCategory.AI_RADIO },
+            libraryCategories.filterNot { it == LibraryCategory.AI_RADIO },
             hidden,
         )
     }
@@ -40,7 +40,7 @@ class AiRadioCategoryVisibilityTest {
     @Test
     fun `saving while AI Radio is hidden preserves its stored disabled flag`() {
         // The user turned AI Radio off, then the plugin went away.
-        val stored = libraryTabCategories.map {
+        val stored = libraryCategories.map {
             pref(it, enabled = it != LibraryCategory.AI_RADIO)
         }
         val reconciled = reconcileLibraryCategories(stored)
@@ -49,7 +49,7 @@ class AiRadioCategoryVisibilityTest {
         // The editor saves only what it could see; the hidden entry must survive.
         val merged = mergeHiddenCategories(edited, reconciled)
 
-        assertEquals(libraryTabCategories.toSet(), merged.map { it.first }.toSet())
+        assertEquals(libraryCategories.toSet(), merged.map { it.first }.toSet())
         assertTrue(merged.contains(LibraryCategory.AI_RADIO to false))
     }
 
@@ -61,8 +61,8 @@ class AiRadioCategoryVisibilityTest {
         val merged = mergeHiddenCategories(edited, reconciled)
 
         assertEquals(edited, merged.take(edited.size))
-        assertEquals(libraryTabCategories.size, merged.size)
-        assertEquals(libraryTabCategories.toSet(), merged.map { it.first }.toSet())
+        assertEquals(libraryCategories.size, merged.size)
+        assertEquals(libraryCategories.toSet(), merged.map { it.first }.toSet())
     }
 
     @Test

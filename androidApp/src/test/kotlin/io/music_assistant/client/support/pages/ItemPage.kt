@@ -17,6 +17,7 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
+import io.music_assistant.client.support.onNodeInContent
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
@@ -29,10 +30,8 @@ import musicassistantclient.composeapp.generated.resources.find_in_list_label
 import musicassistantclient.composeapp.generated.resources.item_tab_versions
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
-import musicassistantclient.composeapp.generated.resources.nav_home
-import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.nav_settings
 
 class ItemPage(
     private val name: String,
@@ -57,10 +56,8 @@ class ItemPage(
             .assertHasClickAction()
         assertNavBar(
             items = listOf(
-                Res.string.nav_home.get(),
+                Res.string.nav_discover.get(),
                 Res.string.nav_search.get(),
-                Res.string.nav_library.get(),
-                Res.string.nav_settings.get(),
             ),
             selected = navigationItem,
         )
@@ -69,13 +66,13 @@ class ItemPage(
             MediaType.ARTIST -> Unit
             MediaType.ALBUM -> {
                 waitForTab(Res.string.media_type_tracks.get())
-                composeTestRule.onNode(isTab(Res.string.media_type_albums.get()))
+                composeTestRule.onNodeInContent(isTab(Res.string.media_type_albums.get()))
                     .assertIsNotDisplayed()
             }
 
             MediaType.TRACK -> {
                 waitForTab(Res.string.media_type_albums.get())
-                composeTestRule.onNode(isTab(Res.string.item_tab_versions.get()))
+                composeTestRule.onNodeInContent(isTab(Res.string.item_tab_versions.get()))
                     .assertIsDisplayed()
             }
 
@@ -102,7 +99,7 @@ class ItemPage(
      */
     private fun waitForTab(label: String) {
         composeTestRule.waitUntil("tab '$label' is displayed") {
-            composeTestRule.onNode(isTab(label)).isDisplayed()
+            composeTestRule.onNodeInContent(isTab(label)).isDisplayed()
         }
     }
 
@@ -135,7 +132,8 @@ class ItemPage(
             .onNodeWithContentDescription(Res.string.cd_provider_filter.get(row, current))
             .performClick()
         composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText(current))).assertExists()
-        composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText(provider))).assertDoesNotExist()
+        composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText(provider)))
+            .assertDoesNotExist()
         return this
     }
 

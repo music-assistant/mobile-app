@@ -87,9 +87,9 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.search.SearchInput
 import io.music_assistant.client.ui.contentColorByLuminance
-import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
-import io.music_assistant.client.utils.WindowClass
+import io.music_assistant.client.ui.utils.WindowClass
+import io.music_assistant.client.ui.utils.fadingEdges
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_lyrics

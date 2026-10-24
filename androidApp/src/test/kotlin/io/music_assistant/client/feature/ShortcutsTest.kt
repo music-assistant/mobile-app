@@ -14,7 +14,7 @@ import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertPlayer
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.home_shortcuts
+import musicassistantclient.composeapp.generated.resources.discover_shortcuts
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +59,6 @@ class ShortcutsTest {
     @Test
     fun `does not show shortcuts if there aren't any`() {
         launchLoggedInApp(composeTestRule, serviceClient)
-        composeTestRule.onNodeWithText(Res.string.home_shortcuts.get()).assertIsNotDisplayed()
+        composeTestRule.onNodeWithText(Res.string.discover_shortcuts.get()).assertIsNotDisplayed()
     }
 }

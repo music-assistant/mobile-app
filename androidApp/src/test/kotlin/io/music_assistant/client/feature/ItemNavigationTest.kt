@@ -19,7 +19,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_track
-import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.nav_discover
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,7 +59,7 @@ class ItemNavigationTest {
                 serverMediaItem = album,
                 action = Res.string.action_go_to_artist.get(),
                 target = artist,
-                navigationItem = Res.string.nav_home.get(),
+                navigationItem = Res.string.nav_discover.get(),
             )
     }
 
@@ -74,7 +74,7 @@ class ItemNavigationTest {
                 serverMediaItem = track,
                 action = Res.string.action_go_to_album.get(),
                 target = album,
-                navigationItem = Res.string.nav_home.get(),
+                navigationItem = Res.string.nav_discover.get(),
             )
     }
 
@@ -89,7 +89,7 @@ class ItemNavigationTest {
                 serverMediaItem = track,
                 action = Res.string.action_go_to_track.get(),
                 target = track,
-                navigationItem = Res.string.nav_home.get(),
+                navigationItem = Res.string.nav_discover.get(),
             )
             .assertMediaDisplayed(album)
     }
@@ -105,7 +105,7 @@ class ItemNavigationTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
             .expandPlayer(player.displayName, playing = true, item = track.name)
-            .goToTrack(track.name, navigationItem = "Home")
+            .goToTrack(track.name, navigationItem = Res.string.nav_discover.get())
     }
 
     @Test
@@ -120,7 +120,7 @@ class ItemNavigationTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
             .expandPlayer(player.displayName, playing = true, item = track.name)
-            .goToArtist(artist.name, navigationItem = "Home")
+            .goToArtist(artist.name, navigationItem = Res.string.nav_discover.get())
     }
 
     @Test
@@ -135,7 +135,7 @@ class ItemNavigationTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .playMedia(track)
             .expandPlayer(player.displayName, playing = true, item = track.name)
-            .goToAlbum(album.name, navigationItem = "Home")
+            .goToAlbum(album.name, navigationItem = Res.string.nav_discover.get())
     }
 
     @Test
