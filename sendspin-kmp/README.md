@@ -142,12 +142,20 @@ version for this change, and write it in the changelog.
 
 ### Publish a version
 
-1. Set `sendspinVersion` in the root `gradle.properties`.
-2. Add the version to `CHANGELOG.md`.
-3. Merge the change, then push the tag `sendspin-v<version>`.
+The `sendspin-release.yml` workflow runs the module tests and the public API check. Then it
+publishes the version, pushes the tag `sendspin-v<version>`, and creates the GitHub Release. At
+the end, it opens a draft PR that increases the minor version.
 
-The `publish-sendspin.yml` workflow runs the module tests and publishes the version. Do not
-publish a version two times, because GitHub Packages refuses a second upload.
+1. Make sure that `sendspinVersion` in the root `gradle.properties` is the version to publish.
+2. Write the changes in the `## <version>` section of `CHANGELOG.md`. The workflow stops if
+   this section is empty.
+3. Start the workflow. Add the `sendspin_release` label to a PR and merge the PR into `main`,
+   or start the workflow manually.
+4. Merge the version bump PR. It also adds an empty section for the next version to
+   `CHANGELOG.md`.
+
+The workflow stops if the tag exists, because GitHub Packages refuses a second upload of a
+version. For a patch release, change the version in the bump PR before you merge it.
 
 ## Use the module
 

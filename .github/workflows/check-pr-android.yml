@@ -17,34 +17,34 @@ jobs:
 
     steps:
       - name: Skip for version bump PRs
-        if: ${{ startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ startsWith(github.head_ref, 'chore/bump-android-v') || startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: echo "Version bump PR — skipping build"
 
       - name: Checkout code
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 21
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Grant execute permission for gradlew
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: chmod +x ./gradlew
 
       - name: Build debug APK
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew :androidApp:assembleDebug
 
       - name: Run tests
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew :androidApp:testDebug testAndroidHostTest
 
       - name: Run lint
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew :androidApp:lintDebug

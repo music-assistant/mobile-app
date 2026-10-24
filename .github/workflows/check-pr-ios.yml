@@ -33,24 +33,24 @@ jobs:
 
     steps:
       - name: Skip for version bump PRs
-        if: ${{ startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ startsWith(github.head_ref, 'chore/bump-ios-build-') || startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: echo "Version bump PR — skipping compile"
 
       - name: Checkout code
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up JDK 21
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Restore simulator build caches
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         id: simulator-cache
         uses: actions/cache/restore@v6
         with:
@@ -68,7 +68,7 @@ jobs:
       # version/patch bumps trigger a redownload automatically. Keep in
       # sync with ios-release.yml and IOS-BUILD-INSTRUCTIONS.md.
       - name: Cache WebRTC.xcframework
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         id: cache-webrtc
         uses: actions/cache/restore@v6
         with:
@@ -76,7 +76,7 @@ jobs:
           key: webrtc-xcframework-m125-cow-bloat-fix.1
 
       - name: Download WebRTC.xcframework
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && steps.cache-webrtc.outputs.cache-hit != 'true' }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') && steps.cache-webrtc.outputs.cache-hit != 'true' }}
         run: |
           set -euo pipefail
           curl -L --fail \
@@ -88,22 +88,22 @@ jobs:
           test -d iosApp/Frameworks/WebRTC.xcframework/ios-arm64/WebRTC.framework
 
       - name: Grant execute permission for gradlew
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: chmod +x ./gradlew
 
       # Kotlin/Native tests cover shared Kotlin code, including artwork bridge behavior;
       # the separate XCTest step below covers the native Swift test target.
       - name: Run iOS Kotlin/Native tests
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew iosSimulatorArm64Test
 
       # The sendspin-kmp ABI dump comes from the iOS klibs, which need macOS.
       - name: Check the sendspin-kmp public API
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew :sendspin-kmp:checkKotlinAbi
 
       - name: Run native XCTest suite
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./scripts/test-ios.sh
 
       # Simulator destination + signing disabled gives us a compile-only pass:
@@ -111,7 +111,7 @@ jobs:
       # Swift compiles against the real iOS 26 SDK. No provisioning profile or
       # distribution cert required.
       - name: Build (no signing, simulator target)
-        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') }}
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-ios-build-') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: |
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
