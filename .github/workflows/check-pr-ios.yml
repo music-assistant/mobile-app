@@ -27,6 +27,9 @@ concurrency:
 jobs:
   compile:
     runs-on: macos-26
+    # A normal run takes 11-15 minutes. Without a limit, a hung test holds the
+    # macOS runner for the 6-hour default.
+    timeout-minutes: 45
 
     steps:
       - name: Skip for version bump PRs

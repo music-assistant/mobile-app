@@ -8,11 +8,13 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
+import androidx.compose.ui.test.performTouchInput
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.withinTag
@@ -22,6 +24,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_track
+import musicassistantclient.composeapp.generated.resources.action_start_endless_mix
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer_off
@@ -134,6 +137,22 @@ class ExpandedPlayerPage(
         composeTestRule
             .onNodeWithText(Res.string.queue_label_with_position.get(currentPosition, size))
             .performClick()
+        return this
+    }
+
+    /** Long-presses the queue row [title] and picks "Start endless mix". */
+    fun startEndlessMixFromQueue(title: String): ExpandedPlayerPage {
+        composeTestRule
+            .onNode(withinTag(CollapsibleQueueSemantics.QUEUE_TAG).and(hasText(title)))
+            .performTouchInput { longClick() }
+        composeTestRule.onNodeWithText(Res.string.action_start_endless_mix.get()).performClick()
+        return this
+    }
+
+    fun assertNotInQueue(title: String): ExpandedPlayerPage {
+        composeTestRule
+            .onNode(withinTag(CollapsibleQueueSemantics.QUEUE_TAG).and(hasText(title)))
+            .assertDoesNotExist()
         return this
     }
 
