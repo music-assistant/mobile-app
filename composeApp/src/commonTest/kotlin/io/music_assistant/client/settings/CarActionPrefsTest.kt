@@ -130,6 +130,36 @@ class CarActionPrefsTest {
     fun toCarDispatchMapsPlainOptions() {
         assertEquals(QueueOption.REPLACE, DefaultClickOption.PLAY_NOW.toCarDispatch().option)
         assertFalse(DefaultClickOption.PLAY_NOW.toCarDispatch().endlessMixMode)
+        assertFalse(DefaultClickOption.PLAY_NOW.toCarDispatch().shuffle)
         assertTrue(DefaultClickOption.START_ENDLESS_MIX.toCarDispatch().endlessMixMode)
+    }
+
+    @Test
+    fun playShuffledReplacesTheQueueWithTheShuffleFlag() {
+        val dispatch = DefaultClickOption.PLAY_SHUFFLED.toCarDispatch()
+        assertEquals(CarDispatch(QueueOption.REPLACE, endlessMixMode = false, shuffle = true), dispatch)
+    }
+
+    @Test
+    fun playShuffledIsABulkActionForOrderedContainersOnly() {
+        CarPlatform.entries.forEach { platform ->
+            val offered = carBrowsableKinds.filter { DefaultClickOption.PLAY_SHUFFLED.isCarSupported(platform, it) }
+            assertEquals(listOf(ItemKind.ARTIST, ItemKind.ALBUM, ItemKind.PLAYLIST), offered, "bulk kinds on $platform")
+            carPlayableKinds.forEach { kind ->
+                assertFalse(
+                    DefaultClickOption.PLAY_SHUFFLED.isCarSupported(platform, kind),
+                    "PLAY_SHUFFLED must not be a tap action for $kind on $platform",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun aStoredPlayShuffledBulkActionSurvivesTheFilterForAnAlbum() {
+        val seeded = mapOf(ItemKind.ALBUM to listOf(DefaultClickOption.PLAY_SHUFFLED, DefaultClickOption.PLAY_NOW))
+        assertEquals(
+            listOf(DefaultClickOption.PLAY_SHUFFLED, DefaultClickOption.PLAY_NOW),
+            seeded.carBulkActions(ItemKind.ALBUM, CarPlatform.ANDROID_AUTO),
+        )
     }
 }

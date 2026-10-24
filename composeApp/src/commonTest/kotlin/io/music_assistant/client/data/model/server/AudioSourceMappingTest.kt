@@ -111,6 +111,7 @@ class AudioSourceMappingTest {
             canAddToPlaylist = false,
             canRemoveFromPlaylist = false,
             progressSupported = false,
+            playMediaSupport = PlayMediaSupport(shuffle = true, startFromBeginning = true),
             customizationAllowed = true,
         )
 

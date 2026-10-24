@@ -110,9 +110,7 @@ fun LibraryListScreen(
         ItemListContent(
             data = state.dataState,
             onNavigateClick = onNavigateClick,
-            onPlayClick = { item, option, radio, _ ->
-                libraryListViewModel.onPlayClick(item, option, radio)
-            },
+            onPlayClick = libraryListViewModel::onPlayClick,
             onCreatePlaylist = libraryListViewModel::createPlaylist.takeIf {
                 state.mediaType == MediaType.PLAYLIST && LocalGrantedScopes.current.canEditLibrary
             },

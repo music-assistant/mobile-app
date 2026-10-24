@@ -26,6 +26,7 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -489,20 +490,13 @@ class ItemDetailsViewModel(
         }
     }
 
-    fun onPlayClick(option: QueueOption, radio: Boolean) {
-        (_state.value.itemState as? DataState.Data)?.data?.let {
-            onPlayClick(it, option, radio, false)
-        }
+    fun onPlayClick(mode: PlayMode) {
+        (_state.value.itemState as? DataState.Data)?.data?.let { onPlayClick(it, mode) }
     }
 
-    fun onPlayClick(
-        item: AppMediaItem,
-        option: QueueOption,
-        endlessMix: Boolean,
-        fromHereInParent: Boolean,
-    ) {
+    fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
         val parent = (_state.value.itemState as? DataState.Data)?.data
-        val (itemToPlay, startItem) = if (fromHereInParent && parent != null) {
+        val (itemToPlay, startItem) = if (mode.fromHereInParent && parent != null) {
             Pair(parent, item)
         } else {
             Pair(item, null)
@@ -511,16 +505,18 @@ class ItemDetailsViewModel(
         val mediaUri = itemToPlay.mediaUri ?: return
         mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
             Logger.withTag("PlayDispatch").i {
-                "ItemDetailsViewModel.onPlayClick: uri=$mediaUri option=$option " +
-                        "endlessMix=$endlessMix startItem=${startItem?.itemId} queue=$queueId"
+                "ItemDetailsViewModel.onPlayClick: uri=$mediaUri mode=$mode " +
+                        "startItem=${startItem?.itemId} queue=$queueId"
             }
             playDispatcher.play(
                 PlayRequest(
                     queueOrPlayerId = queueId,
                     media = listOf(mediaUri),
-                    option = option,
-                    endlessMixMode = endlessMix && item !is Genre,
+                    option = mode.option,
+                    endlessMixMode = mode.endlessMix && item !is Genre,
                     startItem = startItem?.itemId,
+                    shuffle = mode.shuffle,
+                    startFromBeginning = mode.startFromBeginning,
                 ),
             )
         }

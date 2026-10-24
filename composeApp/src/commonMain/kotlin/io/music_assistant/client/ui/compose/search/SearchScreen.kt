@@ -144,9 +144,7 @@ fun SearchScreen(
                         else -> Unit
                     }
                 },
-                onPlayClick = { track, option, radio, _ ->
-                    searchViewModel.onPlayClick(track, option, radio)
-                },
+                onPlayClick = searchViewModel::onPlayClick,
                 playlistActions = actionsViewModel,
                 libraryActions = actionsViewModel,
                 progressActions = actionsViewModel,

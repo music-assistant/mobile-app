@@ -15,6 +15,7 @@ enum class DefaultClickOption {
     ADD_TO_QUEUE,
     START_ENDLESS_MIX,
     PLAY_FROM_HERE,
+    PLAY_SHUFFLED,
     ;
 
     /** Whether this action is ever meaningful for [kind] — gates the matrix ROW. */
@@ -26,6 +27,9 @@ enum class DefaultClickOption {
             ItemKind.PLAYLIST,
         )
 
+        // Containers with an order worth shuffling. A podcast or an audiobook is heard in order.
+        PLAY_SHUFFLED -> kind in setOf(ItemKind.ALBUM, ItemKind.ARTIST, ItemKind.PLAYLIST)
+
         else -> true
     }
 
@@ -35,7 +39,7 @@ enum class DefaultClickOption {
      * only in Album/Playlist); currently everything applicable is available everywhere.
      */
     fun isAvailableIn(context: ClickContext, kind: ItemKind): Boolean = when (this) {
-        PLAY_FROM_HERE -> context == ClickContext.ALBUM || context == ClickContext.PLAYLIST
+        PLAY_FROM_HERE -> context in setOf(ClickContext.ALBUM, ClickContext.PLAYLIST, ClickContext.PODCAST)
         else -> when (context) {
             ClickContext.ARTIST,
             ClickContext.PLAYLIST,

@@ -806,7 +806,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     private static func actionStartsPlayback(_ name: String) -> Bool {
         switch name {
         case "ADD_TO_QUEUE", "INSERT_NEXT": return false
-        default: return true // PLAY_NOW, INSERT_NEXT_AND_PLAY, START_ENDLESS_MIX
+        default: return true // PLAY_NOW, INSERT_NEXT_AND_PLAY, START_ENDLESS_MIX, PLAY_SHUFFLED
         }
     }
 
@@ -816,6 +816,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         case "INSERT_NEXT": return "text.insert"
         case "INSERT_NEXT_AND_PLAY": return "play.circle"
         case "START_ENDLESS_MIX": return "dot.radiowaves.left.and.right"
+        case "PLAY_SHUFFLED": return "shuffle"
         default: return "play.fill" // PLAY_NOW
         }
     }
