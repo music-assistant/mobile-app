@@ -25,5 +25,5 @@ internal fun coalesce(
 private val QueueOption.startsPlayback: Boolean
     get() = when (this) {
         QueueOption.PLAY, QueueOption.REPLACE -> true
-        QueueOption.NEXT, QueueOption.ADD -> false
+        QueueOption.NEXT, QueueOption.ADD, QueueOption.REPLACE_NEXT -> false
     }

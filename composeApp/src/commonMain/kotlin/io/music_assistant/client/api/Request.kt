@@ -870,6 +870,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             option: QueueOption,
             endlessMixMode: Boolean,
             startItem: String? = null,
+            shuffle: Boolean = false,
+            startFromBeginning: Boolean = false,
         ) = Request(
             command = APICommands.PLAYER_QUEUES_PLAY_MEDIA,
             args = buildJsonObject {
@@ -878,6 +880,10 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("radio_mode", JsonPrimitive(endlessMixMode))
                 put("queue_id", JsonPrimitive(queueOrPlayerId))
                 startItem?.let { put("start_item", JsonPrimitive(it)) }
+                // Absent flags keep the default of the server: an omitted `shuffle` follows the
+                // queue setting, and a server before the flag ignores an unknown argument anyway.
+                if (shuffle) put("shuffle", JsonPrimitive(true))
+                if (startFromBeginning) put("start_from_beginning", JsonPrimitive(true))
             },
         )
 

@@ -8,13 +8,13 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.server.supportsFavoriteCurrentlyPlaying
 import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -190,21 +190,19 @@ class ActionsViewModel(
         }
     }
 
-    fun onPlayClick(
-        item: AppMediaItem,
-        option: QueueOption,
-        radio: Boolean,
-    ) {
+    fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
         val queueId = dataSource.selectedPlayer?.queueOrPlayerId ?: return
         item.mediaUri?.let { mediaUri ->
             Logger.withTag("PlayDispatch")
-                .i { "ActionsViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+                .i { "ActionsViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
             playDispatcher.play(
                 PlayRequest(
                     queueOrPlayerId = queueId,
                     media = listOf(mediaUri),
-                    option = option,
-                    endlessMixMode = radio && item !is Genre,
+                    option = mode.option,
+                    endlessMixMode = mode.endlessMix && item !is Genre,
+                    shuffle = mode.shuffle,
+                    startFromBeginning = mode.startFromBeginning,
                 ),
             )
         }

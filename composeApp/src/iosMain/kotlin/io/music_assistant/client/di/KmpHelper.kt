@@ -508,11 +508,17 @@ object KmpHelper : KoinComponent {
     fun playOnLocalPlayer(item: AppMediaItem, option: QueueOption): Boolean =
         dispatchLocal(item, option, endlessMixMode = false)
 
-    private fun dispatchLocal(item: AppMediaItem, option: QueueOption, endlessMixMode: Boolean): Boolean {
+    private fun dispatchLocal(
+        item: AppMediaItem,
+        option: QueueOption,
+        endlessMixMode: Boolean,
+        shuffle: Boolean = false,
+    ): Boolean {
         return dispatchLocal(
             mediaUris = listOfNotNull(item.mediaUri),
             option = option,
             endlessMixMode = endlessMixMode,
+            shuffle = shuffle,
         )
     }
 
@@ -521,6 +527,7 @@ object KmpHelper : KoinComponent {
         option: QueueOption,
         endlessMixMode: Boolean,
         startItem: String? = null,
+        shuffle: Boolean = false,
     ): Boolean {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
@@ -530,6 +537,7 @@ object KmpHelper : KoinComponent {
             option = option,
             endlessMixMode = endlessMixMode,
             startItem = startItem,
+            shuffle = shuffle,
         ) ?: return false
         plan.detachFrom?.let { syncedToId ->
             log.i { "dispatchLocal($option, endlessMix=$endlessMixMode): detaching ${plan.playerId} from $syncedToId" }
@@ -560,7 +568,7 @@ object KmpHelper : KoinComponent {
     fun playCarAction(item: AppMediaItem, actionName: String): Boolean {
         val action = runCatching { DefaultClickOption.valueOf(actionName) }.getOrNull() ?: return false
         val dispatch = action.toCarDispatch()
-        return dispatchLocal(item, dispatch.option, dispatch.endlessMixMode)
+        return dispatchLocal(item, dispatch.option, dispatch.endlessMixMode, dispatch.shuffle)
     }
 
     /**
@@ -584,6 +592,7 @@ object KmpHelper : KoinComponent {
                 option = dispatch.option,
                 endlessMixMode = dispatch.endlessMixMode,
                 startItem = dispatch.startItem,
+                shuffle = dispatch.shuffle,
             )
         ) {
             action.name

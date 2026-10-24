@@ -519,6 +519,7 @@ class AutoLibrary(
         DefaultClickOption.INSERT_NEXT -> "Add all next"
         DefaultClickOption.ADD_TO_QUEUE -> "Add all to queue"
         DefaultClickOption.START_ENDLESS_MIX -> "Start endless mix"
+        DefaultClickOption.PLAY_SHUFFLED -> "Play all shuffled"
         else -> throw IllegalArgumentException("$name not supported by Android Auto!")
     }
 
@@ -529,6 +530,7 @@ class AutoLibrary(
         DefaultClickOption.INSERT_NEXT, DefaultClickOption.ADD_TO_QUEUE ->
             android.R.drawable.ic_menu_add
         DefaultClickOption.START_ENDLESS_MIX -> android.R.drawable.ic_menu_compass
+        DefaultClickOption.PLAY_SHUFFLED -> R.drawable.baseline_shuffle_24
         else -> throw IllegalArgumentException("$name not supported by Android Auto!")
     }
 
@@ -870,6 +872,7 @@ class AutoLibrary(
         option: QueueOption,
         endlessMixMode: Boolean = false,
         startItem: String? = null,
+        shuffle: Boolean = false,
     ) {
         val player = mainDataSource.localPlayer.value?.player
         val plan = planLocalPlayerDispatch(
@@ -879,6 +882,7 @@ class AutoLibrary(
             option = option,
             endlessMixMode = endlessMixMode,
             startItem = startItem,
+            shuffle = shuffle,
         )
         if (plan == null) {
             androidAutoLog.w {
@@ -954,7 +958,9 @@ class AutoLibrary(
         }
 
         val dispatch = action.toCarDispatch()
-        scope.launch { dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.endlessMixMode) }
+        scope.launch {
+            dispatchToLocalPlayer(listOf(uri), dispatch.option, dispatch.endlessMixMode, shuffle = dispatch.shuffle)
+        }
     }
 
     private fun rootTabItem(tabName: String, tabId: String): MediaItem =

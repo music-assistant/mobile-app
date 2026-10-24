@@ -29,7 +29,7 @@ class CategoryRowTest {
             CategoryRow(
                 itemCategory = itemCategory,
                 onNavigateClick = {},
-                onPlayClick = { _, _, _, _ -> },
+                onPlayClick = { _, _ -> },
                 playlistActions = StubPlaylistActions(),
                 libraryActions = StubLibraryActions(),
                 providerIconFetcher = { _, _, _ -> },
@@ -56,7 +56,7 @@ class CategoryRowTest {
             CategoryRow(
                 itemCategory = itemCategory,
                 onNavigateClick = {},
-                onPlayClick = { _, _, _, _ -> },
+                onPlayClick = { _, _ -> },
                 playlistActions = StubPlaylistActions(),
                 libraryActions = StubLibraryActions(),
                 providerIconFetcher = { _, _, _ -> },

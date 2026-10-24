@@ -463,7 +463,7 @@ fun PreviewCategoryRowEmpty() {
     CategoryRow(
         title = "Category",
         onNavigateClick = {},
-        onPlayClick = { _, _, _, _ -> },
+        onPlayClick = { _, _ -> },
         mediaItems = emptyList(),
         playlistActions = object : PlaylistActions {
             override suspend fun getEditablePlaylists(): List<Playlist> {
@@ -504,7 +504,7 @@ fun PreviewCategoryLoading() {
             )
         },
         onNavigateClick = {},
-        onPlayClick = { _, _, _, _ -> },
+        onPlayClick = { _, _ -> },
         playlistActions = object : PlaylistActions {
             override suspend fun getEditablePlaylists(): List<Playlist> {
                 TODO("Not yet implemented")
@@ -544,7 +544,7 @@ fun PreviewCategoryNoData() {
             )
         },
         onNavigateClick = {},
-        onPlayClick = { _, _, _, _ -> },
+        onPlayClick = { _, _ -> },
         playlistActions = object : PlaylistActions {
             override suspend fun getEditablePlaylists(): List<Playlist> {
                 TODO("Not yet implemented")

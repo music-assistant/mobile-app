@@ -75,6 +75,7 @@ data class CarItemDispatch(
     val option: QueueOption,
     val endlessMixMode: Boolean,
     val startItem: String? = null,
+    val shuffle: Boolean = false,
 )
 
 /**
@@ -114,11 +115,12 @@ fun planCarItemDispatch(
         mediaUris = listOf(mediaUri),
         option = dispatch.option,
         endlessMixMode = dispatch.endlessMixMode,
+        shuffle = dispatch.shuffle,
     )
 }
 
-/** How a [DefaultClickOption] is dispatched to a player: queue option + radio-mode flag. */
-data class CarDispatch(val option: QueueOption, val endlessMixMode: Boolean)
+/** How a [DefaultClickOption] is dispatched to a player: queue option + radio-mode and shuffle flags. */
+data class CarDispatch(val option: QueueOption, val endlessMixMode: Boolean, val shuffle: Boolean = false)
 
 /** The single source for turning a chosen action into a play_media dispatch (AA and CarPlay share it). */
 fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
@@ -127,6 +129,8 @@ fun DefaultClickOption.toCarDispatch(): CarDispatch = when (this) {
     DefaultClickOption.INSERT_NEXT -> CarDispatch(QueueOption.NEXT, endlessMixMode = false)
     DefaultClickOption.ADD_TO_QUEUE -> CarDispatch(QueueOption.ADD, endlessMixMode = false)
     DefaultClickOption.START_ENDLESS_MIX -> CarDispatch(QueueOption.REPLACE, endlessMixMode = true)
+    // A car has no schema gate: a server before the `shuffle` flag plays the container in order.
+    DefaultClickOption.PLAY_SHUFFLED -> CarDispatch(QueueOption.REPLACE, endlessMixMode = false, shuffle = true)
     // PLAY_FROM_HERE isn't a plain queue-option dispatch — it needs a parent URI + start item,
     // so Android Auto and CarPlay resolve it through their parent-aware call sites, never here.
     DefaultClickOption.PLAY_FROM_HERE ->

@@ -4,11 +4,17 @@ import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.MediaCollection
+import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.server.PlayMediaSupport
 
 /** Item types accepted by playlist edits (server contract, not a UI choice). */
 val AppMediaItem.supportsAddToPlaylist: Boolean
@@ -16,9 +22,22 @@ val AppMediaItem.supportsAddToPlaylist: Boolean
             this is PodcastEpisode || this is Audiobook
 
 /**
- * Long-click menu shows the union: playback block (Play Now / Insert Next & Play / Insert Next /
- * Add to Bottom / Start endless mix) followed by library, favorite, playlist and progress entries.
- * Each of the latter writes the library, so [canEditLibrary] (`library.write`) gates them all.
+ * Containers with an order worth shuffling, the same set as the web app. A podcast and an
+ * audiobook are heard in order, and a single track has nothing to shuffle.
+ */
+val AppMediaItem.canPlayShuffled: Boolean
+    get() = this is Album || this is Artist || this is Playlist || this is Genre ||
+            this is MediaCollection || this is RecommendationFolder
+
+/** A started or finished episode, which "Play from beginning" restarts. */
+private val PodcastEpisode.hasProgress: Boolean
+    get() = fullyPlayed == true || (resumePositionMs ?: 0L) > 0L
+
+/**
+ * Long-click menu shows the union: the playback block ([addPlaybackActions]) followed by library,
+ * favorite, playlist and progress entries. Each of the latter writes the library, so
+ * [canEditLibrary] (`library.write`) gates them all. [playMediaSupport] gates the entries whose
+ * `play_media` flag an older server ignores.
  */
 fun resolveLongClickActions(
     item: AppMediaItem,
@@ -29,6 +48,7 @@ fun resolveLongClickActions(
     canAddToPlaylist: Boolean,
     canRemoveFromPlaylist: Boolean,
     progressSupported: Boolean,
+    playMediaSupport: PlayMediaSupport,
     defaultAction: ItemAction? = null,
     customizationAllowed: Boolean = false,
 ): List<ItemAction> = buildList {
@@ -37,7 +57,7 @@ fun resolveLongClickActions(
         if (item.isPlayable) add(ItemAction.Play(QueueOption.REPLACE))
         return@buildList
     }
-    if (item.isPlayable) addPlaybackActions(item, clickContext)
+    if (item.isPlayable) addPlaybackActions(item, clickContext, playMediaSupport)
     if (customizationAllowed) add(ItemAction.Customize)
     if (!canEditLibrary) return@buildList
     if (librarySupported) {
@@ -67,25 +87,36 @@ fun resolveLongClickActions(
 fun resolvePlayButtonActions(
     item: AppMediaItem,
     default: ItemAction?,
+    playMediaSupport: PlayMediaSupport,
     customizationAllowed: Boolean = false,
 ): List<ItemAction> =
     buildList {
-        if (item.isPlayable) addPlaybackActions(item)
+        if (item.isPlayable) addPlaybackActions(item, support = playMediaSupport)
         if (customizationAllowed) add(ItemAction.Customize)
     }.filterNot { it == default }
 
-/** The playback block: Play Now / Insert Next & Play / Insert Next / Add to Bottom / Start Radio. */
+/** The contexts whose list is a container that plays on from the long-pressed item. */
+private val FROM_HERE_CONTEXTS = setOf(ClickContext.ALBUM, ClickContext.PLAYLIST, ClickContext.PODCAST)
+
+/**
+ * The playback block: the five queue options, then Play from here, Play shuffled, Play from
+ * beginning and Start endless mix, each when it applies.
+ */
 private fun MutableList<ItemAction>.addPlaybackActions(
     item: AppMediaItem,
     context: ClickContext? = null,
+    support: PlayMediaSupport,
 ) {
     add(ItemAction.Play(QueueOption.REPLACE))
     add(ItemAction.Play(QueueOption.PLAY))
     add(ItemAction.Play(QueueOption.NEXT))
     add(ItemAction.Play(QueueOption.ADD))
+    add(ItemAction.Play(QueueOption.REPLACE_NEXT))
 
-    if (context == ClickContext.ALBUM || context == ClickContext.PLAYLIST) {
-        add(ItemAction.PlayFromHere)
+    if (context in FROM_HERE_CONTEXTS) add(ItemAction.PlayFromHere)
+    if (support.shuffle && item.canPlayShuffled) add(ItemAction.PlayShuffled)
+    if (support.startFromBeginning && item is PodcastEpisode && item.hasProgress) {
+        add(ItemAction.PlayFromBeginning)
     }
 
     if (item.canStartEndlessMix) add(ItemAction.StartEndlessMix)

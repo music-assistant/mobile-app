@@ -45,7 +45,7 @@ fun MediaType.toItemKind(): ItemKind? = when (this) {
 
 /** Which context columns this kind shows in the customize dialog. */
 fun ItemKind.appearsIn(context: ClickContext): Boolean = when (this) {
-    ItemKind.TRACK -> context != ClickContext.DETAIL
+    ItemKind.TRACK -> context != ClickContext.DETAIL && context != ClickContext.PODCAST
     ItemKind.RADIO -> context in setOf(
         ClickContext.HOME,
         ClickContext.LIBRARY,
@@ -53,7 +53,7 @@ fun ItemKind.appearsIn(context: ClickContext): Boolean = when (this) {
         ClickContext.SEARCH,
     )
     ItemKind.PODCAST_EPISODE ->
-        context in setOf(ClickContext.HOME, ClickContext.BROWSE, ClickContext.SEARCH)
+        context in setOf(ClickContext.HOME, ClickContext.BROWSE, ClickContext.SEARCH, ClickContext.PODCAST)
     ItemKind.ALBUM,
     ItemKind.ARTIST,
     ItemKind.PLAYLIST,
