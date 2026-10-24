@@ -52,16 +52,27 @@ jobs:
           echo "tag=sendspin-v${VERSION}" >> "$GITHUB_OUTPUT"
 
       # GitHub Packages refuses a second upload of a version, so stop before the build.
+      # A tag on this same commit means that an earlier run failed after the tag push:
+      # this run resumes it, and the later steps skip or repeat their work safely.
       - name: Guard against duplicate tag
         id: guard
         run: |
           git fetch --tags
-          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump sendspinVersion in gradle.properties before releasing."
-            exit 1
+          TAG='${{ steps.version.outputs.tag }}'
+          RESUME=false
+          if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            if [ "$(git rev-parse "${TAG}^{commit}")" = "$(git rev-parse HEAD)" ]; then
+              echo "::notice::Tag ${TAG} already points at this commit; this run resumes an earlier release."
+              RESUME=true
+            else
+              echo "::error::Tag ${TAG} already exists on another commit. Bump sendspinVersion in gradle.properties before releasing."
+              exit 1
+            fi
           fi
+          echo "resume=${RESUME}" >> "$GITHUB_OUTPUT"
           # Previous sendspin tag, so the PR list never counts from an app tag
-          echo "prev_tag=$(git tag -l 'sendspin-v*' --sort=-v:refname | head -1)" >> "$GITHUB_OUTPUT"
+          PREV_TAG=$(git tag -l 'sendspin-v*' --sort=-v:refname | { grep -vxF "$TAG" || true; } | head -1)
+          echo "prev_tag=${PREV_TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Extract the CHANGELOG section
         run: |
@@ -109,12 +120,50 @@ jobs:
             :app:compileDebugKotlin :app:minifyReleaseWithR8 :app:checkReleasePermissions \
             -PsendspinVersion='${{ steps.version.outputs.name }}'
 
+      # A rerun after a failure past the upload must not upload again: GitHub Packages
+      # refuses a second upload of a version (409). Skip the upload only when every
+      # publication of the version is there. A partial upload needs a manual cleanup.
+      - name: Check for an earlier upload of this version
+        id: uploaded
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION='${{ steps.version.outputs.name }}'
+          BASE="https://maven.pkg.github.com/${GITHUB_REPOSITORY}/io/github/music-assistant"
+          FOUND=0
+          TOTAL=0
+          for ARTIFACT in sendspin-kmp sendspin-kmp-android sendspin-kmp-iosarm64 sendspin-kmp-iossimulatorarm64; do
+            TOTAL=$((TOTAL + 1))
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' -u "${GITHUB_ACTOR}:${GITHUB_TOKEN}" \
+              "${BASE}/${ARTIFACT}/${VERSION}/${ARTIFACT}-${VERSION}.pom")
+            case "$CODE" in
+              200) FOUND=$((FOUND + 1)) ;;
+              401|403)
+                echo "::error::GitHub Packages refused the token (HTTP ${CODE}) for ${ARTIFACT} ${VERSION}."
+                exit 1
+                ;;
+              404) ;;
+              *) echo "::notice::GitHub Packages answered HTTP ${CODE} for ${ARTIFACT} ${VERSION}; counted as not uploaded." ;;
+            esac
+          done
+          if [ "$FOUND" -eq 0 ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          elif [ "$FOUND" -eq "$TOTAL" ]; then
+            echo "::notice::Version ${VERSION} is already in GitHub Packages; the upload is skipped."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Only ${FOUND} of ${TOTAL} publications of ${VERSION} are in GitHub Packages. Delete version ${VERSION} of each sendspin-kmp package, then run the workflow again."
+            exit 1
+          fi
+
       - name: Publish to GitHub Packages
+        if: steps.uploaded.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :sendspin-kmp:publishAllPublicationsToGitHubPackagesRepository
 
       - name: Create and push tag
+        if: steps.guard.outputs.resume != 'true'
         run: |
           git tag -a "${{ steps.version.outputs.tag }}" -m "sendspin-kmp v${{ steps.version.outputs.name }}"
           git push origin "${{ steps.version.outputs.tag }}"
@@ -177,13 +226,21 @@ jobs:
       - name: Push version bump branch
         run: |
           NEXT='${{ steps.next.outputs.version }}'
+          if git ls-remote --exit-code --heads origin "${{ steps.next.outputs.branch }}" >/dev/null; then
+            echo "::notice::Branch ${{ steps.next.outputs.branch }} already exists; it is not pushed again."
+            exit 0
+          fi
           git fetch origin main
           git checkout -b "${{ steps.next.outputs.branch }}" origin/main
           perl -pi -e "s/^sendspinVersion=.*/sendspinVersion=${NEXT}/" gradle.properties
           awk -v h="## ${NEXT}" '!done && /^## / { print h; print ""; done = 1 } { print }' \
             sendspin-kmp/CHANGELOG.md > /tmp/CHANGELOG.md
           mv /tmp/CHANGELOG.md sendspin-kmp/CHANGELOG.md
-          git add gradle.properties sendspin-kmp/CHANGELOG.md
+          # The README dependency line names the version that this run released.
+          RELEASED='${{ steps.version.outputs.name }}' perl -pi -e \
+            's/(io\.github\.music-assistant:sendspin-kmp:)[0-9][0-9A-Za-z.+-]*/$1$ENV{RELEASED}/g' \
+            sendspin-kmp/README.md
+          git add gradle.properties sendspin-kmp/CHANGELOG.md sendspin-kmp/README.md
           git commit -m "chore: bump sendspin-kmp version to ${NEXT}"
           git push origin "${{ steps.next.outputs.branch }}"
 

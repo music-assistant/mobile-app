@@ -45,6 +45,18 @@ jobs:
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew :androidApp:testDebug testAndroidHostTest
 
+      # The sendspin-kmp README quick start against the local publication, on the consumer
+      # Kotlin floor. The release job runs the same check; here a break shows up in the PR.
+      # The Android consumer needs no iOS publication, so a Linux host is enough.
+      - name: Check sendspin-kmp as a consumer
+        if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
+        run: |
+          VERSION=$(grep -E '^sendspinVersion=' gradle.properties | cut -d= -f2)
+          ./gradlew :sendspin-kmp:publishToMavenLocal
+          ./gradlew -p sendspin-kmp/consumer-check \
+            :app:compileDebugKotlin :app:minifyReleaseWithR8 :app:checkReleasePermissions \
+            -PsendspinVersion="$VERSION"
+
       - name: Run lint
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') && !startsWith(github.head_ref, 'chore/bump-sendspin-v') }}
         run: ./gradlew :androidApp:lintDebug

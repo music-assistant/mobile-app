@@ -152,7 +152,8 @@ workflow publishes the library to `mavenLocal`, and then the application compile
 [Android quick start](#android-quick-start) against it. R8 shrinks the release build. The check
 stops if the library code that the application uses refers to a missing class. The check also
 stops if the merged manifest has no `INTERNET` or `ACCESS_NETWORK_STATE` permission. If you
-change the quick start, make the same change in `ConsumerCheckApplication.kt`.
+change the quick start, make the same change in `ConsumerCheckApplication.kt`. The Android pull
+request check also runs the consumer check, so a pull request shows a break before the release.
 
 To run the consumer check on your computer, run these commands from the repository root:
 
@@ -167,10 +168,22 @@ To run the consumer check on your computer, run these commands from the reposito
 3. Start the workflow. Add the `sendspin_release` label to a PR and merge the PR into `main`,
    or start the workflow manually.
 4. Merge the version bump PR. It also adds an empty section for the next version to
-   `CHANGELOG.md`.
+   `CHANGELOG.md`, and it sets the dependency line in this README to the released version.
 
 The workflow stops if the tag exists, because GitHub Packages refuses a second upload of a
 version. For a patch release, change the version in the bump PR before you merge it.
+
+If a run fails after the upload, start the workflow again before you merge other changes into
+`main`. The new run continues the release:
+
+- It skips the upload when GitHub Packages already has all publications of the version.
+- It keeps the tag if the tag is on the same commit, and it updates the GitHub Release.
+- It keeps the version bump branch if the branch exists.
+
+If GitHub Packages has only some publications of the version, the workflow stops. Then delete
+that version of each `sendspin-kmp` package in the package settings, and start the workflow
+again. If the tag is on a different commit, the workflow stops, because `main` changed after the
+first run.
 
 ## Use the module
 
