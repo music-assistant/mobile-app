@@ -10,8 +10,11 @@ import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.server.PlayMediaSupport
 import io.music_assistant.client.settings.DefaultClickOption
+import io.music_assistant.client.ui.compose.common.LocalPlayMediaSupport
 import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -23,6 +26,7 @@ import org.koin.compose.viewmodel.koinViewModel
 data class ClickActionConfig(
     val context: ClickContext?,
     val prefs: Map<ItemKind, Map<ClickContext, DefaultClickOption>>,
+    val playMediaSupport: PlayMediaSupport = PlayMediaSupport.NONE,
 ) {
     fun actionFor(item: AppMediaItem): DefaultClickOption {
         val ctx = context ?: return DefaultClickOption.PLAY_NOW
@@ -31,7 +35,7 @@ data class ClickActionConfig(
     }
 
     /** The concrete action a tap performs for [item], or null when it isn't playable. */
-    fun effectiveActionFor(item: AppMediaItem): ItemAction? = actionFor(item).effectiveFor(item)
+    fun effectiveActionFor(item: AppMediaItem): ItemAction? = actionFor(item).effectiveFor(item, playMediaSupport)
 }
 
 val LocalClickActionConfig = compositionLocalOf { ClickActionConfig(null, emptyMap()) }
@@ -58,7 +62,11 @@ fun ProvideClickActionPrefs(content: @Composable () -> Unit) {
 @Composable
 fun ProvideClickActions(context: ClickContext?, content: @Composable () -> Unit) {
     CompositionLocalProvider(
-        LocalClickActionConfig provides ClickActionConfig(context, LocalClickActionPrefs.current),
+        LocalClickActionConfig provides ClickActionConfig(
+            context = context,
+            prefs = LocalClickActionPrefs.current,
+            playMediaSupport = LocalPlayMediaSupport.current,
+        ),
         content,
     )
 }
@@ -71,20 +79,35 @@ fun DefaultClickOption.toItemAction(): ItemAction = when (this) {
     DefaultClickOption.ADD_TO_QUEUE -> ItemAction.Play(QueueOption.ADD)
     DefaultClickOption.START_ENDLESS_MIX -> ItemAction.StartEndlessMix
     DefaultClickOption.PLAY_FROM_HERE -> ItemAction.PlayFromHere
+    DefaultClickOption.PLAY_SHUFFLED -> ItemAction.PlayShuffled
 }
 
 /**
  * The action a click actually performs for a concrete item, or null when the item
- * isn't playable (click should open the menu instead). START_ENDLESS_MIX falls back to
- * Play Now when the item can't start an endless mix.
+ * isn't playable (click should open the menu instead). START_ENDLESS_MIX, PLAY_FROM_HERE and
+ * PLAY_SHUFFLED fall back to Play Now when the item, or the server ([support]), cannot do them.
  */
-fun DefaultClickOption.effectiveFor(item: AppMediaItem): ItemAction? {
+fun DefaultClickOption.effectiveFor(item: AppMediaItem, support: PlayMediaSupport): ItemAction? {
     if (!item.isPlayable) return null
     return when (this) {
         DefaultClickOption.START_ENDLESS_MIX ->
             if (item.canStartEndlessMix) ItemAction.StartEndlessMix else ItemAction.Play(QueueOption.REPLACE)
         DefaultClickOption.PLAY_FROM_HERE ->
-            if (item is Track) ItemAction.PlayFromHere else ItemAction.Play(QueueOption.REPLACE)
+            if (item is Track || item is PodcastEpisode) {
+                ItemAction.PlayFromHere
+            } else {
+                ItemAction.Play(
+                QueueOption.REPLACE,
+            )
+            }
+        DefaultClickOption.PLAY_SHUFFLED ->
+            if (support.shuffle && item.canPlayShuffled) {
+                ItemAction.PlayShuffled
+            } else {
+                ItemAction.Play(
+                QueueOption.REPLACE,
+            )
+            }
         else -> toItemAction()
     }
 }

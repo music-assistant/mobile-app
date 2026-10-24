@@ -29,12 +29,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * The adapter against a fake Sendspin player: what a local pause does to the hold,
@@ -74,10 +76,11 @@ class LocalPlayerAdapterTest {
         delay(SETTLE_MS)
         assertTrue(client.sent.tryReceive().isFailure, "nothing before the new connection")
 
-        player.emit(PlayerEvent.ServerRefreshNeeded)
+        // The adapter, and the restart that waits for the new connection.
+        player.emit(PlayerEvent.ServerRefreshNeeded, subscribers = 2)
 
-        assertEquals(PAUSE, client.sent.receive().command)
-        assertEquals(PLAY, client.sent.receive().command)
+        assertEquals(PAUSE, client.nextSent().command)
+        assertEquals(PLAY, client.nextSent().command)
     }
 
     @Test
@@ -98,7 +101,7 @@ class LocalPlayerAdapterTest {
         playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
 
-        assertEquals(PAUSE, client.sent.receive().command)
+        assertEquals(PAUSE, client.nextSent().command)
         await { player.held.value.takeIf { it } }
         assertFalse(adapter.localPlayerData.value?.player?.isPlaying == true)
         assertTrue(adapter.wantsSession.value)
@@ -108,7 +111,7 @@ class LocalPlayerAdapterTest {
     fun theServerConfirmingThePauseReleasesTheHoldAndTheSession() = runBlocking<Unit> {
         val local = playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
-        client.sent.receive()
+        client.nextSent()
 
         adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
 
@@ -134,11 +137,11 @@ class LocalPlayerAdapterTest {
     fun aStreamStartedWhileHeldIsAnsweredWithAnotherPause() = runBlocking<Unit> {
         val local = playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
-        client.sent.receive()
+        client.nextSent()
 
         player.emit(PlayerEvent.StreamStartedWhileHeld(local.id))
 
-        assertEquals(PAUSE, client.sent.receive().command)
+        assertEquals(PAUSE, client.nextSent().command)
         assertTrue(player.held.value)
     }
 
@@ -146,13 +149,13 @@ class LocalPlayerAdapterTest {
     fun aFocusLossWhilePlayingResumesOnFocusRegained() = runBlocking<Unit> {
         playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.FocusLost))
-        assertEquals(PAUSE, client.sent.receive().command)
+        assertEquals(PAUSE, client.nextSent().command)
 
         player.emit(PlayerEvent.FocusRegained)
 
         // The play lifts the hold, so a resync pause goes first.
-        assertEquals(PAUSE, client.sent.receive().command)
-        assertEquals(PLAY, client.sent.receive().command)
+        assertEquals(PAUSE, client.nextSent().command)
+        assertEquals(PLAY, client.nextSent().command)
     }
 
     @Test
@@ -167,7 +170,7 @@ class LocalPlayerAdapterTest {
         assertTrue(adapter.wantsSession.value)
 
         client.isReadyForCommands.value = true
-        assertEquals(PAUSE, client.sent.receive().command)
+        assertEquals(PAUSE, client.nextSent().command)
         adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
         await { adapter.wantsSession.value.takeUnless { it } }
         assertFalse(adapter.wantsSession.value)
@@ -179,7 +182,7 @@ class LocalPlayerAdapterTest {
 
         adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Stop)
 
-        assertEquals(STOP, client.sent.receive().command)
+        assertEquals(STOP, client.nextSent().command)
         assertTrue(player.held.value)
         assertFalse(adapter.localPlayerData.value?.player?.isPlaying == true)
 
@@ -192,7 +195,7 @@ class LocalPlayerAdapterTest {
     fun clearingTheStateDropsTheSessionWantButKeepsTheHold() = runBlocking<Unit> {
         playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
-        client.sent.receive()
+        client.nextSent()
 
         adapter.clearState()
 
@@ -206,7 +209,7 @@ class LocalPlayerAdapterTest {
 
         adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Next)
 
-        assertEquals(NEXT, client.sent.receive().command)
+        assertEquals(NEXT, client.nextSent().command)
         assertFalse(tracker.isFrozenUntilConfirmed(QUEUE_ID))
         assertEquals(EPISODE_POSITION_SEC, tracker.effectiveSec(QUEUE_ID))
     }
@@ -217,7 +220,7 @@ class LocalPlayerAdapterTest {
 
         adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Next)
 
-        assertEquals(NEXT, client.sent.receive().command)
+        assertEquals(NEXT, client.nextSent().command)
         assertTrue(tracker.isFrozenUntilConfirmed(QUEUE_ID))
         assertEquals(0.0, tracker.effectiveSec(QUEUE_ID))
     }
@@ -271,9 +274,10 @@ class LocalPlayerAdapterTest {
             this.held.value = held
         }
 
-        /** Waits for the adapter's collector first: the flow has no replay. */
-        suspend fun emit(event: PlayerEvent) {
-            _events.subscriptionCount.first { it > 0 }
+        /** Waits for [subscribers] collectors first: the flow has no replay. */
+        suspend fun emit(event: PlayerEvent, subscribers: Int = 1) {
+            withTimeoutOrNull(TIMEOUT_MS) { _events.subscriptionCount.first { it >= subscribers } }
+                ?: fail("$subscribers collectors of the player events not subscribed within $TIMEOUT_MS ms")
             _events.emit(event)
         }
     }
@@ -288,6 +292,9 @@ class LocalPlayerAdapterTest {
             sent.send(request)
             return Result.success(Answer(buildJsonObject {}))
         }
+
+        suspend fun nextSent(): Request =
+            withTimeoutOrNull(TIMEOUT_MS) { sent.receive() } ?: fail("no request sent within $TIMEOUT_MS ms")
 
         override fun requestCommandRecovery() {
             recoveries.value++

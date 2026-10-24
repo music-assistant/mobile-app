@@ -5,10 +5,10 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.MainDataSource
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -49,21 +49,19 @@ class BrowseViewModel(
     }
 
     // Mirrors ItemListViewModel.onPlayClick — play a browsed item on the selected player.
-    fun onPlayClick(
-        item: AppMediaItem,
-        option: QueueOption,
-        radio: Boolean,
-    ) {
+    fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
         val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return
         item.mediaUri?.let { mediaUri ->
             Logger.withTag("PlayDispatch")
-                .i { "BrowseViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+                .i { "BrowseViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
             playDispatcher.play(
                 PlayRequest(
                     queueOrPlayerId = queueId,
                     media = listOf(mediaUri),
-                    option = option,
-                    endlessMixMode = radio && item !is Genre,
+                    option = mode.option,
+                    endlessMixMode = mode.endlessMix && item !is Genre,
+                    shuffle = mode.shuffle,
+                    startFromBeginning = mode.startFromBeginning,
                 ),
             )
         }

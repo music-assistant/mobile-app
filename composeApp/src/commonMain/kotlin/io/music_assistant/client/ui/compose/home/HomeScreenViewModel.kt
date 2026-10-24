@@ -9,7 +9,6 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
@@ -20,6 +19,7 @@ import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -403,30 +403,23 @@ class HomeScreenViewModel(
         }
     }
 
-    fun onPlayClick(
-        item: AppMediaItem,
-        option: QueueOption,
-        radio: Boolean,
-    ) {
-        dataSource.selectedPlayer?.queueOrPlayerId?.let { playOnQueue(it, item, option, radio) }
+    fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
+        dataSource.selectedPlayer?.queueOrPlayerId?.let { playOnQueue(it, item, mode) }
     }
 
     /** Plays [item] on the queue that the caller names, for a surface that shows several players. */
-    fun playOnQueue(
-        queueOrPlayerId: String,
-        item: AppMediaItem,
-        option: QueueOption,
-        radio: Boolean,
-    ) {
+    fun playOnQueue(queueOrPlayerId: String, item: AppMediaItem, mode: PlayMode) {
         val mediaUri = item.mediaUri ?: return
         Logger.withTag("PlayDispatch")
-            .i { "HomeScreenViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueOrPlayerId" }
+            .i { "HomeScreenViewModel: uri=$mediaUri mode=$mode queue=$queueOrPlayerId" }
         playDispatcher.play(
             PlayRequest(
                 queueOrPlayerId = queueOrPlayerId,
                 media = listOf(mediaUri),
-                option = option,
-                endlessMixMode = radio && item !is Genre,
+                option = mode.option,
+                endlessMixMode = mode.endlessMix && item !is Genre,
+                shuffle = mode.shuffle,
+                startFromBeginning = mode.startFromBeginning,
             ),
         )
     }

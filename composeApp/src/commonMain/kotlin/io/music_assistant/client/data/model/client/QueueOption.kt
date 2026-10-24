@@ -5,6 +5,9 @@ enum class QueueOption(val serverValue: String) {
     REPLACE("replace"),
     NEXT("next"),
     ADD("add"),
+
+    /** Inserts after the current item and drops the rest of the queue. */
+    REPLACE_NEXT("replace_next"),
     ;
 
     companion object {

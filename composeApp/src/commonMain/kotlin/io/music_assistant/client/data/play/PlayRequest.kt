@@ -10,4 +10,8 @@ data class PlayRequest(
     val endlessMixMode: Boolean = false,
     /** Server-side "start playback from this item id within [media]" (play-from-here). */
     val startItem: String? = null,
+    /** `shuffle=true`: the server shuffles the media before it plays. Only `play` and `replace` honor it. */
+    val shuffle: Boolean = false,
+    /** `start_from_beginning`: the server ignores the saved resume position of a podcast episode. */
+    val startFromBeginning: Boolean = false,
 )
