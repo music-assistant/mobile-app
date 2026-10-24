@@ -22,13 +22,13 @@ jobs:
 
       - name: Checkout code
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up JDK 21
         if: ${{ !startsWith(github.head_ref, 'chore/bump-android-v') }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '21'

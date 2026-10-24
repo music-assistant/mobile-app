@@ -23,11 +23,12 @@ class ItemKindTest {
     }
 
     @Test
-    fun `track appears in every list context but not the detail button`() {
-        ClickContext.entries.filter { it != ClickContext.DETAIL }.forEach {
+    fun `track appears in every list context but not the detail button or a podcast`() {
+        val notTrackLists = setOf(ClickContext.DETAIL, ClickContext.PODCAST)
+        ClickContext.entries.filter { it !in notTrackLists }.forEach {
             assertEquals(true, ItemKind.TRACK.appearsIn(it), "TRACK should appear in $it")
         }
-        assertEquals(false, ItemKind.TRACK.appearsIn(ClickContext.DETAIL))
+        notTrackLists.forEach { assertEquals(false, ItemKind.TRACK.appearsIn(it), "TRACK must not appear in $it") }
     }
 
     @Test
@@ -44,9 +45,9 @@ class ItemKindTest {
     }
 
     @Test
-    fun `podcast episode appears only in home browse and search`() {
+    fun `podcast episode appears in home browse search and its podcast`() {
         assertEquals(
-            setOf(ClickContext.HOME, ClickContext.BROWSE, ClickContext.SEARCH),
+            setOf(ClickContext.HOME, ClickContext.BROWSE, ClickContext.SEARCH, ClickContext.PODCAST),
             ClickContext.entries.filter { ItemKind.PODCAST_EPISODE.appearsIn(it) }.toSet(),
         )
     }

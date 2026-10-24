@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.nextMovesQueue
 import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
+import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -46,7 +47,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -181,7 +182,8 @@ class LocalPlayerAdapter(
 
     init {
         launch { player.events.collect(::onPlayerEvent) }
-        launch { restartStreamOnFormatChange() }
+        val formatAtStart = settings.sendspinPlayerSettings.value.streamFormat()
+        launch { restartStreamOnFormatChange(formatAtStart) }
         launch {
             // The server addresses the local player by the module's identity; keep the
             // persisted mirror in sync so other screens address the right player.
@@ -209,12 +211,15 @@ class LocalPlayerAdapter(
      * old format until the next track. After such a change, a playing player pauses and plays
      * once the new connection is active, which gives a fresh stream (a seek would fail on
      * radio). The save already warned that it interrupts playback.
+     *
+     * [formatAtStart] is read when the adapter starts, not when this collector subscribes:
+     * a collector that subscribes late would take a change made in between as its baseline.
      */
-    private suspend fun restartStreamOnFormatChange() {
+    private suspend fun restartStreamOnFormatChange(formatAtStart: Pair<AudioCodec, Int>) {
         settings.sendspinPlayerSettings
-            .map { it.codecPreference to it.effectiveBitDepth() }
+            .map { it.streamFormat() }
             .distinctUntilChanged()
-            .drop(1)
+            .dropWhile { it == formatAtStart }
             .collectLatest {
                 if (localPlayerData.value?.player?.isPlaying != true) return@collectLatest
                 withTimeoutOrNull(FORMAT_RESTART_WAIT_MS) {
@@ -227,6 +232,8 @@ class LocalPlayerAdapter(
                 commands.sendOrDrop(requests)
             }
     }
+
+    private fun SendspinPlayerSettings.streamFormat() = codecPreference to effectiveBitDepth()
 
     private val FailureCause.message
         get() = when (this) {

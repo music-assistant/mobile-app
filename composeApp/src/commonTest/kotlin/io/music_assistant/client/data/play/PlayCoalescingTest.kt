@@ -47,6 +47,22 @@ class PlayCoalescingTest {
     }
 
     @Test
+    fun `replace next stages like add and next so it is never replaced`() {
+        val replaceNextC = request("c", QueueOption.REPLACE_NEXT)
+        assertEquals(listOf(replaceNextC, playB), coalesce(listOf(replaceNextC), playA, playB))
+        assertEquals(listOf(playB, replaceNextC), coalesce(listOf(playB), playA, replaceNextC))
+    }
+
+    @Test
+    fun `the same media shuffled or from the beginning is a new request`() {
+        assertEquals(listOf(playA.copy(shuffle = true)), coalesce(emptyList(), playA, playA.copy(shuffle = true)))
+        assertEquals(
+            listOf(playA.copy(startFromBeginning = true)),
+            coalesce(emptyList(), playA, playA.copy(startFromBeginning = true)),
+        )
+    }
+
+    @Test
     fun `a repeated add is a double tap`() {
         val addC = request("c", QueueOption.ADD)
         assertEquals(listOf(addC), coalesce(listOf(addC), playA, addC))

@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.AudioSource
@@ -23,6 +22,7 @@ import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.ConfirmationDialog
 import io.music_assistant.client.ui.compose.common.LocalDislikeSupported
@@ -36,7 +36,7 @@ import musicassistantclient.composeapp.generated.resources.dialog_remove_from_pl
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_title
 import org.jetbrains.compose.resources.stringResource
 
-typealias PlayHandler<T> = (item: T, queueOption: QueueOption, radio: Boolean, fromHereInParent: Boolean) -> Unit
+typealias PlayHandler<T> = (item: T, mode: PlayMode) -> Unit
 
 @Composable
 fun TrackWithMenu(
@@ -250,6 +250,7 @@ private fun <T> PlayableItemWithMenu(
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is PodcastEpisode,
+        playMediaSupport = clickActionConfig.playMediaSupport,
         defaultAction = effectiveDefault,
         customizationAllowed = true,
     )
@@ -260,12 +261,7 @@ private fun <T> PlayableItemWithMenu(
         ?: emptyList()
 
     val runPlayAction: (ItemAction) -> Unit = { action ->
-        when (action) {
-            is ItemAction.Play -> onPlayOption(item, action.queueOption, false, false)
-            ItemAction.StartEndlessMix -> onPlayOption(item, QueueOption.REPLACE, true, false)
-            is ItemAction.PlayFromHere -> onPlayOption(item, QueueOption.REPLACE, false, true)
-            else -> Unit
-        }
+        action.toPlayMode()?.let { onPlayOption(item, it) }
     }
 
     // Non-playable items keep the long-press menu (favorite, library, …) but can't be played:
@@ -290,7 +286,9 @@ private fun <T> PlayableItemWithMenu(
                 when (action) {
                     is ItemAction.Play,
                     ItemAction.StartEndlessMix,
-                    is ItemAction.PlayFromHere,
+                    ItemAction.PlayFromHere,
+                    ItemAction.PlayShuffled,
+                    ItemAction.PlayFromBeginning,
                     -> runPlayAction(action)
                     ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)
                     ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true

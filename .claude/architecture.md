@@ -94,6 +94,17 @@ actual class PlatformFeature {
   joins it with the server flag `extra_attributes.play_action_in_progress` (any client), and `PlayerControls`
   shows a ring around the main button while it is true. Read the server flag from the server queues, because the
   local player's queue info comes from `LocalPlayerAdapter`.
+- **Play modes**: a menu entry or a tap gives a `PlayMode` (`data/play/`), and the screen makes the `PlayRequest`
+  from it. `ItemAction.toPlayMode` is the only map from a menu entry to a mode. The queue options are `play`,
+  `replace`, `next`, `add` and `replace_next` (insert after the current item and drop the rest; every server 2.x
+  has it). `shuffle=true` ("Play shuffled") and `start_from_beginning` ("Play from beginning") are optional flags
+  of `play_media`. An older server ignores an unknown argument, so `PlayMediaSupport` (`data/model/server/`)
+  gates each flag on its first schema, 52 and 40, and `LocalPlayMediaSupport` carries it to the menus and to
+  `ClickActionConfig`. Offer "Play shuffled" for the containers in `canPlayShuffled` only. Offer "Play from
+  beginning" for a podcast episode with progress only, because the server resets the resume point of an episode
+  and not of an audiobook. "Play from here to latest" is `PlayFromHere` in `ClickContext.PODCAST`, the episodes
+  tab of a podcast. The car bulk action `PLAY_SHUFFLED` has no schema gate, so a server before the flag plays
+  the container in order.
 - **Favorites**: from server 2.11 (`sendsFavoriteUpdates`), a favorite belongs to one user. The server
   sends null `favorite` in every `media_item_*` event, and sends the state of the user in `favorite_updated`.
   That event has no item body, so `MediaItemRepository` fetches the item and emits

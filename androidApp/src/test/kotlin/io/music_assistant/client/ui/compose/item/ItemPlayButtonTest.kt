@@ -8,8 +8,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.support.get
-import io.music_assistant.client.utils.support.MockFunction2
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_add_to_queue
 import musicassistantclient.composeapp.generated.resources.action_insert_next
@@ -27,7 +27,8 @@ class ItemPlayButtonTest {
     @Test
     fun `clicking 'Start endless mix' triggers endless mix`() {
         val item = AppMediaItemFixtures.artist()
-        val onPlayClick = MockFunction2<QueueOption, Boolean>()
+        var mode: PlayMode? = null
+        val onPlayClick: (PlayMode) -> Unit = { mode = it }
 
         composeTestRule.setContent {
             ItemPlayButton(item = item, onPlayClick = onPlayClick)
@@ -35,8 +36,7 @@ class ItemPlayButtonTest {
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
         composeTestRule.onNodeWithText("Start endless mix").performClick()
-        assertEquals(onPlayClick.arg1, QueueOption.REPLACE)
-        assertEquals(onPlayClick.arg2, true)
+        assertEquals(PlayMode(QueueOption.REPLACE, endlessMix = true), mode)
     }
 
     @Test
@@ -44,7 +44,7 @@ class ItemPlayButtonTest {
         val item = AppMediaItemFixtures.podcast()
 
         composeTestRule.setContent {
-            ItemPlayButton(item = item, onPlayClick = MockFunction2())
+            ItemPlayButton(item = item, onPlayClick = {})
         }
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
@@ -54,7 +54,8 @@ class ItemPlayButtonTest {
     @Test
     fun `clicking 'Play now' triggers PLAY in queue`() {
         val item = AppMediaItemFixtures.artist()
-        val onPlayClick = MockFunction2<QueueOption, Boolean>()
+        var mode: PlayMode? = null
+        val onPlayClick: (PlayMode) -> Unit = { mode = it }
 
         composeTestRule.setContent {
             ItemPlayButton(item = item, onPlayClick = onPlayClick)
@@ -62,14 +63,14 @@ class ItemPlayButtonTest {
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
         composeTestRule.onNodeWithText(Res.string.action_insert_next_and_play.get()).performClick()
-        assertEquals(onPlayClick.arg1, QueueOption.PLAY)
-        assertEquals(onPlayClick.arg2, false)
+        assertEquals(PlayMode(QueueOption.PLAY), mode)
     }
 
     @Test
     fun `clicking 'Play next' triggers NEXT in queue`() {
         val item = AppMediaItemFixtures.artist()
-        val onPlayClick = MockFunction2<QueueOption, Boolean>()
+        var mode: PlayMode? = null
+        val onPlayClick: (PlayMode) -> Unit = { mode = it }
 
         composeTestRule.setContent {
             ItemPlayButton(item = item, onPlayClick = onPlayClick)
@@ -77,14 +78,14 @@ class ItemPlayButtonTest {
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
         composeTestRule.onNodeWithText(Res.string.action_insert_next.get()).performClick()
-        assertEquals(onPlayClick.arg1, QueueOption.NEXT)
-        assertEquals(onPlayClick.arg2, false)
+        assertEquals(PlayMode(QueueOption.NEXT), mode)
     }
 
     @Test
     fun `clicking 'Add to queue' triggers ADD in queue`() {
         val item = AppMediaItemFixtures.artist()
-        val onPlayClick = MockFunction2<QueueOption, Boolean>()
+        var mode: PlayMode? = null
+        val onPlayClick: (PlayMode) -> Unit = { mode = it }
 
         composeTestRule.setContent {
             ItemPlayButton(item = item, onPlayClick = onPlayClick)
@@ -92,7 +93,6 @@ class ItemPlayButtonTest {
 
         composeTestRule.onNodeWithContentDescription("Play options").performClick()
         composeTestRule.onNodeWithText(Res.string.action_add_to_queue.get()).performClick()
-        assertEquals(onPlayClick.arg1, QueueOption.ADD)
-        assertEquals(onPlayClick.arg2, false)
+        assertEquals(PlayMode(QueueOption.ADD), mode)
     }
 }
