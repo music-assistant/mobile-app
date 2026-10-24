@@ -20,8 +20,8 @@ public data class SinkFormat(
     val codec: AudioCodec = AudioCodec.PCM,
     val codecHeaderBase64: String? = null,
 ) {
-    val isPcm: Boolean get() = codec == AudioCodec.PCM
-    val bytesPerFrame: Int get() = channels * bitDepth / 8
+    public val isPcm: Boolean get() = codec == AudioCodec.PCM
+    public val bytesPerFrame: Int get() = channels * bitDepth / 8
 }
 
 public interface SinkHandle : AutoCloseable {
