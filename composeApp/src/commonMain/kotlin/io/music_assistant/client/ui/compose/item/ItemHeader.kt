@@ -82,6 +82,7 @@ import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.items.rememberArtistNavigation
 import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowActions
+import io.music_assistant.client.ui.compose.common.items.shareMenuOptions
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
@@ -267,6 +268,8 @@ private fun ItemOverflow(
     // The page shows the removed item, so it closes with the removal, like the web app.
     onRemovedFromLibrary: () -> Unit,
 ) {
+    var shareActive by remember { mutableStateOf(false) }
+    val shareOptions = shareMenuOptions(item.uri, shareActive)
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
 
@@ -313,7 +316,8 @@ private fun ItemOverflow(
         }
     }
     OverflowMenuButton(
-        options = canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
+        onExpandedChange = { shareActive = it },
+        options = shareOptions + canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
             lyrics + dynamicColorsMenuOption(),
     ) { onClick ->
         IconButton(onClick = onClick) {

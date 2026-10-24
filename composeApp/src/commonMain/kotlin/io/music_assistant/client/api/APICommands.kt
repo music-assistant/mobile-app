@@ -1,6 +1,8 @@
 package io.music_assistant.client.api
 
 object APICommands {
+    const val MUSIC_SHARE_ITEM = "music/share_item"
+
     // Player commands
     const val PLAYERS_ALL = "players/all"
     const val PLAYERS_CMD = "players/cmd"

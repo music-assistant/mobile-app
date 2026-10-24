@@ -832,6 +832,11 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
     }
 
     data object Library {
+        fun shareItem(uri: String) = Request(
+            command = APICommands.MUSIC_SHARE_ITEM,
+            args = buildJsonObject { put("uri", JsonPrimitive(uri)) },
+        )
+
         internal fun get(
             kind: String,
             itemId: String,

@@ -1,6 +1,9 @@
 package io.music_assistant.client.ui.compose.provider
 
 import androidx.collection.LruCache
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,8 +24,8 @@ class ProviderViewModel(
     private val serviceClient: ServiceClient,
     providerRepository: ProviderRepository,
 ) : ViewModel() {
-    private var providerDetailsByDomain = emptyMap<String, ProviderDetails>()
-    private var providerDetailsByInstanceId = emptyMap<String, ProviderDetails>()
+    private var providerDetailsByDomain by mutableStateOf(emptyMap<String, ProviderDetails>())
+    private var providerDetailsByInstanceId by mutableStateOf(emptyMap<String, ProviderDetails>())
     private val providerIconsCache = LruCache<String, ProviderIconModel>(10)
 
     init {

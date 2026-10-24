@@ -24,16 +24,23 @@ import androidx.compose.ui.unit.dp
 fun OverflowMenuButton(
     modifier: Modifier = Modifier,
     options: List<OverflowMenuEntry>,
+    onExpandedChange: (Boolean) -> Unit = {},
     buttonContent: @Composable (onClick: () -> Unit) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(
         modifier = modifier.wrapContentSize(Alignment.TopStart),
     ) {
-        buttonContent { expanded = true }
+        buttonContent {
+            expanded = true
+            onExpandedChange(true)
+        }
         OverflowMenu(
             expanded = expanded,
-            onClose = { expanded = false },
+            onClose = {
+                expanded = false
+                onExpandedChange(false)
+            },
             options = options,
         )
     }

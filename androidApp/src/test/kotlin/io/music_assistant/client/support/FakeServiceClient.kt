@@ -21,6 +21,7 @@ import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.ServerShareItem
 import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.data.model.server.StreamDetails
@@ -69,6 +70,10 @@ class FakeServiceClient : ServiceClient {
     val username = "user"
     val password = "password"
     var serverId = "serverId"
+    var roleScopes: Map<String, List<String>> = mapOf("user" to listOf("library.read"))
+    var schemaVersion = 39
+    var shareResponse: ServerShareItem? = null
+    val shareRequests = mutableListOf<Request>()
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -85,6 +90,11 @@ class FakeServiceClient : ServiceClient {
         }
 
         return when (request.command) {
+            "music/share_item" -> {
+                shareRequests.add(request)
+                Result.success(answer(request, shareResponse))
+            }
+
             APICommands.PROVIDERS -> {
                 Result.success(
                     answer(
@@ -93,6 +103,8 @@ class FakeServiceClient : ServiceClient {
                     ),
                 )
             }
+
+            APICommands.AUTH_SCOPES -> Result.success(answer(request, roleScopes))
 
             APICommands.AUTH_ME -> {
                 Result.success(
@@ -719,7 +731,7 @@ class FakeServiceClient : ServiceClient {
                         // Schema 39+ moved recommendation row items behind
                         // MUSIC_RECOMMENDATIONS_ITEMS; this fake serves that
                         // shape unless a legacy version is set.
-                        schemaVersion = if (legacyVersion != null) -1 else 39,
+                        schemaVersion = if (legacyVersion != null) -1 else schemaVersion,
                         baseUrl = "http://homeassistant.example",
                     ),
                 )
@@ -785,6 +797,11 @@ class FakeServiceClient : ServiceClient {
         }
 
         this.players.addAll(players)
+    }
+
+    fun setCurrentQueueItem(queueId: String, item: ServerQueueItem) {
+        val index = queues.indexOfFirst { it.queueId == queueId }
+        queues[index] = queues[index].copy(currentItem = item)
     }
 
     fun addShortcut(item: ServerMediaItem) {

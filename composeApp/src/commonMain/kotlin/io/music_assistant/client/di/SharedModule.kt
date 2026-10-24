@@ -27,6 +27,7 @@ import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
+import io.music_assistant.client.data.repository.ShareRepository
 import io.music_assistant.client.imageloader.ArtworkDiskStore
 import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.imageloader.ArtworkTransport
@@ -182,6 +183,7 @@ fun sharedModule(
             )
         }
         single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }
+        singleOf(::ShareRepository)
         singleOf(::LibrarySortRepository)   // Library sort choices; caches the 2.11 sort_options
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch

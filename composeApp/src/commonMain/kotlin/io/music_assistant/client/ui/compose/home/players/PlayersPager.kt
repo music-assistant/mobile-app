@@ -112,6 +112,7 @@ import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.ignoreDragsFromBottomGestureZone
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
+import io.music_assistant.client.ui.compose.common.items.shareMenuOptions
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
@@ -605,20 +606,22 @@ private fun ExpandedPlayerPage(
                 )
             },
             end = {
-                PlayerOverflowMenu(
-                    currentPlayer = player,
-                    allPlayers = allPlayers,
-                    playerAction = { playerAction(player, it) },
-                    queueAction = queueAction,
-                    navigateToItem = navigateAndClose,
-                    onPlayerSelected = { moveToPlayer(it) },
-                    onOpenDsp = onDspButton,
-                    onAnnounce = onAnnounceButton,
-                    onAmbientSound = onAmbientSoundButton,
-                    onAddToPlaylist = onAddToPlaylist,
-                    queueDjMenu = queueDjMenu,
-                    onQueueDjSelected = onQueueDjSelected,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PlayerOverflowMenu(
+                        currentPlayer = player,
+                        allPlayers = allPlayers,
+                        playerAction = { playerAction(player, it) },
+                        queueAction = queueAction,
+                        navigateToItem = navigateAndClose,
+                        onPlayerSelected = { moveToPlayer(it) },
+                        onOpenDsp = onDspButton,
+                        onAnnounce = onAnnounceButton,
+                        onAmbientSound = onAmbientSoundButton,
+                        onAddToPlaylist = onAddToPlaylist,
+                        queueDjMenu = queueDjMenu,
+                        onQueueDjSelected = onQueueDjSelected,
+                    )
+                }
             },
         )
 
@@ -937,6 +940,11 @@ private fun PlayerOverflowMenu(
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
 ) {
+    var shareActive by remember { mutableStateOf(false) }
+    val shareOptions = shareMenuOptions(
+        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.uri,
+        shareActive,
+    )
     var transferMenuExpanded by remember { mutableStateOf(false) }
     var queueDjMenuExpanded by remember { mutableStateOf(false) }
     val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
@@ -1116,6 +1124,7 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        addAll(shareOptions)
         addAll(navigationOptions)
     }
 
@@ -1131,6 +1140,7 @@ private fun PlayerOverflowMenu(
         OverflowMenuButton(
             modifier = Modifier,
             options = menuOptions,
+            onExpandedChange = { shareActive = it },
         ) { onClick ->
             IconButton(onClick = onClick) {
                 Icon(
