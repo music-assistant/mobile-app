@@ -143,8 +143,23 @@ version for this change, and write it in the changelog.
 ### Publish a version
 
 The `sendspin-release.yml` workflow runs the module tests and the public API check. Then it
-publishes the version, pushes the tag `sendspin-v<version>`, and creates the GitHub Release. At
-the end, it opens a draft PR that increases the minor version.
+runs the consumer check. Then it publishes the version, pushes the tag `sendspin-v<version>`, and
+creates the GitHub Release. At the end, it opens a draft PR that increases the minor version.
+
+The consumer check is the standalone Gradle project in [`consumer-check/`](consumer-check). It is
+an Android application with Kotlin 2.3, the oldest Kotlin that an Android consumer can use. The
+workflow publishes the library to `mavenLocal`, and then the application compiles the
+[Android quick start](#android-quick-start) against it. R8 shrinks the release build. The check
+stops if the library code that the application uses refers to a missing class. The check also
+stops if the merged manifest has no `INTERNET` or `ACCESS_NETWORK_STATE` permission. If you
+change the quick start, make the same change in `ConsumerCheckApplication.kt`.
+
+To run the consumer check on your computer, run these commands from the repository root:
+
+```bash
+./gradlew :sendspin-kmp:publishToMavenLocal
+./gradlew -p sendspin-kmp/consumer-check :app:compileDebugKotlin :app:minifyReleaseWithR8 :app:checkReleasePermissions -PsendspinVersion=<version>
+```
 
 1. Make sure that `sendspinVersion` in the root `gradle.properties` is the version to publish.
 2. Write the changes in the `## <version>` section of `CHANGELOG.md`. The workflow stops if

@@ -100,6 +100,15 @@ jobs:
       - name: Run module tests and the public API check
         run: ./gradlew :sendspin-kmp:testAndroidHostTest :sendspin-kmp:checkKotlinAbi
 
+      # An Android app on the consumer Kotlin floor builds the README quick start against
+      # the local publication, with R8 and the merged manifest permissions.
+      - name: Check the library as a consumer
+        run: |
+          ./gradlew :sendspin-kmp:publishToMavenLocal
+          ./gradlew -p sendspin-kmp/consumer-check \
+            :app:compileDebugKotlin :app:minifyReleaseWithR8 :app:checkReleasePermissions \
+            -PsendspinVersion='${{ steps.version.outputs.name }}'
+
       - name: Publish to GitHub Packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -126,7 +135,10 @@ jobs:
             echo
             echo "See sendspin-kmp/README.md for the repository setup."
             echo
-            cat /tmp/changelog-section.md
+            # GitHub renders each newline in a Release body as a line break, so join the
+            # indented continuation lines of the wrapped CHANGELOG list items. A nested
+            # list item stays on its own line.
+            perl -0pe 's/\n {2,}(?![-*+] |\d+\. )(?=\S)/ /g' /tmp/changelog-section.md
             if [ -n "$PREV_TAG" ]; then
               echo
               echo "### Pull requests since ${PREV_TAG}"
@@ -145,6 +157,8 @@ jobs:
           body_path: ${{ steps.notes.outputs.file }}
           draft: false
           prerelease: false
+          # "Latest" stays on the app releases, which carry the APK.
+          make_latest: 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

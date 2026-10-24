@@ -75,6 +75,11 @@ kotlin {
             implementation(libs.concentus)
         }
 
+        getByName("androidHostTest").dependencies {
+            implementation(libs.junit)
+            implementation(libs.robolectric)
+        }
+
         iosMain.dependencies {
             // Noise primitives backend (CryptoKit: X25519, ChaCha20-Poly1305).
             implementation(libs.cryptography.provider.cryptokit)
