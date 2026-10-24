@@ -88,6 +88,25 @@ class LocalPlayerDispatchTest {
     }
 
     @Test
+    fun planCarriesShuffleThroughAndDefaultsItOff() {
+        val shuffled = planLocalPlayerDispatch(
+            localPlayerId = "sendspin-local",
+            localPlayerSyncedTo = null,
+            mediaUris = listOf("library://album/42"),
+            option = QueueOption.REPLACE,
+            shuffle = true,
+        )
+        assertEquals(true, shuffled?.shuffle)
+        val plain = planLocalPlayerDispatch(
+            localPlayerId = "sendspin-local",
+            localPlayerSyncedTo = null,
+            mediaUris = listOf("library://album/42"),
+            option = QueueOption.REPLACE,
+        )
+        assertEquals(false, plain?.shuffle)
+    }
+
+    @Test
     fun planCarriesStartItemThrough() {
         val plan = planLocalPlayerDispatch(
             localPlayerId = "sendspin-local",

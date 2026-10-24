@@ -64,7 +64,7 @@ class AdaptiveMediaGridTest {
                     hasMore = hasMore,
                     viewMode = ViewMode.LIST,
                     onNavigateClick = {},
-                    onPlayClick = { _, _, _, _ -> },
+                    onPlayClick = { _, _ -> },
                     onLoadMore = { loadMoreCalls++ },
                     playlistActions = StubPlaylistActions(),
                     libraryActions = StubLibraryActions(),

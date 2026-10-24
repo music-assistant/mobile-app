@@ -93,9 +93,7 @@ fun ItemListScreen(
         ItemListContent(
             data = state.items,
             onNavigateClick = onNavigateClick,
-            onPlayClick = { item, option, radio, _ ->
-                actionsViewModel.onPlayClick(item, option, radio)
-            },
+            onPlayClick = actionsViewModel::onPlayClick,
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,

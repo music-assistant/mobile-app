@@ -11,6 +11,7 @@ import musicassistantclient.composeapp.generated.resources.action_insert_next
 import musicassistantclient.composeapp.generated.resources.action_insert_next_and_play
 import musicassistantclient.composeapp.generated.resources.action_ok
 import musicassistantclient.composeapp.generated.resources.action_play_all
+import musicassistantclient.composeapp.generated.resources.action_play_all_shuffled
 import musicassistantclient.composeapp.generated.resources.action_start_endless_mix
 import musicassistantclient.composeapp.generated.resources.ai_radio_empty
 import musicassistantclient.composeapp.generated.resources.ai_radio_title
@@ -101,6 +102,7 @@ class CarPlayStrings internal constructor(
                 DefaultClickOption.INSERT_NEXT.name to getString(Res.string.action_insert_next),
                 DefaultClickOption.ADD_TO_QUEUE.name to getString(Res.string.action_add_all_to_queue),
                 DefaultClickOption.START_ENDLESS_MIX.name to getString(Res.string.action_start_endless_mix),
+                DefaultClickOption.PLAY_SHUFFLED.name to getString(Res.string.action_play_all_shuffled),
             ),
         )
     }

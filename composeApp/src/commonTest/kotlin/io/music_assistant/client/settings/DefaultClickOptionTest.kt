@@ -3,9 +3,11 @@ package io.music_assistant.client.settings
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.ItemKind
 import io.music_assistant.client.data.model.client.QueueOption
+import io.music_assistant.client.data.model.client.testAudiobook
 import io.music_assistant.client.data.model.client.testPlaylist
 import io.music_assistant.client.data.model.client.testPodcastEpisode
 import io.music_assistant.client.data.model.client.testTrack
+import io.music_assistant.client.data.model.server.PlayMediaSupport
 import io.music_assistant.client.ui.compose.common.items.ItemAction
 import io.music_assistant.client.ui.compose.common.items.effectiveFor
 import io.music_assistant.client.ui.compose.common.items.toItemAction
@@ -29,8 +31,21 @@ class DefaultClickOptionTest {
     }
 
     @Test
+    fun `play shuffled applies only to ordered containers`() {
+        val shuffleable = setOf(ItemKind.ALBUM, ItemKind.ARTIST, ItemKind.PLAYLIST)
+        ItemKind.entries.forEach { kind ->
+            assertEquals(
+                kind in shuffleable,
+                DefaultClickOption.PLAY_SHUFFLED.appliesTo(kind),
+                "PLAY_SHUFFLED.appliesTo($kind)",
+            )
+        }
+    }
+
+    @Test
     fun `queue actions apply to every kind`() {
-        val queueActions = DefaultClickOption.entries - DefaultClickOption.START_ENDLESS_MIX
+        val queueActions = DefaultClickOption.entries -
+            setOf(DefaultClickOption.START_ENDLESS_MIX, DefaultClickOption.PLAY_SHUFFLED)
         queueActions.forEach { action ->
             ItemKind.entries.forEach { kind ->
                 assertEquals(true, action.appliesTo(kind), "$action.appliesTo($kind)")
@@ -55,22 +70,27 @@ class DefaultClickOptionTest {
     }
 
     @Test
-    fun `isAvailableIn is true for PLAY_FROM_HERE with ALBUM and PLAYLIST`() {
+    fun `isAvailableIn is true for PLAY_FROM_HERE with ALBUM PLAYLIST and PODCAST`() {
         assertTrue(
             DefaultClickOption.PLAY_FROM_HERE.isAvailableIn(ClickContext.ALBUM, ItemKind.TRACK),
-            "PLAY_FROM_HERE.isAvailableIn(ALBUM, TRACK) should be false",
+            "PLAY_FROM_HERE.isAvailableIn(ALBUM, TRACK) should be true",
         )
 
         assertTrue(
             DefaultClickOption.PLAY_FROM_HERE.isAvailableIn(ClickContext.PLAYLIST, ItemKind.TRACK),
-            "PLAY_FROM_HERE.isAvailableIn(ALBUM, TRACK) should be false",
+            "PLAY_FROM_HERE.isAvailableIn(PLAYLIST, TRACK) should be true",
+        )
+
+        assertTrue(
+            DefaultClickOption.PLAY_FROM_HERE.isAvailableIn(ClickContext.PODCAST, ItemKind.PODCAST_EPISODE),
+            "PLAY_FROM_HERE.isAvailableIn(PODCAST, PODCAST_EPISODE) should be true",
         )
     }
 
     @Test
-    fun `isAvailableIn is false for PLAY_FROM_HERE outside ALBUM`() {
-        val otherContexts =
-            ClickContext.entries.filter { it != ClickContext.ALBUM && it != ClickContext.PLAYLIST }
+    fun `isAvailableIn is false for PLAY_FROM_HERE outside a container context`() {
+        val containerContexts = setOf(ClickContext.ALBUM, ClickContext.PLAYLIST, ClickContext.PODCAST)
+        val otherContexts = ClickContext.entries.filter { it !in containerContexts }
 
         otherContexts.forEach {
             assertFalse(
@@ -99,18 +119,19 @@ class DefaultClickOptionTest {
             DefaultClickOption.ADD_TO_QUEUE.toItemAction(),
         )
         assertEquals(ItemAction.StartEndlessMix, DefaultClickOption.START_ENDLESS_MIX.toItemAction())
+        assertEquals(ItemAction.PlayShuffled, DefaultClickOption.PLAY_SHUFFLED.toItemAction())
     }
 
     @Test
     fun `effectiveFor returns null for a non-playable item`() {
-        assertNull(DefaultClickOption.PLAY_NOW.effectiveFor(testTrack(isPlayable = false)))
+        assertNull(DefaultClickOption.PLAY_NOW.effectiveFor(testTrack(isPlayable = false), ALL))
     }
 
     @Test
     fun `effectiveFor keeps start endless mix when the item can start one`() {
         assertEquals(
             ItemAction.StartEndlessMix,
-            DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testTrack()),
+            DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testTrack(), ALL),
         )
     }
 
@@ -119,8 +140,30 @@ class DefaultClickOptionTest {
         val playNow = ItemAction.Play(QueueOption.REPLACE)
         assertEquals(
             playNow,
-            DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testPlaylist(isDynamic = true)),
+            DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testPlaylist(isDynamic = true), ALL),
         )
-        assertEquals(playNow, DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testPodcastEpisode()))
+        assertEquals(playNow, DefaultClickOption.START_ENDLESS_MIX.effectiveFor(testPodcastEpisode(), ALL))
+    }
+
+    @Test
+    fun `effectiveFor plays shuffled only for a container on a server with the flag`() {
+        val playNow = ItemAction.Play(QueueOption.REPLACE)
+        assertEquals(ItemAction.PlayShuffled, DefaultClickOption.PLAY_SHUFFLED.effectiveFor(testPlaylist(), ALL))
+        assertEquals(playNow, DefaultClickOption.PLAY_SHUFFLED.effectiveFor(testPlaylist(), PlayMediaSupport.NONE))
+        assertEquals(playNow, DefaultClickOption.PLAY_SHUFFLED.effectiveFor(testTrack(), ALL))
+    }
+
+    @Test
+    fun `effectiveFor plays from here for a track or an episode only`() {
+        assertEquals(ItemAction.PlayFromHere, DefaultClickOption.PLAY_FROM_HERE.effectiveFor(testTrack(), ALL))
+        assertEquals(ItemAction.PlayFromHere, DefaultClickOption.PLAY_FROM_HERE.effectiveFor(testPodcastEpisode(), ALL))
+        assertEquals(
+            ItemAction.Play(QueueOption.REPLACE),
+            DefaultClickOption.PLAY_FROM_HERE.effectiveFor(testAudiobook(), ALL),
+        )
+    }
+
+    private companion object {
+        val ALL = PlayMediaSupport(shuffle = true, startFromBeginning = true)
     }
 }

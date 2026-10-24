@@ -8,7 +8,6 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -17,6 +16,7 @@ import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.isAiRadioShow
 import io.music_assistant.client.data.model.server.ListSort
 import io.music_assistant.client.data.play.PlayDispatcher
+import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.LibrarySortMenu
 import io.music_assistant.client.data.repository.LibrarySortRepository
@@ -405,22 +405,20 @@ class LibraryListViewModel(
         }
     }
 
-    fun onPlayClick(
-        item: AppMediaItem,
-        option: QueueOption,
-        radio: Boolean,
-    ) {
+    fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
         val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return
 
         item.mediaUri?.let { mediaUri ->
             Logger.withTag("PlayDispatch")
-                .i { "ItemListViewModel: uri=$mediaUri option=$option radio=$radio queue=$queueId" }
+                .i { "ItemListViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
             playDispatcher.play(
                 PlayRequest(
                     queueOrPlayerId = queueId,
                     media = listOf(mediaUri),
-                    option = option,
-                    endlessMixMode = radio && item !is Genre,
+                    option = mode.option,
+                    endlessMixMode = mode.endlessMix && item !is Genre,
+                    shuffle = mode.shuffle,
+                    startFromBeginning = mode.startFromBeginning,
                 ),
             )
         }

@@ -22,6 +22,8 @@ data class LocalPlayerDispatchPlan(
     val endlessMixMode: Boolean = false,
     /** Server-side "start playback from this item id within [mediaUris]" (play-from-here). */
     val startItem: String? = null,
+    /** `shuffle=true` on `play_media` (a car "Play all shuffled" bulk action). */
+    val shuffle: Boolean = false,
 )
 
 /** Returns null when prerequisites (a local player, at least one URI) are missing. */
@@ -32,6 +34,7 @@ fun planLocalPlayerDispatch(
     option: QueueOption,
     endlessMixMode: Boolean = false,
     startItem: String? = null,
+    shuffle: Boolean = false,
 ): LocalPlayerDispatchPlan? {
     if (localPlayerId == null || mediaUris.isEmpty()) return null
     return LocalPlayerDispatchPlan(
@@ -41,6 +44,7 @@ fun planLocalPlayerDispatch(
         option = option,
         endlessMixMode = endlessMixMode,
         startItem = startItem,
+        shuffle = shuffle,
     )
 }
 
@@ -68,7 +72,8 @@ suspend fun executeLocalPlayerDispatch(
     }
     Logger.withTag("PlayDispatch").i {
         "LocalPlayerDispatch (CarPlay/Siri): uris=${plan.mediaUris} option=${plan.option} " +
-            "startItem=${plan.startItem} player=${plan.playerId} detachFrom=${plan.detachFrom}"
+            "startItem=${plan.startItem} shuffle=${plan.shuffle} player=${plan.playerId} " +
+            "detachFrom=${plan.detachFrom}"
     }
     playDispatcher.play(
         PlayRequest(
@@ -77,6 +82,7 @@ suspend fun executeLocalPlayerDispatch(
             option = plan.option,
             endlessMixMode = plan.endlessMixMode,
             startItem = plan.startItem,
+            shuffle = plan.shuffle,
         ),
     )
 }

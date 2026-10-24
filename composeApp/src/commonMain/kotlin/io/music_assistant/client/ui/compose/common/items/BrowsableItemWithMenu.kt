@@ -12,7 +12,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -372,7 +371,8 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         onLongClick: (T) -> Unit,
     ) -> Unit,
 ) {
-    val clickContext = LocalClickActionConfig.current.context
+    val clickActionConfig = LocalClickActionConfig.current
+    val clickContext = clickActionConfig.context
     var expandedItemId by remember { mutableStateOf<String?>(null) }
     var showPlaylistDialog by rememberSaveable { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
@@ -387,6 +387,7 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         canAddToPlaylist = playlistActions != null && item.supportsAddToPlaylist,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
         progressSupported = progressActions != null && item is Audiobook,
+        playMediaSupport = clickActionConfig.playMediaSupport,
         customizationAllowed = false,
     )
 
@@ -411,8 +412,11 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
             ItemActionMenuItems(clickContext, actions) { action ->
                 expandedItemId = null
                 when (action) {
-                    is ItemAction.Play -> onPlayOption(item, action.queueOption, false, false)
-                    ItemAction.StartEndlessMix -> onPlayOption(item, QueueOption.REPLACE, true, false)
+                    is ItemAction.Play,
+                    ItemAction.StartEndlessMix,
+                    ItemAction.PlayFromHere,
+                    ItemAction.PlayShuffled,
+                    -> action.toPlayMode()?.let { onPlayOption(item, it) }
                     ItemAction.AddToLibrary -> libraryActions.onLibraryClick(item)
                     ItemAction.RemoveFromLibrary -> showRemoveConfirmation = true
                     is ItemAction.SetFavorite -> libraryActions.onFavoriteChange(item, action.favorite)
