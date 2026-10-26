@@ -273,6 +273,20 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
+            APICommands.musicGet(APICommands.KIND_GENRES) -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = findItem(request).enrichLibraryItem(),
+                    ),
+                )
+            }
+
+            // No artist or album rows: the genre page shows its header only.
+            APICommands.MUSIC_GENRES_OVERVIEW -> {
+                Result.success(answer(request, JsonArray(emptyList())))
+            }
+
             APICommands.musicGet(APICommands.KIND_PLAYLISTS) -> {
                 Result.success(
                     answer(

@@ -70,6 +70,18 @@ class SearchTest {
     }
 
     @Test
+    fun `can navigate to a genre via search`() {
+        val genre = ServerMediaItemFixtures.genre(name = "Onion Jazz")
+        serviceClient.addItems(genre)
+        serviceClient.addToLibrary(genre)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSearch()
+            .search("onion")
+            .clickOnMedia(genre)
+    }
+
+    @Test
     fun `can filter search results to library only`() {
         val libraryAlbum = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
         val globalAlbum =
