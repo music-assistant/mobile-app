@@ -24,6 +24,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.sendspin.api.PlayerState
 import org.jetbrains.compose.resources.painterResource
 
@@ -33,6 +35,8 @@ fun PlayerSelectionButton(
     controlTint: Color = MaterialTheme.colorScheme.primary,
     sendSpinState: PlayerState?,
     onSelectPlayer: () -> Unit = {},
+    tvFocusFlow: TvFocusFlow? = null,
+    tvFocusLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
 ) {
     val isLocalPlayer = player.isLocal
     val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
@@ -43,7 +47,7 @@ fun PlayerSelectionButton(
     }
 
     OutlinedButton(
-        modifier = modifier,
+        modifier = modifier.tvFocus(tvFocusFlow, tvFocusLinks, "playerSelect"),
         onClick = onSelectPlayer,
     ) {
         PlayerButtonContent(

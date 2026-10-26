@@ -228,6 +228,8 @@ class StreamFavoriteActionsTest {
                     navigateToItem = {},
                     providerViewModel = getKoin().get(),
                     queueDjViewModel = getKoin().get(),
+                    isQueueExpanded = false,
+                    onExpandQueue = {},
                     onSelectPlayer = {},
                 )
                 ToastHost(toastState)

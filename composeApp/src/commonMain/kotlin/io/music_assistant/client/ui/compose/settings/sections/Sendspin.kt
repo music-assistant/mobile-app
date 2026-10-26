@@ -192,7 +192,7 @@ private fun SendspinPlayerSettings.hasNonDefaultAdvancedSettings(): Boolean =
     bufferSeconds != SendspinPlayerSettings.defaults.bufferSeconds || connectionOverride.enabled
 
 @Composable
-private fun InterruptPlaybackDialog(
+internal fun InterruptPlaybackDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {

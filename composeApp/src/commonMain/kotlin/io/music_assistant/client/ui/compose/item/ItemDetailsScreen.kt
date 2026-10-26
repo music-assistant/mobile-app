@@ -42,7 +42,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -116,6 +119,7 @@ import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
+import kotlinx.coroutines.delay
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.album_disc_header
 import musicassistantclient.composeapp.generated.resources.artist_section_all
@@ -138,6 +142,12 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
+
+// Android TV: initial-focus landing on the primary play button once the item finishes loading.
+// The platform can drop the first requestFocus on this hardware, so retry until the button
+// actually holds focus (mirrors the settings form / player dialog cold-start handling).
+private const val DETAIL_FOCUS_RETRIES = 5
+private const val DETAIL_FOCUS_RETRY_DELAY = 100L
 
 @Composable
 fun ItemDetailsScreen(
@@ -382,6 +392,47 @@ private fun ItemContent(
         enabled = rememberDynamicColorsEnabled(),
     )
 
+    // Android TV: land D-pad focus on the page's primary action once the item finishes loading,
+    // instead of leaving it on the left nav rail (two presses of detour before "Play now"). This
+    // hardware can drop the first requestFocus, so retry until the button actually holds focus.
+    // While the Android view is in touch mode (a cold start or a mouse/touch click) requestFocus
+    // is a no-op too, so the loop first asks the input mode manager to leave touch mode — the
+    // same pattern the nav-rail landing in MainNavRoot uses.
+    //
+    // The hero lives in the LazyGrid, and the grid is replaced wholesale when the tab-loading
+    // gate opens (selectedTab null → loaded): that recreation drops the focused play button back
+    // to the nav rail, so the landing re-runs once more when the gate opens.
+    val inputModeManager = LocalInputModeManager.current
+    val playButtonFocusRequester = remember { FocusRequester() }
+    val playButtonFocused = remember { mutableStateOf(false) }
+
+    suspend fun landPlayButtonFocus() {
+        if (!item.isPlayable) return
+        var attempt = 0
+        while (attempt++ < DETAIL_FOCUS_RETRIES && !playButtonFocused.value) {
+            inputModeManager.requestInputMode(InputMode.Keyboard)
+            playButtonFocusRequester.requestFocus()
+            delay(DETAIL_FOCUS_RETRY_DELAY)
+        }
+    }
+
+    // Initial landing while the tab-loading gate is closed (hero shown in the loading grid).
+    LaunchedEffect(Unit) {
+        landPlayButtonFocus()
+    }
+
+    // The tab-loading gate (selectedTab null → loaded) replaces the whole LazyGrid, which drops
+    // the focused play button back to the nav rail. Re-land exactly once when the gate opens.
+    // Keying on the gate value re-runs this on every recomposition where it changes; tab
+    // switches after that keep the same grid, so the guard keeps them from stealing focus.
+    var gateOpened by remember { mutableStateOf(false) }
+    LaunchedEffect(state.selectedTab) {
+        if (!gateOpened && state.selectedTab != null) {
+            gateOpened = true
+            landPlayButtonFocus()
+        }
+    }
+
     val heroSlot: @Composable () -> Unit = {
         AnimatedVisibility(
             visible = state.playableItemsQuery == null,
@@ -395,6 +446,8 @@ private fun ItemContent(
                     providerIconFetcher = providerIconFetcher,
                     onPlayClick = onPlayItemClick,
                     navigateToItem = onNavigateClick,
+                    playButtonFocusRequester = playButtonFocusRequester,
+                    playButtonFocused = playButtonFocused,
                 )
             }
         }

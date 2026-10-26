@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -113,6 +115,10 @@ fun ItemHeader(
     providerIconFetcher: ProviderIconFetcher? = null,
     onPlayClick: (PlayMode) -> Unit = {},
     navigateToItem: (AppMediaItem) -> Unit = {},
+    // Android TV: the detail screen lands initial focus on the play button via this requester and
+    // tracks its success through [playButtonFocused].
+    playButtonFocusRequester: FocusRequester? = null,
+    playButtonFocused: MutableState<Boolean>? = null,
 ) {
     // Art color on top, fading down to the surface the Screen actually paints, so the
     // wash dissolves seamlessly where the tabs begin. Mirrors the player gradient (inverted).
@@ -139,6 +145,8 @@ fun ItemHeader(
                 onPlayClick = onPlayClick,
                 tint = colors.controlTint,
                 modifier = Modifier.padding(top = 8.dp),
+                focusRequester = playButtonFocusRequester,
+                focused = playButtonFocused,
             )
         }
 

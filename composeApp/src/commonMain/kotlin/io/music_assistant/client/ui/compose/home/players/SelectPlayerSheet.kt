@@ -5,12 +5,14 @@ package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,7 +45,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,11 +64,13 @@ import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.sharedicons.SharedIcons
+import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
+import io.music_assistant.client.utils.isTelevisionDevice
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
@@ -237,6 +250,8 @@ private fun PlayerSelection(
     var internalPlayers by remember { mutableStateOf(players) }
     var dragEndIndex by remember { mutableStateOf<Int?>(null) }
     val listState = rememberLazyListState()
+    // Used once, on dialog entry, to claim D-pad focus for the first player row.
+    val firstRowRequester = remember { FocusRequester() }
     val reorderableLazyListState =
         rememberReorderableLazyListState(listState) { from, to ->
             // The local player is pinned first (see MainDataSource.buildPlayerDataList):
@@ -247,6 +262,14 @@ private fun PlayerSelection(
             }
             dragEndIndex = to.index
         }
+
+    // Claim keyboard/D-pad focus for the list as soon as the dialog opens, landing on its
+    // first focusable row. Without this, a TV remote's up/down has nothing in the dialog to
+    // move between and can end up adjusting whatever was focused behind it instead (e.g. the
+    // now-playing volume slider).
+    LaunchedEffect(Unit) {
+        firstRowRequester.requestFocus()
+    }
 
     // Upstream emits frequently while a player is playing. Adopting them emits
     // mid-drag wipes the user's reorder and the list jumps. Sync upstream into
@@ -262,10 +285,36 @@ private fun PlayerSelection(
         }
     }
 
+    // D-pad navigation. The dialog is its own window, so a remote's up/down must never leak to
+    // whatever holds OS focus behind it. focusGroup() already contains 2D focus search within the
+    // list; routing the keys through focusManager.moveFocus — the Compose-recommended way to
+    // advance focus programmatically — keeps them inside that group and lets the LazyColumn's own
+    // focus handling scroll the focused row into view at the boundaries. TV-only: phone/iOS have no
+    // D-pad, so this stays out of their focus/key-event path entirely.
+    val isTv = isTelevisionDevice()
+    val focusManager = LocalFocusManager.current
     LazyColumn(
         modifier = Modifier
             .testTag("PlayersList")
-            .selectableGroup(),
+            .then(if (isTv) Modifier.focusGroup() else Modifier)
+            .selectableGroup()
+            .heightIn(max = MAX_DIALOG_HEIGHT)
+            .then(
+                if (isTv) {
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        val direction = when (event.key) {
+                            Key.DirectionDown -> FocusDirection.Down
+                            Key.DirectionUp -> FocusDirection.Up
+                            else -> return@onPreviewKeyEvent false
+                        }
+                        focusManager.moveFocus(direction)
+                        true
+                    }
+                } else {
+                    Modifier
+                },
+            ),
         state = listState,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -285,6 +334,9 @@ private fun PlayerSelection(
                 Color.Transparent
             }
 
+            val isFirstRow = internalPlayers.isNotEmpty() &&
+                item.player.id == internalPlayers.first().player.id
+
             ReorderableItem(
                 state = reorderableLazyListState,
                 key = item.player.id,
@@ -294,6 +346,14 @@ private fun PlayerSelection(
                     modifier = Modifier
                         .height(80.dp)
                         .fillMaxWidth()
+                        .testTag("PlayerRow-${item.player.id}")
+                        .then(
+                            if (isFirstRow) {
+                                Modifier.focusRequester(firstRowRequester)
+                            } else {
+                                Modifier
+                            },
+                        )
                         .clip(shape = plateShape)
                         .background(color = backgroundColor)
                         .border(
