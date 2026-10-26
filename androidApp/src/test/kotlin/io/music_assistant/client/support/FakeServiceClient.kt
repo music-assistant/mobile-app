@@ -62,6 +62,7 @@ class FakeServiceClient : ServiceClient {
     private val queues = mutableListOf<ServerQueue>()
     private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
     private val mediaItemStore = FakeMediaItemStore()
+
     // The server keeps one object per user, and an update replaces it whole.
     var preferences = JsonObject(emptyMap())
         private set

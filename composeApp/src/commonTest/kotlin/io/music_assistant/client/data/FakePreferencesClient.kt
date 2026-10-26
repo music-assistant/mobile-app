@@ -47,8 +47,10 @@ class FakePreferencesClient(var serverPreferences: JsonObject = JsonObject(empty
     private fun error(request: Request) = Answer(
         buildJsonObject {
             put("message_id", JsonPrimitive(request.messageId))
-            put("error_code", JsonPrimitive(999))
+            put("error_code", JsonPrimitive(errorCode))
             put("details", JsonPrimitive("rejected"))
         },
     )
+
+    private val errorCode = 999
 }

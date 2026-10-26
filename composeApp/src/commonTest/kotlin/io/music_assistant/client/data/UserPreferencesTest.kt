@@ -85,7 +85,7 @@ class UserPreferencesTest {
     }
 
     @Test
-    fun `a recent search goes first, trimmed, without its other spellings`() {
+    fun `a recent search goes first trimmed without its other spellings`() {
         assertEquals(listOf("Jazz", "rock"), withRecentSearch(listOf("rock", "jazz"), "  Jazz "))
     }
 

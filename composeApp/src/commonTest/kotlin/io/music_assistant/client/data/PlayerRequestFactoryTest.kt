@@ -52,7 +52,8 @@ class PlayerRequestFactoryTest {
         val tracker = PlayerPositionTracker()
         // Paused anchor → effectiveSec returns exactly positionSec (no wall-clock drift).
         tracker.setAnchor(queueId = queueId, elapsedSec = positionSec, isPlaying = false)
-        val client = FakePreferencesClient(buildJsonObject { put("audiobook_chapter_progress", chapterProgressEnabled) })
+        val client =
+            FakePreferencesClient(buildJsonObject { put("audiobook_chapter_progress", chapterProgressEnabled) })
         val preferences = UserPreferences(client).apply { runBlocking { refresh() } }
         return PlayerRequestFactory(tracker, preferences).resolve(playerDataWith(item), action)
     }
