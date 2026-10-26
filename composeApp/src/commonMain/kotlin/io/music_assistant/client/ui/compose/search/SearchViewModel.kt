@@ -49,7 +49,7 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * Intent to escalate an empty in-library quick search to the global Search tab.
  *
  * @param mediaType the referring library's type, used to pre-select the matching filter chip;
- *   null (or a type with no chip, e.g. GENRE) searches all types.
+ *   null (or a type with no chip) searches all types.
  */
 data class GlobalSearchRequest(val query: String, val mediaType: MediaType?)
 
@@ -75,9 +75,7 @@ class SearchViewModel(
                     MediaType.AUDIOBOOK,
                     MediaType.PODCAST,
                     MediaType.RADIO,
-                    // TODO server doesn't return genre in this endpoint yet,
-                    //  need to fetch separately if we want to show it
-                    // MediaType.GENRE,
+                    MediaType.GENRE,
                 ).map { MediaTypeSelect(it, false) },
                 libraryOnly = false,
             ),
@@ -119,8 +117,8 @@ class SearchViewModel(
                 searchState = state.searchState.copy(
                     query = request.query,
                     mediaTypes = state.searchState.mediaTypes.map { mediaTypeSelect ->
-                        // Select only the referring type; an unmatched/null type (e.g. GENRE,
-                        // which has no chip) leaves all unselected → search all types.
+                        // Select only the referring type; an unmatched/null type (one with
+                        // no chip) leaves all unselected → search all types.
                         mediaTypeSelect.copy(isSelected = mediaTypeSelect.type == request.mediaType)
                     },
                 ),
@@ -192,14 +190,7 @@ class SearchViewModel(
             viewModelScope.launch {
                 _state.update { it.copy(resultsState = DataState.Loading()) }
 
-                val result = mediaItemRepository.search(
-                    Request.Library.search(
-                        query = searchState.query,
-                        mediaTypes = searchState.selectedMediaTypes,
-                        limit = searchLimitFor(searchState.selectedMediaTypes.size),
-                        libraryOnly = searchState.libraryOnly,
-                    ),
-                )
+                val result = mediaItemRepository.search(searchRequest(searchState))
                 if (isActive) {
                     result.getOrNull()?.let { data ->
                         val results = SearchResults(
@@ -283,5 +274,17 @@ class SearchViewModel(
         /** Pick the limit from the number of selected filter chips (0 = all types). */
         fun searchLimitFor(selectedMediaTypeCount: Int) =
             if (selectedMediaTypeCount == 1) SEARCH_LIMIT_FOCUSED else SEARCH_LIMIT_OVERVIEW
+
+        /**
+         * Genres live in the library only, so a genre-only search skips the providers
+         * instead of waiting on them for nothing. The server searches genres from 2.10.0.
+         */
+        fun searchRequest(searchState: SearchState) = Request.Library.search(
+            query = searchState.query,
+            mediaTypes = searchState.selectedMediaTypes,
+            limit = searchLimitFor(searchState.selectedMediaTypes.size),
+            libraryOnly = searchState.libraryOnly ||
+                searchState.selectedMediaTypes == listOf(MediaType.GENRE),
+        )
     }
 }

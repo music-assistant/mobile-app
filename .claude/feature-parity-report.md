@@ -138,7 +138,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
 | Global search for 7 media types | yes | yes | yes | yes | Siri | Parity | AA: `onSearch` and voice. CP: Siri only |
-| Genre search | yes | yes | no | no | no | Adjust-partial | Web queries `genres/library_items`. App has a TODO in `app/ui/compose/search/SearchViewModel.kt` |
+| Genre search | yes | yes | yes | no | no | Parity | Issue #1197. From server 2.10.0, `music/search` searches the library genres. The app has a Genre chip, and a genre-only search asks the library only, like the web |
 | Library-only toggle | yes | yes | yes | n/a | n/a | Parity | |
 | Source picker per provider | no | yes | no | n/a | n/a | Missing | Preference `search.sources` |
 | Recent searches | yes | yes | no | n/a | n/a | Missing | Preference `search.recent` |
