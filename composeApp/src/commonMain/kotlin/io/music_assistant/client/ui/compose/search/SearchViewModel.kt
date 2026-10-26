@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.UserPreferences
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -27,6 +28,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.update
@@ -58,10 +60,17 @@ class SearchViewModel(
     private val playDispatcher: PlayDispatcher,
     private val mainDataSource: MainDataSource,
     private val mediaItemRepository: MediaItemRepository,
+    private val userPreferences: UserPreferences,
 ) : ViewModel() {
     val searchJob = AtomicReference<Job?>(null)
 
     private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+
+    /** Recent search terms, newest first, shared with the web frontend. */
+    val recentSearches: StateFlow<List<String>> = userPreferences.recentSearches
+
+    // The query of the shown results, not the edited text: a result belongs to this query.
+    private var searchedQuery = ""
 
     private val _state = MutableStateFlow(
         State(
@@ -94,6 +103,7 @@ class SearchViewModel(
                 .collect {
                     val searchState = _state.value.searchState
                     if (searchState.query.isNotBlank()) {
+                        searchedQuery = searchState.query
                         performSearch(searchState)
                     } else {
                         _state.update { it.copy(resultsState = DataState.NoData()) }
@@ -152,7 +162,21 @@ class SearchViewModel(
         searchTrigger.tryEmit(Unit)
     }
 
+    /** A tap on a recent search term runs that search again. */
+    fun onRecentSearchClick(term: String) {
+        onQueryChanged(term)
+        onSearch()
+    }
+
+    /** The user opened a result: like the web frontend, the query becomes a recent search. */
+    fun onResultOpened() {
+        searchedQuery.takeIf { it.isNotBlank() }?.let { query ->
+            viewModelScope.launch { userPreferences.addRecentSearch(query) }
+        }
+    }
+
     fun onPlayClick(track: AppMediaItem, mode: PlayMode) {
+        onResultOpened()
         mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
             track.mediaUri?.let { mediaUri ->
                 Logger.withTag("PlayDispatch")

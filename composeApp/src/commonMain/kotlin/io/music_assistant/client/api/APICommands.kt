@@ -121,6 +121,9 @@ object APICommands {
     const val AUTH_LOGOUT = "auth/logout"
     const val AUTH_ME = "auth/me"
 
+    // Updates the signed-in user. `preferences` replaces the whole preference object.
+    const val AUTH_USER_UPDATE = "auth/user/update"
+
     // Scopes granted to each user role, as a role-id -> scope-list map. Used to gate UI
     // on what the signed-in user may actually do. Available since 2.10.
     const val AUTH_SCOPES = "auth/scopes"

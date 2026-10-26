@@ -36,7 +36,6 @@ import io.music_assistant.client.data.model.server.PlayMediaSupport
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
-import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemPlayedEvent
 import io.music_assistant.client.data.model.server.events.PlayerAddedEvent
@@ -1681,11 +1680,7 @@ class MainDataSource(
 
     /** Refreshes preferences from `auth/me`; a failed fetch keeps the current values. */
     private fun updateUserPreferences() {
-        launch {
-            apiClient.sendRequest(Request(APICommands.AUTH_ME))
-                .resultAs<ServerUser>()
-                ?.let { userPreferences.update(it.preferences) }
-        }
+        launch { userPreferences.refresh() }
     }
 
     /**

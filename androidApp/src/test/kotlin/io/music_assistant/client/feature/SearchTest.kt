@@ -16,11 +16,14 @@ import io.music_assistant.client.support.pages.clickHome
 import io.music_assistant.client.support.pages.clickSearch
 import io.music_assistant.client.support.pages.enableFilter
 import io.music_assistant.client.support.rules.createTestRuleChain
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -86,6 +89,37 @@ class SearchTest {
             }
             .assertMediaDisplayed(libraryAlbum, provider = ServerMediaItem.LIBRARY_PROVIDER)
             .assertMediaNotDisplayed(globalAlbum)
+    }
+
+    @Test
+    fun `opening a result saves the query as a recent search`() {
+        val album = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
+        serviceClient.addItems(album)
+        serviceClient.setPreference("theme", JsonPrimitive("dark"))
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSearch()
+            .search("onion")
+            .clickOnMedia(album)
+
+        composeTestRule.waitUntil("the server holds 'onion' as a recent search") {
+            serviceClient.preferences["search.recent"] == JsonArray(listOf(JsonPrimitive("onion")))
+        }
+        // The whole object is replaced, so the keys of other clients must be sent back.
+        assertEquals(JsonPrimitive("dark"), serviceClient.preferences["theme"])
+    }
+
+    @Test
+    fun `a recent search runs again on tap`() {
+        val album = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
+        serviceClient.addItems(album)
+        serviceClient.setPreference("search.recent", JsonArray(listOf(JsonPrimitive("onion"))))
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSearch()
+            .assertRecentSearches("onion")
+            .clickRecentSearch("onion")
+            .assertMediaDisplayed(album)
     }
 
     @Test

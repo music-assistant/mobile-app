@@ -21,8 +21,6 @@ import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
-import io.music_assistant.client.data.model.server.ServerUser
-import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.data.model.server.StreamDetails
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
@@ -47,6 +45,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -63,7 +62,9 @@ class FakeServiceClient : ServiceClient {
     private val queues = mutableListOf<ServerQueue>()
     private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
     private val mediaItemStore = FakeMediaItemStore()
-    private val shortcuts = mutableListOf<String>()
+    // The server keeps one object per user, and an update replaces it whole.
+    var preferences = JsonObject(emptyMap())
+        private set
     private val providers = mutableListOf<ServerProviderInstance>()
 
     val username = "user"
@@ -95,16 +96,12 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.AUTH_ME -> {
-                Result.success(
-                    answer(
-                        request = request,
-                        result = if (shortcuts.isNotEmpty()) {
-                            ServerUser(preferences = ServerUserPreferences(shortcuts))
-                        } else {
-                            ServerUser()
-                        },
-                    ),
-                )
+                Result.success(answer(request, buildJsonObject { put("preferences", preferences) }))
+            }
+
+            APICommands.AUTH_USER_UPDATE -> {
+                preferences = request.args!!["preferences"] as JsonObject
+                Result.success(answer(request, buildJsonObject { put("preferences", preferences) }))
             }
 
             APICommands.AUTH_PROVIDERS -> {
@@ -788,7 +785,12 @@ class FakeServiceClient : ServiceClient {
     }
 
     fun addShortcut(item: ServerMediaItem) {
-        shortcuts.add(item.uri!!)
+        val shortcuts = (preferences["sidebar.shortcuts"] as? JsonArray).orEmpty()
+        setPreference("sidebar.shortcuts", JsonArray(shortcuts + JsonPrimitive(item.uri!!)))
+    }
+
+    fun setPreference(key: String, value: JsonElement) {
+        preferences = JsonObject(preferences + (key to value))
     }
 
     fun addProvider(provider: ServerProviderInstance) {

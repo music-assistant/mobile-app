@@ -141,7 +141,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Genre search | yes | yes | no | no | no | Adjust-partial | Web queries `genres/library_items`. App has a TODO in `app/ui/compose/search/SearchViewModel.kt` |
 | Library-only toggle | yes | yes | yes | n/a | n/a | Parity | |
 | Source picker per provider | no | yes | no | n/a | n/a | Missing | Preference `search.sources` |
-| Recent searches | yes | yes | no | n/a | n/a | Missing | Preference `search.recent` |
+| Recent searches | yes | yes | yes | n/a | n/a | Parity | Issue #1197. Preference `search.recent`, shared with the web. Opening, playing or playing from the menu of a result saves the query |
 | Search limits | 15 per type, 50 for one type | same | 10 per type, 30 for one type | 10 | 10 | Parity | Limits must stay small, see memory on the 8 s soft timeout |
 | In-car search screen | n/a | n/a | n/a | yes | no | Decided | CarPlay audio apps have no search template |
 

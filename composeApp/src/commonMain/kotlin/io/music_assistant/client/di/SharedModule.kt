@@ -143,7 +143,7 @@ fun sharedModule(
         // app settings storage as everything else.
         single<SendspinKeyStore> { SettingsSendspinKeyStore(get()) }
         single { PlayerPositionTracker() }  // Shared live-position source of truth
-        single { UserPreferences() }        // Server-synced `auth/me` preferences
+        single { UserPreferences(get()) }   // Server-synced `auth/me` preferences
         singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
         single { LocalPlayerEndpoints(get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
         single<LocalPlayerFactory> { SendspinLocalPlayerFactory(get(), get(), get(), get(), get(), get()) }
@@ -234,7 +234,7 @@ fun sharedModule(
         factory { DspSettingsViewModel(get()) }
         factory { QueueDjViewModel(get(), get<MainDataSource>().aiRadioQueueDjAvailable) }
         factory { HomeScreenViewModel(get(), get(), get(), get(), get()) }
-        factory { SearchViewModel(get(), get(), get()) }
+        factory { SearchViewModel(get(), get(), get(), get()) }
         factory { ProviderViewModel(get(), get()) }
     }
 

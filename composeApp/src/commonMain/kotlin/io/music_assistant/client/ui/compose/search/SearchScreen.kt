@@ -82,7 +82,6 @@ import musicassistantclient.composeapp.generated.resources.search_error
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import musicassistantclient.composeapp.generated.resources.search_no_results
 import musicassistantclient.composeapp.generated.resources.search_query_label
-import musicassistantclient.composeapp.generated.resources.search_start
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -97,6 +96,7 @@ fun SearchScreen(
     onSearchConsumed: () -> Unit = {},
 ) {
     val searchState by searchViewModel.state.collectAsStateWithLifecycle()
+    val recentSearches by searchViewModel.recentSearches.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
@@ -128,8 +128,11 @@ fun SearchScreen(
         ProvideClickActions(ClickContext.SEARCH) {
             SearchContent(
                 state = searchState,
+                recentSearches = recentSearches,
+                onRecentSearchClick = searchViewModel::onRecentSearchClick,
                 toastState = toastState,
                 onItemClick = { item ->
+                    searchViewModel.onResultOpened()
                     when (item) {
                         is Artist,
                         is Album,
@@ -237,6 +240,8 @@ private class SearchFilterState(selectedMediaTypes: List<MediaType>, libraryOnly
 @Composable
 private fun SearchContent(
     state: SearchViewModel.State,
+    recentSearches: List<String>,
+    onRecentSearchClick: (String) -> Unit,
     toastState: ToastState,
     onItemClick: (AppMediaItem) -> Unit,
     onPlayClick: PlayHandler<AppMediaItem>,
@@ -424,14 +429,12 @@ private fun SearchContent(
                     }
                 }
 
-                is DataState.NoData -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(stringResource(Res.string.search_start))
-                    }
-                }
+                is DataState.NoData -> RecentSearches(
+                    recentSearches = recentSearches,
+                    query = state.searchState.query,
+                    onClick = onRecentSearchClick,
+                    contentPadding = contentPadding,
+                )
             }
         }
 

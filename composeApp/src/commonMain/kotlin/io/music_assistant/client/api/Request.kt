@@ -996,6 +996,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
     data object Auth {
         fun providers() = Request(command = APICommands.AUTH_PROVIDERS)
 
+        fun me() = Request(command = APICommands.AUTH_ME)
+
+        /** Replaces ALL preferences of the signed-in user with [preferences]. */
+        fun updatePreferences(preferences: JsonObject) = Request(
+            command = APICommands.AUTH_USER_UPDATE,
+            args = buildJsonObject { put("preferences", preferences) },
+        )
+
         /** A [codeChallenge] makes the browser return to the app, which then sends [exchange]. */
         fun authorizationUrl(
             providerId: String,

@@ -137,6 +137,12 @@ actual class PlatformFeature {
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,
   because server 2.10 sends the list without the provider filter of the user.
+- **User preferences**: `UserPreferences` (`data/`) owns the server preferences of the signed-in user.
+  The web frontend uses the same object. `auth/user/update` replaces the whole object, and the server
+  sends no change event. So write one key with `UserPreferences.update`. It gets the latest object from
+  `auth/me`, changes the key, and sends the whole object. One mutex orders the reads and the writes. If
+  the read fails, nothing is written. A change from another client between the read and the write is
+  lost. Recent searches (`search.recent`, 5 terms) use this path.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its
   rows again 1.5 s after the last event, like the web app.
