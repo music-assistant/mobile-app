@@ -48,6 +48,7 @@ import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.playMediaSupport
 import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.model.server.supportsDislike
+import io.music_assistant.client.data.model.server.supportsSearchSources
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -222,6 +223,12 @@ class MainDataSource(
     val dislikeSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsDislike((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(this, SharingStarted.Eagerly, false)
+
+    /** Whether `music/search` takes `providers` ([supportsSearchSources]). False while no session is up. */
+    val searchSourcesSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsSearchSources((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(this, SharingStarted.Eagerly, false)
 
     /** The optional `play_media` flags of the server ([playMediaSupport]). None while no session is up. */

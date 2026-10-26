@@ -3,6 +3,7 @@ package io.music_assistant.client.feature
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.SEARCH_PROVIDERS_MIN_SCHEMA
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
@@ -23,6 +24,7 @@ import musicassistantclient.composeapp.generated.resources.media_type_albums
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
+import musicassistantclient.composeapp.generated.resources.search_source_library
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -101,6 +103,28 @@ class SearchTest {
             }
             .assertMediaDisplayed(libraryAlbum, provider = ServerMediaItem.LIBRARY_PROVIDER)
             .assertMediaNotDisplayed(globalAlbum)
+    }
+
+    @Test
+    fun `can limit search to the library with the source picker`() {
+        val libraryAlbum = ServerMediaItemFixtures.album(name = "The Exploding Onion Conspiracy")
+        val globalAlbum = ServerMediaItemFixtures.album(name = "A Tale of Onions")
+        serviceClient.addItems(libraryAlbum)
+        serviceClient.addToLibrary(libraryAlbum)
+        serviceClient.addItems(globalAlbum)
+        serviceClient.schemaVersion = SEARCH_PROVIDERS_MIN_SCHEMA
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickSearch()
+            .search("onion")
+            .enableFilter {
+                it.assertNoSwitch(Res.string.search_in_library_only.get())
+                it.pickSources(Res.string.search_source_library.get())
+            }
+            .assertMediaDisplayed(libraryAlbum, provider = ServerMediaItem.LIBRARY_PROVIDER)
+            .assertMediaNotDisplayed(globalAlbum)
+
+        assertEquals(JsonArray(listOf(JsonPrimitive("library"))), serviceClient.preferences["search.sources"])
     }
 
     @Test

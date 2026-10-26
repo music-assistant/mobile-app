@@ -72,6 +72,9 @@ class FakeServiceClient : ServiceClient {
     val password = "password"
     var serverId = "serverId"
 
+    // 63 (server 2.10.0) and higher turn on the search source picker.
+    var schemaVersion = 39
+
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
     override val sessionState: StateFlow<SessionState> = _sessionState
@@ -166,7 +169,8 @@ class FakeServiceClient : ServiceClient {
             APICommands.MUSIC_SEARCH -> {
                 val mediaTypes =
                     (request.args!!["media_types"] as JsonArray).map { (it as JsonPrimitive).content }
-                val libraryOnly = request.getArgOrNull("library_only") == "true"
+                val libraryOnly = request.getArgOrNull("library_only") == "true" ||
+                    request.args!!["providers"] == JsonArray(listOf(JsonPrimitive("library")))
                 val results = mediaItemStore.query(
                     request.getArg("search_query"),
                     inLibraryOnly = libraryOnly,
@@ -731,7 +735,7 @@ class FakeServiceClient : ServiceClient {
                         // Schema 39+ moved recommendation row items behind
                         // MUSIC_RECOMMENDATIONS_ITEMS; this fake serves that
                         // shape unless a legacy version is set.
-                        schemaVersion = if (legacyVersion != null) -1 else 39,
+                        schemaVersion = if (legacyVersion != null) -1 else schemaVersion,
                         baseUrl = "http://homeassistant.example",
                     ),
                 )

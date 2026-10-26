@@ -139,8 +139,8 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 |---|---|---|---|---|---|---|---|
 | Global search for 7 media types | yes | yes | yes | yes | Siri | Parity | AA: `onSearch` and voice. CP: Siri only |
 | Genre search | yes | yes | yes | no | no | Parity | Issue #1197. From server 2.10.0, `music/search` searches the library genres. The app has a Genre chip, and a genre-only search asks the library only, like the web |
-| Library-only toggle | yes | yes | yes | n/a | n/a | Parity | |
-| Source picker per provider | no | yes | no | n/a | n/a | Missing | Preference `search.sources` |
+| Library-only toggle | yes | yes | yes | n/a | n/a | Parity | From server 2.10.0, the Library source of the source picker replaces it |
+| Source picker per provider | no | yes | yes | n/a | n/a | Parity | Issue #1197. Preference `search.sources`, shared with the web. Server 2.10.0 (schema 63) and later |
 | Recent searches | yes | yes | yes | n/a | n/a | Parity | Issue #1197. Preference `search.recent`, shared with the web. Opening, playing or playing from the menu of a result saves the query |
 | Search limits | 15 per type, 50 for one type | same | 10 per type, 30 for one type | 10 | 10 | Parity | Limits must stay small, see memory on the 8 s soft timeout |
 | In-car search screen | n/a | n/a | n/a | yes | no | Decided | CarPlay audio apps have no search template |

@@ -949,6 +949,8 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             mediaTypes: List<MediaType>,
             limit: Int = 20,
             libraryOnly: Boolean,
+            // From server 2.10.0 (`supportsSearchSources`): "library" and provider ids. Null searches all.
+            providers: List<String>? = null,
         ) = Request(
             command = APICommands.MUSIC_SEARCH,
             args = buildJsonObject {
@@ -959,6 +961,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 )
                 put("limit", JsonPrimitive(limit))
                 put("library_only", JsonPrimitive(libraryOnly))
+                providers?.let { put("providers", JsonArray(it.map(::JsonPrimitive))) }
             },
         )
 

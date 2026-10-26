@@ -142,7 +142,13 @@ actual class PlatformFeature {
   sends no change event. So write one key with `UserPreferences.update`. It gets the latest object from
   `auth/me`, changes the key, and sends the whole object. One mutex orders the reads and the writes. If
   the read fails, nothing is written. A change from another client between the read and the write is
-  lost. Recent searches (`search.recent`, 5 terms) use this path.
+  lost. Recent searches (`search.recent`, 5 terms) and search sources (`search.sources`) use this path.
+- **Search sources**: from schema 63 (`supportsSearchSources`, server 2.10.0), `music/search` takes
+  `providers`, and the filter sheet shows a source picker instead of the "In library only" switch.
+  `SearchSources` (`ui/compose/search/`) makes the choices like the web frontend: "library", one
+  target for each streaming service (its domain), and one target for each other provider instance.
+  An empty choice searches everything. A genre-only search sends `library` only. The choice is saved
+  before the search starts, and the search reads the sources when it starts, not from the screen state.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its
   rows again 1.5 s after the last event, like the web app.

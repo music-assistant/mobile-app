@@ -199,6 +199,9 @@ style:
       - '**/icons/**'
       - '**/theme/Color.kt'
       - '**/test/**'                           # tests use literals constantly
+      - '**/commonTest/**'                     # KMP test sets, including fakes and fixtures
+      - '**/androidHostTest/**'
+      - '**/iosTest/**'
       - '**/Test.kt'
       - '**/Tests.kt'
       - '**/*Test.kt'

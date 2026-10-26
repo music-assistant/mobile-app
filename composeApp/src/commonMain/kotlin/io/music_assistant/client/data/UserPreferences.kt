@@ -56,6 +56,9 @@ class UserPreferences(private val apiClient: ServiceClient) {
     /** Recent search terms, newest first. The web frontend shares the list. */
     val recentSearches: StateFlow<List<String>> = raw.mapState { it[RECENT_SEARCHES].strings() }
 
+    /** The `providers` of a search: "library" and provider ids. Empty searches all. The web shares it. */
+    val searchSources: StateFlow<List<String>> = raw.mapState { it[SEARCH_SOURCES].strings() }
+
     /** Fetches `auth/me`; a failed fetch keeps the current values. */
     suspend fun refresh() {
         val started = generation.load()
@@ -92,6 +95,9 @@ class UserPreferences(private val apiClient: ServiceClient) {
                 ?.let { recents -> JsonArray(recents.map(::JsonPrimitive)) }
         }
 
+    suspend fun setSearchSources(sources: List<String>): Boolean =
+        update(SEARCH_SOURCES) { JsonArray(sources.map(::JsonPrimitive)) }
+
     /** Drops cached values so the next server does not inherit them. */
     fun clear() {
         generation.addAndFetch(1)
@@ -113,6 +119,7 @@ class UserPreferences(private val apiClient: ServiceClient) {
 
     companion object {
         const val RECENT_SEARCHES = "search.recent"
+        const val SEARCH_SOURCES = "search.sources"
         const val MAX_RECENT_SEARCHES = 5
         const val MIN_RECENT_SEARCH_LENGTH = 2
 
