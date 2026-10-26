@@ -24,7 +24,9 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.refreshItemAction
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
@@ -38,10 +40,16 @@ import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -74,6 +82,8 @@ class ItemDetailsViewModel(
         val playableItemsQuery: String? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
         val userSelectedTab: ItemDetailsTab? = null,
+        /** True while `music/refresh_item` runs for the item. */
+        val refreshingItem: Boolean = false,
     ) {
         /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
         val tabs: List<ItemDetailsTab>
@@ -126,6 +136,16 @@ class ItemDetailsViewModel(
         ),
     )
     val state = _state.asStateFlow()
+
+    /** The refresh entry of the item menu; null hides it. */
+    val refreshAction: StateFlow<RefreshItemAction?> =
+        combine(
+            _state.map { it.itemOrNull() }.distinctUntilChanged(),
+            mainDataSource.refreshItemAccess,
+            providerRepository.providers,
+        ) { item, access, providers ->
+            item?.refreshItemAction(access, providers.dataOrNull)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
 
     init {
         // Listen to library changes; refresh the open item + its sub-lists.
@@ -589,6 +609,29 @@ class ItemDetailsViewModel(
         if (_state.value.playableItemsState is DataState.Loading) return
         val playlist = (state.value.itemState as? DataState.Data)?.data as? Playlist ?: return
         loadPlaylistTracks(playlist.itemId, playlist.provider, forceRefresh = true)
+    }
+
+    /**
+     * The server can take tens of seconds, because it also reloads the metadata. It changes the
+     * listings of the item, so the sub-items load again. A failure reaches the user as the server
+     * error toast.
+     */
+    fun refreshItem() {
+        if (_state.value.refreshingItem) return
+        val uri = _state.value.itemOrNull()?.uri ?: return
+        _state.update { it.copy(refreshingItem = true) }
+        viewModelScope.launch {
+            mediaItemRepository.fetchMediaItem(Request.Library.refreshItem(uri))
+                .onSuccess { refreshed ->
+                    refreshed ?: return@onSuccess
+                    // A refresh keeps the favorite, and the answer of server 2.11 has none.
+                    val item = _state.value.itemOrNull()?.let { refreshed.withFavorite(it.favorite) } ?: refreshed
+                    _state.update { it.copy(itemState = DataState.Data(item)) }
+                    loadSubItems(item)
+                }
+                .onFailure { Logger.e("Failed to refresh $uri", it) }
+            _state.update { it.copy(refreshingItem = false) }
+        }
     }
 
     fun reload() {

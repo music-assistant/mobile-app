@@ -70,6 +70,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.resumeChapter
 import io.music_assistant.client.data.model.client.stringResource
@@ -151,6 +152,7 @@ fun ItemDetailsScreen(
     contentPadding: PaddingValues,
 ) {
     val state by itemDetailsViewModel.state.collectAsStateWithLifecycle()
+    val refreshAction by itemDetailsViewModel.refreshAction.collectAsStateWithLifecycle()
 
     ItemDetails(
         contentPadding = contentPadding,
@@ -181,6 +183,8 @@ fun ItemDetailsScreen(
         onTabSelected = itemDetailsViewModel::onTabSelected,
         onLoadSimilarArtists = itemDetailsViewModel::loadSimilarArtists,
         onRefreshPlaylist = itemDetailsViewModel::refreshPlaylistTracks,
+        refreshAction = refreshAction,
+        onRefreshItem = itemDetailsViewModel::refreshItem,
         providerDetails = providerViewModel::getProviderDetails,
     )
 }
@@ -212,6 +216,8 @@ fun ItemDetails(
     onTabSelected: (ItemDetailsTab) -> Unit = {},
     onLoadSimilarArtists: () -> Unit = {},
     onRefreshPlaylist: () -> Unit = {},
+    refreshAction: RefreshItemAction? = null,
+    onRefreshItem: () -> Unit = {},
     providerDetails: (String) -> ProviderDetails? = { null },
 ) {
     val playlistActions = object : PlaylistActions {
@@ -305,6 +311,8 @@ fun ItemDetails(
                     onTabSelected = onTabSelected,
                     onLoadSimilarArtists = onLoadSimilarArtists,
                     onRefreshPlaylist = onRefreshPlaylist,
+                    refreshAction = refreshAction,
+                    onRefreshItem = onRefreshItem,
                     providerDetails = providerDetails,
                 )
             }
@@ -348,6 +356,8 @@ private fun ItemContent(
     onTabSelected: (ItemDetailsTab) -> Unit,
     onLoadSimilarArtists: () -> Unit,
     onRefreshPlaylist: () -> Unit,
+    refreshAction: RefreshItemAction?,
+    onRefreshItem: () -> Unit,
     providerDetails: (String) -> ProviderDetails?,
 ) {
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
@@ -414,6 +424,9 @@ private fun ItemContent(
                 // force_refresh is a playlist-tracks-only server argument, so no other
                 // media type gets the action.
                 onRefresh = onRefreshPlaylist.takeIf { item is Playlist },
+                refreshAction = refreshAction,
+                refreshingItem = state.refreshingItem,
+                onRefreshItem = onRefreshItem,
                 query = state.playableItemsQuery,
                 onQueryChanged = onPlayableItemsQueryChanged.takeIf {
                     item is Album || item is Playlist || item is Podcast

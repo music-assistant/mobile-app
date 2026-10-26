@@ -4,6 +4,7 @@ package io.music_assistant.client.data.model.server
 object Scope {
     const val LIBRARY_READ = "library.read"
     const val LIBRARY_WRITE = "library.write"
+    const val LIBRARY_MANAGE = "library.manage"
     const val QUEUES_CONTROL = "queues.control"
     const val CONFIG_PLAYERS_WRITE = "config.players.write"
     const val CONFIG_PROVIDERS_READ = "config.providers.read"

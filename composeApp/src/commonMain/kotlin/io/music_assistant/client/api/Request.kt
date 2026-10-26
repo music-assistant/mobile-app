@@ -926,6 +926,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        /**
+         * The server loads the item again from its music services, or finds a substitute when
+         * none of them has it any more. Answers the refreshed item. Needs `library.manage` before
+         * server 2.11 and `library.write` from 2.11.
+         */
+        fun refreshItem(itemUri: String) = Request(
+            command = APICommands.MUSIC_REFRESH_ITEM,
+            args = buildJsonObject {
+                put("media_item", JsonPrimitive(itemUri))
+            },
+        )
+
         fun markPlayed(
             item: MarkableItem,
         ) = Request(

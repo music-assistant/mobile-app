@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
@@ -22,6 +23,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
@@ -31,11 +33,14 @@ import io.music_assistant.client.ui.compose.common.ExtractedColorsSource
 import io.music_assistant.client.ui.compose.support.inScrollable
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_choose_artist
+import musicassistantclient.composeapp.generated.resources.action_find_on_music_services
 import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import musicassistantclient.composeapp.generated.resources.action_lyrics
+import musicassistantclient.composeapp.generated.resources.action_refresh_item
 import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.cd_refreshing_item
 import musicassistantclient.composeapp.generated.resources.item_tab_similar_tracks
 import musicassistantclient.composeapp.generated.resources.item_tab_versions
 import musicassistantclient.composeapp.generated.resources.media_type_albums
@@ -283,6 +288,61 @@ class ItemDetailsTest {
 
         composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
         composeTestRule.onNodeWithText(Res.string.action_lyrics.get()).assertDoesNotExist()
+    }
+
+    @Test
+    fun `refresh entry runs the refresh and shows progress while it runs`() {
+        var refreshes = 0
+        var refreshing by mutableStateOf(false)
+        val track = AppMediaItemFixtures.track(name = "Song")
+
+        composeTestRule.setInspectableContent {
+            ItemDetails(
+                state = trackState(track).copy(refreshingItem = refreshing),
+                fetchColors = NoColors,
+                refreshAction = RefreshItemAction.REFRESH,
+                onRefreshItem = { refreshes++ },
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).performClick()
+        assertEquals(1, refreshes)
+
+        refreshing = true
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_refreshing_item.get()).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).assertIsNotEnabled()
+    }
+
+    @Test
+    fun `unavailable item offers find on music services instead of refresh`() {
+        val track = AppMediaItemFixtures.track(name = "Song")
+
+        composeTestRule.setInspectableContent {
+            ItemDetails(
+                state = trackState(track),
+                fetchColors = NoColors,
+                refreshAction = RefreshItemAction.FIND_ON_MUSIC_SERVICES,
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_find_on_music_services.get()).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).assertDoesNotExist()
+    }
+
+    @Test
+    fun `no refresh entry without a refresh action`() {
+        val track = AppMediaItemFixtures.track(name = "Song")
+
+        composeTestRule.setInspectableContent {
+            ItemDetails(state = trackState(track), fetchColors = NoColors)
+        }
+
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).assertDoesNotExist()
+        composeTestRule.onNodeWithText(Res.string.action_find_on_music_services.get()).assertDoesNotExist()
     }
 
     private fun trackState(

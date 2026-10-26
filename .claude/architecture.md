@@ -125,6 +125,15 @@ actual class PlatformFeature {
   favorites, library membership, playlist edits and the played state. `canConfigurePlayers`
   (`config.players.write`) gates DSP and the car DSP action. Every role has `players.control`, so
   grouping has no gate.
+- **Refresh item**: `music/refresh_item` loads an item again from its music services. If no service has the
+  item, the server searches for a substitute. The item details menu shows "Refresh item" or "Find on your
+  music services" (`RefreshItemAction`). The command needs `library.manage` before server 2.11 and
+  `library.write` from 2.11 (`MainDataSource.refreshItemAccess`). Like the web frontend, "Refresh item"
+  also needs `library.manage`.
+
+  An item is unavailable if no mapping is available on an available provider instance. The entry stays
+  hidden until `ProviderRepository` loads the providers. The command can take tens of seconds, so the
+  screen shows progress. The command changes the listings of the item, so the sub-items load again.
 - **Library sort**: get the sort choices of a library list from `LibrarySortRepository.menu(mediaType)`, on the
   phone and in Android Auto. From server 2.11 (`sortWireFor`), the menu holds the fields of `music/sort_options`
   and the request sends `sort_field` and `sort_direction`. An older server gets the static `SortConfig` table and

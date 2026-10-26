@@ -191,7 +191,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Add to playlist, remove from playlist | yes | yes | yes | no | no | Parity | |
 | Mark played and unplayed | yes | yes | yes | no | no | Parity | |
 | Play from beginning | yes | yes | yes | no | no | Parity | Podcast episodes with progress, schema 40 and newer |
-| Refresh item, find on music services | yes | yes | no | no | no | Missing | `music/refresh_item`. 2.11 lowers the scope to `library.write` |
+| Refresh item, find on music services | yes | yes | details menu | no | no | Parity | `music/refresh_item`. 2.11 lowers the scope to `library.write`. The app offers it on the item details screen only |
 | Update metadata, edit builtin items | yes | yes | no | no | no | Out of scope | Needs `library.manage` |
 | Export, migrate, share playlist | export | all three | no | no | no | Missing | See 4.10 |
 | Go to artist and album | yes | yes | yes | no | no | Parity | |

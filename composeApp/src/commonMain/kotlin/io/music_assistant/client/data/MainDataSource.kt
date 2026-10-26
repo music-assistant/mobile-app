@@ -33,6 +33,7 @@ import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.GrantedScopes
 import io.music_assistant.client.data.model.server.PlayMediaSupport
+import io.music_assistant.client.data.model.server.RefreshItemAccess
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
@@ -46,6 +47,7 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.playMediaSupport
+import io.music_assistant.client.data.model.server.refreshItemAccess
 import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.model.server.supportsDislike
 import io.music_assistant.client.data.model.server.supportsSearchSources
@@ -218,6 +220,12 @@ class MainDataSource(
         combine(aiRadioSupported, _grantedScopes) { supported, scopes ->
             supported && scopes.hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
         }.stateIn(this, SharingStarted.Eagerly, false)
+
+    /** The `music/refresh_item` actions of the user ([refreshItemAccess]). Fails closed with [grantedScopes]. */
+    val refreshItemAccess: StateFlow<RefreshItemAccess> =
+        combine(apiClient.sessionState, _grantedScopes) { session, scopes ->
+            refreshItemAccess(scopes, (session as? HasConnectionData)?.serverInfo?.schemaVersion)
+        }.stateIn(this, SharingStarted.Eagerly, RefreshItemAccess.NONE)
 
     /** Whether the server keeps a dislike ([supportsDislike]). False while no session is up. */
     val dislikeSupported: StateFlow<Boolean> =

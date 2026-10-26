@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Lyrics
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -48,6 +50,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,6 +64,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
+import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.imageloader.rememberArtworkRequest
@@ -91,12 +96,15 @@ import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.ui.utils.fadingEdges
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_find_on_music_services
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_lyrics
+import musicassistantclient.composeapp.generated.resources.action_refresh_item
 import musicassistantclient.composeapp.generated.resources.action_similar_artists
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.cd_refreshing_item
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.find_in_list_label
 import musicassistantclient.composeapp.generated.resources.refresh
@@ -179,6 +187,9 @@ internal fun ItemTopBar(
     onSimilarArtistsClick: () -> Unit,
     onLyricsClick: (() -> Unit)? = null,
     onRefresh: (() -> Unit)? = null,
+    refreshAction: RefreshItemAction? = null,
+    refreshingItem: Boolean = false,
+    onRefreshItem: () -> Unit = {},
     query: String?,
     onQueryChanged: ((String?) -> Unit)?,
 ) {
@@ -221,6 +232,16 @@ internal fun ItemTopBar(
                 }
             },
             actions = {
+                if (refreshingItem) {
+                    val description = stringResource(Res.string.cd_refreshing_item)
+                    Box(
+                        modifier = Modifier.size(48.dp).semantics { contentDescription = description },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = onBar, strokeWidth = 2.dp)
+                    }
+                }
+
                 if (searchEnabled && query != null) {
                     IconButton(onClick = { onQueryChanged(null) }) {
                         Icon(Icons.Default.Close, stringResource(Res.string.cd_close))
@@ -248,6 +269,9 @@ internal fun ItemTopBar(
                         navigateToItem = navigateToItem,
                         onSimilarArtistsClick = onSimilarArtistsClick,
                         onLyricsClick = onLyricsClick,
+                        refreshAction = refreshAction,
+                        refreshingItem = refreshingItem,
+                        onRefreshItem = onRefreshItem,
                         onRemovedFromLibrary = onBack,
                     )
                 }
@@ -264,6 +288,9 @@ private fun ItemOverflow(
     navigateToItem: (AppMediaItem) -> Unit,
     onSimilarArtistsClick: () -> Unit,
     onLyricsClick: (() -> Unit)?,
+    refreshAction: RefreshItemAction?,
+    refreshingItem: Boolean,
+    onRefreshItem: () -> Unit,
     // The page shows the removed item, so it closes with the removal, like the web app.
     onRemovedFromLibrary: () -> Unit,
 ) {
@@ -292,6 +319,22 @@ private fun ItemOverflow(
             )
         },
     )
+    // Detail-only like the similar artists: the server refreshes the item that the page shows.
+    val refresh = listOfNotNull(
+        refreshAction?.let { action ->
+            OverflowMenuOption(
+                title = stringResource(
+                    when (action) {
+                        RefreshItemAction.REFRESH -> Res.string.action_refresh_item
+                        RefreshItemAction.FIND_ON_MUSIC_SERVICES -> Res.string.action_find_on_music_services
+                    },
+                ),
+                icon = Icons.Default.Refresh,
+                enabled = !refreshingItem,
+                onClick = onRefreshItem,
+            )
+        },
+    )
 
     val canonical = resolveDetailOverflowActions(
         item = item,
@@ -314,7 +357,7 @@ private fun ItemOverflow(
     }
     OverflowMenuButton(
         options = canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
-            lyrics + dynamicColorsMenuOption(),
+            lyrics + refresh + dynamicColorsMenuOption(),
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(
