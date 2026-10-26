@@ -30,6 +30,7 @@ import io.music_assistant.client.data.model.client.items.refreshItemAction
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
@@ -60,6 +61,7 @@ class ItemDetailsViewModel(
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val providerRepository: ProviderRepository,
+    private val itemRefresher: ItemRefresher,
     private val itemId: String,
     private val mediaType: MediaType,
     private val providerId: String,
@@ -82,7 +84,7 @@ class ItemDetailsViewModel(
         val playableItemsQuery: String? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
         val userSelectedTab: ItemDetailsTab? = null,
-        /** True while `music/refresh_item` runs for the item. */
+        /** True while `music/refresh_item` runs for the item, from this page or an earlier one. */
         val refreshingItem: Boolean = false,
     ) {
         /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
@@ -161,6 +163,24 @@ class ItemDetailsViewModel(
                     }
                 }
                 updateSubItemIfNeeded(updated, change)
+            }
+        }
+        viewModelScope.launch {
+            combine(
+                _state.map { it.itemOrNull()?.uri }.distinctUntilChanged(),
+                itemRefresher.refreshingUris,
+            ) { uri, uris -> uri in uris }
+                .distinctUntilChanged()
+                .collect { refreshing -> _state.update { it.copy(refreshingItem = refreshing) } }
+        }
+        // The refresh changes the listings of the item, so the sub-items load again. The answer
+        // replaces the item by uri, because a substitute shares no mapping with an unavailable item.
+        viewModelScope.launch {
+            itemRefresher.refreshed.collect { (uri, refreshed) ->
+                val current = _state.value.itemOrNull()?.takeIf { it.uri == uri } ?: return@collect
+                val item = refreshed.withFavorite(current.favorite)
+                _state.update { it.copy(itemState = DataState.Data(item)) }
+                loadSubItems(item)
             }
         }
         // Filter and sort off Main. mapLatest drops a superseded run; the identity check drops a
@@ -611,27 +631,9 @@ class ItemDetailsViewModel(
         loadPlaylistTracks(playlist.itemId, playlist.provider, forceRefresh = true)
     }
 
-    /**
-     * The server can take tens of seconds, because it also reloads the metadata. It changes the
-     * listings of the item, so the sub-items load again. A failure reaches the user as the server
-     * error toast.
-     */
+    /** The [ItemRefresher] sends it in the app scope; [ItemRefresher.refreshed] gives the answer. */
     fun refreshItem() {
-        if (_state.value.refreshingItem) return
-        val uri = _state.value.itemOrNull()?.uri ?: return
-        _state.update { it.copy(refreshingItem = true) }
-        viewModelScope.launch {
-            mediaItemRepository.fetchMediaItem(Request.Library.refreshItem(uri))
-                .onSuccess { refreshed ->
-                    refreshed ?: return@onSuccess
-                    // A refresh keeps the favorite, and the answer of server 2.11 has none.
-                    val item = _state.value.itemOrNull()?.let { refreshed.withFavorite(it.favorite) } ?: refreshed
-                    _state.update { it.copy(itemState = DataState.Data(item)) }
-                    loadSubItems(item)
-                }
-                .onFailure { Logger.e("Failed to refresh $uri", it) }
-            _state.update { it.copy(refreshingItem = false) }
-        }
+        _state.value.itemOrNull()?.uri?.let(itemRefresher::refresh)
     }
 
     fun reload() {

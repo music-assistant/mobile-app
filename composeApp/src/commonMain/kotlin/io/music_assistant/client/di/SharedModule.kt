@@ -22,6 +22,7 @@ import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
+import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
@@ -182,6 +183,12 @@ fun sharedModule(
             )
         }
         single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }
+        single {                            // Sole refresh_item sender; refreshes outlive the page
+            ItemRefresher(
+                mediaItemRepository = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
         singleOf(::LibrarySortRepository)   // Library sort choices; caches the 2.11 sort_options
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single(createdAtStart = true) {     // Eager - must observe car edges from launch
@@ -216,6 +223,7 @@ fun sharedModule(
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(
+                get(),
                 get(),
                 get(),
                 get(),
