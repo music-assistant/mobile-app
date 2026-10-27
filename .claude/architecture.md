@@ -143,6 +143,20 @@ actual class PlatformFeature {
   because a refresh does not change the favorite. Then it emits `refreshed`. The page replaces its item
   from `refreshed` by uri, because a substitute has no mapping in common with the unavailable item.
   The command changes the listings of the item, so the sub-items load again.
+- **Item metadata**: the item details page shows the long text of the item under the header, like the
+  web frontend: the biography of an artist (`metadata.description`), the review of an album
+  (`metadata.review`, or its description), and the description of a playlist, a podcast or an
+  audiobook. `AppMediaItem.itemDescription()` (`model/client/ItemDescription.kt`) selects the text
+  and `toPlainItemText` makes plain text from the Markdown and HTML that a provider sends. The page
+  clamps it to 3 lines, and "More" opens a sheet. The facts line shows the album type, the track
+  count and the total time (`PlayableSummary`, a client sum of the loaded tracks, none for a dynamic
+  playlist), the publisher of an audiobook, and the music services of a library item. The genre chips
+  come from `music/genres/genres_for_media_item`, which maps genres to library items only, so an
+  item of a music service gets none. A chip opens the genre page. A playlist shows its `owner` name.
+  From server 2.11 (`supportsPlaylistAccess`) a Music Assistant playlist shows its access record
+  instead (`PlaylistAccess`, `ownerLine`): "Personal" or the owner, who sees it, and "Collaborative".
+  The name of another owner comes from `config/providers/share_candidates`, which needs
+  `library.write`. The car surfaces show none of this.
 - **Library sort**: get the sort choices of a library list from `LibrarySortRepository.menu(mediaType)`, on the
   phone and in Android Auto. From server 2.11 (`sortWireFor`), the menu holds the fields of `music/sort_options`
   and the request sends `sort_field` and `sort_direction`. An older server gets the static `SortConfig` table and

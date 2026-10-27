@@ -227,8 +227,17 @@
   <string name="discover_edit_rows">Edit rows</string>
   <string name="discover_save_rows">Save rows</string>
   <string name="discover_shortcuts">Shortcuts</string>
+  <string name="item_description_more">More</string>
+  <string name="item_duration_hours">%1$d h</string>
+  <string name="item_duration_hours_minutes">%1$d h %2$d min</string>
+  <string name="item_duration_minutes">%1$d min</string>
   <string name="item_error">Error loading item</string>
+  <string name="item_narrated_by">Narrated by %1$s</string>
   <string name="item_no_data">No data available</string>
+  <string name="item_publisher">Publisher: %1$s</string>
+  <string name="item_section_biography">Biography</string>
+  <string name="item_section_description">Description</string>
+  <string name="item_section_review">Review</string>
   <string name="item_subtitle_audio_source">Input</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Playlist</string>
@@ -240,6 +249,10 @@
   <string name="item_subtitle_unknown">Unknown</string>
   <string name="item_tab_similar_tracks">Similar tracks</string>
   <string name="item_tab_versions">Versions</string>
+  <plurals name="item_track_count">
+    <item quantity="one">%1$d track</item>
+    <item quantity="other">%1$d tracks</item>
+  </plurals>
   <string name="kind_album">Albums</string>
   <string name="kind_artist">Artists</string>
   <string name="kind_audiobook">Audiobooks</string>
@@ -312,12 +325,23 @@
   <string name="players_remote_volume_hint">Volume buttons only work for the local player</string>
   <string name="players_swipe_hint">Swipe left or right to switch between players</string>
   <string name="players_title">Players</string>
+  <string name="playlist_access_collaborative">Collaborative</string>
+  <string name="playlist_access_personal">Personal</string>
+  <string name="playlist_access_shared">Shared</string>
   <string name="playlist_add_button">Add playlist</string>
   <string name="playlist_add_new">Add new</string>
   <string name="playlist_add_to_title">Add to playlist</string>
   <string name="playlist_create_title">Create new playlist</string>
   <string name="playlist_name_label">Playlist name</string>
   <string name="playlist_no_editable">No editable playlists available</string>
+  <string name="playlist_sharing_everyone">Everyone, including guests</string>
+  <string name="playlist_sharing_members">All users except guests</string>
+  <string name="playlist_sharing_not_shared">Not shared</string>
+  <string name="playlist_sharing_private">Only me</string>
+  <plurals name="playlist_sharing_selected">
+    <item quantity="one">Shared with %1$d user</item>
+    <item quantity="other">Shared with %1$d users</item>
+  </plurals>
   <string name="quality_dialog_input">Input</string>
   <string name="quality_dialog_open_origin">Open %1$s</string>
   <string name="quality_dialog_output">Output</string>

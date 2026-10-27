@@ -37,12 +37,16 @@ data class ServerMediaItem(
     @SerialName("position") val position: Long? = null,
     @SerialName("year") val year: Int? = null,
     @SerialName("artists") val artists: List<ServerMediaItem>? = null,
-    // @SerialName("album_type") val albumType: AlbumType? = null,
+    // The server's `AlbumType`; a value the app does not know maps to null in `AlbumType.fromServer`.
+    @SerialName("album_type") val albumType: String? = null,
     // Playlist only
-    // @SerialName("owner") val owner: String? = null,
+    // The display name of the owner, as the provider reports it.
+    @SerialName("owner") val owner: String? = null,
     @SerialName("is_editable") val isEditable: Boolean? = null,
     @SerialName("is_dynamic") val isDynamic: Boolean? = null,
     @SerialName("supported_mediatypes") val supportedMediatypes: List<String>? = null,
+    // Server 2.11: who a Music Assistant playlist serves. Absent on an older server.
+    @SerialName("access") val access: ServerPlaylistAccess? = null,
     // Track only
     @SerialName("duration") val duration: Double? = null,
     // @SerialName("isrc") val isrc: String? = null,
@@ -99,6 +103,18 @@ data class ServerMetadata(
     // @SerialName("languages") val languages: List<String>? = null,
     @SerialName("chapters") val chapters: List<ServerMediaItemChapter>? = null,
     @SerialName("last_refresh") val lastRefresh: Long? = null,
+)
+
+/**
+ * The access record of a Music Assistant playlist (`music_assistant_models.access.PlaylistAccess`).
+ * [owner] is a user id. [sharing] is a `ProviderSharing` value.
+ */
+@Serializable
+data class ServerPlaylistAccess(
+    @SerialName("owner") val owner: String? = null,
+    @SerialName("sharing") val sharing: String,
+    @SerialName("shared_users") val sharedUsers: List<String> = emptyList(),
+    @SerialName("collaborative") val collaborative: Boolean = false,
 )
 
 @Serializable

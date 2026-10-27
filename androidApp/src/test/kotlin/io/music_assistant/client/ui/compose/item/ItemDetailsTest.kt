@@ -18,11 +18,15 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.music_assistant.client.data.model.client.AlbumType
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PlaylistAccessPart
+import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.support.get
@@ -39,11 +43,21 @@ import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import musicassistantclient.composeapp.generated.resources.action_lyrics
 import musicassistantclient.composeapp.generated.resources.action_refresh_item
+import musicassistantclient.composeapp.generated.resources.album_type_ep
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_refreshing_item
+import musicassistantclient.composeapp.generated.resources.item_description_more
+import musicassistantclient.composeapp.generated.resources.item_duration_minutes
+import musicassistantclient.composeapp.generated.resources.item_narrated_by
+import musicassistantclient.composeapp.generated.resources.item_publisher
+import musicassistantclient.composeapp.generated.resources.item_section_review
 import musicassistantclient.composeapp.generated.resources.item_tab_similar_tracks
 import musicassistantclient.composeapp.generated.resources.item_tab_versions
+import musicassistantclient.composeapp.generated.resources.item_track_count
 import musicassistantclient.composeapp.generated.resources.media_type_albums
+import musicassistantclient.composeapp.generated.resources.playlist_access_collaborative
+import musicassistantclient.composeapp.generated.resources.playlist_access_personal
+import musicassistantclient.composeapp.generated.resources.playlist_sharing_selected
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -344,6 +358,101 @@ class ItemDetailsTest {
         composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).assertDoesNotExist()
         composeTestRule.onNodeWithText(Res.string.action_find_on_music_services.get()).assertDoesNotExist()
     }
+
+    @Test
+    fun `album header shows the type and the track count and the duration and the review`() {
+        val album = AppMediaItemFixtures.album().copy(
+            albumType = AlbumType.EP,
+            metadata = AppMediaItemFixtures.metadata(review = "A short review."),
+        )
+        val tracks = listOf(
+            AppMediaItemFixtures.track().copy(duration = 200.0),
+            AppMediaItemFixtures.track().copy(duration = 220.0),
+        )
+
+        composeTestRule.setInspectableContent {
+            ItemDetails(state = albumState(album, tracks), fetchColors = NoColors)
+        }
+
+        val facts = listOf(
+            Res.string.album_type_ep.get(),
+            Res.plurals.item_track_count.get(2, 2),
+            Res.string.item_duration_minutes.get(7),
+        ).joinToString(" · ")
+        composeTestRule.onNodeWithText(facts).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.item_section_review.get()).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("A short review.").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.item_description_more.get()).assertDoesNotExist()
+    }
+
+    @Test
+    fun `item without a text shows no block`() {
+        composeTestRule.setInspectableContent {
+            ItemDetails(state = albumState(AppMediaItemFixtures.album()), fetchColors = NoColors)
+        }
+
+        composeTestRule.onNodeWithText(Res.string.item_section_review.get()).assertDoesNotExist()
+    }
+
+    @Test
+    fun `genre chip opens the genre`() {
+        val genre = AppMediaItemFixtures.genre(name = "Rock")
+        var navigatedTo: AppMediaItem? = null
+
+        composeTestRule.setInspectableContent {
+            ItemHeader(
+                item = AppMediaItemFixtures.artist(),
+                genres = listOf(genre),
+                navigateToItem = { navigatedTo = it },
+            )
+        }
+
+        composeTestRule.onNodeWithText("Rock").performClick()
+
+        assertEquals(genre, navigatedTo)
+    }
+
+    @Test
+    fun `playlist header shows its owner line`() {
+        composeTestRule.setInspectableContent {
+            ItemHeader(
+                item = AppMediaItemFixtures.playlist(),
+                ownerLine = PlaylistOwnerLine.Access(
+                    listOf(
+                        PlaylistAccessPart.Personal,
+                        PlaylistAccessPart.SharedWith(2),
+                        PlaylistAccessPart.Collaborative,
+                    ),
+                ),
+            )
+        }
+
+        val line = listOf(
+            Res.string.playlist_access_personal.get(),
+            Res.plurals.playlist_sharing_selected.get(2, 2),
+            Res.string.playlist_access_collaborative.get(),
+        ).joinToString(" · ")
+        composeTestRule.onNodeWithText(line).assertIsDisplayed()
+    }
+
+    @Test
+    fun `audiobook header shows the narrators and the publisher`() {
+        val book = AppMediaItemFixtures.audiobook().copy(narrators = listOf("Ann", "Bob"), publisher = "Pub House")
+
+        composeTestRule.setInspectableContent { ItemHeader(item = book) }
+
+        composeTestRule.onNodeWithText(Res.string.item_narrated_by.get("Ann, Bob")).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.item_publisher.get("Pub House")).assertIsDisplayed()
+    }
+
+    private fun albumState(
+        album: Album,
+        tracks: List<Track> = emptyList(),
+    ) = ItemDetailsViewModel.State(
+        itemState = DataState.Data(album),
+        albumsState = DataState.NoData(),
+        playableItemsState = DataState.Data(tracks),
+    )
 
     private fun trackState(
         track: Track,

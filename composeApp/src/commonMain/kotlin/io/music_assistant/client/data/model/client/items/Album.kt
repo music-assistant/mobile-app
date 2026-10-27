@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.AlbumType
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
@@ -19,6 +20,8 @@ data class Album(
     val version: String?,
     val year: Int?,
     val artists: List<Artist>,
+    /** Null when the server does not know the type. */
+    val albumType: AlbumType? = null,
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.ALBUM

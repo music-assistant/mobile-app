@@ -500,6 +500,9 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
     data object Provider {
         fun all() = Request(command = APICommands.PROVIDERS)
 
+        /** The users a playlist can be shared with, the caller included. Server 2.11. */
+        fun shareCandidates() = Request(command = APICommands.CONFIG_PROVIDERS_SHARE_CANDIDATES)
+
         fun icon(providerDomain: String, variant: String? = null) = Request(
             command = APICommands.PROVIDERS_ICON,
             args = buildJsonObject {
@@ -581,6 +584,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             itemId: String,
             providerInstanceIdOrDomain: String,
         ) = Library.get(APICommands.KIND_GENRES, itemId, providerInstanceIdOrDomain)
+
+        /** The library genres mapped to a library item. The server answers `[]` for any other item. */
+        fun forItem(
+            mediaType: MediaType,
+            itemId: String,
+        ) = Request(
+            command = APICommands.MUSIC_GENRES_FOR_MEDIA_ITEM,
+            args = buildJsonObject {
+                put("media_type", JsonPrimitive(mediaType.serverValue))
+                put("media_id", JsonPrimitive(itemId))
+            },
+        )
 
         fun listLibrary(
             favorite: Boolean? = null,

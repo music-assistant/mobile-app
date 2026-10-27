@@ -3,6 +3,7 @@ package io.music_assistant.client.data.model.client
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -12,6 +13,34 @@ import io.music_assistant.client.utils.UniqueIdGenerator
 
 object AppMediaItemFixtures {
     private val uniqueIdGenerator = UniqueIdGenerator()
+
+    fun metadata(
+        description: String? = null,
+        review: String? = null,
+    ): Metadata = Metadata(
+        explicit = false,
+        images = emptyList(),
+        releaseDate = null,
+        chapters = emptyList(),
+        lyrics = null,
+        lrcLyrics = null,
+        description = description,
+        review = review,
+    )
+
+    fun genre(
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Genre $itemId",
+    ): Genre = Genre(
+        itemId = itemId,
+        provider = "library",
+        name = name,
+        providerMappings = null,
+        metadata = null,
+        favorite = null,
+        uri = "library://genre/$itemId",
+        images = emptyMap(),
+    )
 
     fun album(
         itemId: String = uniqueIdGenerator.nextInt().toString(),

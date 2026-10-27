@@ -59,6 +59,7 @@ object APICommands {
     // Genre commands
     const val MUSIC_GENRES_LIBRARY_ITEMS = "music/genres/library_items"
     const val MUSIC_GENRES_OVERVIEW = "music/genres/overview"
+    const val MUSIC_GENRES_FOR_MEDIA_ITEM = "music/genres/genres_for_media_item"
 
     // Artist commands
     const val MUSIC_ARTISTS_LIBRARY_ITEMS = "music/artists/library_items"
@@ -109,6 +110,7 @@ object APICommands {
     const val MUSIC_RECOMMENDATIONS_ITEMS = "music/recommendations/items"
     const val PROVIDERS = "providers"
     const val PROVIDERS_ICON = "providers/icon"
+    const val CONFIG_PROVIDERS_SHARE_CANDIDATES = "config/providers/share_candidates"
 
     // Items
     const val MUSIC_ITEM_BY_URI = "music/item_by_uri"

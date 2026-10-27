@@ -59,11 +59,15 @@ import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.ItemDescription
+import io.music_assistant.client.data.model.client.ProviderDetails
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
+import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayMode
@@ -107,6 +111,7 @@ import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_refreshing_item
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.find_in_list_label
+import musicassistantclient.composeapp.generated.resources.item_narrated_by
 import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
 
@@ -121,6 +126,12 @@ fun ItemHeader(
     providerIconFetcher: ProviderIconFetcher? = null,
     onPlayClick: (PlayMode) -> Unit = {},
     navigateToItem: (AppMediaItem) -> Unit = {},
+    genres: List<Genre> = emptyList(),
+    playableSummary: PlayableSummary? = null,
+    ownerLine: PlaylistOwnerLine? = null,
+    providerDetails: (String) -> ProviderDetails? = { null },
+    description: ItemDescription? = null,
+    onOpenDescription: () -> Unit = {},
 ) {
     // Art color on top, fading down to the surface the Screen actually paints, so the
     // wash dissolves seamlessly where the tabs begin. Mirrors the player gradient (inverted).
@@ -148,6 +159,31 @@ fun ItemHeader(
                 tint = colors.controlTint,
                 modifier = Modifier.padding(top = 8.dp),
             )
+            ItemFacts(
+                item = item,
+                playableSummary = playableSummary,
+                ownerLine = ownerLine,
+                providerDetails = providerDetails,
+                textAlign = textAlign,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+
+        // The chips and the text span the full width under the art on every layout.
+        val details = @Composable { textAlign: TextAlign ->
+            GenreChips(
+                genres = genres,
+                onGenreClick = navigateToItem,
+                textAlign = textAlign,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            description?.let {
+                ItemDescriptionBlock(
+                    description = it,
+                    onOpen = onOpenDescription,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                )
+            }
         }
 
         if (WindowClass.isWide()) {
@@ -160,6 +196,7 @@ fun ItemHeader(
                     textAndControls(TextAlign.Start)
                 }
             }
+            details(TextAlign.Start)
         } else {
             // Horizontal
             Column(
@@ -168,6 +205,7 @@ fun ItemHeader(
             ) {
                 image()
                 textAndControls(TextAlign.Center)
+                details(TextAlign.Center)
             }
         }
     }
@@ -459,6 +497,19 @@ private fun ItemText(
                 text = it,
                 textAlign = textAlign,
                 style = MaterialTheme.typography.titleMedium,
+            )
+        }
+
+        (item as? Audiobook)?.narrators?.takeIf { it.isNotEmpty() }?.let { narrators ->
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fadingEdges()
+                    .basicMarquee()
+                    .padding(horizontal = 16.dp),
+                text = stringResource(Res.string.item_narrated_by, narrators.joinToString(", ")),
+                textAlign = textAlign,
+                style = MaterialTheme.typography.titleSmall,
             )
         }
     }

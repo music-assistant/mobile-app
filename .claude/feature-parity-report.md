@@ -165,7 +165,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Album versions, review, more from artist | yes | yes | no | no | no | Missing | `album_versions` |
 | Track page | yes | yes | yes | n/a | n/a | Parity | Albums, versions and similar tracks tabs. Similar shows only if a provider has `similar_tracks`. Lyrics in the overflow menu. Open with "Go to track" or the player title |
 | Playlist page | yes | yes | yes | drill | drill | Parity | Force refresh in the header |
-| Playlist description and featured artists | part | yes | no | no | no | Missing | |
+| Playlist description and featured artists | part | yes | description | no | no | Missing | Featured artists are missing. The description, the owner and the access record are on the page |
 | Podcast page | yes | yes | yes | drill | drill | Parity | Episode sort by name, date or duration |
 | Podcast episode page with transcript | no | yes | no | no | no | Missing | `podcast_episode`, `podcast_episode_transcript` |
 | Audiobook page with chapters | yes | yes | yes | n/a | buttons | Parity | Tap a chapter to play from it |
@@ -603,7 +603,7 @@ the app:
 | Item | What the web does | What the app lacks | Where | Feasibility |
 |---|---|---|---|---|
 | Genre search | Queries `genres/library_items` with the search text | The genre chip is absent | `app/ui/compose/search/SearchViewModel.kt:76` | Easy |
-| Descriptions and biographies | Shows bio, review, description, publisher, narrators | Nothing renders the parsed fields | `app/ui/compose/item/` | Easy |
+| Descriptions and biographies | Shows bio, review, description, publisher, narrators | Done. The item page shows them under the header, with the genre chips, the track count and the duration, and the playlist owner | `app/ui/compose/item/ItemMetadata.kt` | Done |
 | In progress and recently played rows | Builds the rows from `in_progress_items` and `recently_played_items` | Rows appear only if the server sends them as recommendations | `app/ui/compose/home/HomeScreenViewModel.kt` | Easy |
 | Long-lived token login | Paste a token in the login form | No field exists. `project.md` claims the feature | `app/ui/compose/auth/AuthenticationPanel.kt` | Easy |
 | Show info | Info sheet for every item type | Tracks and radios have no screen | `app/ui/compose/item/ItemDetailsScreen.kt` | Easy |

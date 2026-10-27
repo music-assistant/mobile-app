@@ -59,6 +59,7 @@ import io.music_assistant.client.data.model.client.ProviderDetails
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.data.model.client.itemDescription
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -371,6 +372,8 @@ private fun ItemContent(
         if (showSimilarArtists) onLoadSimilarArtists()
     }
     var showLyrics by rememberSaveable { mutableStateOf(false) }
+    var showDescription by rememberSaveable { mutableStateOf(false) }
+    val description = remember(item) { item.itemDescription() }
 
     // Artwork-driven header colors. Library items carry no server palette, so colors are
     // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
@@ -405,6 +408,12 @@ private fun ItemContent(
                     providerIconFetcher = providerIconFetcher,
                     onPlayClick = onPlayItemClick,
                     navigateToItem = onNavigateClick,
+                    genres = state.genres,
+                    playableSummary = state.playableSummary,
+                    ownerLine = state.playlistOwnerLine,
+                    providerDetails = providerDetails,
+                    description = description,
+                    onOpenDescription = { showDescription = true },
                 )
             }
         }
@@ -528,6 +537,10 @@ private fun ItemContent(
 
     state.lyrics?.takeIf { showLyrics }?.let { lyrics ->
         LyricsSheet(lyrics = lyrics, livePositionFlow = null, onDismiss = { showLyrics = false })
+    }
+
+    description?.takeIf { showDescription }?.let {
+        ItemDescriptionSheet(description = it, onDismiss = { showDescription = false })
     }
 }
 

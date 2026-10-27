@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.auth.AuthCoordinator
+import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.MediaType
@@ -21,11 +23,13 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.ownerLine
 import io.music_assistant.client.data.model.client.items.refreshItemAction
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
@@ -62,6 +66,7 @@ class ItemDetailsViewModel(
     private val mediaItemRepository: MediaItemRepository,
     private val providerRepository: ProviderRepository,
     private val itemRefresher: ItemRefresher,
+    private val authCoordinator: AuthCoordinator,
     private val itemId: String,
     private val mediaType: MediaType,
     private val providerId: String,
@@ -86,7 +91,24 @@ class ItemDetailsViewModel(
         val userSelectedTab: ItemDetailsTab? = null,
         /** True while `music/refresh_item` runs for the item, from this page or an earlier one. */
         val refreshingItem: Boolean = false,
+        /** The library genres of a library artist or album; empty for every other item. */
+        val genres: List<Genre> = emptyList(),
+        /** The owner line of a playlist; null for every other item and for a playlist without one. */
+        val playlistOwnerLine: PlaylistOwnerLine? = null,
     ) {
+        /**
+         * The count and the total playing time of the loaded tracks of an album or a playlist, for
+         * the facts line of the header. Null while they load, for an empty list, and for a type
+         * without a fixed track list: a dynamic playlist yields its tracks on demand.
+         */
+        val playableSummary: PlayableSummary?
+            get() = when (val item = itemOrNull()) {
+                is Album -> playableItemsState
+                is Playlist -> playableItemsState.takeUnless { item.isDynamic }
+                else -> null
+            }?.dataOrNull?.takeIf { it.isNotEmpty() }
+                ?.let { items -> PlayableSummary(items.size, items.sumOf { it.duration ?: 0.0 }) }
+
         /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
         val tabs: List<ItemDetailsTab>
             get() = itemOrNull()?.let { item ->
@@ -248,6 +270,7 @@ class ItemDetailsViewModel(
                 // first per-artist lookup (lastfm + matching) is the slow part, so we pay it while
                 // the user browses albums/tracks rather than on the menu tap.
                 loadSimilarArtists()
+                loadGenres(item)
             }
 
             is Album -> {
@@ -259,6 +282,7 @@ class ItemDetailsViewModel(
                     )
                 }
                 loadAlbumTracks(item.itemId, item.provider)
+                loadGenres(item)
             }
 
             is Playlist -> {
@@ -270,6 +294,7 @@ class ItemDetailsViewModel(
                     )
                 }
                 loadPlaylistTracks(item.itemId, item.provider)
+                loadPlaylistOwner(item)
             }
 
             is Podcast -> {
@@ -339,6 +364,34 @@ class ItemDetailsViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /** The library genres mapped to a library item. The server maps none to an item of a music service. */
+    private fun loadGenres(item: AppMediaItem) {
+        if (!item.isInLibrary) {
+            _state.update { it.copy(genres = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            val genres = fetchList<Genre>(Request.Genre.forItem(item.mediaType, item.itemId))
+            _state.update { it.copy(genres = genres.dataOrNull.orEmpty()) }
+        }
+    }
+
+    /**
+     * The owner line at once, then with the name of another owner when the viewer may list the
+     * members (`library.write`). A refused or failed listing keeps the line without the name.
+     */
+    private fun loadPlaylistOwner(playlist: Playlist) {
+        val viewerId = (authCoordinator.authState.value as? AuthState.Authenticated)?.user?.userId
+        val accessSupported = mainDataSource.playlistAccessSupported.value
+        _state.update { it.copy(playlistOwnerLine = playlist.ownerLine(accessSupported, viewerId, null)) }
+        val ownerId = playlist.access?.owner?.takeIf { accessSupported && it != viewerId } ?: return
+        if (!mainDataSource.grantedScopes.value.canEditLibrary) return
+        viewModelScope.launch {
+            val name = providerRepository.shareCandidates()?.firstOrNull { it.userId == ownerId }?.name ?: return@launch
+            _state.update { it.copy(playlistOwnerLine = playlist.ownerLine(accessSupported, viewerId, name)) }
         }
     }
 
@@ -751,3 +804,6 @@ private fun DataState<List<*>>.hasItems(): Boolean = when (this) {
     is DataState.Stale -> data.isNotEmpty()
     else -> false
 }
+
+/** The count and the total playing time, in seconds, of a loaded track list. */
+data class PlayableSummary(val count: Int, val totalSeconds: Double)

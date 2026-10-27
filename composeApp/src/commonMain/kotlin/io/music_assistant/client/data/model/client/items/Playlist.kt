@@ -20,6 +20,10 @@ data class Playlist(
     val isDynamic: Boolean,
     /** Null when the server does not report it; then no type is excluded. */
     val supportedMediaTypes: Set<MediaType>? = null,
+    /** The display name of the owner, as the provider reports it; null or blank when unknown. */
+    val owner: String? = null,
+    /** Server 2.11: who the playlist serves. Null on an older server, and for "everyone" on 2.11. */
+    val access: PlaylistAccess? = null,
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.PLAYLIST
@@ -35,9 +39,12 @@ data class Playlist(
             is Album -> MediaType.TRACK
             else -> item.mediaType
         }
-        return providerMappings.orEmpty().any { it.providerDomain == BUILTIN_PROVIDER } ||
-            supportedMediaTypes?.contains(type) != false
+        return isMusicAssistantPlaylist || supportedMediaTypes?.contains(type) != false
     }
+
+    /** A playlist that Music Assistant keeps itself; only those carry an [access] record. */
+    val isMusicAssistantPlaylist: Boolean
+        get() = providerMappings.orEmpty().any { it.providerDomain == BUILTIN_PROVIDER }
 
     private companion object {
         const val BUILTIN_PROVIDER = "builtin"

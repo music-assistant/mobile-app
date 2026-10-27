@@ -1,6 +1,7 @@
 package io.music_assistant.client.data.factory
 
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.client.AlbumType
 import io.music_assistant.client.data.model.client.Chapter
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
@@ -14,6 +15,8 @@ import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.PlaylistAccess
+import io.music_assistant.client.data.model.client.items.PlaylistSharing
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
@@ -25,6 +28,7 @@ import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerMediaItemChapter
 import io.music_assistant.client.data.model.server.ServerMediaItemImage
 import io.music_assistant.client.data.model.server.ServerMetadata
+import io.music_assistant.client.data.model.server.ServerPlaylistAccess
 import io.music_assistant.client.data.repository.SearchResultData
 
 /**
@@ -63,6 +67,7 @@ class MediaItemFactory(
                 version = version,
                 year = year,
                 artists = artists?.mapNotNull { create(it) as? Artist } ?: emptyList(),
+                albumType = AlbumType.fromServer(albumType),
             )
 
             MediaType.TRACK -> Track(
@@ -99,6 +104,8 @@ class MediaItemFactory(
                 isEditable = isEditable == true,
                 isDynamic = isDynamic == true,
                 supportedMediaTypes = supportedMediatypes?.mapNotNull(MediaType::fromServer)?.toSet(),
+                owner = owner,
+                access = access?.let(::createPlaylistAccess),
             )
 
             MediaType.FOLDER -> RecommendationFolder(
@@ -217,6 +224,7 @@ class MediaItemFactory(
                 isPlayable = isPlayable == true,
                 authors = authors,
                 narrators = narrators,
+                publisher = publisher,
                 chapters = metadata?.chapters?.map(::createChapter),
                 fullyPlayed = fullyPlayed,
                 resumePositionMs = resumePositionMs,
@@ -270,8 +278,18 @@ class MediaItemFactory(
             chapters = it.chapters?.map(::createChapter).orEmpty(),
             lyrics = it.lyrics,
             lrcLyrics = it.lrcLyrics,
+            description = it.description,
+            review = it.review,
         )
     }
+
+    private fun createPlaylistAccess(server: ServerPlaylistAccess): PlaylistAccess =
+        PlaylistAccess(
+            owner = server.owner,
+            sharing = PlaylistSharing.fromServer(server.sharing),
+            sharedUsers = server.sharedUsers,
+            collaborative = server.collaborative,
+        )
 
     private fun createChapter(server: ServerMediaItemChapter): Chapter =
         Chapter(
