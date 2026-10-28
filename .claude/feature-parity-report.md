@@ -293,7 +293,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Home Assistant OAuth | yes | yes | yes | n/a | n/a | Parity | iOS uses `ASWebAuthenticationSession` |
 | PKCE return to the app | no | yes | yes | n/a | n/a | Parity | `auth/exchange` (issue #1184). Remote Access only |
 | Saved token auto-login | yes | yes | yes | n/a | n/a | Parity | |
-| Long-lived token login | yes | yes | no | n/a | n/a | Adjust-partial | `project.md` claims it. No UI exists. Decided: add the UI (issue #1202) |
+| Long-lived token login | yes | yes | yes | n/a | n/a | Parity | "Use a token instead" in the Music Assistant login form (issue #1202). The app sends the token with `auth` |
 | Join code login | yes | yes | no | n/a | n/a | Missing | `auth/join_code/exchange` |
 | Logout | yes | yes | yes | n/a | n/a | Parity | |
 | Profile: name, avatar, password, tokens | yes | yes | no | n/a | n/a | Missing | `auth/me`, `auth/user/update`, `auth/tokens` |
@@ -605,7 +605,7 @@ the app:
 | Genre search | Queries `genres/library_items` with the search text | The genre chip is absent | `app/ui/compose/search/SearchViewModel.kt:76` | Easy |
 | Descriptions and biographies | Shows bio, review, description, publisher, narrators | Done. The item page shows them under the header, with the genre chips, the track count and the duration, and the playlist owner | `app/ui/compose/item/ItemMetadata.kt` | Done |
 | In progress and recently played rows | Builds the rows from `in_progress_items` and `recently_played_items` | Rows appear only if the server sends them as recommendations | `app/ui/compose/home/HomeScreenViewModel.kt` | Easy |
-| Long-lived token login | Paste a token in the login form | No field exists. `project.md` claims the feature | `app/ui/compose/auth/AuthenticationPanel.kt` | Easy |
+| Long-lived token login | Paste a token in the login form | Done (issue #1202). "Use a token instead" in the Music Assistant form sends the token with `auth` | `app/ui/compose/auth/AuthenticationPanel.kt` | Done |
 | Show info | Info sheet for every item type | Tracks and radios have no screen | `app/ui/compose/item/ItemDetailsScreen.kt` | Easy |
 | Players that need setup | Setup warning and setup-only menu | Listed only. Setup is admin work | `app/ui/compose/home/players/` | Decided |
 | Retry after a load failure | Retry button in the list | Check each list error state for a retry action | `app/ui/compose/library/` | Easy |

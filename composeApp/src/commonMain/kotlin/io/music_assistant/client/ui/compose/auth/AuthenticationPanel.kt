@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.auth
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,10 +19,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +38,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import co.touchlab.kermit.Logger
 import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.User
@@ -45,6 +45,7 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_authenticating
 import musicassistantclient.composeapp.generated.resources.auth_authorize_ha
 import musicassistantclient.composeapp.generated.resources.auth_hide_password
+import musicassistantclient.composeapp.generated.resources.auth_hide_token
 import musicassistantclient.composeapp.generated.resources.auth_loading_providers
 import musicassistantclient.composeapp.generated.resources.auth_logged_in_as
 import musicassistantclient.composeapp.generated.resources.auth_login
@@ -52,6 +53,11 @@ import musicassistantclient.composeapp.generated.resources.auth_logout
 import musicassistantclient.composeapp.generated.resources.auth_password
 import musicassistantclient.composeapp.generated.resources.auth_retry_providers
 import musicassistantclient.composeapp.generated.resources.auth_show_password
+import musicassistantclient.composeapp.generated.resources.auth_show_token
+import musicassistantclient.composeapp.generated.resources.auth_token
+import musicassistantclient.composeapp.generated.resources.auth_token_hint
+import musicassistantclient.composeapp.generated.resources.auth_use_password
+import musicassistantclient.composeapp.generated.resources.auth_use_token
 import musicassistantclient.composeapp.generated.resources.auth_username
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -64,15 +70,9 @@ fun AuthenticationPanel(
 ) {
     val providers by viewModel.providers.collectAsStateWithLifecycle()
     val authState by viewModel.authState.collectAsStateWithLifecycle()
-    var loginError by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(authState) {
-        if (authState is AuthState.Error) {
-            loginError = (authState as? AuthState.Error)?.message
-        } else if (authState is AuthState.Authenticated) {
-            loginError = null
-        }
-    }
+    // Shown while the error is the current state. A retry of the provider load, a new
+    // login attempt and a reconnect all replace it.
+    val loginError = (authState as? AuthState.Error)?.message
 
     Column(modifier = modifier.fillMaxWidth()) {
         user?.let {
@@ -164,7 +164,6 @@ fun AuthenticationPanel(
         }
 
         loginError?.let {
-            Logger.e("Error $it")
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 modifier = Modifier.fillMaxWidth(),
@@ -176,80 +175,128 @@ fun AuthenticationPanel(
     }
 }
 
+/** The Music Assistant provider signs in with a username and a password, or with a long-lived token. */
 @Composable
 private fun BuiltinAuthForm(viewModel: AuthenticationViewModel, provider: AuthProvider) {
     val username by viewModel.username.collectAsStateWithLifecycle()
     val password by viewModel.password.collectAsStateWithLifecycle()
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    val token by viewModel.token.collectAsStateWithLifecycle()
+    var useToken by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val canLogin = if (useToken) token.isNotBlank() else username.isNotEmpty() && password.isNotEmpty()
+    val login = {
+        if (useToken) viewModel.loginWithToken() else viewModel.login(provider)
+    }
+    val onDone = {
+        focusManager.clearFocus()
+        if (canLogin) {
+            login()
+        }
+    }
 
     Column {
-        TextField(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            value = username,
-            onValueChange = { viewModel.username.value = it },
-            label = { Text(stringResource(Res.string.auth_username)) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-            keyboardActions = KeyboardActions(
-                onNext = { focusManager.moveFocus(FocusDirection.Down) },
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            ),
-        )
+        if (useToken) {
+            SecretTextField(
+                value = token,
+                onValueChange = { viewModel.token.value = it },
+                label = stringResource(Res.string.auth_token),
+                showDescription = stringResource(Res.string.auth_show_token),
+                hideDescription = stringResource(Res.string.auth_hide_token),
+                onDone = onDone,
+            )
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = stringResource(Res.string.auth_token_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            )
+        } else {
+            TextField(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                value = username,
+                onValueChange = { viewModel.username.value = it },
+                label = { Text(stringResource(Res.string.auth_username)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                ),
+                colors = TextFieldDefaults.colors(
+                    focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+                ),
+            )
+            SecretTextField(
+                value = password,
+                onValueChange = { viewModel.password.value = it },
+                label = stringResource(Res.string.auth_password),
+                showDescription = stringResource(Res.string.auth_show_password),
+                hideDescription = stringResource(Res.string.auth_hide_password),
+                onDone = onDone,
+            )
+        }
 
-        TextField(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            value = password,
-            onValueChange = { viewModel.password.value = it },
-            label = { Text(stringResource(Res.string.auth_password)) },
-            visualTransformation = if (isPasswordVisible) {
-                VisualTransformation.None
-            } else {
-                PasswordVisualTransformation()
-            },
-            trailingIcon = {
-                val icon = if (isPasswordVisible) {
-                    Icons.Filled.VisibilityOff
-                } else {
-                    Icons.Filled.Visibility
-                }
-                val description = if (isPasswordVisible) {
-                    stringResource(Res.string.auth_hide_password)
-                } else {
-                    stringResource(Res.string.auth_show_password)
-                }
-                IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                    Icon(imageVector = icon, contentDescription = description)
-                }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
-            ),
-            keyboardActions = KeyboardActions(
-                onDone = {
-                    focusManager.clearFocus()
-                    if (username.isNotEmpty() && password.isNotEmpty()) {
-                        viewModel.login(provider)
-                    }
-                },
-            ),
-            colors = TextFieldDefaults.colors(
-                focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-            ),
-        )
+        TextButton(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = { useToken = !useToken },
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            Text(
+                stringResource(
+                    if (useToken) Res.string.auth_use_password else Res.string.auth_use_token,
+                ),
+            )
+        }
 
         Button(
             modifier = Modifier.fillMaxWidth(),
-            onClick = { viewModel.login(provider) },
-            enabled = username.isNotEmpty() && password.isNotEmpty(),
+            onClick = login,
+            enabled = canLogin,
         ) {
             Text(stringResource(Res.string.auth_login))
         }
     }
+}
+
+/** A single-line field for a secret. The text is hidden until the user taps the eye icon. */
+@Composable
+private fun SecretTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    showDescription: String,
+    hideDescription: String,
+    onDone: () -> Unit,
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    TextField(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        visualTransformation = if (isVisible) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        },
+        trailingIcon = {
+            IconButton(onClick = { isVisible = !isVisible }) {
+                Icon(
+                    imageVector = if (isVisible) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                    contentDescription = if (isVisible) hideDescription else showDescription,
+                )
+            }
+        },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(
+            keyboardType = KeyboardType.Password,
+            imeAction = ImeAction.Done,
+        ),
+        keyboardActions = KeyboardActions(onDone = { onDone() }),
+        colors = TextFieldDefaults.colors(
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+        ),
+    )
 }

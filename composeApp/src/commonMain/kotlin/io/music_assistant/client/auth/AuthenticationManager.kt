@@ -1,6 +1,7 @@
 package io.music_assistant.client.auth
 
 import co.touchlab.kermit.Logger
+import io.music_assistant.client.api.ConnectionLostException
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AuthProvider
@@ -201,7 +202,11 @@ class AuthenticationManager(
             _authState.value = AuthState.Loading
             val response = serviceClient.sendRequest(Request.Auth.providers())
 
-            if (response.isFailure) {
+            response.exceptionOrNull()?.let { cause ->
+                // The transport dropped the request, so a reconnect follows and the
+                // viewmodel loads the providers again on the new socket. An error here
+                // would sit on the login screen until that load.
+                if (cause is ConnectionLostException) return Result.failure(cause)
                 val error = "Failed to fetch auth providers"
                 _authState.value = AuthState.Error(error)
                 return Result.failure(Exception(error))
@@ -233,11 +238,21 @@ class AuthenticationManager(
         providerId: String,
         username: String,
         password: String,
-    ): Result<Unit> {
+    ): Result<Unit> = manualLogin { serviceClient.login(username, password) }
+
+    /**
+     * The server checks a long-lived token like a session token, so the same `auth`
+     * command signs in. A pasted token often carries a line break, so it is trimmed.
+     */
+    override suspend fun loginWithToken(token: String): Result<Unit> =
+        manualLogin { serviceClient.authorize(token.trim(), isAutoLogin = false) }
+
+    /** A sign-in that the user starts: it lifts the logout block and shows its failure. */
+    private suspend fun manualLogin(send: suspend () -> Unit): Result<Unit> {
         return try {
-            _isLoggingOut.value = false  // Reset flag when user explicitly logs in
+            _isLoggingOut.value = false
             _authState.value = AuthState.Loading
-            serviceClient.login(username, password)
+            send()
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e

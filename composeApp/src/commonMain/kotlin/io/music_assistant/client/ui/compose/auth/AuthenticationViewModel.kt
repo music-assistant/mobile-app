@@ -10,6 +10,7 @@ import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -35,13 +37,14 @@ class AuthenticationViewModel(
 
     val username = MutableStateFlow("")
     val password = MutableStateFlow("")
+    val token = MutableStateFlow("")
 
     // Capacity = 1 so the UI's Retry tap always lands even if the upstream
     // is mid-emission. We don't replay — late subscribers don't get stale retries.
     private val retryTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     val providers: StateFlow<List<AuthProvider>> = merge(
-        sessionStateFlow.map(::autoSource).filterNotNull().distinctUntilChanged(),
+        sessionStateFlow.withConnectionCount().map(::autoSource).filterNotNull().distinctUntilChanged(),
         retryTrigger.mapNotNull { retrySource(sessionStateFlow.value) },
     )
         .flatMapLatest(::loadFlow)
@@ -62,9 +65,24 @@ class AuthenticationViewModel(
         }
     }
 
+    fun loginWithToken() {
+        viewModelScope.launch { auth.loginWithToken(token.value) }
+    }
+
     fun logout() {
         viewModelScope.launch { auth.logout() }
     }
+
+    /**
+     * Pairs each state with the number of connections so far, so a new connection to the
+     * same address loads the providers again. The server closes the socket on
+     * `auth/logout`, so a load that the logout started dies with the old socket.
+     */
+    private fun Flow<SessionState>.withConnectionCount(): Flow<Pair<Int, SessionState>> =
+        runningFold(Pair<Int, SessionState?>(0, null)) { (count, previous), state ->
+            val opened = state is SessionState.Connected && previous !is SessionState.Connected
+            Pair(if (opened) count + 1 else count, state)
+        }.mapNotNull { (count, state) -> state?.let { Pair(count, it) } }
 
     /**
      * Projection for the auto path. Returns null to mean "keep the previous
@@ -72,25 +90,27 @@ class AuthenticationViewModel(
      * for AwaitingAuth(Failed) where we want to preserve the displayed error
      * rather than blow the provider list away.
      */
-    private fun autoSource(state: SessionState): ProvidersSource? = when (state) {
-        is SessionState.Disconnected -> ProvidersSource.Empty
-        is SessionState.Connected -> when (val dcs = state.dataConnectionState) {
-            !is DataConnectionState.AwaitingAuth -> null
-            else -> when {
-                dcs.authProcessState is AuthProcessState.Failed -> null
-                else -> ProvidersSource.FromApi(state.connectionKey())
+    private fun autoSource(input: Pair<Int, SessionState>): ProvidersSource? {
+        val (connection, state) = input
+        return when (state) {
+            is SessionState.Disconnected -> ProvidersSource.Empty
+            is SessionState.Connected -> when (val dcs = state.dataConnectionState) {
+                !is DataConnectionState.AwaitingAuth -> null
+                else -> when {
+                    dcs.authProcessState is AuthProcessState.Failed -> null
+                    else -> ProvidersSource.FromApi(state.connectionKey(), connection)
+                }
             }
+            else -> null
         }
-        else -> null
     }
 
     /**
-     * Projection for the retry path. Identical to [autoSource] except it
-     * bypasses the Failed-auth guard — Retry is an explicit user signal that
-     * we should try again even when the auto-path would have suppressed.
+     * Projection for the retry path. Retry is an explicit user signal that we
+     * should try again even when the auto-path would have suppressed.
      */
     private fun retrySource(state: SessionState): ProvidersSource? = when (state) {
-        is SessionState.Connected -> ProvidersSource.FromApi(state.connectionKey())
+        is SessionState.Connected -> ProvidersSource.Retry
         else -> null
     }
 
@@ -102,7 +122,7 @@ class AuthenticationViewModel(
 
     private fun loadFlow(source: ProvidersSource) = when (source) {
         ProvidersSource.Empty -> flowOf(emptyList())
-        is ProvidersSource.FromApi -> flow {
+        is ProvidersSource.FromApi, ProvidersSource.Retry -> flow {
             auth.getProviders()
                 .onSuccess { emit(it) }
                 .onFailure { log.e(it) { "Failed to load providers" } }
@@ -111,7 +131,8 @@ class AuthenticationViewModel(
 
     private sealed interface ProvidersSource {
         data object Empty : ProvidersSource
-        data class FromApi(val connectionKey: String) : ProvidersSource
+        data class FromApi(val connectionKey: String, val connection: Int) : ProvidersSource
+        data object Retry : ProvidersSource
     }
 
     private companion object {

@@ -62,6 +62,7 @@ The Settings screen adapts its UI based on connection and authentication state:
 ### LoginSection
 - Wraps AuthenticationPanel in a SectionCard
 - Shows authentication provider tabs (builtin, OAuth providers)
+- The Music Assistant form has a "Use a token instead" link under the password field
 - Provider-specific login forms
 - Error messages displayed below login form
 
@@ -83,6 +84,13 @@ The Settings screen adapts its UI based on connection and authentication state:
 2. Clicks Login button
 3. On success: User is authenticated and UI updates to State 4
 4. On failure: Error message displayed below login form
+
+### Token Authentication
+1. The user taps "Use a token instead" under the password field of the Music Assistant form. "Use a password instead" goes back.
+2. The user pastes a long-lived token. The web frontend makes the token on the profile page.
+3. The user clicks the Login button. The app trims the token and sends the `auth` command.
+4. On success, the app saves the token for the server. The next connection signs in with it.
+5. On failure, the server error shows below the form, for example "Invalid or expired token".
 
 ### OAuth Authentication (e.g., HomeAssistant)
 1. The user clicks the "Authorize with [Provider]" button.
@@ -124,11 +132,12 @@ If the app does not use the result in 20 seconds, it shows "Connection timeout. 
 3. Server receives logout request
 4. Token is cleared locally
 5. Session state updates to `AuthProcessState.LoggedOut`
-6. **Websocket connection remains active** (no disconnection)
+6. The server revokes the token and closes the WebSocket of that token. The client reconnects without a login.
 7. UI updates to State 3 (shows login form again)
 
 **Important:**
-- Logout does NOT disconnect from server
+- The app does not disconnect on logout. The server closes the socket, and the client reconnects on its own.
+- `AuthenticationViewModel` loads the provider list again on each new connection. A load that the logout started dies with the old socket, and the manager reports no error for it.
 - Sendspin lifecycle managed by MainDataSource based on auth state
 - User can immediately log back in without reconnecting
 
@@ -155,7 +164,7 @@ If the app does not use the result in 20 seconds, it shows "Connection timeout. 
 1. `ServiceClient.login()` sets `AuthProcessState.Failed` with error message
 2. `AuthenticationManager` monitors session state and sets `authState = Error(message)`
 3. `AuthenticationViewModel` prevents `loadProviders()` when in Failed state
-4. `AuthenticationPanel` uses `LaunchedEffect` to capture error in local state
+4. `AuthenticationPanel` shows the message while `AuthState.Error` is the current state. A retry of the provider load, a new login attempt or a reconnect replaces the state and removes the message.
 5. Error message displayed at bottom of panel (outside user check, so always visible)
 
 **Key Implementation Details:**

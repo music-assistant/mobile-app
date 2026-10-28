@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -70,6 +71,7 @@ class FakeServiceClient : ServiceClient {
 
     val username = "user"
     val password = "password"
+    val accessToken = "token"
     var serverId = "serverId"
 
     // 63 (server 2.10.0) and higher turn on the search source picker.
@@ -651,18 +653,17 @@ class FakeServiceClient : ServiceClient {
 
     override suspend fun login(username: String, password: String) {
         if (username == this.username && password == this.password) {
-            authorize("token", true)
-            _isReadyForCommands.value = true
+            authorize(accessToken, true)
         } else {
-            _sessionState.update { state ->
-                (state as SessionState.Connected).update(
-                    authProcessState = AuthProcessState.Failed("Invalid username or password"),
-                )
-            }
+            failAuth("Invalid username or password")
         }
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
+        if (token != accessToken) {
+            failAuth("Invalid or expired token")
+            return
+        }
         _sessionState.update {
             when (it) {
                 is SessionState.Connected.Direct -> {
@@ -679,6 +680,22 @@ class FakeServiceClient : ServiceClient {
 
                 else -> error("Unhandled request type in FakeServiceClient")
             }
+        }
+        _isReadyForCommands.value = true
+    }
+
+    // Like the real client, an attempt passes through InProgress and then waits for the server.
+    // Without the yield, a collector sees only the final state, and a second failure with the
+    // same reason is equal to the first, so the StateFlow does not emit it.
+    private suspend fun failAuth(reason: String) {
+        setAuthProcessState(AuthProcessState.InProgress)
+        yield()
+        setAuthProcessState(AuthProcessState.Failed(reason))
+    }
+
+    private fun setAuthProcessState(authProcessState: AuthProcessState) {
+        _sessionState.update { state ->
+            (state as SessionState.Connected).update(authProcessState = authProcessState)
         }
     }
 
