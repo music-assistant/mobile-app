@@ -480,6 +480,7 @@ class AutoLibrary(
             SubItemContext.ARTIST_ALL_ALBUMS,
             SubItemContext.ARTIST_LIBRARY_ALBUMS,
             SubItemContext.COLLECTION_ITEMS,
+            SubItemContext.RADIO_TRACKS,
             -> return null
         }
         val items = apiClient.sendRequest(request)

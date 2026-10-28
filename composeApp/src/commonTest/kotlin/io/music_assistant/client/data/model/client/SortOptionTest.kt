@@ -122,7 +122,6 @@ class SortOptionTest {
         assertEquals(listOf("a", "b", "c"), sorted.map { it.itemId })
     }
 
-
     @Test
     fun `artist view all lists offer only fields that sort on the client`() {
         assertEquals(

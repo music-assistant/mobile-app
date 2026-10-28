@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyricsOf
+import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.events.FavoriteUpdatedEvent
@@ -21,7 +22,6 @@ import io.music_assistant.client.data.model.server.pagesPlaylistTracksAndEpisode
 import io.music_assistant.client.data.model.server.sendsFavoriteUpdates
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
-import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope

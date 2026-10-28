@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ItemDetailsRadioTracksVisibilityTest {
-
     private fun state(
         isEndless: Boolean?,
         isDynamic: Boolean = false,
@@ -55,5 +54,58 @@ class ItemDetailsRadioTracksVisibilityTest {
         assertFalse(
             ItemDetailsTab.RADIO_TRACKS in state(isEndless = null).tabs,
         )
+    }
+
+    @Test
+    fun `radio versions tab is hidden when request returns no versions`() {
+        val state = ItemDetailsViewModel.State(
+            itemState = DataState.Data(testRadio(isEndless = false)),
+            albumsState = DataState.NoData(),
+            playableItemsState = DataState.NoData(),
+            radioTracksSupported = true,
+            radioVersionsState = DataState.Data(emptyList()),
+        )
+
+        assertFalse(ItemDetailsTab.RADIO_VERSIONS in state.tabs)
+    }
+
+    @Test
+    fun `radio versions tab appears when versions are available`() {
+        val state = ItemDetailsViewModel.State(
+            itemState = DataState.Data(testRadio(isEndless = false)),
+            albumsState = DataState.NoData(),
+            playableItemsState = DataState.NoData(),
+            radioTracksSupported = true,
+            radioVersionsState =
+                DataState.Data(listOf(testRadio(isEndless = false))),
+        )
+
+        assertTrue(ItemDetailsTab.RADIO_VERSIONS in state.tabs)
+    }
+
+    @Test
+    fun `radio versions tab remains visible while loading`() {
+        val state = ItemDetailsViewModel.State(
+            itemState = DataState.Data(testRadio(isEndless = false)),
+            albumsState = DataState.NoData(),
+            playableItemsState = DataState.NoData(),
+            radioTracksSupported = true,
+            radioVersionsState = DataState.Loading(),
+        )
+
+        assertTrue(ItemDetailsTab.RADIO_VERSIONS in state.tabs)
+    }
+
+    @Test
+    fun `radio versions tab remains visible on request error`() {
+        val state = ItemDetailsViewModel.State(
+            itemState = DataState.Data(testRadio(isEndless = false)),
+            albumsState = DataState.NoData(),
+            playableItemsState = DataState.NoData(),
+            radioTracksSupported = true,
+            radioVersionsState = DataState.Error(),
+        )
+
+        assertTrue(ItemDetailsTab.RADIO_VERSIONS in state.tabs)
     }
 }

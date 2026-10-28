@@ -101,6 +101,7 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.items.playableLazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
+import io.music_assistant.client.ui.compose.common.map
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
@@ -279,10 +280,14 @@ fun ItemDetails(
                             is MediaCollection,
                             is Genre,
                             is Track,
-                                -> {
-                                onNavigateToItem(item.itemId, item.mediaType, item.provider)
+                            is RadioStation,
+                            -> {
+                                onNavigateToItem(
+                                    item.itemId,
+                                    item.mediaType,
+                                    item.provider,
+                                )
                             }
-
                             else -> Unit
                         }
                     },
@@ -319,7 +324,9 @@ private fun ItemDetailsTab.stringResource(): StringResource? = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
     ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
     ItemDetailsTab.COLLECTION_ITEMS -> Res.string.media_type_audiobooks
-    ItemDetailsTab.TRACK_VERSIONS -> Res.string.item_tab_versions
+    ItemDetailsTab.TRACK_VERSIONS,
+    ItemDetailsTab.RADIO_VERSIONS,
+    -> Res.string.item_tab_versions
     ItemDetailsTab.SIMILAR_TRACKS -> Res.string.item_tab_similar_tracks
     else -> viewMediaType?.stringResource()
 }
@@ -670,11 +677,15 @@ private fun TabContent(
 
         ItemDetailsTab.TRACK_VERSIONS,
         ItemDetailsTab.SIMILAR_TRACKS,
+        ItemDetailsTab.RADIO_VERSIONS,
             -> PlayablesTabContent(
-            playableItemsState = if (tab == ItemDetailsTab.TRACK_VERSIONS) {
-                state.trackVersionsState
-            } else {
-                state.similarTracksState
+            playableItemsState = when (tab) {
+                ItemDetailsTab.TRACK_VERSIONS -> state.trackVersionsState
+                ItemDetailsTab.SIMILAR_TRACKS -> state.similarTracksState
+                ItemDetailsTab.RADIO_VERSIONS ->
+                    state.radioVersionsState.map { versions ->
+                        versions.map { it as PlayableItem }
+                    }
             },
             parentItem = item,
             playableItemsSortOption = null,
