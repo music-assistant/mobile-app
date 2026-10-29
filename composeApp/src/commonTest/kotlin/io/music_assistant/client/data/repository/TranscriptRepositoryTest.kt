@@ -168,6 +168,7 @@ class TranscriptRepositoryTest {
         override suspend fun search(request: Request): Result<SearchResultData> = unused()
         override suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?> = unused()
         override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> = unused()
+        override fun supportsRadioTracks(): Boolean = false
         override fun publishLocalChange(change: MediaItemChange) = unused()
 
         private fun unused(): Nothing = error("Not used by TranscriptRepository")

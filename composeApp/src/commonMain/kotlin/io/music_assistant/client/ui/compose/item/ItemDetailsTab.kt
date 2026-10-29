@@ -10,6 +10,7 @@ import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 
 /**
@@ -23,6 +24,8 @@ enum class ItemDetailsTab(
 ) {
     ALBUM_TRACKS(SubItemContext.ALBUM_TRACKS, MediaType.TRACK),
     PLAYLIST_ITEMS(SubItemContext.PLAYLIST_ITEMS, MediaType.TRACK),
+    RADIO_TRACKS(SubItemContext.RADIO_TRACKS, MediaType.TRACK),
+    RADIO_VERSIONS(null, MediaType.RADIO),
     PODCAST_EPISODES(SubItemContext.PODCAST_EPISODES, MediaType.TRACK),
 
     /** The other episodes of the podcast of an episode; the same list and sort as [PODCAST_EPISODES]. */
@@ -35,16 +38,23 @@ enum class ItemDetailsTab(
     TRACK_VERSIONS(null, MediaType.TRACK),
     SIMILAR_TRACKS(null, MediaType.TRACK),
 }
-
 fun tabsFor(item: AppMediaItem): List<ItemDetailsTab> = when (item) {
     is Album -> listOf(ItemDetailsTab.ALBUM_TRACKS)
     is Playlist -> listOf(ItemDetailsTab.PLAYLIST_ITEMS)
+    is RadioStation -> listOf(
+        ItemDetailsTab.RADIO_TRACKS,
+        ItemDetailsTab.RADIO_VERSIONS,
+    )
     is Podcast -> listOf(ItemDetailsTab.PODCAST_EPISODES)
     is PodcastEpisode -> listOfNotNull(ItemDetailsTab.OTHER_EPISODES.takeIf { item.podcast != null })
     is Audiobook -> listOf(ItemDetailsTab.AUDIOBOOK_CHAPTERS)
     is MediaCollection -> listOf(ItemDetailsTab.COLLECTION_ITEMS)
     is Genre -> listOf(ItemDetailsTab.GENRE_ARTISTS, ItemDetailsTab.GENRE_ALBUMS)
-    is Track -> listOf(ItemDetailsTab.TRACK_ALBUMS, ItemDetailsTab.TRACK_VERSIONS, ItemDetailsTab.SIMILAR_TRACKS)
+    is Track -> listOf(
+        ItemDetailsTab.TRACK_ALBUMS,
+        ItemDetailsTab.TRACK_VERSIONS,
+        ItemDetailsTab.SIMILAR_TRACKS,
+    )
     else -> emptyList()
 }
 
@@ -59,6 +69,7 @@ private val ITEM_DETAILS_TYPES = setOf(
     MediaType.ARTIST,
     MediaType.ALBUM,
     MediaType.PLAYLIST,
+    MediaType.RADIO,
     MediaType.PODCAST,
     MediaType.PODCAST_EPISODE,
     MediaType.AUDIOBOOK,

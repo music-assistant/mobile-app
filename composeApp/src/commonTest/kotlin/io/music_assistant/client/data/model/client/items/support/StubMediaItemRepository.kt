@@ -37,6 +37,7 @@ class StubMediaItemRepository : MediaItemRepository {
     override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> {
         TODO("Not yet implemented")
     }
+    override fun supportsRadioTracks(): Boolean = false
 
     override suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?> {
         TODO("Not yet implemented")

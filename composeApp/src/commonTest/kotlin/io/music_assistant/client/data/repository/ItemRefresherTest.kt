@@ -118,6 +118,7 @@ class ItemRefresherTest {
         override suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>? = unused()
         override suspend fun search(request: Request): Result<SearchResultData> = unused()
         override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> = unused()
+        override fun supportsRadioTracks(): Boolean = false
         override suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?> = unused()
 
         private fun unused(): Nothing = error("Not used by ItemRefresher")
