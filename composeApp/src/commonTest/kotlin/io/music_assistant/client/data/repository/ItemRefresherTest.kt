@@ -5,6 +5,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -117,6 +118,7 @@ class ItemRefresherTest {
         override suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>? = unused()
         override suspend fun search(request: Request): Result<SearchResultData> = unused()
         override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> = unused()
+        override suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?> = unused()
 
         private fun unused(): Nothing = error("Not used by ItemRefresher")
     }

@@ -48,7 +48,17 @@ class PlayerDialogRequestTest {
     @Test
     fun `lyrics request drops when the current track changes`() {
         val player = playerWith(queueItemId = "q1", trackId = "track-1")
-        val request = PlayerDialogRequest.Lyrics(player.playerId, trackId = "track-1")
+        val request = PlayerDialogRequest.Lyrics(player.playerId, itemId = "track-1")
+
+        assertTrue(request.hasAnchor(player))
+        assertFalse(request.hasAnchor(playerWith(queueItemId = "q2", trackId = "track-2")))
+    }
+
+    @Test
+    fun `lyrics request anchors on a podcast episode too`() {
+        val episode = AppMediaItemFixtures.episode(itemId = "ep-1")
+        val player = PlayerDataFixtures.playerData(listOf(episode.toQueueTrack(id = "q1")).toQueue())
+        val request = PlayerDialogRequest.Lyrics(player.playerId, itemId = "ep-1")
 
         assertTrue(request.hasAnchor(player))
         assertFalse(request.hasAnchor(playerWith(queueItemId = "q2", trackId = "track-2")))

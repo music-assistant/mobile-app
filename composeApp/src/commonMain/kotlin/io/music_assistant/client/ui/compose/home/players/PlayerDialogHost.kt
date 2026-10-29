@@ -3,9 +3,11 @@ package io.music_assistant.client.ui.compose.home.players
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -59,8 +61,14 @@ fun PlayerDialogHost(
         )
 
         is PlayerDialogRequest.Lyrics -> {
-            val lyrics = (player.queueInfo?.currentItem?.track as? Track)?.lyrics
-                ?: return DismissEffect(request, onDismiss)
+            val item = player.queueInfo?.currentItem?.track
+            val lyrics = when (item) {
+                is Track -> item.lyrics
+                is PodcastEpisode -> remember(item.provider, item.itemId) { homeScreenViewModel.transcript(item) }
+                    .collectAsStateWithLifecycle().value.dataOrNull
+
+                else -> null
+            } ?: return DismissEffect(request, onDismiss)
             val queueId = player.queueId
             val livePositionFlow = remember(queueId) {
                 queueId?.let { homeScreenViewModel.observePosition(it) }
@@ -69,6 +77,7 @@ fun PlayerDialogHost(
                 lyrics = lyrics,
                 livePositionFlow = livePositionFlow,
                 onDismiss = onDismiss,
+                kind = if (item is PodcastEpisode) LyricsSheetKind.TRANSCRIPT else LyricsSheetKind.LYRICS,
             )
         }
 

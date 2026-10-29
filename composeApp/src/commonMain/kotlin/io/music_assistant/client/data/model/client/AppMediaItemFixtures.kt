@@ -17,6 +17,7 @@ object AppMediaItemFixtures {
     fun metadata(
         description: String? = null,
         review: String? = null,
+        hasTranscript: Boolean? = null,
     ): Metadata = Metadata(
         explicit = false,
         images = emptyList(),
@@ -24,6 +25,7 @@ object AppMediaItemFixtures {
         chapters = emptyList(),
         lyrics = null,
         lrcLyrics = null,
+        hasTranscript = hasTranscript,
         description = description,
         review = review,
     )
@@ -192,6 +194,37 @@ object AppMediaItemFixtures {
             )
         }
     }
+
+    fun episode(
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Episode $itemId",
+        podcast: Podcast? = podcast(),
+        metadata: Metadata? = null,
+        duration: Double? = null,
+        episodeNumber: Int? = null,
+        season: Int? = null,
+        fullyPlayed: Boolean? = null,
+        resumePositionMs: Long? = null,
+    ): PodcastEpisode = PodcastEpisode(
+        itemId = itemId,
+        provider = DEFAULT_PROVIDER_DOMAIN,
+        name = name,
+        providerMappings = listOf(
+            ProviderMapping(itemId, DEFAULT_PROVIDER_DOMAIN, DEFAULT_PROVIDER_INSTANCE),
+        ),
+        metadata = metadata,
+        favorite = null,
+        uri = "$DEFAULT_PROVIDER_DOMAIN://podcast_episode/$itemId",
+        images = emptyMap(),
+        duration = duration,
+        podcast = podcast,
+        fullyPlayed = fullyPlayed,
+        resumePositionMs = resumePositionMs,
+        episodeNumber = episodeNumber,
+        season = season,
+        version = null,
+        isPlayable = true,
+    )
 
     fun audiobook(
         itemId: String = uniqueIdGenerator.nextInt().toString(),

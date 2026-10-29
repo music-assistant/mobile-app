@@ -113,6 +113,7 @@ import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.grid.gridItemMinSize
 import io.music_assistant.client.ui.compose.home.players.LyricsSheet
+import io.music_assistant.client.ui.compose.home.players.LyricsSheetKind
 import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel
 import io.music_assistant.client.ui.compose.item.artist.ArtistDetailsViewModel.Section
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
@@ -130,6 +131,7 @@ import musicassistantclient.composeapp.generated.resources.cd_in_progress
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
 import musicassistantclient.composeapp.generated.resources.item_error
 import musicassistantclient.composeapp.generated.resources.item_no_data
+import musicassistantclient.composeapp.generated.resources.item_tab_other_episodes
 import musicassistantclient.composeapp.generated.resources.item_tab_similar_tracks
 import musicassistantclient.composeapp.generated.resources.item_tab_versions
 import musicassistantclient.composeapp.generated.resources.library_empty
@@ -290,6 +292,7 @@ fun ItemDetails(
                             is MediaCollection,
                             is Genre,
                             is Track,
+                            is PodcastEpisode,
                                 -> {
                                 onNavigateToItem(item.itemId, item.mediaType, item.provider)
                             }
@@ -332,6 +335,7 @@ fun ItemDetails(
 private fun ItemDetailsTab.stringResource(): StringResource? = when (this) {
     ItemDetailsTab.AUDIOBOOK_CHAPTERS -> Res.string.media_type_chapters
     ItemDetailsTab.PODCAST_EPISODES -> Res.string.media_type_episodes
+    ItemDetailsTab.OTHER_EPISODES -> Res.string.item_tab_other_episodes
     ItemDetailsTab.COLLECTION_ITEMS -> Res.string.media_type_audiobooks
     ItemDetailsTab.TRACK_VERSIONS -> Res.string.item_tab_versions
     ItemDetailsTab.SIMILAR_TRACKS -> Res.string.item_tab_similar_tracks
@@ -544,7 +548,12 @@ private fun ItemContent(
     }
 
     state.lyrics?.takeIf { showLyrics }?.let { lyrics ->
-        LyricsSheet(lyrics = lyrics, livePositionFlow = null, onDismiss = { showLyrics = false })
+        LyricsSheet(
+            lyrics = lyrics,
+            livePositionFlow = null,
+            onDismiss = { showLyrics = false },
+            kind = if (item is PodcastEpisode) LyricsSheetKind.TRANSCRIPT else LyricsSheetKind.LYRICS,
+        )
     }
 
     description?.takeIf { showDescription }?.let {
@@ -690,6 +699,7 @@ private fun TabContent(
         ItemDetailsTab.ALBUM_TRACKS,
         ItemDetailsTab.PLAYLIST_ITEMS,
         ItemDetailsTab.PODCAST_EPISODES,
+        ItemDetailsTab.OTHER_EPISODES,
         ItemDetailsTab.COLLECTION_ITEMS,
             -> PlayablesTabContent(
             playableItemsState = state.playableItemsState,
@@ -979,6 +989,8 @@ private fun PlayablesTabContent(
             is PodcastEpisode -> PodcastEpisodeWithMenu(
                 item = track,
                 viewMode = viewMode,
+                navigateToItem = onNavigateClick,
+                containerItem = parentItem,
                 onPlayOption = onPlayChildClick,
                 playlistActions = playlistActions,
                 onRemoveFromPlaylist = onRemove,

@@ -68,6 +68,7 @@ import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayMode
@@ -87,6 +88,7 @@ import io.music_assistant.client.ui.compose.common.items.ItemAction
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
+import io.music_assistant.client.ui.compose.common.items.ProgressBadge
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.items.rememberArtistNavigation
@@ -102,9 +104,11 @@ import io.music_assistant.client.ui.utils.fadingEdges
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_find_on_music_services
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_podcast
 import musicassistantclient.composeapp.generated.resources.action_lyrics
 import musicassistantclient.composeapp.generated.resources.action_refresh_item
 import musicassistantclient.composeapp.generated.resources.action_similar_artists
+import musicassistantclient.composeapp.generated.resources.action_transcript
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.cd_more
@@ -351,7 +355,9 @@ private fun ItemOverflow(
     val lyrics = listOfNotNull(
         onLyricsClick?.let {
             OverflowMenuOption(
-                title = stringResource(Res.string.action_lyrics),
+                title = stringResource(
+                    if (item is PodcastEpisode) Res.string.action_transcript else Res.string.action_lyrics,
+                ),
                 icon = Icons.Outlined.Lyrics,
                 onClick = it,
             )
@@ -500,6 +506,25 @@ private fun ItemText(
             )
         }
 
+        // The podcast of an episode, like the web hero; a tap opens it.
+        (item as? PodcastEpisode)?.podcast?.let { podcast ->
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        onClickLabel = stringResource(Res.string.action_go_to_podcast),
+                        role = Role.Button,
+                        onClick = { navigateToItem(podcast) },
+                    )
+                    .fadingEdges()
+                    .basicMarquee()
+                    .padding(horizontal = 16.dp),
+                text = podcast.name,
+                textAlign = textAlign,
+                style = MaterialTheme.typography.titleSmall,
+            )
+        }
+
         (item as? Audiobook)?.narrators?.takeIf { it.isNotEmpty() }?.let { narrators ->
             Text(
                 modifier = Modifier
@@ -554,6 +579,14 @@ private fun Image(
             badgeSize = 24.dp,
             badgePadding = 8.dp,
         )
+        (item as? PodcastEpisode)?.let {
+            ProgressBadge(
+                fullyPlayed = it.fullyPlayed,
+                resumePositionMs = it.resumePositionMs,
+                badgeSize = 24.dp,
+                badgePadding = 8.dp,
+            )
+        }
     }
 }
 

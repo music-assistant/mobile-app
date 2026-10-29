@@ -96,6 +96,8 @@ data class ServerMetadata(
     @SerialName("copyright") val copyright: String? = null,
     @SerialName("lyrics") val lyrics: String? = null,
     @SerialName("lrc_lyrics") val lrcLyrics: String? = null,
+    /** Whether a transcript can be fetched; null when the provider cannot tell (server 2.11). */
+    @SerialName("has_transcript") val hasTranscript: Boolean? = null,
     @SerialName("label") val label: String? = null,
     // @SerialName("links") val links: List<String>? = null,
     // @SerialName("performers") val performers: List<String>? = null,

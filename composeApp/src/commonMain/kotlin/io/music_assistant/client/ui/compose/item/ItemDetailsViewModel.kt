@@ -38,6 +38,7 @@ import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
+import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.settings.PlayedFilter
 import io.music_assistant.client.settings.SettingsRepository
@@ -69,6 +70,7 @@ class ItemDetailsViewModel(
     private val providerRepository: ProviderRepository,
     private val itemRefresher: ItemRefresher,
     private val authCoordinator: AuthCoordinator,
+    private val transcriptRepository: TranscriptRepository,
     private val itemId: String,
     private val mediaType: MediaType,
     private val providerId: String,
@@ -83,7 +85,7 @@ class ItemDetailsViewModel(
         val trackVersionsState: DataState<List<Track>> = DataState.NoData(),
         /** NoData while no provider has [SIMILAR_TRACKS_FEATURE]: then the tab is not shown. */
         val similarTracksState: DataState<List<Track>> = DataState.NoData(),
-        /** Lyrics of the loaded [Track]; null for other items and for a track without lyrics. */
+        /** The lyrics of the loaded [Track] or the transcript of the loaded [PodcastEpisode]; null without one. */
         val lyrics: Lyrics? = null,
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
@@ -140,6 +142,7 @@ class ItemDetailsViewModel(
     private var rawAlbums: List<Album> = emptyList()
     private var rawPlayableItems: List<PlayableItem> = emptyList()
     private var playableItemsContext: SubItemContext? = null
+    private var transcriptJob: Job? = null
 
     /** Inputs of the visible playable list. Null while that list is not Data; see [setPlayableItemsState]. */
     private val playableInputs = MutableStateFlow<PlayableInputs?>(null)
@@ -261,6 +264,7 @@ class ItemDetailsViewModel(
             MediaType.GENRE -> Request.Genre.get(itemId, providerId)
             MediaType.COLLECTION -> Request.Audiobook.getCollection(itemId)
             MediaType.TRACK -> Request.Track.get(itemId, providerId)
+            MediaType.PODCAST_EPISODE -> Request.Podcast.getEpisode(itemId, providerId)
             else -> return null
         }
 
@@ -358,6 +362,19 @@ class ItemDetailsViewModel(
                 loadTrackDetails(item)
             }
 
+            is PodcastEpisode -> {
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PODCAST_EPISODES),
+                        episodesPlayedFilter = settingsRepository.getPodcastEpisodesPlayedFilter(),
+                    )
+                }
+                loadOtherEpisodes(item)
+                loadTranscript(item)
+            }
+
             else -> {
                 _state.update {
                     it.copy(
@@ -452,7 +469,7 @@ class ItemDetailsViewModel(
     // Server 2.11 filters the played episodes before it pages; an older server ignores the
     // argument, so the answer is filtered here as well (a no-op on 2.11). A toggle of the filter
     // loads again, so the load in flight is cancelled: its answer must not land last.
-    private fun loadPodcastEpisodes(itemId: String, provider: String) {
+    private fun loadPodcastEpisodes(itemId: String, provider: String, exceptItemId: String? = null) {
         episodesLoad?.cancel()
         episodesLoad = viewModelScope.launch {
             setPlayableItemsState(DataState.Loading())
@@ -468,12 +485,29 @@ class ItemDetailsViewModel(
                 )
                     ?.filterIsInstance<PodcastEpisode>()
                     ?.filterNot { hidePlayed && it.fullyPlayed == true }
+                    ?.filterNot { it.itemId == exceptItemId }
                     ?: emptyList()
 
                 setPlayableItems(episodes, SubItemContext.PODCAST_EPISODES)
             } catch (e: Exception) {
                 Logger.e("Failed to load podcast episodes", e)
                 setPlayableItemsState(DataState.Error())
+            }
+        }
+    }
+
+    /** The other episodes of the podcast of [episode], like the web page. Nothing without the podcast. */
+    private fun loadOtherEpisodes(episode: PodcastEpisode) {
+        val podcast = episode.podcast ?: return setPlayableItemsState(DataState.NoData())
+        loadPodcastEpisodes(podcast.itemId, podcast.provider, exceptItemId = episode.itemId)
+    }
+
+    /** Follows the transcript of [episode] into [State.lyrics]; the repository loads it once. */
+    private fun loadTranscript(episode: PodcastEpisode) {
+        transcriptJob?.cancel()
+        transcriptJob = viewModelScope.launch {
+            transcriptRepository.also { it.load(episode) }.transcript(episode).collect { transcript ->
+                _state.update { it.copy(lyrics = transcript.dataOrNull) }
             }
         }
     }
@@ -600,7 +634,8 @@ class ItemDetailsViewModel(
     }
 
     fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
-        val parent = (_state.value.itemState as? DataState.Data)?.data
+        // The rows of an episode page belong to its podcast, so "from here" plays the podcast.
+        val parent = (_state.value.itemState as? DataState.Data)?.data?.let { (it as? PodcastEpisode)?.podcast ?: it }
         val (itemToPlay, startItem) = if (mode.fromHereInParent && parent != null) {
             Pair(parent, item)
         } else {
@@ -652,11 +687,16 @@ class ItemDetailsViewModel(
 
     /** The filter is a server argument on 2.11, so the episodes load again. */
     fun onEpisodesPlayedFilterToggled() {
-        val podcast = _state.value.itemOrNull() as? Podcast ?: return
+        val item = _state.value.itemOrNull()
+        if (item !is Podcast && item !is PodcastEpisode) return
         val filter = _state.value.episodesPlayedFilter.toggled()
         settingsRepository.setPodcastEpisodesPlayedFilter(filter)
         _state.update { it.copy(episodesPlayedFilter = filter) }
-        loadPodcastEpisodes(podcast.itemId, podcast.provider)
+        when (item) {
+            is Podcast -> loadPodcastEpisodes(item.itemId, item.provider)
+            is PodcastEpisode -> loadOtherEpisodes(item)
+            else -> Unit
+        }
     }
 
     fun onPlayableItemsSortChanged(context: SubItemContext, sortOption: SortOption) {
@@ -814,6 +854,7 @@ private fun ItemDetailsTab.subState(
     ItemDetailsTab.ALBUM_TRACKS,
     ItemDetailsTab.PLAYLIST_ITEMS,
     ItemDetailsTab.PODCAST_EPISODES,
+    ItemDetailsTab.OTHER_EPISODES,
     ItemDetailsTab.COLLECTION_ITEMS,
         -> state.playableItemsState
 

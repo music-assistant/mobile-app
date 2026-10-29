@@ -272,7 +272,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Mark played and unplayed | yes | yes | yes | no | no | Parity | |
 | Play episodes from here to the latest | yes | yes | yes | no | no | Parity | Episodes tab of the podcast |
 | Episode and season numbers | no | yes | yes | yes | yes | Parity | `PodcastEpisode.episode_number`, `season` |
-| Transcript | no | yes | no | no | no | Missing | |
+| Transcript | no | yes | yes | no | no | Parity | Episode page and player sheet; schema 81 (`supportsEpisodeTranscript`) |
 | Next unplayed book in a series | yes | yes | yes | yes | yes | Parity | Server starts the first unfinished book |
 
 ### 4.12 Radio and AI Radio
@@ -621,7 +621,7 @@ the app:
 |---|---|---|---|
 | Track detail screen | `tracks/get_track`, `track_albums`, `track_versions`, `similar_tracks`, `metadata/get_track_lyrics` | Easy | Done (issue #1189). A `Track` case in `ItemDetailsScreen` with tabs for albums, versions and similar tracks |
 | Radio detail screen | `radios/get_radio`, `radio_versions`, `radio_tracks` (2.11) | Easy | Same pattern. Show the tracklist for finite stations on 2.11 |
-| Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Episode page with steppers. Feed the cues into `LyricsSheet` timing |
+| Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Done (issue 1204). A `PodcastEpisode` case in `ItemDetailsScreen`; the cues feed `LyricsSheet` as `Lyrics.Synced`. No steppers and no hide-fully-played filter |
 | Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Two more artist sections. Discography items carry provider `musicbrainz`. Show them dimmed and offer "Add to library" only |
 | Artist audiobooks row | `artist_audiobooks` | Easy | Done (issue #1201). The author page rows with the existing provider filter |
 | Album versions, review, more from artist | `album_versions`, `artist_albums` | Easy | Two sections on the album screen |

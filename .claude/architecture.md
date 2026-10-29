@@ -205,6 +205,18 @@ actual class PlatformFeature {
   the subtitle. The phone gets the templates in `localizedSubtitle`. Android Auto and CarPlay load
   them once (`AutoLibrary`, `MediaSessionStrings`, `CarPlayStrings`), because their item builders are
   synchronous. Do not format the label in a different place.
+- **Episode page**: `ItemDetailsScreen` opens a `PodcastEpisode` (`music/podcasts/podcast_episode`, every server 2.x).
+  The header shows the podcast name, which opens the podcast, the played state, and the playing time. The
+  "Other episodes" tab (`ItemDetailsTab.OTHER_EPISODES`) lists the podcast episodes without the open one, with
+  the sort of the podcast page. The menus reach the page with "Go to episode" (`navigationOptions`). The page
+  shows the `description` as "About this episode". From schema 81 (`supportsEpisodeTranscript`, server 2.11),
+  `TranscriptRepository` (`data/repository/`) loads `music/podcasts/podcast_episode_transcript` once for each
+  episode in an app scope and keeps the last answers, because the page and the player ask for the same
+  episode. The answer is a `[text, cues]` tuple, and `transcriptOf` (`model/client/Transcript.kt`) makes a
+  `Lyrics` from it, so `LyricsSheet` shows a transcript with the lyrics timing and offset. The page keeps it
+  in `State.lyrics` and offers "Transcript" in the menu once it is loaded. The expanded player loads the
+  transcript of the current episode and shows it behind the lyrics button. An episode whose provider reports
+  `has_transcript` false is not asked. The page has no steppers and no hide-fully-played filter.
 - **Queue origin**: `QueueTrack.origin` is the container that the item was played from, from server
   2.11. It is null on an older server, for a single track and for a live stream. The stream details
   dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to

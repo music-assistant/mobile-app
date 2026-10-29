@@ -3,6 +3,7 @@ package io.music_assistant.client.data.model.client.items.support
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -34,6 +35,10 @@ class StubMediaItemRepository : MediaItemRepository {
     }
 
     override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?> {
         TODO("Not yet implemented")
     }
 

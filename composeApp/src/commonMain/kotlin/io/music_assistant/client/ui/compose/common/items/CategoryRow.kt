@@ -276,6 +276,8 @@ fun CategoryRow(
 
                 is PodcastEpisode -> PodcastEpisodeWithMenu(
                     item = item,
+                    navigateToItem = onNavigateClick,
+                    containerItem = containerItem,
                     onPlayOption = onPlayClick,
                     playlistActions = playlistActions,
                     libraryActions = libraryActions,

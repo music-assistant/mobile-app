@@ -39,6 +39,7 @@ import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.PlaylistAccessPart
 import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.utils.TotalDuration
 import io.music_assistant.client.utils.toTotalDuration
@@ -48,6 +49,7 @@ import musicassistantclient.composeapp.generated.resources.item_duration_hours
 import musicassistantclient.composeapp.generated.resources.item_duration_hours_minutes
 import musicassistantclient.composeapp.generated.resources.item_duration_minutes
 import musicassistantclient.composeapp.generated.resources.item_publisher
+import musicassistantclient.composeapp.generated.resources.item_section_about_episode
 import musicassistantclient.composeapp.generated.resources.item_section_biography
 import musicassistantclient.composeapp.generated.resources.item_section_description
 import musicassistantclient.composeapp.generated.resources.item_section_review
@@ -71,7 +73,8 @@ private const val CLAMPED_LINES = 3
 
 /**
  * The facts under the subtitle: the album type, the track count and the total playing time, the
- * publisher of an audiobook, the music services of a library item, and the owner of a playlist.
+ * playing time of a podcast episode, the publisher of an audiobook, the music services of a
+ * library item, and the owner of a playlist.
  * Nothing renders when the item has none.
  */
 @Composable
@@ -88,6 +91,7 @@ fun ItemFacts(
         (item as? Album)?.year?.toString(),
         playableSummary?.let { pluralStringResource(Res.plurals.item_track_count, it.count, it.count) },
         playableSummary?.totalSeconds?.toTotalDuration()?.localized(),
+        (item as? PodcastEpisode)?.duration?.takeIf { it > 0 }?.toTotalDuration()?.localized(),
         (item as? Audiobook)?.publisher?.takeIf { it.isNotBlank() }
             ?.let { stringResource(Res.string.item_publisher, it) },
         item.sourceNames(providerDetails),
@@ -178,6 +182,7 @@ private fun ItemDescriptionKind.stringResource(): StringResource = when (this) {
     ItemDescriptionKind.BIOGRAPHY -> Res.string.item_section_biography
     ItemDescriptionKind.REVIEW -> Res.string.item_section_review
     ItemDescriptionKind.DESCRIPTION -> Res.string.item_section_description
+    ItemDescriptionKind.ABOUT_EPISODE -> Res.string.item_section_about_episode
 }
 
 /**

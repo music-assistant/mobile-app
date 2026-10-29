@@ -96,6 +96,7 @@ import musicassistantclient.composeapp.generated.resources.cd_ambient_sound_on
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_lyrics
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.cd_transcript
 import musicassistantclient.composeapp.generated.resources.player_needs_setup
 import musicassistantclient.composeapp.generated.resources.player_power_on
 import musicassistantclient.composeapp.generated.resources.player_powered_off
@@ -802,7 +803,13 @@ fun FullPlayerItem(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Lyrics,
-                        contentDescription = stringResource(Res.string.cd_lyrics),
+                        contentDescription = stringResource(
+                            if (item.queueInfo?.currentItem?.track is PodcastEpisode) {
+                                Res.string.cd_transcript
+                            } else {
+                                Res.string.cd_lyrics
+                            },
+                        ),
                         tint = colors.controlTint,
                     )
                 }

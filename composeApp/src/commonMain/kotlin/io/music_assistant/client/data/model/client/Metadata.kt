@@ -15,6 +15,9 @@ data class Metadata(
     // metadata/get_track_lyrics round-trip. [lrcLyrics] is timestamped LRC, [lyrics] plain.
     val lyrics: String?,
     val lrcLyrics: String?,
+    // Whether the server can fetch a transcript of a podcast episode; null when the provider
+    // cannot tell, so the transcript is still asked for.
+    val hasTranscript: Boolean? = null,
     // The long texts of the item details page, as the provider sends them (Markdown, HTML or
     // both): an artist's biography, or the description of a playlist, podcast or audiobook.
     val description: String? = null,

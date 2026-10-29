@@ -48,6 +48,8 @@ object APICommands {
     // Podcast commands
     const val MUSIC_PODCASTS_LIBRARY_ITEMS = "music/podcasts/library_items"
     const val MUSIC_PODCASTS_PODCAST_EPISODES = "music/podcasts/podcast_episodes"
+    const val MUSIC_PODCASTS_PODCAST_EPISODE = "music/podcasts/podcast_episode"
+    const val MUSIC_PODCASTS_PODCAST_EPISODE_TRANSCRIPT = "music/podcasts/podcast_episode_transcript"
 
     // Radio Station commands
     const val MUSIC_RADIOS_LIBRARY_ITEMS = "music/radios/library_items"

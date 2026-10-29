@@ -503,6 +503,26 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 fullyPlayed?.let { put("fully_played", JsonPrimitive(it)) }
             },
         )
+
+        /** One episode by its provider id. */
+        fun getEpisode(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_PODCASTS_PODCAST_EPISODE,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+
+        /** The transcript of an episode as a `[text, cues]` tuple. Server 2.11 (`supportsEpisodeTranscript`). */
+        fun getEpisodeTranscript(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_PODCASTS_PODCAST_EPISODE_TRANSCRIPT,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
     }
 
     data object Provider {

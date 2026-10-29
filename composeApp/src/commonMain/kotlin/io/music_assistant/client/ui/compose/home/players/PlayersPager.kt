@@ -89,6 +89,7 @@ import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTra
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.repository.QueueOverlayRepository
@@ -277,8 +278,15 @@ fun PlayersPager(
                 val playerId = player.playerId
                 val currentQueueItem = player.queueInfo?.currentItem
                 val currentTrack = currentQueueItem?.track as? Track
-                val lyrics = currentTrack?.lyrics
+                // The transcript of an episode loads once its page is expanded, like the web fullscreen player.
+                val transcript = (currentQueueItem?.track as? PodcastEpisode)?.takeIf { expanded }?.let { episode ->
+                    LaunchedEffect(episode.provider, episode.itemId) { homeScreenViewModel.loadTranscript(episode) }
+                    remember(episode.provider, episode.itemId) { homeScreenViewModel.transcript(episode) }
+                        .collectAsStateWithLifecycle().value.dataOrNull
+                }
+                val lyrics = currentTrack?.lyrics ?: transcript
                 val trackId = currentTrack?.itemId
+                val lyricsItemId = currentQueueItem?.track?.itemId
                 val queueItemId = currentQueueItem?.id
                 val onDspButton: () -> Unit = remember(playerId) {
                     {
@@ -300,9 +308,9 @@ fun PlayersPager(
                         dialogRequest = PlayerDialogRequest.AmbientSound(playerId)
                     }
                 }
-                val onLyricsClick: () -> Unit = remember(playerId, trackId) {
+                val onLyricsClick: () -> Unit = remember(playerId, lyricsItemId) {
                     {
-                        trackId?.let { dialogRequest = PlayerDialogRequest.Lyrics(playerId, it) }
+                        lyricsItemId?.let { dialogRequest = PlayerDialogRequest.Lyrics(playerId, it) }
                     }
                 }
                 val onChooseArtist: () -> Unit = remember(playerId, trackId) {

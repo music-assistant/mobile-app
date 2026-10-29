@@ -797,13 +797,14 @@ fun BoxScope.Badges(
 fun BoxScope.ProgressBadge(
     fullyPlayed: Boolean?,
     resumePositionMs: Long?,
+    badgeSize: Dp = 18.dp,
+    badgePadding: Dp = 0.dp,
 ) {
+    val modifier = Modifier.align(Alignment.TopEnd).padding(badgePadding).size(badgeSize)
     when {
         fullyPlayed == true -> {
             Icon(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(18.dp)
+                modifier = modifier
                     .background(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
                         CircleShape,
@@ -817,9 +818,7 @@ fun BoxScope.ProgressBadge(
 
         resumePositionMs != null && resumePositionMs > 0 -> {
             Icon(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(18.dp)
+                modifier = modifier
                     .background(
                         MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
                         CircleShape,

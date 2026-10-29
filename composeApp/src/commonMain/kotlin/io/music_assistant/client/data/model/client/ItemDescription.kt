@@ -6,16 +6,17 @@ import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 
-enum class ItemDescriptionKind { BIOGRAPHY, REVIEW, DESCRIPTION }
+enum class ItemDescriptionKind { BIOGRAPHY, REVIEW, DESCRIPTION, ABOUT_EPISODE }
 
 /** The long text of an item details page, as plain text. */
 data class ItemDescription(val kind: ItemDescriptionKind, val text: String)
 
 /**
  * The text that the details page of [this] shows, like the web frontend: an artist's biography,
- * an album's review (or its description), and the description of a playlist, a podcast or an
- * audiobook. Null for the other types and when the item has no readable text.
+ * an album's review (or its description), the description of a playlist, a podcast or an
+ * audiobook, and the "about" text of a podcast episode. Null for the other types and when the item has no readable text.
  */
 fun AppMediaItem.itemDescription(): ItemDescription? = when (this) {
     is Artist -> metadata?.description?.toPlainItemText()?.let { ItemDescription(ItemDescriptionKind.BIOGRAPHY, it) }
@@ -24,6 +25,9 @@ fun AppMediaItem.itemDescription(): ItemDescription? = when (this) {
 
     is Playlist, is Podcast, is Audiobook ->
         metadata?.description?.toPlainItemText()?.let { ItemDescription(ItemDescriptionKind.DESCRIPTION, it) }
+
+    is PodcastEpisode ->
+        metadata?.description?.toPlainItemText()?.let { ItemDescription(ItemDescriptionKind.ABOUT_EPISODE, it) }
 
     else -> null
 }
