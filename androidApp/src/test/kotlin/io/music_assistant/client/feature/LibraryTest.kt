@@ -22,7 +22,9 @@ import io.music_assistant.client.support.pages.clickTracks
 import io.music_assistant.client.support.pages.enableFilter
 import io.music_assistant.client.support.rules.createTestRuleChain
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.artist_type_authors
 import musicassistantclient.composeapp.generated.resources.filter_favorites
+import musicassistantclient.composeapp.generated.resources.media_type_podcasts
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -158,6 +160,44 @@ class LibraryTest {
             }
             .assertMediaNotDisplayed(album1)
             .assertMediaDisplayed(album2)
+    }
+
+    @Test
+    fun `can list the authors instead of the audiobooks`() {
+        val audiobook = ServerMediaItemFixtures.audiobook()
+        val author = ServerMediaItemFixtures.artist(artistType = "author")
+        val singer = ServerMediaItemFixtures.artist()
+        serviceClient.addItems(audiobook, author, singer)
+        serviceClient.addToLibrary(audiobook, author, singer)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickAudiobooks()
+            .assertMediaDisplayed(audiobook)
+            .enableFilter {
+                it.enableChip(Res.string.artist_type_authors.get())
+            }
+            .assertMediaDisplayed(author)
+            .assertMediaNotDisplayed(singer)
+            .assertMediaNotDisplayed(audiobook)
+    }
+
+    @Test
+    fun `can filter genres by content type`() {
+        val musicGenre = ServerMediaItemFixtures.genre()
+        val podcastGenre = ServerMediaItemFixtures.genre()
+        serviceClient.addItems(musicGenre, podcastGenre)
+        serviceClient.addToLibrary(musicGenre, podcastGenre)
+        serviceClient.setGenreContentType(podcastGenre, "podcast")
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickGenres()
+            .assertMediaDisplayed(musicGenre)
+            .assertMediaDisplayed(podcastGenre)
+            .enableFilter {
+                it.enableChip(Res.string.media_type_podcasts.get())
+            }
+            .assertMediaDisplayed(podcastGenre)
+            .assertMediaNotDisplayed(musicGenre)
     }
 
     @Test

@@ -78,6 +78,7 @@ import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.data.model.client.toClickContext
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.play.PlayMode
+import io.music_assistant.client.settings.PlayedFilter
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.CenteredProgress
 import io.music_assistant.client.ui.compose.common.CenteredText
@@ -121,6 +122,7 @@ import io.music_assistant.client.ui.theme.AppTheme
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.album_disc_header
 import musicassistantclient.composeapp.generated.resources.artist_section_all
+import musicassistantclient.composeapp.generated.resources.artist_section_all_audiobooks
 import musicassistantclient.composeapp.generated.resources.artist_section_in_library
 import musicassistantclient.composeapp.generated.resources.artist_section_top
 import musicassistantclient.composeapp.generated.resources.artist_source_all
@@ -181,6 +183,7 @@ fun ItemDetailsScreen(
         onChildPlayClick = itemDetailsViewModel::onPlayClick,
         onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
         onPlayableItemsQueryChanged = itemDetailsViewModel::onPlayableItemsQueryChanged,
+        onEpisodesPlayedFilterToggled = itemDetailsViewModel::onEpisodesPlayedFilterToggled,
         onTabSelected = itemDetailsViewModel::onTabSelected,
         onLoadSimilarArtists = itemDetailsViewModel::loadSimilarArtists,
         onRefreshPlaylist = itemDetailsViewModel::refreshPlaylistTracks,
@@ -214,6 +217,7 @@ fun ItemDetails(
     onChildPlayClick: PlayHandler<AppMediaItem> = { _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onPlayableItemsQueryChanged: (String?) -> Unit = {},
+    onEpisodesPlayedFilterToggled: () -> Unit = {},
     onTabSelected: (ItemDetailsTab) -> Unit = {},
     onLoadSimilarArtists: () -> Unit = {},
     onRefreshPlaylist: () -> Unit = {},
@@ -308,6 +312,7 @@ fun ItemDetails(
                     onToggleViewMode = onToggleViewMode,
                     onPlayableItemsSortChanged = onPlayableItemsSortChanged,
                     onPlayableItemsQueryChanged = onPlayableItemsQueryChanged,
+                    onEpisodesPlayedFilterToggled = onEpisodesPlayedFilterToggled,
                     contentPadding = contentPadding,
                     onTabSelected = onTabSelected,
                     onLoadSimilarArtists = onLoadSimilarArtists,
@@ -353,6 +358,7 @@ private fun ItemContent(
     onToggleViewMode: (MediaType) -> Unit,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
     onPlayableItemsQueryChanged: (String?) -> Unit,
+    onEpisodesPlayedFilterToggled: () -> Unit,
     contentPadding: PaddingValues,
     onTabSelected: (ItemDetailsTab) -> Unit,
     onLoadSimilarArtists: () -> Unit,
@@ -491,6 +497,8 @@ private fun ItemContent(
                             albumsSortOption = state.albumsSortOption,
                             playableItemsSortOption = state.playableItemsSortOption,
                             onPlayableItemsSortChanged = onPlayableItemsSortChanged,
+                            episodesPlayedFilter = state.episodesPlayedFilter,
+                            onEpisodesPlayedFilterToggled = onEpisodesPlayedFilterToggled,
                             viewModeProvider = viewModeProvider,
                             onToggleViewMode = onToggleViewMode,
                         )
@@ -553,6 +561,8 @@ private fun TabsBar(
     albumsSortOption: SortOption?,
     playableItemsSortOption: SortOption?,
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit,
+    episodesPlayedFilter: PlayedFilter,
+    onEpisodesPlayedFilterToggled: () -> Unit,
     viewModeProvider: @Composable (MediaType) -> ViewMode,
     onToggleViewMode: (MediaType) -> Unit,
 ) {
@@ -568,6 +578,7 @@ private fun TabsBar(
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_AUDIOBOOKS,
             -> playableItemsSortOption
 
         null -> null
@@ -610,6 +621,13 @@ private fun TabsBar(
                         },
                     )
                 }
+            }
+
+            if (sortCtx == SubItemContext.PODCAST_EPISODES) {
+                PlayedFilterToggle(
+                    filter = episodesPlayedFilter,
+                    onToggle = onEpisodesPlayedFilterToggled,
+                )
             }
 
             if (sortCtx != null && currentSort != null) {
@@ -1091,7 +1109,11 @@ private fun ArtistContent(
                     artist = artist,
                     sectionData = allSection,
                     id = "all",
-                    title = Res.string.artist_section_all.toDisplayString(),
+                    title = if (artist.isAudiobookArtist) {
+                        Res.string.artist_section_all_audiobooks.toDisplayString()
+                    } else {
+                        Res.string.artist_section_all.toDisplayString()
+                    },
                     onNavigateClick = onNavigateClick,
                     onNavigateToList = onNavigateToList,
                     onFilterSelected = artistDetailsViewModel::loadAll,

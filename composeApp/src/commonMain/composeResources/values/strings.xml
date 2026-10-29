@@ -91,9 +91,12 @@
   <string name="announcement_title">Play announcement</string>
   <string name="announcement_volume">Volume: %1$d</string>
   <string name="artist_section_all">Discography</string>
+  <string name="artist_section_all_audiobooks">All audiobooks</string>
   <string name="artist_section_in_library">In library</string>
   <string name="artist_section_top">Top tracks</string>
   <string name="artist_source_all">All</string>
+  <string name="artist_type_authors">Authors</string>
+  <string name="artist_type_narrators">Narrators</string>
   <string name="auth_authenticating">Authenticating…</string>
   <string name="auth_authorize_ha">Authorize with Home Assistant</string>
   <string name="auth_hide_password">Hide password</string>
@@ -169,6 +172,7 @@
   <string name="cd_sleep_timer_off">Sleep timer off</string>
   <string name="cd_sort_direction">Sort direction</string>
   <string name="cd_toggle_queue">Toggle Queue</string>
+  <string name="cd_toggle_hide_played_episodes">Hide played episodes</string>
   <string name="cd_toggle_series_grouping">Group series</string>
   <string name="cd_toggle_view_mode">Toggle view mode</string>
   <string name="cd_unmute">Unmute</string>
@@ -215,6 +219,7 @@
   <string name="episode_number_season">S%1$d E%2$d</string>
   <string name="filter_album_artists_only">Album artists only</string>
   <string name="filter_album_types">Album types</string>
+  <string name="filter_audiobooks_show">Show</string>
   <string name="filter_favorites">Favorites</string>
   <string name="filter_genres">Genres</string>
   <string name="filter_none_selected">Any</string>
@@ -227,9 +232,12 @@
   <string name="genre_filter_empty_all">All</string>
   <string name="genre_filter_empty_default">Default</string>
   <string name="genre_filter_empty_non_empty">Non-empty only</string>
+  <string name="genre_filter_content_type">Content type</string>
+  <string name="genre_filter_content_type_all">All</string>
   <string name="genre_filter_media_type">Media type</string>
   <string name="genre_filter_media_type_all">All</string>
   <string name="genre_filter_show">Show genres</string>
+  <string name="genre_content_type_music">Music</string>
   <string name="discover_edit_rows">Edit rows</string>
   <string name="discover_save_rows">Save rows</string>
   <string name="discover_shortcuts">Shortcuts</string>

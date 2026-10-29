@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.music_assistant.client.data.model.client.ArtistType
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
@@ -82,6 +83,7 @@ fun LibraryListScreen(
     val state by libraryListViewModel.state.collectAsStateWithLifecycle()
     val providerOptions by libraryListViewModel.providerOptions.collectAsStateWithLifecycle()
     val genreOptions by libraryListViewModel.genreOptions.collectAsStateWithLifecycle()
+    val audiobookArtistTypes by libraryListViewModel.audiobookArtistTypes.collectAsStateWithLifecycle()
     val viewMode by viewModeViewModel.viewModeFor(state.mediaType).collectAsStateWithLifecycle()
 
     TopBarLayout(
@@ -103,6 +105,7 @@ fun LibraryListScreen(
                 onFiltersChange = libraryListViewModel::setFilters,
                 providerOptions = providerOptions,
                 genreOptions = genreOptions,
+                audiobookArtistTypes = audiobookArtistTypes,
                 onLoadFilterOptions = libraryListViewModel::loadFilterOptions,
             )
         },
@@ -160,6 +163,7 @@ private fun LibraryListTopBar(
     onFiltersChange: (LibraryFilters) -> Unit,
     providerOptions: DataState<List<SelectOption<String>>>,
     genreOptions: DataState<List<SelectOption<Int>>>,
+    audiobookArtistTypes: List<ArtistType>,
     onLoadFilterOptions: () -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
@@ -218,6 +222,7 @@ private fun LibraryListTopBar(
                         filters = filters,
                         providerOptions = providerOptions,
                         genreOptions = genreOptions,
+                        audiobookArtistTypes = audiobookArtistTypes,
                         onLoadOptions = onLoadFilterOptions,
                         onApply = {
                             onFiltersChange(it)
@@ -248,7 +253,8 @@ private fun LibraryListTopBar(
                     onSortChanged = { onSortChanged(it) },
                 )
 
-                if (mediaType == MediaType.AUDIOBOOK) {
+                // Series grouping applies to the books, not to the authors or narrators.
+                if (mediaType == MediaType.AUDIOBOOK && filters.audiobookArtistType == null) {
                     SeriesGroupingToggle(
                         grouping = seriesGrouping,
                         onToggle = onToggleSeriesGrouping,

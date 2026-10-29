@@ -39,11 +39,13 @@ import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.favoriteAfter
+import io.music_assistant.client.settings.PlayedFilter
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -85,6 +87,8 @@ class ItemDetailsViewModel(
         val lyrics: Lyrics? = null,
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
+        /** Podcast only: whether the episodes tab hides the episodes played to the end. */
+        val episodesPlayedFilter: PlayedFilter = PlayedFilter.ALL,
         /** In-list text filter; null while the search field is closed, "" once opened. */
         val playableItemsQuery: String? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
@@ -303,6 +307,7 @@ class ItemDetailsViewModel(
                         albumsState = DataState.NoData(),
                         albumsSortOption = null,
                         playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PODCAST_EPISODES),
+                        episodesPlayedFilter = settingsRepository.getPodcastEpisodesPlayedFilter(),
                     )
                 }
                 loadPodcastEpisodes(item.itemId, item.provider)
@@ -444,18 +449,25 @@ class ItemDetailsViewModel(
         }
     }
 
+    // Server 2.11 filters the played episodes before it pages; an older server ignores the
+    // argument, so the answer is filtered here as well (a no-op on 2.11). A toggle of the filter
+    // loads again, so the load in flight is cancelled: its answer must not land last.
     private fun loadPodcastEpisodes(itemId: String, provider: String) {
-        viewModelScope.launch {
+        episodesLoad?.cancel()
+        episodesLoad = viewModelScope.launch {
             setPlayableItemsState(DataState.Loading())
+            val hidePlayed = _state.value.episodesPlayedFilter == PlayedFilter.HIDE_PLAYED
 
             try {
                 val episodes = mediaItemRepository.fetchAllMediaItems(
                     Request.Podcast.getEpisodes(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
+                        fullyPlayed = false.takeIf { hidePlayed },
                     ),
                 )
                     ?.filterIsInstance<PodcastEpisode>()
+                    ?.filterNot { hidePlayed && it.fullyPlayed == true }
                     ?: emptyList()
 
                 setPlayableItems(episodes, SubItemContext.PODCAST_EPISODES)
@@ -634,6 +646,17 @@ class ItemDetailsViewModel(
                 }
             }
         }
+    }
+
+    private var episodesLoad: Job? = null
+
+    /** The filter is a server argument on 2.11, so the episodes load again. */
+    fun onEpisodesPlayedFilterToggled() {
+        val podcast = _state.value.itemOrNull() as? Podcast ?: return
+        val filter = _state.value.episodesPlayedFilter.toggled()
+        settingsRepository.setPodcastEpisodesPlayedFilter(filter)
+        _state.update { it.copy(episodesPlayedFilter = filter) }
+        loadPodcastEpisodes(podcast.itemId, podcast.provider)
     }
 
     fun onPlayableItemsSortChanged(context: SubItemContext, sortOption: SortOption) {

@@ -89,6 +89,7 @@ class SortOptionTest {
             SubItemContext.ARTIST_TOP_TRACKS,
             SubItemContext.ARTIST_ALL_ALBUMS,
             SubItemContext.ARTIST_LIBRARY_ALBUMS,
+            SubItemContext.ARTIST_AUDIOBOOKS,
         ).forEach {
             assertEquals(SortOption(SortField.ORIGINAL), SortConfig.defaultFor(it))
             assertTrue(SortConfig.isUserSortable(it))

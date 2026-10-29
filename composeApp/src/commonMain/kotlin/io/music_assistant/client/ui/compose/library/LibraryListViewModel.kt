@@ -6,10 +6,12 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.ArtistType
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.client.genreMediaTypeFilter
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
@@ -95,6 +97,11 @@ class LibraryListViewModel(
     private val _genreOptions =
         MutableStateFlow<DataState<List<SelectOption<Int>>>>(DataState.NoData())
     val genreOptions = _genreOptions.asStateFlow()
+
+    // The artist types the library holds besides singers; the Audiobooks sheet offers them.
+    // Loaded with the genre options. Empty until then, and after a failed load.
+    private val _audiobookArtistTypes = MutableStateFlow<List<ArtistType>>(emptyList())
+    val audiobookArtistTypes = _audiobookArtistTypes.asStateFlow()
     private var optionsRequested = false
 
     init {
@@ -128,7 +135,7 @@ class LibraryListViewModel(
                     // Refetch first page so the new row lands in its sorted/filtered
                     // position (matches the "page refresh" semantics for creation).
                     is MediaItemChange.Added ->
-                        if (change.item.mediaType == mediaType) loadFirstPage()
+                        if (change.item.mediaType == _state.value.listedMediaType) loadFirstPage()
                     // Cheap in-place removal; ordering of the rest is unaffected.
                     is MediaItemChange.Deleted -> removeItem(change.item)
                 }
@@ -139,7 +146,7 @@ class LibraryListViewModel(
     }
 
     private fun removeItem(deleted: AppMediaItem) {
-        if (deleted.mediaType != mediaType) return
+        if (deleted.mediaType != _state.value.listedMediaType) return
         _state.update { st ->
             val data = st.dataState as? DataState.Data ?: return@update st
             val remaining = data.data.filterNot { it.matchesIdentityOf(deleted) }
@@ -150,7 +157,7 @@ class LibraryListViewModel(
 
     private fun patchItem(change: MediaItemChange) {
         val updated = change.item
-        if (updated.mediaType != mediaType) return
+        if (updated.mediaType != _state.value.listedMediaType) return
         _state.update { st ->
             val data = st.dataState as? DataState.Data ?: return@update st
             if (data.data.none { it.matchesIdentityOf(updated) }) return@update st
@@ -177,12 +184,25 @@ class LibraryListViewModel(
         settingsRepository.setLibraryFilters(mediaType, filters)
     }
 
-    // Idempotent: fetch genre options once per VM. The genres list has no genre filter,
+    // Idempotent: fetch the options once per VM. The genres list has no genre filter,
     // so skip the call entirely there.
     fun loadFilterOptions() {
         if (optionsRequested || mediaType == MediaType.GENRE) return
         optionsRequested = true
         loadGenreOptions()
+        if (mediaType == MediaType.AUDIOBOOK) loadAudiobookArtistTypes()
+    }
+
+    private fun loadAudiobookArtistTypes() {
+        viewModelScope.launch {
+            val types = apiClient.sendRequest(Request.Artist.libraryTypes())
+                .onFailure { Logger.e("Failed to load library artist types", it) }
+                .getOrNull()
+                ?.resultAs<List<String>>()
+                .orEmpty()
+                .mapNotNull(ArtistType::fromServer)
+            _audiobookArtistTypes.update { ArtistType.audiobookOptions.filter { it in types } }
+        }
     }
 
     private fun loadGenreOptions() {
@@ -345,7 +365,20 @@ class LibraryListViewModel(
                 genres = genres,
             )
 
-            MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
+            // The list shows the library authors or narrators instead of the books while the
+            // filter names an artist type; the sort then comes from the artists menu.
+            MediaType.AUDIOBOOK -> filters.audiobookArtistType?.let { artistType ->
+                Request.Artist.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = offset,
+                    search = searchQuery,
+                    sort = sort,
+                    favorite = favorite,
+                    providers = providers,
+                    genres = genres,
+                    artistType = artistType.serverValue,
+                )
+            } ?: Request.Audiobook.listLibrary(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
@@ -384,7 +417,8 @@ class LibraryListViewModel(
                 favorite = favorite,
                 providers = providers,
                 hideEmpty = filters.hideEmpty.hideEmpty,
-                mediaType = filters.genreMediaType?.serverValue,
+                mediaType = filters.genreMediaTypeFilter?.serverValue,
+                contentType = filters.genreContentType?.serverValue,
             )
 
             else -> throw IllegalArgumentException("Invalid MediaType for ItemListViewModel!")
@@ -432,7 +466,8 @@ class LibraryListViewModel(
             val searchQuery = state.value.serverSearchQuery()
             updateState(DataState.Loading())
             // Before the request: a 2.11 server rejects a field that the list does not offer.
-            val sortMenu = librarySortRepository.menu(mediaType)
+            val listedMediaType = state.value.listedMediaType
+            val sortMenu = librarySortRepository.menu(listedMediaType)
             val sortOption = sortMenu.resolve(chosenSort)
             _state.update { it.copy(sortMenu = sortMenu, sortOption = sortOption) }
 
@@ -448,7 +483,7 @@ class LibraryListViewModel(
 
             result.getOrNull()
                 // A grouped audiobook listing mixes series rows in with the books.
-                ?.filter { it.mediaType == mediaType || it is MediaCollection }
+                ?.filter { it.mediaType == listedMediaType || it is MediaCollection }
                 ?.let { items ->
                     updateStateWithData(
                         items = items,
@@ -506,5 +541,9 @@ class LibraryListViewModel(
         val filters: LibraryFilters = LibraryFilters.DEFAULT,
         // Audiobooks only: GROUPED sends `collapse_collections`, so a series comes back as one row.
         val seriesGrouping: SeriesGrouping = SeriesGrouping.FLAT,
-    )
+    ) {
+        /** The type of the rows: the Audiobooks list shows artists while [filters] name an artist type. */
+        val listedMediaType: MediaType
+            get() = if (filters.audiobookArtistType != null) MediaType.ARTIST else mediaType
+    }
 }

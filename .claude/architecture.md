@@ -165,6 +165,22 @@ actual class PlatformFeature {
   rejects a field that the list does not offer, so resolve the stored choice with
   `LibrarySortMenu.resolve` before the request. Send a sort only as a `ListSort`. The sub-item lists (album
   tracks, playlist tracks, episodes, artist lists) keep `SortConfig` and sort on the client.
+- **Library filters**: `LibraryFilters` (`data/model/client/`) is the filter set of one library list. The
+  settings store one instance for each media type, and the list ViewModel reads it from the settings flow.
+  Each field is one `library_items` argument that the server applies. Do not add a field for an argument
+  that the server drops into `**kwargs`. `audiobookArtistType` makes the Audiobooks list show the library
+  authors or narrators through `music/artists/library_items` with `artist_type`, and the ViewModel then
+  uses the Artists sort menu and the `ARTIST` row type (`State.listedMediaType`). The sheet offers the
+  row only for the types that `music/artists/library_artist_types` returns. An author or narrator row
+  opens the artist page. `Artist.isAudiobookArtist` (from `artist_type`) makes `ArtistDetailsViewModel`
+  load `music/artists/artist_audiobooks` into the "In library" row (`in_library_only`) and the "All
+  audiobooks" row, one option for each provider instance, and it leaves the top tracks row empty. The
+  request sends `artist_type`, because the server needs it for a provider artist. `genreContentType` is the
+  `content_type` taxonomy of the Genres list. `genreMediaType` refines the music taxonomy only: the sheet
+  shows it under the music content type, and `genreMediaTypeFilter` gives null for every other content
+  type, so a stored choice does not narrow the podcast or audiobook genres. The episodes tab of a podcast has its own played filter
+  (`PlayedFilter`, one setting for all podcasts). The app sends `fully_played=false` and filters the
+  answer as well, because a 2.10 server ignores the argument.
 - **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,

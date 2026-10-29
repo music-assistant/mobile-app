@@ -6,6 +6,7 @@ import io.music_assistant.client.api.Request
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.itemList
@@ -33,14 +34,20 @@ class ArtistDetailsViewModel(
 ) : ViewModel() {
     private val fetchArtistItemsUseCase = FetchArtistItemsUseCase(mediaItemRepository)
 
+    // An author or a narrator has audiobooks where a singer has albums, and no top tracks.
+    private val audiobookType = artist.artistType?.takeIf { artist.isAudiobookArtist }
+
+    private fun List<AppMediaItem>.sectionItems(): List<AppMediaItem> =
+        filter { if (audiobookType != null) it is Audiobook else it is Album }.take(ARTIST_SECTION_LIMIT)
+
     private val libraryItems = itemList(mediaItemRepository)
     val library = libraryItems.asFlow()
         .mapData {
             Section(
-                items = it
-                    .filterIsInstance<Album>()
-                    .take(ARTIST_SECTION_LIMIT),
-                itemList = ItemList.ArtistLibrary(artist.itemId),
+                items = it.sectionItems(),
+                itemList = audiobookType
+                    ?.let { type -> ItemList.ArtistLibraryAudiobooks(artist.itemId, type) }
+                    ?: ItemList.ArtistLibrary(artist.itemId),
             )
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, DataState.Loading())
@@ -51,9 +58,7 @@ class ArtistDetailsViewModel(
         .combine(allProviderFilter) { items, providerFilter ->
             items.map {
                 Section(
-                    items = it
-                        .filterIsInstance<Album>()
-                        .take(ARTIST_SECTION_LIMIT),
+                    items = it.sectionItems(),
                     itemList = providerFilter?.current,
                     providerFilter = providerFilter,
                 )
@@ -84,14 +89,21 @@ class ArtistDetailsViewModel(
     private fun loadSections(artist: Artist) {
         viewModelScope.launch {
             if (artist.isInLibrary) {
-                libraryItems.set(Request.Artist.getAlbums(artist.itemId, artist.provider))
+                libraryItems.set(
+                    audiobookType
+                        ?.let { Request.Artist.getAudiobooks(artist.itemId, artist.provider, it.serverValue, inLibraryOnly = true) }
+                        ?: Request.Artist.getAlbums(artist.itemId, artist.provider),
+                )
             } else {
                 libraryItems.setEmpty()
             }
         }
 
         viewModelScope.launch {
-            val artistItems = fetchArtistItemsUseCase.run(artist.providerGroups().map { ItemList.ArtistAlbums(it) })
+            val options = artist.providerGroups().map { group ->
+                audiobookType?.let { ItemList.ArtistAudiobooks(group, it) } ?: ItemList.ArtistAlbums(group)
+            }
+            val artistItems = fetchArtistItemsUseCase.run(options)
 
             if (artistItems != null) {
                 val (items, itemList, options) = artistItems
@@ -103,6 +115,10 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
+            if (audiobookType != null) {
+                topTrackItems.setEmpty()
+                return@launch
+            }
             val providers = if (artist.isInLibrary) {
                 providerRepository.providers.first { it !is DataState.Loading }.dataOrNull.orEmpty()
             } else {

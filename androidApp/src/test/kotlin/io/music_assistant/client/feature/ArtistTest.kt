@@ -11,13 +11,18 @@ import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
 import io.music_assistant.client.support.pages.assertMediaDisplayed
 import io.music_assistant.client.support.pages.assertMediaNotDisplayed
+import io.music_assistant.client.support.pages.clickAudiobooks
+import io.music_assistant.client.support.pages.enableFilter
 import io.music_assistant.client.support.rules.createTestRuleChain
 import io.music_assistant.client.ui.compose.home.HomeScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.artist_section_all
+import musicassistantclient.composeapp.generated.resources.artist_section_all_audiobooks
 import musicassistantclient.composeapp.generated.resources.artist_section_in_library
 import musicassistantclient.composeapp.generated.resources.artist_section_top
 import musicassistantclient.composeapp.generated.resources.artist_source_all
+import musicassistantclient.composeapp.generated.resources.artist_type_authors
+import musicassistantclient.composeapp.generated.resources.artist_type_narrators
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -44,6 +49,61 @@ class ArtistTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(artist, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
             .assertMediaDisplayed(album)
+    }
+
+    @Test
+    fun `shows the library and all audiobooks of an author and no top tracks`() {
+        val author = ServerMediaItemFixtures.artist(artistType = "author")
+        val libraryBook = ServerMediaItemFixtures.audiobook()
+        val providerBook = ServerMediaItemFixtures.audiobook()
+        serviceClient.addItems(author, libraryBook, providerBook)
+        serviceClient.addToLibrary(author, libraryBook)
+        serviceClient.setArtistAudiobooks(author, libraryBook, providerBook)
+
+        // The library book is in both rows, so only the provider book is a unique node here.
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickAudiobooks()
+            .enableFilter { it.enableChip(Res.string.artist_type_authors.get()) }
+            .clickOnMedia(author)
+            .assertRowShown(Res.string.artist_section_in_library.get(), shown = true)
+            .assertRowShown(Res.string.artist_section_all_audiobooks.get(), shown = true)
+            .assertMediaDisplayed(providerBook)
+            .assertRowShown(Res.string.artist_section_top.get(), shown = false)
+            .assertRowShown(Res.string.artist_section_all.get(), shown = false)
+    }
+
+    @Test
+    fun `can view the library audiobooks of an author`() {
+        val author = ServerMediaItemFixtures.artist(artistType = "author")
+        val libraryBook = ServerMediaItemFixtures.audiobook()
+        val providerBook = ServerMediaItemFixtures.audiobook()
+        serviceClient.addItems(author, libraryBook, providerBook)
+        serviceClient.addToLibrary(author, libraryBook)
+        serviceClient.setArtistAudiobooks(author, libraryBook, providerBook)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickAudiobooks()
+            .enableFilter { it.enableChip(Res.string.artist_type_authors.get()) }
+            .clickOnMedia(author)
+            .clickViewAll(Res.string.artist_section_in_library.get())
+            .assertMediaDisplayed(libraryBook)
+            .assertMediaNotDisplayed(providerBook)
+    }
+
+    @Test
+    fun `can view all audiobooks of an author`() {
+        val author = ServerMediaItemFixtures.artist(artistType = "narrator")
+        val book = ServerMediaItemFixtures.audiobook()
+        serviceClient.addItems(author, book)
+        serviceClient.addToLibrary(author)
+        serviceClient.setArtistAudiobooks(author, book)
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickAudiobooks()
+            .enableFilter { it.enableChip(Res.string.artist_type_narrators.get()) }
+            .clickOnMedia(author)
+            .clickViewAll(Res.string.artist_section_all_audiobooks.get())
+            .assertMediaDisplayed(book)
     }
 
     @Test

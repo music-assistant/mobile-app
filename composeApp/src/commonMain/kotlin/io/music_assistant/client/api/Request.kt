@@ -487,13 +487,21 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        /**
+         * [fullyPlayed] false lists the episodes the user has not played to the end. Server 2.11
+         * applies it; an older server ignores the argument, so the caller filters the answer too.
+         */
         fun getEpisodes(
             itemId: String,
             providerInstanceIdOrDomain: String,
-        ) = Library.subItems(
-            APICommands.MUSIC_PODCASTS_PODCAST_EPISODES,
-            itemId,
-            providerInstanceIdOrDomain,
+            fullyPlayed: Boolean? = null,
+        ) = Request(
+            command = APICommands.MUSIC_PODCASTS_PODCAST_EPISODES,
+            args = buildJsonObject {
+                put("item_id", JsonPrimitive(itemId))
+                put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
+                fullyPlayed?.let { put("fully_played", JsonPrimitive(it)) }
+            },
         )
     }
 
@@ -606,6 +614,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             providers: List<String>? = null,
             hideEmpty: Boolean? = null,
             mediaType: String? = null,
+            contentType: String? = null,
         ) = Request(
             command = APICommands.MUSIC_GENRES_LIBRARY_ITEMS,
             args = buildJsonObject {
@@ -617,6 +626,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 putListFilters(providers, null)
                 hideEmpty?.let { put("hide_empty", JsonPrimitive(it)) }
                 mediaType?.let { put("media_type", JsonPrimitive(it)) }
+                contentType?.let { put("content_type", JsonPrimitive(it)) }
             },
         )
 
@@ -651,6 +661,7 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             albumArtistsOnly: Boolean = false,
             providers: List<String>? = null,
             genres: List<Int>? = null,
+            artistType: String? = null,
         ) = Request(
             command = APICommands.MUSIC_ARTISTS_LIBRARY_ITEMS,
             args = buildJsonObject {
@@ -661,6 +672,30 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 putSort(sort)
                 put("album_artists_only", JsonPrimitive(albumArtistsOnly))
                 putListFilters(providers, genres)
+                artistType?.let { put("artist_type", JsonPrimitive(it)) }
+            },
+        )
+
+        /** The `ArtistType` values of the library artists, as server strings. */
+        fun libraryTypes() = Request(command = APICommands.MUSIC_ARTISTS_LIBRARY_ARTIST_TYPES)
+
+        /**
+         * The audiobooks of an author or a narrator. The server reads [artistType] for a provider
+         * artist only; a library artist has its own. Server 2.10 answers the whole list, and 2.11
+         * answers its first page of 500.
+         */
+        fun getAudiobooks(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+            artistType: String,
+            inLibraryOnly: Boolean = false,
+        ) = Request(
+            command = APICommands.MUSIC_ARTISTS_ARTIST_AUDIOBOOKS,
+            args = buildJsonObject {
+                put("item_id", JsonPrimitive(itemId))
+                put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
+                put("artist_type", JsonPrimitive(artistType))
+                put("in_library_only", JsonPrimitive(inLibraryOnly))
             },
         )
 

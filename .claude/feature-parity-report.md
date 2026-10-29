@@ -117,9 +117,9 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Sort options | client table | server `sort_options` | client table | fixed | fixed | Adjust-2.11 | See 5.4 |
 | Favorites, provider, genre, album type, album artist filters | yes | yes | yes | n/a | n/a | Parity | AA has a Favorites sub-list |
 | Series grouping for audiobooks | yes | yes | yes | flat | flat | Parity | `collapse_collections` |
-| Author and narrator tabs | yes | yes | no | n/a | n/a | Missing | `music/artists/library_artist_types` |
-| Genre content-type tabs | yes | yes | no | n/a | n/a | Missing | music, audiobooks, podcasts |
-| Hide fully played episodes | yes | yes | no | no | no | Missing | 2.11: `podcast_episodes(fully_played=False)`. 2.10: client filter |
+| Author and narrator tabs | yes | yes | yes | n/a | n/a | Parity | Issue #1201. A "Show" row in the Audiobooks filter sheet, offered when `library_artist_types` has authors or narrators |
+| Genre content-type tabs | yes | yes | yes | n/a | n/a | Parity | Issue #1201. A "Content type" row in the Genres filter sheet sends `content_type`. The "Media type" row refines the music content type only |
+| Hide fully played episodes | yes | yes | yes | no | no | Parity | Issue #1201. A toggle on the episodes tab. The app sends `fully_played=false` and also filters the answer, because 2.10 ignores the argument |
 | List and grid view | yes | yes | yes | n/a | n/a | Parity | |
 | Grid size slider | no | yes | no | n/a | n/a | Missing | |
 | In-list search | yes | yes | yes | n/a | n/a | Parity | App sends the `search` argument |
@@ -160,7 +160,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 |---|---|---|---|---|---|---|---|
 | Artist page | yes | yes | yes | drill | drill | Parity | App: top tracks with source picker, library albums, all albums, similar artists |
 | Artist appears on, singles, discography | no | yes | no | no | no | Missing | `artist_appears_on`, `discography`. Discography items are provider `musicbrainz`, addable but not playable |
-| Artist audiobooks row | yes | yes | no | no | no | Missing | `artist_audiobooks` |
+| Artist audiobooks row | yes | yes | yes | no | no | Parity | Issue #1201. An author or narrator page shows "In library" and "All audiobooks" rows instead of albums and top tracks |
 | Album page | yes | yes | yes | drill | drill | Parity | Year shown in the header |
 | Album versions, review, more from artist | yes | yes | no | no | no | Missing | `album_versions` |
 | Track page | yes | yes | yes | n/a | n/a | Parity | Albums, versions and similar tracks tabs. Similar shows only if a provider has `similar_tracks`. Lyrics in the overflow menu. Open with "Go to track" or the player title |
@@ -623,7 +623,7 @@ the app:
 | Radio detail screen | `radios/get_radio`, `radio_versions`, `radio_tracks` (2.11) | Easy | Same pattern. Show the tracklist for finite stations on 2.11 |
 | Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Episode page with steppers. Feed the cues into `LyricsSheet` timing |
 | Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Two more artist sections. Discography items carry provider `musicbrainz`. Show them dimmed and offer "Add to library" only |
-| Artist audiobooks row | `artist_audiobooks` | Easy | One more section with the existing provider filter |
+| Artist audiobooks row | `artist_audiobooks` | Easy | Done (issue #1201). The author page rows with the existing provider filter |
 | Album versions, review, more from artist | `album_versions`, `artist_albums` | Easy | Two sections on the album screen |
 | Server-driven sort options | `music/sort_options` (2.11) | Easy | Replace the static table on 2.11. Map `label_key` to local strings |
 | Dislike | `favorites/set_item` (2.11) | Easy | Three-state heart menu. Hide on 2.10 |
@@ -640,9 +640,9 @@ the app:
 | Per-row provider filter on home | preference `discover.hiddenProviders.<row>` | Easy | Edit mode already exists |
 | Shortcut add and remove | `auth/user/update` with `sidebar.shortcuts` | Easy | Long-press action. The app already reads the list |
 | Played-state badge on home cards | item `fully_played`, `resume_position_ms` | Easy | Overlay icon on the card |
-| Author and narrator tabs | `artists/library_artist_types` | Easy | Tabs on the Audiobooks list |
-| Genre content-type tabs | `genres/library_items` filters | Easy | Tabs on the Genres list |
-| Hide fully played episodes | `podcast_episodes(fully_played=False)` on 2.11, client filter on 2.10 | Easy | Toggle on the podcast screen |
+| Author and narrator tabs | `artists/library_artist_types` | Easy | Done (issue #1201). A row in the Audiobooks filter sheet |
+| Genre content-type tabs | `genres/library_items` filters | Easy | Done (issue #1201). A row in the Genres filter sheet |
+| Hide fully played episodes | `podcast_episodes(fully_played=False)` on 2.11, client filter on 2.10 | Easy | Done (issue #1201). Toggle on the episodes tab |
 | Play and Shuffle on a browse folder | `play_media` | Easy | Header buttons in `BrowseScreen` |
 | User profile and tokens | `auth/me`, `auth/user/update`, `auth/tokens`, `auth/token/create`, `auth/token/revoke` | Medium | A profile screen in Settings. This also closes the long-lived token gap |
 | Join code login | `auth/join_code/exchange` | Easy | One more login tab |
