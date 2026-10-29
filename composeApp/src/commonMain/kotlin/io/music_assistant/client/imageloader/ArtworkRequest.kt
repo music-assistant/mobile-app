@@ -15,7 +15,7 @@ import io.music_assistant.client.utils.disableHardwareBitmaps
  */
 const val ARTWORK_DECODE_SIZE = 512
 
-private fun artworkCacheKey(url: String) = "artwork@$ARTWORK_DECODE_SIZE:$url"
+private fun artworkCacheKey(url: String, size: Int = ARTWORK_DECODE_SIZE) = "artwork@$size:$url"
 
 /**
  * Canonical Coil request driving BOTH artwork display and on-device color extraction. A single
@@ -42,4 +42,28 @@ fun artworkImageRequest(context: PlatformContext, url: String): ImageRequest =
 fun rememberArtworkRequest(url: String?): ImageRequest? {
     val context = LocalPlatformContext.current
     return remember(url, context) { url?.let { artworkImageRequest(context, it) } }
+}
+
+/**
+ * Artwork for a backdrop that is drawn blurred. A tiny decode is soft on its own once scaled
+ * up, which also stands in for the blur where the platform has none.
+ */
+@Composable
+fun rememberBackdropArtworkRequest(url: String?): ImageRequest? =
+    rememberSizedArtworkRequest(url, BACKDROP_ARTWORK_DECODE_SIZE)
+
+private const val BACKDROP_ARTWORK_DECODE_SIZE = 48
+
+@Composable
+private fun rememberSizedArtworkRequest(url: String?, size: Int): ImageRequest? {
+    val context = LocalPlatformContext.current
+    return remember(url, context) {
+        url?.let {
+            ImageRequest.Builder(context)
+                .data(it)
+                .size(size)
+                .memoryCacheKey(artworkCacheKey(it, size))
+                .build()
+        }
+    }
 }

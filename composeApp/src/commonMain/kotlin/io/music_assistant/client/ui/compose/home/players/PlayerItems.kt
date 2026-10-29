@@ -92,6 +92,7 @@ import kotlinx.coroutines.flow.Flow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_track
+import musicassistantclient.composeapp.generated.resources.action_show_artwork_only
 import musicassistantclient.composeapp.generated.resources.cd_ambient_sound_on
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_lyrics
@@ -323,6 +324,8 @@ fun FullPlayerItem(
     navigateToItem: (AppMediaItem) -> Unit = {},
     // The chooser for a multi-artist track lives in the dialog host, outside the pager.
     onChooseArtist: () -> Unit = {},
+    // A tap on the cover shows it alone; null leaves the cover inert.
+    onArtworkClick: (() -> Unit)? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -340,7 +343,15 @@ fun FullPlayerItem(
                 .aspectRatio(1f)
                 .heightIn(max = 500.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(colors.dominant.alphaOn(currentMedia != null)),
+                .background(colors.dominant.alphaOn(currentMedia != null))
+                .then(
+                    onArtworkClick?.takeIf { currentMedia?.imageUrl != null }?.let {
+                        Modifier.clickable(
+                            onClickLabel = stringResource(Res.string.action_show_artwork_only),
+                            onClick = it,
+                        )
+                    } ?: Modifier,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             currentMedia?.imageUrl?.let {

@@ -170,6 +170,8 @@ fun PlayersPager(
     onClose: () -> Unit,
     contentPadding: PaddingValues,
     toastState: ToastState,
+    // Shows the cover of the player with this id alone, over everything else.
+    onShowArtwork: (playerId: String) -> Unit = {},
     navigateToItem: (AppMediaItem) -> Unit,
     onSelectPlayer: () -> Unit,
 ) {
@@ -332,6 +334,11 @@ fun PlayersPager(
                         }
                     }
                 }
+                val onArtworkClick: () -> Unit = remember(playerId, onShowArtwork) {
+                    {
+                        onShowArtwork(playerId)
+                    }
+                }
                 val onAddToPlaylist: (AppMediaItem) -> Unit = remember(playerId) {
                     {
                         dialogRequest = PlayerDialogRequest.AddToPlaylist(playerId, it)
@@ -440,6 +447,7 @@ fun PlayersPager(
                                 onAudioChainClick = onAudioChainClick,
                                 onPlaybackSpeedClick = onPlaybackSpeedClick,
                                 onChooseArtist = onChooseArtist,
+                                onArtworkClick = onArtworkClick,
                                 chapterProgressEnabled = chapterProgressEnabled,
                                 queueDjMenu = player.queueId?.let { queueDjState?.menuFor(it) },
                                 onQueueDjSelected = queueDjViewModel::select,
@@ -532,6 +540,7 @@ private fun ExpandedPlayerPage(
     isCurrentPage: Boolean,
     navigateToItem: (AppMediaItem) -> Unit = {},
     onChooseArtist: () -> Unit = {},
+    onArtworkClick: (() -> Unit)? = null,
     livePositionFlow: Flow<Double>?,
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
@@ -730,6 +739,7 @@ private fun ExpandedPlayerPage(
                             chapterProgressEnabled = chapterProgressEnabled,
                             navigateToItem = navigateAndClose,
                             onChooseArtist = onChooseArtist,
+                            onArtworkClick = onArtworkClick,
                         )
                     }
                 }
