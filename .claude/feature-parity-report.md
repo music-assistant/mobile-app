@@ -248,7 +248,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Join and leave members, group volume | yes | yes | yes | no | no | Parity | `set_members`, `ungroup` |
 | Local player playback delay | n/a | n/a | yes | no | no | Parity | App extra |
 | Create a group player | settings | settings | no | no | no | Out of scope | `players/create_group_player` |
-| Group the local player | yes | yes | no | no | no | Decided | See memory on local-player grouping |
+| Group the local player | yes | yes | yes | no | no | Parity | Only while the server lists the phone (not hidden), like the web. |
 
 ### 4.10 Playlists
 

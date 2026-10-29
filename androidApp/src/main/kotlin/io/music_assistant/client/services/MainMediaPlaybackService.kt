@@ -25,6 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -132,8 +133,11 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
             sharedSession.notificationContent.collect { postNotification(it, strings) }
         }
         scope.launch {
-            // Block until everything is stopped, then bail
-            dataSource.doesAnythingHavePlayableItem.filter { !it }.first()
+            // Block until nothing is playable and nothing plays, then bail. A stream the
+            // server starts on the local player reports "playing" before its queue arrives.
+            combine(dataSource.doesAnythingHavePlayableItem, dataSource.isAnythingPlaying) { playable, playing ->
+                playable || playing
+            }.filter { !it }.first()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }

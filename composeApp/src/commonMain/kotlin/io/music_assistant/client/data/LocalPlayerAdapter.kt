@@ -77,6 +77,11 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  * [MainDataSource] depends on this one-way. The control plane stays on the MA
  * REST API: Sendspin is an audio endpoint (player@v1), not a controller.
  *
+ * The audio link lives with the process: it stays up while the MA session is torn down in
+ * the background, so the server can start a stream on the phone at any time, and
+ * [wantsSession] then brings the MA session back. Every play intent that is not a
+ * [PlayerAction] goes through [prepareQueue], which waits for the player to be connected.
+ *
  * Registered in `SharedModule` with [LocalPlayerEndpoints] and the
  * [LocalPlayerFactory], which holds the platform ports (sink, decoders, key
  * store). [approvePairing] is the app's half of silent pairing: the module
@@ -164,8 +169,13 @@ class LocalPlayerAdapter(
         }
         .stateIn(this, SharingStarted.Eagerly, 0.0)
 
+    /** A command needs the MA session and a registered player: the server drops a command for a player it cannot reach. */
+    private val isReadyForCommands: StateFlow<Boolean> =
+        combine(apiClient.isReadyForCommands, player.state) { ready, state -> ready && state is PlayerState.Connected }
+            .stateIn(this, SharingStarted.Eagerly, false)
+
     private val commands = LocalCommandQueue(
-        isReady = apiClient.isReadyForCommands,
+        isReady = isReadyForCommands,
         send = apiClient::sendRequest,
         scope = this,
         requestRecovery = apiClient::requestCommandRecovery,
@@ -354,11 +364,32 @@ class LocalPlayerAdapter(
         }
     }
 
+    /** The local player is addressed by its player id, by its own queue id, or by the queue it is synced to. */
+    fun ownsQueue(queueOrPlayerId: String): Boolean {
+        val data = localPlayerData.value
+        return queueOrPlayerId == settings.sendspinEffectivePlayerId.value ||
+            queueOrPlayerId == data?.queueId ||
+            queueOrPlayerId == data?.player?.queueId
+    }
+
     /**
-     * A play request from another surface (library, car, Siri, queue item) targets the local
-     * player: lift the hold before the server's stream arrives, or it would be paused again.
+     * A play request from another surface (library, car, Siri, queue item) is about to leave
+     * for [queueOrPlayerId]. For the local player: lift the hold before the server's stream
+     * arrives, or it would be paused again, and wait for the player to be connected, or the
+     * server rejects the play for an unreachable player. A WebRTC audio channel needs the MA
+     * session, so a disconnected player asks for the session back. Returns once the player is
+     * connected or the wait budget is spent; the request is sent either way, so a failure is
+     * the server's answer.
      */
-    fun onPlaybackRequested() = hold(false)
+    suspend fun prepareQueue(queueOrPlayerId: String) {
+        if (!ownsQueue(queueOrPlayerId)) return
+        hold(false)
+        if (player.state.value is PlayerState.Connected) return
+        apiClient.requestCommandRecovery()
+        withTimeoutOrNull(LocalCommandQueue.SEND_OR_DROP_WAIT_MS) {
+            player.state.first { it is PlayerState.Connected }
+        }
+    }
 
     /** Platform remote command (Control Center, lock screen, CarPlay). */
     fun onRemoteCommand(command: String) {
