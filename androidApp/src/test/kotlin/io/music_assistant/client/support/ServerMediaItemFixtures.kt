@@ -45,12 +45,14 @@ object ServerMediaItemFixtures {
             DEFAULT_PROVIDER_DOMAIN,
             DEFAULT_PROVIDER_INSTANCE,
         ),
+        artistType: String? = null,
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
             provider = provider.domain,
             name = name,
             mediaType = MediaType.ARTIST.serverValue,
+            artistType = artistType,
             providerMappings = listOf(
                 ProviderMapping(
                     itemId = itemId,
@@ -140,6 +142,31 @@ object ServerMediaItemFixtures {
             provider = DEFAULT_PROVIDER_DOMAIN,
             name = name,
             mediaType = MediaType.PODCAST.serverValue,
+            isPlayable = true,
+            providerMappings = listOf(
+                ProviderMapping(
+                    itemId = itemId,
+                    providerDomain = DEFAULT_PROVIDER_DOMAIN,
+                    providerInstance = DEFAULT_PROVIDER_INSTANCE,
+                ),
+            ),
+        )
+    }
+
+    fun podcastEpisode(
+        podcast: ServerMediaItem,
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Episode $itemId",
+        fullyPlayed: Boolean? = null,
+    ): ServerMediaItem {
+        return ServerMediaItem(
+            itemId = itemId,
+            provider = DEFAULT_PROVIDER_DOMAIN,
+            name = name,
+            mediaType = MediaType.PODCAST_EPISODE.serverValue,
+            podcast = podcast,
+            fullyPlayed = fullyPlayed,
+            uri = "http://example.com/episode/$itemId",
             isPlayable = true,
             providerMappings = listOf(
                 ProviderMapping(

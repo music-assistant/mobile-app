@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
+import io.music_assistant.client.data.model.client.SongTiming
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -32,10 +33,10 @@ import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.DspConfigPreset
 import io.music_assistant.client.data.model.server.GrantedScopes
 import io.music_assistant.client.data.model.server.PlayMediaSupport
+import io.music_assistant.client.data.model.server.RefreshItemAccess
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
-import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemPlayedEvent
 import io.music_assistant.client.data.model.server.events.PlayerAddedEvent
@@ -46,8 +47,11 @@ import io.music_assistant.client.data.model.server.events.QueueItemsUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueTimeUpdatedEvent
 import io.music_assistant.client.data.model.server.events.QueueUpdatedEvent
 import io.music_assistant.client.data.model.server.playMediaSupport
+import io.music_assistant.client.data.model.server.refreshItemAccess
 import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.model.server.supportsDislike
+import io.music_assistant.client.data.model.server.supportsPlaylistAccess
+import io.music_assistant.client.data.model.server.supportsSearchSources
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
@@ -103,6 +107,19 @@ internal fun List<PlayerData>.withPlayRequestsPending(
     val busy = localBusyQueueIds + serverQueues.filter { it.playActionInProgress }.map { it.id }
     return map { it.copy(playRequestPending = it.queueOrPlayerId in busy) }
 }
+
+/**
+ * The song each queue's radio stream reports, or null; see [PlayerPositionTracker.setSong].
+ * Media stamped for another queue item is not that queue's stream.
+ */
+internal fun radioSongTimings(players: List<Player>, queues: List<QueueInfo>): Map<String, SongTiming?> =
+    queues.associate { queue ->
+        queue.id to players
+            .filter { it.queueId == queue.id }
+            .firstNotNullOfOrNull { player ->
+                player.currentMedia?.takeIf { it.queueItemId == queue.currentItem?.id }?.songTiming
+            }
+    }
 
 /** Preserve newer event/optimistic state when a delayed full snapshot arrives. */
 internal fun mergeFullQueueSnapshot(
@@ -205,10 +222,28 @@ class MainDataSource(
             supported && scopes.hasAll(AI_RADIO_QUEUE_DJ_SCOPES)
         }.stateIn(this, SharingStarted.Eagerly, false)
 
+    /** The `music/refresh_item` actions of the user ([refreshItemAccess]). Fails closed with [grantedScopes]. */
+    val refreshItemAccess: StateFlow<RefreshItemAccess> =
+        combine(apiClient.sessionState, _grantedScopes) { session, scopes ->
+            refreshItemAccess(scopes, (session as? HasConnectionData)?.serverInfo?.schemaVersion)
+        }.stateIn(this, SharingStarted.Eagerly, RefreshItemAccess.NONE)
+
     /** Whether the server keeps a dislike ([supportsDislike]). False while no session is up. */
     val dislikeSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsDislike((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(this, SharingStarted.Eagerly, false)
+
+    /** Whether a playlist carries its access record ([supportsPlaylistAccess]). False while no session is up. */
+    val playlistAccessSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsPlaylistAccess((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(this, SharingStarted.Eagerly, false)
+
+    /** Whether `music/search` takes `providers` ([supportsSearchSources]). False while no session is up. */
+    val searchSourcesSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsSearchSources((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(this, SharingStarted.Eagerly, false)
 
     /** The optional `play_media` flags of the server ([playMediaSupport]). None while no session is up. */
@@ -428,6 +463,9 @@ class MainDataSource(
             }
                 .debounce(Timings.EVENT_DEBOUNCE) // Small debounce to batch rapid updates, but don't delay initial load
                 .collect { input ->
+                    // Before the players publish, so every reader of a new song also reads its position.
+                    input.players.dataOrNull?.let { radioSongTimings(it, input.queues) }
+                        ?.forEach { (queueId, timing) -> positionTracker.setSong(queueId, timing) }
                     _playersData.update { oldValues ->
                         fun build(serverPlayers: List<Player>) = DataState.Data(
                             buildPlayerDataList(
@@ -1664,11 +1702,7 @@ class MainDataSource(
 
     /** Refreshes preferences from `auth/me`; a failed fetch keeps the current values. */
     private fun updateUserPreferences() {
-        launch {
-            apiClient.sendRequest(Request(APICommands.AUTH_ME))
-                .resultAs<ServerUser>()
-                ?.let { userPreferences.update(it.preferences) }
-        }
+        launch { userPreferences.refresh() }
     }
 
     /**

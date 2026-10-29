@@ -3,6 +3,7 @@ package io.music_assistant.client.auth
 import com.russhwolf.settings.MapSettings
 import io.music_assistant.client.api.Answer
 import io.music_assistant.client.api.ConnectionInfo
+import io.music_assistant.client.api.ConnectionLostException
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.AuthProvider
@@ -112,6 +113,45 @@ class AuthenticationManagerTest {
                 "Cancelling an in-flight login must not be swallowed into a spurious AuthState.Error",
             )
             assertTrue(job.isCancelled, "The cancellation must propagate, not be absorbed")
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `a provider load that the transport drops leaves no error on the login screen`() = runTest {
+        val client = StubServiceClient()
+        client.respond = { Result.failure(ConnectionLostException("Transport disconnected")) }
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            val result = manager.getProviders()
+
+            assertTrue(result.isFailure)
+            assertEquals(
+                AuthState.Loading,
+                manager.authState.value,
+                "The reconnect loads the providers again, so a load that died with the old " +
+                    "socket must not show as a failure",
+            )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `loginWithToken spends the trimmed token as a manual login`() = runTest {
+        val client = StubServiceClient()
+        val manager = AuthenticationManager(client, SettingsRepository(MapSettings(), MapSettings()))
+        try {
+            manager.loginWithToken(" long-lived\n")
+
+            assertEquals(
+                listOf("long-lived" to false),
+                client.authorizeCalls,
+                "A pasted token must reach the server without its surrounding whitespace " +
+                    "and never as a silent auto-login",
+            )
+            assertEquals(AuthState.Loading, manager.authState.value)
         } finally {
             manager.close()
         }

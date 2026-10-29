@@ -15,7 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.utils.WindowClass
+import io.music_assistant.client.ui.utils.WindowClass
 
 @Composable
 fun GridItem(

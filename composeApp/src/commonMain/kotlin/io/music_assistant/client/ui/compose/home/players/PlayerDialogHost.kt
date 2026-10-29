@@ -3,9 +3,11 @@ package io.music_assistant.client.ui.compose.home.players
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
@@ -24,8 +26,7 @@ import org.koin.compose.koinInject
  * can never tear down an open dialog. The host resolves [request] against the newest
  * [players] on each composition: when the player or the track the request names is gone, it
  * clears the request instead of leaving a stale id behind that a returning player would
- * revive. [players] are the pager's players and anchor every request; [allPlayers] feed the
- * player list, which also shows the players the pager leaves out.
+ * revive.
  *
  * [homeScreenViewModel] is passed whole rather than as one callback per action: this is a
  * feature composable for a single screen, and the narrow form needs eleven parameters.
@@ -34,13 +35,10 @@ import org.koin.compose.koinInject
 fun PlayerDialogHost(
     request: PlayerDialogRequest?,
     players: List<PlayerData>,
-    allPlayers: List<PlayerData>,
     homeScreenViewModel: HomeScreenViewModel,
     dspSettingsViewModel: DspSettingsViewModel,
     providerViewModel: ProviderViewModel,
     playlistActions: PlaylistActions?,
-    canLeaveGroup: Boolean,
-    onMoveToPlayer: (String) -> Unit,
     onNavigateToItem: (AppMediaItem) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -49,27 +47,6 @@ fun PlayerDialogHost(
         ?: return DismissEffect(request, onDismiss)
 
     when (request) {
-        is PlayerDialogRequest.Select -> SelectPlayerDialog(
-            selectedPlayer = player,
-            players = allPlayers,
-            onDismissRequest = onDismiss,
-            onMoveToPlayer = onMoveToPlayer,
-            onReorder = { homeScreenViewModel.onPlayersSortChanged(it) },
-            hideUnavailable = rememberHideUnavailablePlayers(),
-            onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
-        )
-
-        is PlayerDialogRequest.Group -> GroupSettingsDialog(
-            player = player,
-            onDismissRequest = onDismiss,
-            groupAction = { playerId, action ->
-                homeScreenViewModel.playerAction(playerId, action)
-            },
-            localPlayerId = homeScreenViewModel.localPlayerId,
-            onAdjustPlaybackDelay = { homeScreenViewModel.adjustSendspinStaticDelayMs(it) },
-            canLeaveGroup = canLeaveGroup,
-        )
-
         is PlayerDialogRequest.Dsp -> DspSettingsDialog(
             playerId = request.playerId,
             dspSettingsViewModel = dspSettingsViewModel,
@@ -84,8 +61,14 @@ fun PlayerDialogHost(
         )
 
         is PlayerDialogRequest.Lyrics -> {
-            val lyrics = (player.queueInfo?.currentItem?.track as? Track)?.lyrics
-                ?: return DismissEffect(request, onDismiss)
+            val item = player.queueInfo?.currentItem?.track
+            val lyrics = when (item) {
+                is Track -> item.lyrics
+                is PodcastEpisode -> remember(item.provider, item.itemId) { homeScreenViewModel.transcript(item) }
+                    .collectAsStateWithLifecycle().value.dataOrNull
+
+                else -> null
+            } ?: return DismissEffect(request, onDismiss)
             val queueId = player.queueId
             val livePositionFlow = remember(queueId) {
                 queueId?.let { homeScreenViewModel.observePosition(it) }
@@ -94,6 +77,7 @@ fun PlayerDialogHost(
                 lyrics = lyrics,
                 livePositionFlow = livePositionFlow,
                 onDismiss = onDismiss,
+                kind = if (item is PodcastEpisode) LyricsSheetKind.TRANSCRIPT else LyricsSheetKind.LYRICS,
             )
         }
 

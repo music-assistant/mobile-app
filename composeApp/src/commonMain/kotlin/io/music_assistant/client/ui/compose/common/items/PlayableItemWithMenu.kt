@@ -90,6 +90,8 @@ fun TrackWithMenu(
 fun PodcastEpisodeWithMenu(
     item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
+    navigateToItem: ((AppMediaItem) -> Unit)? = null,
+    containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<PodcastEpisode>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -103,6 +105,8 @@ fun PodcastEpisodeWithMenu(
             ViewMode.LIST -> Modifier.fillMaxWidth()
         },
         item = item,
+        navigateToItem = navigateToItem,
+        containerItem = containerItem,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,

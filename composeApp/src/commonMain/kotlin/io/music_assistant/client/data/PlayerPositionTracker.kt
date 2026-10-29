@@ -1,16 +1,17 @@
 package io.music_assistant.client.data
 
+import io.music_assistant.client.data.model.client.SongTiming
 import io.music_assistant.client.utils.currentTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.isActive
@@ -26,6 +27,10 @@ import kotlin.time.Duration.Companion.seconds
  * (in-app slider, MediaSession writes for AA + notification, iOS NowPlaying,
  * audiobook chapter logic) all read the same source — synchronously via
  * [effectiveSec] or as a smoothly-ticking flow via [observe].
+ *
+ * A radio stream that reports the song on air ([setSong]) is timed by that song
+ * instead; the queue's anchors, which count how long the station has played,
+ * carry on beneath it and return when the song report goes.
  *
  * No background tick: the cold [observe] flow ticks at 500 ms only while a
  * collector is attached AND the queue is playing. Sync reads are O(1) map
@@ -92,7 +97,11 @@ class PlayerPositionTracker {
         val serverAgreed: Boolean = false,
     )
 
+    /** A radio stream's report of its song, and the anchor it gives the queue. */
+    private data class Song(val timing: SongTiming, val anchor: Anchor)
+
     private val anchors = MutableStateFlow<Map<String, Anchor>>(emptyMap())
+    private val songs = MutableStateFlow<Map<String, Song>>(emptyMap())
     private val lastFreezeId = MutableStateFlow(0L)
 
     /**
@@ -134,6 +143,36 @@ class PlayerPositionTracker {
             val current = existing[queueId] ?: return@update existing
             val updated = current.withPlaying(isPlaying)
             if (updated == current) existing else existing + (queueId to updated)
+        }
+        songs.update { existing ->
+            val current = existing[queueId] ?: return@update existing
+            val updated = current.anchor.withPlaying(isPlaying)
+            if (updated == current.anchor) existing else existing + (queueId to current.copy(anchor = updated))
+        }
+    }
+
+    /**
+     * The song a radio stream reports on air, or null when it reports none. A report anchors the
+     * queue at the song's position and length; the same report again keeps the anchor, so a
+     * play/pause snapshot holds.
+     */
+    fun setSong(queueId: String, timing: SongTiming?) {
+        songs.update { existing ->
+            val current = existing[queueId]
+            when {
+                timing == null -> existing - queueId
+                timing == current?.timing -> existing
+                else -> {
+                    val now = currentTimeMillis()
+                    val anchor = Anchor(
+                        elapsedSec = timing.positionAt(now / 1000.0),
+                        wallMs = now,
+                        isPlaying = current?.anchor?.isPlaying ?: anchors.value[queueId]?.isPlaying ?: false,
+                        durationSec = timing.duration,
+                    )
+                    existing + (queueId to Song(timing, anchor))
+                }
+            }
         }
     }
 
@@ -215,12 +254,18 @@ class PlayerPositionTracker {
     }
 
     /** Anchor changes only, without interpolation ticks; null also reports removal/reset. */
-    internal fun observeAnchor(queueId: String): Flow<Anchor?> = anchors
-        .map { it[queueId] }
-        .distinctUntilChanged()
+    internal fun observeAnchor(queueId: String): Flow<Anchor?> =
+        combine(anchors, songs) { anchors, songs -> shown(queueId, anchors, songs) }
+            .distinctUntilChanged()
 
     /** O(1) read of latest interpolated position. */
-    fun effectiveSec(queueId: String): Double? = anchors.value[queueId]?.effectiveNow()
+    fun effectiveSec(queueId: String): Double? = shown(queueId, anchors.value, songs.value)?.effectiveNow()
+
+    /** The song's anchor over the queue's, except while an optimistic freeze holds the queue. */
+    private fun shown(queueId: String, anchors: Map<String, Anchor>, songs: Map<String, Song>): Anchor? {
+        val queue = anchors[queueId]
+        return queue?.takeIf { it.freeze != null } ?: songs[queueId]?.anchor ?: queue
+    }
 
     /** True while an optimistic seek or track-change is waiting for confirmation. */
     fun isFrozenUntilConfirmed(queueId: String): Boolean =
@@ -237,9 +282,7 @@ class PlayerPositionTracker {
      * change). Cancels cleanly when the collector unsubscribes.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun observe(queueId: String): Flow<Double> = anchors
-        .map { it[queueId] }
-        .distinctUntilChanged()
+    fun observe(queueId: String): Flow<Double> = observeAnchor(queueId)
         .flatMapLatest { anchor ->
             if (anchor == null) {
                 flowOf(0.0)
@@ -257,11 +300,13 @@ class PlayerPositionTracker {
     /** Drop a queue's anchor (e.g., when the queue is removed). */
     fun remove(queueId: String) {
         anchors.update { it - queueId }
+        songs.update { it - queueId }
     }
 
     /** Clear all anchors (disconnect / reset). */
     fun clear() {
         anchors.update { emptyMap() }
+        songs.update { emptyMap() }
     }
 
     companion object {

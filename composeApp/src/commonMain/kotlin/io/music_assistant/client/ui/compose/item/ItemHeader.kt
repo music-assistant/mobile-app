@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Lyrics
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -48,6 +50,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -55,11 +59,17 @@ import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.ImageType
+import io.music_assistant.client.data.model.client.ItemDescription
+import io.music_assistant.client.data.model.client.ProviderDetails
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
+import io.music_assistant.client.data.model.client.items.Audiobook
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
+import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.imageloader.rememberArtworkRequest
@@ -78,6 +88,7 @@ import io.music_assistant.client.ui.compose.common.items.ItemAction
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
 import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
+import io.music_assistant.client.ui.compose.common.items.ProgressBadge
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.items.rememberArtistNavigation
@@ -87,18 +98,24 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.search.SearchInput
 import io.music_assistant.client.ui.contentColorByLuminance
-import io.music_assistant.client.ui.fadingEdges
 import io.music_assistant.client.ui.inactive
-import io.music_assistant.client.utils.WindowClass
+import io.music_assistant.client.ui.utils.WindowClass
+import io.music_assistant.client.ui.utils.fadingEdges
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_find_on_music_services
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
+import musicassistantclient.composeapp.generated.resources.action_go_to_podcast
 import musicassistantclient.composeapp.generated.resources.action_lyrics
+import musicassistantclient.composeapp.generated.resources.action_refresh_item
 import musicassistantclient.composeapp.generated.resources.action_similar_artists
+import musicassistantclient.composeapp.generated.resources.action_transcript
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.cd_refreshing_item
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.find_in_list_label
+import musicassistantclient.composeapp.generated.resources.item_narrated_by
 import musicassistantclient.composeapp.generated.resources.refresh
 import org.jetbrains.compose.resources.stringResource
 
@@ -113,6 +130,12 @@ fun ItemHeader(
     providerIconFetcher: ProviderIconFetcher? = null,
     onPlayClick: (PlayMode) -> Unit = {},
     navigateToItem: (AppMediaItem) -> Unit = {},
+    genres: List<Genre> = emptyList(),
+    playableSummary: PlayableSummary? = null,
+    ownerLine: PlaylistOwnerLine? = null,
+    providerDetails: (String) -> ProviderDetails? = { null },
+    description: ItemDescription? = null,
+    onOpenDescription: () -> Unit = {},
 ) {
     // Art color on top, fading down to the surface the Screen actually paints, so the
     // wash dissolves seamlessly where the tabs begin. Mirrors the player gradient (inverted).
@@ -140,6 +163,31 @@ fun ItemHeader(
                 tint = colors.controlTint,
                 modifier = Modifier.padding(top = 8.dp),
             )
+            ItemFacts(
+                item = item,
+                playableSummary = playableSummary,
+                ownerLine = ownerLine,
+                providerDetails = providerDetails,
+                textAlign = textAlign,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+
+        // The chips and the text span the full width under the art on every layout.
+        val details = @Composable { textAlign: TextAlign ->
+            GenreChips(
+                genres = genres,
+                onGenreClick = navigateToItem,
+                textAlign = textAlign,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            description?.let {
+                ItemDescriptionBlock(
+                    description = it,
+                    onOpen = onOpenDescription,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                )
+            }
         }
 
         if (WindowClass.isWide()) {
@@ -152,6 +200,7 @@ fun ItemHeader(
                     textAndControls(TextAlign.Start)
                 }
             }
+            details(TextAlign.Start)
         } else {
             // Horizontal
             Column(
@@ -160,6 +209,7 @@ fun ItemHeader(
             ) {
                 image()
                 textAndControls(TextAlign.Center)
+                details(TextAlign.Center)
             }
         }
     }
@@ -179,6 +229,9 @@ internal fun ItemTopBar(
     onSimilarArtistsClick: () -> Unit,
     onLyricsClick: (() -> Unit)? = null,
     onRefresh: (() -> Unit)? = null,
+    refreshAction: RefreshItemAction? = null,
+    refreshingItem: Boolean = false,
+    onRefreshItem: () -> Unit = {},
     query: String?,
     onQueryChanged: ((String?) -> Unit)?,
 ) {
@@ -221,6 +274,16 @@ internal fun ItemTopBar(
                 }
             },
             actions = {
+                if (refreshingItem) {
+                    val description = stringResource(Res.string.cd_refreshing_item)
+                    Box(
+                        modifier = Modifier.size(48.dp).semantics { contentDescription = description },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = onBar, strokeWidth = 2.dp)
+                    }
+                }
+
                 if (searchEnabled && query != null) {
                     IconButton(onClick = { onQueryChanged(null) }) {
                         Icon(Icons.Default.Close, stringResource(Res.string.cd_close))
@@ -248,6 +311,9 @@ internal fun ItemTopBar(
                         navigateToItem = navigateToItem,
                         onSimilarArtistsClick = onSimilarArtistsClick,
                         onLyricsClick = onLyricsClick,
+                        refreshAction = refreshAction,
+                        refreshingItem = refreshingItem,
+                        onRefreshItem = onRefreshItem,
                         onRemovedFromLibrary = onBack,
                     )
                 }
@@ -264,6 +330,9 @@ private fun ItemOverflow(
     navigateToItem: (AppMediaItem) -> Unit,
     onSimilarArtistsClick: () -> Unit,
     onLyricsClick: (() -> Unit)?,
+    refreshAction: RefreshItemAction?,
+    refreshingItem: Boolean,
+    onRefreshItem: () -> Unit,
     // The page shows the removed item, so it closes with the removal, like the web app.
     onRemovedFromLibrary: () -> Unit,
 ) {
@@ -286,9 +355,27 @@ private fun ItemOverflow(
     val lyrics = listOfNotNull(
         onLyricsClick?.let {
             OverflowMenuOption(
-                title = stringResource(Res.string.action_lyrics),
+                title = stringResource(
+                    if (item is PodcastEpisode) Res.string.action_transcript else Res.string.action_lyrics,
+                ),
                 icon = Icons.Outlined.Lyrics,
                 onClick = it,
+            )
+        },
+    )
+    // Detail-only like the similar artists: the server refreshes the item that the page shows.
+    val refresh = listOfNotNull(
+        refreshAction?.let { action ->
+            OverflowMenuOption(
+                title = stringResource(
+                    when (action) {
+                        RefreshItemAction.REFRESH -> Res.string.action_refresh_item
+                        RefreshItemAction.FIND_ON_MUSIC_SERVICES -> Res.string.action_find_on_music_services
+                    },
+                ),
+                icon = Icons.Default.Refresh,
+                enabled = !refreshingItem,
+                onClick = onRefreshItem,
             )
         },
     )
@@ -314,7 +401,7 @@ private fun ItemOverflow(
     }
     OverflowMenuButton(
         options = canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
-            lyrics + dynamicColorsMenuOption(),
+            lyrics + refresh + dynamicColorsMenuOption(),
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(
@@ -368,7 +455,7 @@ private fun ItemText(
                 .fadingEdges()
                 .basicMarquee()
                 .padding(horizontal = 16.dp),
-            text = (item as? Album)?.year?.let { "${item.name} ($it)" } ?: item.name,
+            text = item.name,
             textAlign = textAlign,
             style = MaterialTheme.typography.titleLarge,
         )
@@ -418,6 +505,38 @@ private fun ItemText(
                 style = MaterialTheme.typography.titleMedium,
             )
         }
+
+        // The podcast of an episode, like the web hero; a tap opens it.
+        (item as? PodcastEpisode)?.podcast?.let { podcast ->
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        onClickLabel = stringResource(Res.string.action_go_to_podcast),
+                        role = Role.Button,
+                        onClick = { navigateToItem(podcast) },
+                    )
+                    .fadingEdges()
+                    .basicMarquee()
+                    .padding(horizontal = 16.dp),
+                text = podcast.name,
+                textAlign = textAlign,
+                style = MaterialTheme.typography.titleSmall,
+            )
+        }
+
+        (item as? Audiobook)?.narrators?.takeIf { it.isNotEmpty() }?.let { narrators ->
+            Text(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fadingEdges()
+                    .basicMarquee()
+                    .padding(horizontal = 16.dp),
+                text = stringResource(Res.string.item_narrated_by, narrators.joinToString(", ")),
+                textAlign = textAlign,
+                style = MaterialTheme.typography.titleSmall,
+            )
+        }
     }
 }
 
@@ -460,6 +579,14 @@ private fun Image(
             badgeSize = 24.dp,
             badgePadding = 8.dp,
         )
+        (item as? PodcastEpisode)?.let {
+            ProgressBadge(
+                fullyPlayed = it.fullyPlayed,
+                resumePositionMs = it.resumePositionMs,
+                badgeSize = 24.dp,
+                badgePadding = 8.dp,
+            )
+        }
     }
 }
 

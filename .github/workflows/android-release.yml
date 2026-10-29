@@ -10,6 +10,7 @@ permissions:
   contents: write
   id-token: write
   pull-requests: write
+  issues: write
 
 jobs:
   release:
@@ -205,6 +206,14 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A labeling failure must not stop the version bump below.
+      - name: Label released issues
+        continue-on-error: true
+        run: .github/scripts/label-released-issues.sh '${{ steps.guard.outputs.prev_tag }}' '${{ steps.version.outputs.tag }}' 3DDC84
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Compute next version
         id: next

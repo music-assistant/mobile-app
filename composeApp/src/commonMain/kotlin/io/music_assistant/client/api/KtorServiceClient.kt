@@ -931,11 +931,13 @@ class KtorServiceClient(
                 val resolution = silentReauth.resolve(
                     isAutoLogin = isAutoLogin,
                     // Keep retrying only while the session is live and hasn't been logged
-                    // out from under us — otherwise a late retry could undo a logout.
+                    // out from under us — otherwise a late retry could undo a logout. A
+                    // manual token login never retries, and like a credential login it
+                    // must proceed from a LoggedOut session.
                     shouldAttempt = {
                         val state = _sessionState.value
                         state is SessionState.Connected &&
-                            state.authProcessState != AuthProcessState.LoggedOut
+                            (!isAutoLogin || state.authProcessState != AuthProcessState.LoggedOut)
                     },
                     onAttempt = { setAuthState(AuthProcessState.InProgress) },
                     send = {

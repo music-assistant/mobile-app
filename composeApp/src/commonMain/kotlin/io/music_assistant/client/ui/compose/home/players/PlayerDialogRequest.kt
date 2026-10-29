@@ -15,15 +15,12 @@ import io.music_assistant.client.data.model.client.items.Track
 sealed interface PlayerDialogRequest {
     val playerId: String
 
-    data class Select(override val playerId: String) : PlayerDialogRequest
-
-    data class Group(override val playerId: String) : PlayerDialogRequest
-
     data class Dsp(override val playerId: String) : PlayerDialogRequest
 
     data class SleepTimer(override val playerId: String) : PlayerDialogRequest
 
-    data class Lyrics(override val playerId: String, val trackId: String) : PlayerDialogRequest
+    /** The lyrics of a track, or the transcript of a podcast episode, with [itemId] the current queue item. */
+    data class Lyrics(override val playerId: String, val itemId: String) : PlayerDialogRequest
 
     data class ChooseArtist(override val playerId: String, val trackId: String) : PlayerDialogRequest
 
@@ -60,7 +57,7 @@ sealed interface PlayerDialogRequest {
  */
 fun PlayerDialogRequest.hasAnchor(player: PlayerData): Boolean = when (this) {
     is PlayerDialogRequest.Lyrics ->
-        (player.queueInfo?.currentItem?.track as? Track)?.itemId == trackId
+        player.queueInfo?.currentItem?.track?.itemId == itemId
 
     is PlayerDialogRequest.ChooseArtist ->
         (player.queueInfo?.currentItem?.track as? Track)?.itemId == trackId

@@ -13,9 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.AlbumType
+import io.music_assistant.client.data.model.client.ArtistType
+import io.music_assistant.client.data.model.client.GenreContentType
 import io.music_assistant.client.data.model.client.GenreEmptyFilter
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.genreMediaTypeFilter
 import io.music_assistant.client.data.model.client.hasActive
 import io.music_assistant.client.data.model.client.stringResource
 import io.music_assistant.client.ui.compose.common.DataState
@@ -26,17 +29,26 @@ import io.music_assistant.client.ui.compose.common.SettingsSheet.PickerRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SingleChoiceChipsRow
 import io.music_assistant.client.ui.compose.common.SettingsSheet.SwitchRow
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.artist_type_authors
+import musicassistantclient.composeapp.generated.resources.artist_type_narrators
 import musicassistantclient.composeapp.generated.resources.filter_album_artists_only
 import musicassistantclient.composeapp.generated.resources.filter_album_types
+import musicassistantclient.composeapp.generated.resources.filter_audiobooks_show
 import musicassistantclient.composeapp.generated.resources.filter_favorites
 import musicassistantclient.composeapp.generated.resources.filter_genres
 import musicassistantclient.composeapp.generated.resources.filter_sources
+import musicassistantclient.composeapp.generated.resources.genre_content_type_music
+import musicassistantclient.composeapp.generated.resources.genre_filter_content_type
+import musicassistantclient.composeapp.generated.resources.genre_filter_content_type_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_default
 import musicassistantclient.composeapp.generated.resources.genre_filter_empty_non_empty
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type_all
 import musicassistantclient.composeapp.generated.resources.genre_filter_show
+import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
+import musicassistantclient.composeapp.generated.resources.media_type_podcasts
 import org.jetbrains.compose.resources.StringResource
 
 /**
@@ -53,6 +65,7 @@ fun LibraryFilterAction(
     filters: LibraryFilters,
     providerOptions: DataState<List<SelectOption<String>>>,
     genreOptions: DataState<List<SelectOption<Int>>>,
+    audiobookArtistTypes: List<ArtistType>,
     onLoadOptions: () -> Unit,
     onApply: (LibraryFilters) -> Unit,
 ) {
@@ -103,7 +116,12 @@ fun LibraryFilterAction(
                     }
                 }
             }
-            typeSpecific(mediaType, workingProvider = { workingFilters }, onChange = { workingFilters = it })
+            typeSpecific(
+                mediaType = mediaType,
+                audiobookArtistTypes = audiobookArtistTypes,
+                workingProvider = { workingFilters },
+                onChange = { workingFilters = it },
+            )
         }
 
         when (openPicker) {
@@ -137,6 +155,7 @@ fun LibraryFilterAction(
 /** Emits the filter rows unique to [mediaType]. */
 private fun androidx.compose.foundation.lazy.LazyListScope.typeSpecific(
     mediaType: MediaType,
+    audiobookArtistTypes: List<ArtistType>,
     workingProvider: () -> LibraryFilters,
     onChange: (LibraryFilters) -> Unit,
 ) {
@@ -163,6 +182,24 @@ private fun androidx.compose.foundation.lazy.LazyListScope.typeSpecific(
             )
         }
 
+        // The row stays while a type is chosen that the library no longer holds, so the
+        // choice can always be undone from the sheet.
+        MediaType.AUDIOBOOK -> {
+            val chosen = workingProvider().audiobookArtistType
+            if (audiobookArtistTypes.isNotEmpty() || chosen != null) {
+                item {
+                    val w = workingProvider()
+                    SingleChoiceChipsRow(
+                        label = Res.string.filter_audiobooks_show,
+                        options = listOf<ArtistType?>(null) + (audiobookArtistTypes + chosen).distinct().filterNotNull(),
+                        selected = w.audiobookArtistType,
+                        optionLabel = { it?.label() ?: Res.string.media_type_audiobooks },
+                        onSelect = { onChange(w.copy(audiobookArtistType = it)) },
+                    )
+                }
+            }
+        }
+
         MediaType.GENRE -> {
             item {
                 val w = workingProvider()
@@ -177,19 +214,46 @@ private fun androidx.compose.foundation.lazy.LazyListScope.typeSpecific(
             item {
                 val w = workingProvider()
                 SingleChoiceChipsRow(
-                    label = Res.string.genre_filter_media_type,
-                    options = listOf<MediaType?>(null) + MediaType.genreMediaTypeOptions,
-                    selected = w.genreMediaType,
-                    optionLabel = {
-                        it?.stringResource() ?: Res.string.genre_filter_media_type_all
+                    label = Res.string.genre_filter_content_type,
+                    options = listOf<GenreContentType?>(null) + GenreContentType.entries,
+                    selected = w.genreContentType,
+                    optionLabel = { it?.label() ?: Res.string.genre_filter_content_type_all },
+                    // The media type refines the music taxonomy only, so it goes with it.
+                    onSelect = { type ->
+                        onChange(w.copy(genreContentType = type, genreMediaType = w.genreMediaTypeFilter))
                     },
-                    onSelect = { onChange(w.copy(genreMediaType = it)) },
                 )
+            }
+            if (workingProvider().genreContentType == GenreContentType.MUSIC) {
+                item {
+                    val w = workingProvider()
+                    SingleChoiceChipsRow(
+                        label = Res.string.genre_filter_media_type,
+                        options = listOf<MediaType?>(null) + MediaType.genreMediaTypeOptions,
+                        selected = w.genreMediaType,
+                        optionLabel = {
+                            it?.stringResource() ?: Res.string.genre_filter_media_type_all
+                        },
+                        onSelect = { onChange(w.copy(genreMediaType = it)) },
+                    )
+                }
             }
         }
 
         else -> Unit
     }
+}
+
+private fun ArtistType.label(): StringResource = when (this) {
+    ArtistType.SINGER -> Res.string.media_type_artists
+    ArtistType.AUTHOR -> Res.string.artist_type_authors
+    ArtistType.NARRATOR -> Res.string.artist_type_narrators
+}
+
+private fun GenreContentType.label(): StringResource = when (this) {
+    GenreContentType.MUSIC -> Res.string.genre_content_type_music
+    GenreContentType.PODCAST -> Res.string.media_type_podcasts
+    GenreContentType.AUDIOBOOK -> Res.string.media_type_audiobooks
 }
 
 private fun GenreEmptyFilter.label(): StringResource = when (this) {

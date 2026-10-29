@@ -11,17 +11,76 @@ internal class FakeMediaItemStore {
     private val playlistItems = mutableMapOf<String, List<String>>()
     private val topTracks = mutableMapOf<Pair<String, String>, List<String>>()
 
+    // The audiobooks an author or narrator is credited on, by the artist's global id.
+    private val artistAudiobooks = mutableMapOf<Pair<String, String>, List<String>>()
+
+    // The server's `content_type` of a genre; a genre without an entry is in the music taxonomy.
+    private val genreContentTypes = mutableMapOf<Pair<String, String>, String>()
+
+    /**
+     * [artistType] narrows artists to one `artist_type`. [genreContentType] narrows genres to one
+     * taxonomy; `"music"` is the one the server stores as null.
+     */
     fun query(
         query: String? = null,
         mediaType: MediaType? = null,
         inLibraryOnly: Boolean = false,
         favoritesOnly: Boolean = false,
+        artistType: String? = null,
+        genreContentType: String? = null,
     ): List<ServerMediaItem> {
         return mediaItems
             .filter { mediaType == null || it.mediaType == mediaType.serverValue }
             .filter { !inLibraryOnly || it.isInLibrary() }
             .filter { !favoritesOnly || it.favorite ?: false }
             .filter { query == null || it.name.contains(query, ignoreCase = true) }
+            .filter { artistType == null || artistTypeOf(it) == artistType }
+            .filter { genreContentType == null || genreContentTypeOf(it) == genreContentType }
+    }
+
+    /** Mirrors `library_artist_types`: the distinct types of the library artists. */
+    fun libraryArtistTypes(): List<String> =
+        query(mediaType = MediaType.ARTIST, inLibraryOnly = true).map(::artistTypeOf).distinct()
+
+    fun setGenreContentType(genre: ServerMediaItem, contentType: String) {
+        genreContentTypes[genre.globalId()] = contentType
+    }
+
+    // An artist without a type is a singer, like on the server.
+    private fun artistTypeOf(artist: ServerMediaItem): String = artist.artistType ?: SINGER
+
+    fun setArtistAudiobooks(artist: ServerMediaItem, vararg audiobooks: ServerMediaItem) {
+        artistAudiobooks[artist.globalId()] = audiobooks.map { it.itemId }
+    }
+
+    fun getAudiobooksByArtist(artist: ServerMediaItem): List<ServerMediaItem> {
+        return mediaItems
+            .filter { it.mediaType == MediaType.AUDIOBOOK.serverValue }
+            .filter { artistAudiobooks[artist.globalId()]?.contains(it.itemId) ?: false }
+    }
+
+    /**
+     * Mirrors `artist_audiobooks` for a library artist: the audiobooks of every provider artist
+     * matched to it, narrowed to the library ones by [inLibraryOnly].
+     */
+    fun getAudiobooksByLibraryArtist(libraryId: String, inLibraryOnly: Boolean): List<ServerMediaItem> {
+        return libraryIds.entries
+            .filter { it.value == libraryId }
+            .map { it.key }
+            .flatMap { globalId ->
+                mediaItems.filter { it.mediaType == MediaType.ARTIST.serverValue && it.globalId() == globalId }
+            }
+            .flatMap { getAudiobooksByArtist(it) }
+            .filter { !inLibraryOnly || it.isInLibrary() }
+            .distinct()
+    }
+
+    private fun genreContentTypeOf(genre: ServerMediaItem): String = genreContentTypes[genre.globalId()] ?: MUSIC
+
+    fun getEpisodesByPodcast(podcast: ServerMediaItem): List<ServerMediaItem> {
+        return mediaItems
+            .filter { it.mediaType == MediaType.PODCAST_EPISODE.serverValue }
+            .filter { it.podcast == podcast }
     }
 
     fun getItem(itemId: String, provider: String): ServerMediaItem {
@@ -180,6 +239,9 @@ internal class FakeMediaItemStore {
         return libraryIds.containsKey(this.globalId())
     }
 }
+
+private const val SINGER = "singer"
+private const val MUSIC = "music"
 
 private fun ServerMediaItem.globalId(): Pair<String, String> {
     val providerMapping = this.providerMappings!![0]

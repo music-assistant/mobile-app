@@ -125,6 +125,38 @@ actual class PlatformFeature {
   favorites, library membership, playlist edits and the played state. `canConfigurePlayers`
   (`config.players.write`) gates DSP and the car DSP action. Every role has `players.control`, so
   grouping has no gate.
+- **Refresh item**: `music/refresh_item` loads an item again from its music services. If no service has the
+  item, the server searches for a substitute. The item details menu shows "Refresh item" or "Find on your
+  music services" (`RefreshItemAction`). The command needs `library.manage` before server 2.11 and
+  `library.write` from 2.11 (`MainDataSource.refreshItemAccess`). Like the web frontend, "Refresh item"
+  also needs `library.manage`.
+
+  An item is unavailable if no mapping is available on an available provider instance. The entry stays
+  hidden until `ProviderRepository` loads the providers.
+
+  Send the command through `ItemRefresher` (`data/repository/`). For a library item, the server answers
+  only after it matches the providers and reloads the metadata. That can take minutes, and the server
+  reports no progress. So the refresher runs the command in an app scope and keeps the uri in
+  `refreshingUris` until the answer. It ignores a second refresh of that uri. The page shows an
+  indeterminate progress indicator while its uri is in the set, also after the user opens the page again.
+  The refresher publishes the answer as a local `MediaItemChange.Updated` with `carriesFavorite` false,
+  because a refresh does not change the favorite. Then it emits `refreshed`. The page replaces its item
+  from `refreshed` by uri, because a substitute has no mapping in common with the unavailable item.
+  The command changes the listings of the item, so the sub-items load again.
+- **Item metadata**: the item details page shows the long text of the item under the header, like the
+  web frontend: the biography of an artist (`metadata.description`), the review of an album
+  (`metadata.review`, or its description), and the description of a playlist, a podcast or an
+  audiobook. `AppMediaItem.itemDescription()` (`model/client/ItemDescription.kt`) selects the text
+  and `toPlainItemText` makes plain text from the Markdown and HTML that a provider sends. The page
+  clamps it to 3 lines, and "More" opens a sheet. The facts line shows the album type, the track
+  count and the total time (`PlayableSummary`, a client sum of the loaded tracks, none for a dynamic
+  playlist), the publisher of an audiobook, and the music services of a library item. The genre chips
+  come from `music/genres/genres_for_media_item`, which maps genres to library items only, so an
+  item of a music service gets none. A chip opens the genre page. A playlist shows its `owner` name.
+  From server 2.11 (`supportsPlaylistAccess`) a Music Assistant playlist shows its access record
+  instead (`PlaylistAccess`, `ownerLine`): "Personal" or the owner, who sees it, and "Collaborative".
+  The name of another owner comes from `config/providers/share_candidates`, which needs
+  `library.write`. The car surfaces show none of this.
 - **Library sort**: get the sort choices of a library list from `LibrarySortRepository.menu(mediaType)`, on the
   phone and in Android Auto. From server 2.11 (`sortWireFor`), the menu holds the fields of `music/sort_options`
   and the request sends `sort_field` and `sort_direction`. An older server gets the static `SortConfig` table and
@@ -133,10 +165,38 @@ actual class PlatformFeature {
   rejects a field that the list does not offer, so resolve the stored choice with
   `LibrarySortMenu.resolve` before the request. Send a sort only as a `ListSort`. The sub-item lists (album
   tracks, playlist tracks, episodes, artist lists) keep `SortConfig` and sort on the client.
+- **Library filters**: `LibraryFilters` (`data/model/client/`) is the filter set of one library list. The
+  settings store one instance for each media type, and the list ViewModel reads it from the settings flow.
+  Each field is one `library_items` argument that the server applies. Do not add a field for an argument
+  that the server drops into `**kwargs`. `audiobookArtistType` makes the Audiobooks list show the library
+  authors or narrators through `music/artists/library_items` with `artist_type`, and the ViewModel then
+  uses the Artists sort menu and the `ARTIST` row type (`State.listedMediaType`). The sheet offers the
+  row only for the types that `music/artists/library_artist_types` returns. An author or narrator row
+  opens the artist page. `Artist.isAudiobookArtist` (from `artist_type`) makes `ArtistDetailsViewModel`
+  load `music/artists/artist_audiobooks` into the "In library" row (`in_library_only`) and the "All
+  audiobooks" row, one option for each provider instance, and it leaves the top tracks row empty. The
+  request sends `artist_type`, because the server needs it for a provider artist. `genreContentType` is the
+  `content_type` taxonomy of the Genres list. `genreMediaType` refines the music taxonomy only: the sheet
+  shows it under the music content type, and `genreMediaTypeFilter` gives null for every other content
+  type, so a stored choice does not narrow the podcast or audiobook genres. The episodes tab of a podcast has its own played filter
+  (`PlayedFilter`, one setting for all podcasts). The app sends `fully_played=false` and filters the
+  answer as well, because a 2.10 server ignores the argument.
 - **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,
   because server 2.10 sends the list without the provider filter of the user.
+- **User preferences**: `UserPreferences` (`data/`) owns the server preferences of the signed-in user.
+  The web frontend uses the same object. `auth/user/update` replaces the whole object, and the server
+  sends no change event. So write one key with `UserPreferences.update`. It gets the latest object from
+  `auth/me`, changes the key, and sends the whole object. One mutex orders the reads and the writes. If
+  the read fails, nothing is written. A change from another client between the read and the write is
+  lost. Recent searches (`search.recent`, 5 terms) and search sources (`search.sources`) use this path.
+- **Search sources**: from schema 63 (`supportsSearchSources`, server 2.10.0), `music/search` takes
+  `providers`, and the filter sheet shows a source picker instead of the "In library only" switch.
+  `SearchSources` (`ui/compose/search/`) makes the choices like the web frontend: "library", one
+  target for each streaming service (its domain), and one target for each other provider instance.
+  An empty choice searches everything. A genre-only search sends `library` only. The choice is saved
+  before the search starts, and the search reads the sources when it starts, not from the screen state.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its
   rows again 1.5 s after the last event, like the web app.
@@ -145,6 +205,18 @@ actual class PlatformFeature {
   the subtitle. The phone gets the templates in `localizedSubtitle`. Android Auto and CarPlay load
   them once (`AutoLibrary`, `MediaSessionStrings`, `CarPlayStrings`), because their item builders are
   synchronous. Do not format the label in a different place.
+- **Episode page**: `ItemDetailsScreen` opens a `PodcastEpisode` (`music/podcasts/podcast_episode`, every server 2.x).
+  The header shows the podcast name, which opens the podcast, the played state, and the playing time. The
+  "Other episodes" tab (`ItemDetailsTab.OTHER_EPISODES`) lists the podcast episodes without the open one, with
+  the sort of the podcast page. The menus reach the page with "Go to episode" (`navigationOptions`). The page
+  shows the `description` as "About this episode". From schema 81 (`supportsEpisodeTranscript`, server 2.11),
+  `TranscriptRepository` (`data/repository/`) loads `music/podcasts/podcast_episode_transcript` once for each
+  episode in an app scope and keeps the last answers, because the page and the player ask for the same
+  episode. The answer is a `[text, cues]` tuple, and `transcriptOf` (`model/client/Transcript.kt`) makes a
+  `Lyrics` from it, so `LyricsSheet` shows a transcript with the lyrics timing and offset. The page keeps it
+  in `State.lyrics` and offers "Transcript" in the menu once it is loaded. The expanded player loads the
+  transcript of the current episode and shows it behind the lyrics button. An episode whose provider reports
+  `has_transcript` false is not asked. The page has no steppers and no hide-fully-played filter.
 - **Queue origin**: `QueueTrack.origin` is the container that the item was played from, from server
   2.11. It is null on an older server, for a single track and for a live stream. The stream details
   dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to

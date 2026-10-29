@@ -16,7 +16,7 @@
   <string name="genre_filter_media_type">Тип садржаја</string>
   <string name="genre_filter_media_type_all">Сви</string>
   <string name="genre_filter_show">Прикажи жанрове</string>
-  <string name="home_shortcuts">Пречице</string>
+  <string name="discover_shortcuts">Пречице</string>
   <string name="item_subtitle_playlist_dynamic">Динамичка плејлиста</string>
   <string name="kind_track">Нумере</string>
   <string name="loading">Учитавање…</string>

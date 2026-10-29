@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package io.music_assistant.client.ui.compose.home
 
 import androidx.compose.animation.AnimatedContentTransitionScope
@@ -10,7 +8,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -19,11 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,9 +59,18 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.Podcast
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.input.VolumeButtonService
+import io.music_assistant.client.nav.AdaptiveNavigationBarLayout
+import io.music_assistant.client.nav.BackHandler
+import io.music_assistant.client.nav.MultiBackStack
+import io.music_assistant.client.nav.NavigationItem
+import io.music_assistant.client.nav.NoSequentialDuplicatesBackstackAdder
+import io.music_assistant.client.nav.ScreenState
+import io.music_assistant.client.nav.Section
+import io.music_assistant.client.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
@@ -76,6 +79,12 @@ import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.home.players.QueueDjViewModel
+import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
+import io.music_assistant.client.ui.compose.home.players.contentDescription
+import io.music_assistant.client.ui.compose.home.players.iconRes
+import io.music_assistant.client.ui.compose.home.players.label
+import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
+import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListScreen
@@ -89,15 +98,9 @@ import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategory
 import io.music_assistant.client.ui.compose.library.LibraryListScreen
 import io.music_assistant.client.ui.compose.library.LibraryListViewModel
-import io.music_assistant.client.ui.compose.library.LibraryScreen
-import io.music_assistant.client.ui.compose.library.LibraryScreenState
-import io.music_assistant.client.ui.compose.nav.AdaptiveNavigationBarLayout
-import io.music_assistant.client.ui.compose.nav.BackHandler
+import io.music_assistant.client.ui.compose.library.icon
+import io.music_assistant.client.ui.compose.library.stringResource
 import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
-import io.music_assistant.client.ui.compose.nav.MultiBackStack
-import io.music_assistant.client.ui.compose.nav.NavigationItem
-import io.music_assistant.client.ui.compose.nav.ScreenState
-import io.music_assistant.client.ui.compose.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
@@ -110,19 +113,21 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.nav_home
+import musicassistantclient.composeapp.generated.resources.app_name
+import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_menu
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.resources.vectorResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainNavigationRoot(
     homeScreenViewModel: HomeScreenViewModel = koinViewModel(),
@@ -131,6 +136,7 @@ fun MainNavigationRoot(
     dspSettingsViewModel: DspSettingsViewModel = koinViewModel(),
     providerViewModel: ProviderViewModel = koinViewModel(),
     queueDjViewModel: QueueDjViewModel = koinViewModel(),
+    libraryCategoriesViewModel: LibraryCategoriesViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -187,10 +193,11 @@ fun MainNavigationRoot(
 
     val backStacks = listOf(
         rememberMainNavBackStack(MainNav.Landing),
-        rememberMainNavBackStack(MainNav.Library),
         rememberMainNavBackStack(MainNav.Search),
     )
-    val multiBackStack = remember { MultiBackStack(backStacks) }
+    val multiBackStack = remember {
+        MultiBackStack(backStacks, backstackAdder = NoSequentialDuplicatesBackstackAdder())
+    }
 
     // Apply a pending navigation deep link (musicassistant://app/<page> or the
     // https App/Universal Link). The destination is retained upstream, and we
@@ -212,14 +219,14 @@ fun MainNavigationRoot(
             }
 
             is DeepLinkDestination.Library -> {
-                multiBackStack.currentBackStack = 1
+                multiBackStack.currentBackStack = 0
                 multiBackStack.resetCurrentBackStack()
                 // /library/<category> → push the category list onto the Library tab.
                 dest.mediaType?.let { multiBackStack.add(MainNav.LibraryList(it)) }
             }
 
             DeepLinkDestination.Search -> {
-                multiBackStack.currentBackStack = 2
+                multiBackStack.currentBackStack = 1
                 multiBackStack.resetCurrentBackStack()
             }
 
@@ -242,7 +249,6 @@ fun MainNavigationRoot(
     // a tab switch disposes the entry, so re-entry starts fresh instead of stranding
     // a collapsed top bar.
     val homeScreenState = remember { mutableStateOf<HomeScreenState?>(null) }
-    val libraryScreenState = remember { mutableStateOf<LibraryScreenState?>(null) }
     val searchScreenState = remember { mutableStateOf<SearchScreenState?>(null) }
 
     val remoteVolumeHint = stringResource(Res.string.players_remote_volume_hint)
@@ -260,122 +266,235 @@ fun MainNavigationRoot(
         }
     }
 
-    val navigationItems = listOf(
-        multiBackStack.createNavigationItem(
-            backStack = 0,
-            icon = Icons.Default.Home,
-            label = stringResource(Res.string.nav_home),
-            screenState = homeScreenState.value,
-        ),
-        multiBackStack.createNavigationItem(
-            backStack = 1,
-            icon = Icons.Default.LibraryMusic,
-            label = stringResource(Res.string.nav_library),
-            screenState = libraryScreenState.value,
-        ),
-        multiBackStack.createNavigationItem(
-            backStack = 2,
-            icon = Icons.Default.Search,
-            label = stringResource(Res.string.nav_search),
-            screenState = searchScreenState.value,
-        ),
-        NavigationItem(
-            selected = false,
-            onClick = { goToSettings() },
-            Icons.Default.Settings,
-            label = stringResource(Res.string.nav_settings),
+    // A root screen in edit mode hides the collapsed bar so it does not cover drag targets.
+    // An expanded player (for example from a deep link) always stays visible.
+    val rootScreenEditing = homeScreenState.value?.editMode == true
+
+    var showPlayerSelection by remember { mutableStateOf(false) }
+    playersState.let {
+        if (it is HomeScreenViewModel.PlayersState.Data) {
+            val selectedPlayer = it.selectedPlayer
+            if (selectedPlayer != null) {
+                if (showPlayerSelection) {
+                    val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
+                        .collectAsStateWithLifecycle()
+
+                    SelectPlayerSheet(
+                        selectedPlayer = selectedPlayer,
+                        players = it.playerData,
+                        onDismissRequest = { showPlayerSelection = false },
+                        onMoveToPlayer = { id: String ->
+                            it.playerData.find { playerData -> playerData.player.id == id }?.player?.let { player ->
+                                homeScreenViewModel.selectPlayer(player)
+                            }
+                        },
+                        onReorder = homeScreenViewModel::onPlayersSortChanged,
+                        onPlayerAction = homeScreenViewModel::playerAction,
+                        hideUnavailable = rememberHideUnavailablePlayers(),
+                        onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
+                        onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
+                        canLeaveGroup = leaderLeaveSupported,
+                    )
+                }
+            }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        val libraryCategories by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
+        val navigationItems = navigationItems(
+            multiBackStack = multiBackStack,
+            homeScreenState = homeScreenState,
+            searchScreenState = searchScreenState,
+            categories = libraryCategories.categories,
+            goToLibraryCategory = { category ->
+                val toAdd = when (category) {
+                    LibraryCategory.BROWSE -> MainNav.Browse(path = null, title = null)
+                    LibraryCategory.AI_RADIO -> MainNav.AiRadio
+                    else -> category.mediaType?.let { MainNav.LibraryList(it) }
+                }
+
+                if (toAdd != null) {
+                    multiBackStack.add(toAdd)
+                }
+            },
+            goToSettings = goToSettings,
+        )
+
+        val playSelectionItem: NavigationItem? = playersState.let { state ->
+            if (state is HomeScreenViewModel.PlayersState.Data) {
+                val selectedPlayer = state.selectedPlayer
+                if (selectedPlayer != null) {
+                    NavigationItem(
+                        selected = false,
+                        onClick = { showPlayerSelection = true },
+                        icon = vectorResource(selectedPlayer.iconRes()),
+                        label = selectedPlayer.label(),
+                        marqueeLabel = true,
+                        contentDescription = selectedPlayer.contentDescription(),
+                    )
+                } else {
+                    null
+                }
+            } else {
+                null
+            }
+        }
+
+        AdaptiveNavigationBarLayout(
+            appName = stringResource(Res.string.app_name),
+            sections = navigationItems,
+            trailingItem = playSelectionItem,
+            showNavigation = !playerExpanded,
+            menuLabel = stringResource(Res.string.nav_menu),
+            onEdited = { enabled ->
+                libraryCategoriesViewModel.onEnabledChanged(enabled)
+            },
+            content = { scaffoldContentPadding, drawerOpen ->
+                FloatingBarLayout(
+                    modifier = Modifier.padding(scaffoldContentPadding),
+                    floatingBar = {
+                        // The bar is bottom-anchored, so shrinking towards its top slides it down
+                        // while the content padding follows the animated height.
+                        AnimatedVisibility(
+                            visible = playerExpanded || !rootScreenEditing,
+                            enter = expandVertically(expandFrom = Alignment.Top),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Top),
+                        ) {
+                            FloatingBar(
+                                expanded = playerExpanded,
+                                onExpand = onExpandPlayer,
+                                content = { expanded, contentPadding ->
+                                    PlayersPager(
+                                        playerPagerState = playerPagerState,
+                                        state = playersState,
+                                        homeScreenViewModel = homeScreenViewModel,
+                                        actionsViewModel = playerActionsViewModel,
+                                        dspSettingsViewModel = dspSettingsViewModel,
+                                        providerViewModel = providerViewModel,
+                                        queueDjViewModel = queueDjViewModel,
+                                        expanded = expanded,
+                                        onClose = { playerExpanded = false },
+                                        contentPadding = contentPadding,
+                                        toastState = toastState,
+                                        navigateToItem = { item ->
+                                            multiBackStack.add(
+                                                MainNav.ItemDetails(
+                                                    itemId = item.itemId,
+                                                    mediaType = item.mediaType,
+                                                    providerId = item.provider,
+                                                ),
+                                            )
+                                        },
+                                        onSelectPlayer = { showPlayerSelection = true },
+                                    )
+                                },
+                            )
+                        }
+                    },
+                ) { floatingBarContentPadding ->
+                    BackHandler(playerExpanded) {
+                        playerExpanded = !playerExpanded
+                    }
+
+                    val entryProvider = mainNavEntryProvider(
+                        floatingBarContentPadding,
+                        multiBackStack,
+                        homeScreenViewModel,
+                        actionsViewModel,
+                        viewModeViewModel,
+                        providerViewModel,
+                        homeScreenState,
+                        searchScreenState,
+                        goToSettings,
+                    )
+                    val tabRootKeys = backStacks.map { entryProvider(it.first()).contentKey }
+                    ConditionalBackNavDisplay(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                        entries = rememberDecoratedNavEntries(
+                            entryDecorators = listOf(
+                                rememberSaveableStateHolderNavEntryDecorator(),
+                                rememberViewModelStoreNavEntryDecorator(),
+                            ),
+                            entries = multiBackStack.toEntries(entryProvider),
+                        ),
+                        transitionSpec = tabAwareTransitionSpec(
+                            tabRootKeys,
+                            defaultTransitionSpec(),
+                        ),
+                        popTransitionSpec = tabAwareTransitionSpec(
+                            tabRootKeys,
+                            defaultPopTransitionSpec(),
+                        ),
+                        onBack = {
+                            multiBackStack.removeLastOrNull()
+                        },
+                        backEnabled = !playerExpanded && !drawerOpen,
+                    )
+                }
+            },
+        )
+        ToastHost(toastState = toastState)
+    }
+}
+
+@Composable
+private fun navigationItems(
+    multiBackStack: MultiBackStack<NavKey>,
+    homeScreenState: MutableState<HomeScreenState?>,
+    searchScreenState: MutableState<SearchScreenState?>,
+    categories: List<LibraryCategoriesViewModel.CategoryState>,
+    goToLibraryCategory: (LibraryCategory) -> Unit,
+    goToSettings: () -> Unit,
+): List<Section> {
+    val explore = Section(
+        title = "Explore",
+        items = listOf(
+            multiBackStack.createNavigationItem(
+                backStack = 0,
+                icon = Icons.Default.Home,
+                label = stringResource(Res.string.nav_discover),
+                screenState = homeScreenState.value,
+            ),
+            multiBackStack.createNavigationItem(
+                backStack = 1,
+                icon = Icons.Default.Search,
+                label = stringResource(Res.string.nav_search),
+                screenState = searchScreenState.value,
+            ),
         ),
     )
 
-    // A root screen in edit mode hides the collapsed bar so it does not cover drag targets.
-    // An expanded player (for example from a deep link) always stays visible.
-    val rootScreenEditing = homeScreenState.value?.editMode == true ||
-        libraryScreenState.value?.editMode == true
+    val library = Section(
+        title = stringResource(Res.string.nav_library),
+        items = categories.map {
+            NavigationItem(
+                selected = false,
+                onClick = { goToLibraryCategory(it.libraryCategory) },
+                icon = it.libraryCategory.icon(),
+                label = stringResource(it.libraryCategory.stringResource()),
+                id = it.libraryCategory.name,
+                editable = true,
+                enabled = it.enabled,
+            )
+        },
+    )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        AdaptiveNavigationBarLayout(
-            showNavigation = !playerExpanded,
-            navigationItems = navigationItems,
-        ) { scaffoldContentPadding ->
-            FloatingBarLayout(
-                modifier = Modifier.padding(scaffoldContentPadding),
-                floatingBar = {
-                    // The bar is bottom-anchored, so shrinking towards its top slides it down
-                    // while the content padding follows the animated height.
-                    AnimatedVisibility(
-                        visible = playerExpanded || !rootScreenEditing,
-                        enter = expandVertically(expandFrom = Alignment.Top),
-                        exit = shrinkVertically(shrinkTowards = Alignment.Top),
-                    ) {
-                        FloatingBar(
-                            expanded = playerExpanded,
-                            onExpand = onExpandPlayer,
-                            content = { expanded, contentPadding ->
-                                PlayersPager(
-                                    playerPagerState = playerPagerState,
-                                    state = playersState,
-                                    homeScreenViewModel = homeScreenViewModel,
-                                    actionsViewModel = playerActionsViewModel,
-                                    dspSettingsViewModel = dspSettingsViewModel,
-                                    providerViewModel = providerViewModel,
-                                    queueDjViewModel = queueDjViewModel,
-                                    expanded = expanded,
-                                    onClose = { playerExpanded = false },
-                                    contentPadding = contentPadding,
-                                    toastState = toastState,
-                                ) { item ->
-                                    multiBackStack.add(
-                                        MainNav.ItemDetails(
-                                            itemId = item.itemId,
-                                            mediaType = item.mediaType,
-                                            providerId = item.provider,
-                                        ),
-                                    )
-                                }
-                            },
-                        )
-                    }
-                },
-            ) { floatingBarContentPadding ->
-                BackHandler(playerExpanded) {
-                    playerExpanded = !playerExpanded
-                }
+    val system = Section(
+        title = "System",
+        items = listOf(
+            NavigationItem(
+                selected = false,
+                onClick = goToSettings,
+                icon = Icons.Default.Settings,
+                label = stringResource(Res.string.nav_settings),
+            ),
+        ),
+    )
 
-                val entryProvider = mainNavEntryProvider(
-                    floatingBarContentPadding,
-                    multiBackStack,
-                    homeScreenViewModel,
-                    actionsViewModel,
-                    viewModeViewModel,
-                    providerViewModel,
-                    homeScreenState,
-                    libraryScreenState,
-                    searchScreenState,
-                    goToSettings,
-                )
-                val tabRootKeys = backStacks.map { entryProvider(it.first()).contentKey }
-                ConditionalBackNavDisplay(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                    entries = rememberDecoratedNavEntries(
-                        entryDecorators = listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator(),
-                        ),
-                        entries = multiBackStack.toEntries(entryProvider),
-                    ),
-                    transitionSpec = tabAwareTransitionSpec(tabRootKeys, defaultTransitionSpec()),
-                    popTransitionSpec = tabAwareTransitionSpec(tabRootKeys, defaultPopTransitionSpec()),
-                    onBack = {
-                        multiBackStack.removeLastOrNull()
-                    },
-                    backEnabled = !playerExpanded,
-                )
-            }
-        }
-        ToastHost(toastState = toastState)
-    }
+    return listOf(explore, library, system)
 }
 
 /**
@@ -407,7 +526,6 @@ private fun mainNavEntryProvider(
     viewModeViewModel: ViewModeViewModel,
     providerViewModel: ProviderViewModel,
     homeScreenState: MutableState<HomeScreenState?>,
-    libraryScreenState: MutableState<LibraryScreenState?>,
     searchScreenState: MutableState<SearchScreenState?>,
     goToSettings: () -> Unit,
 ): (NavKey) -> NavEntry<NavKey> {
@@ -432,6 +550,7 @@ private fun mainNavEntryProvider(
                         is MediaCollection,
                         is Genre,
                         is Track,
+                        is PodcastEpisode,
                             -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
@@ -449,30 +568,6 @@ private fun mainNavEntryProvider(
                 actionsViewModel = actionsViewModel,
                 state = screenState,
                 onOpenSettings = goToSettings,
-            )
-        }
-
-        entry<MainNav.Library> {
-            val libraryCategoriesViewModel = koinViewModel<LibraryCategoriesViewModel>()
-            val screenState = rememberPublishedScreenState(libraryScreenState) {
-                LibraryScreenState.create()
-            }
-
-            LibraryScreen(
-                libraryCategoriesViewModel,
-                contentPadding = contentPadding,
-                state = screenState,
-                onCategoryClick = { category ->
-                    when (category) {
-                        LibraryCategory.BROWSE ->
-                            multiBackStack.add(MainNav.Browse(path = null, title = null))
-
-                        LibraryCategory.AI_RADIO -> multiBackStack.add(MainNav.AiRadio)
-
-                        else ->
-                            category.mediaType?.let { multiBackStack.add(MainNav.LibraryList(it)) }
-                    }
-                },
             )
         }
 
@@ -497,7 +592,7 @@ private fun mainNavEntryProvider(
                 onBack = { multiBackStack.removeLastOrNull() },
                 onGlobalSearch = { query ->
                     pendingSearch = GlobalSearchRequest(query, it.mediaType)
-                    multiBackStack.currentBackStack = 2
+                    multiBackStack.currentBackStack = 1
                     multiBackStack.resetCurrentBackStack()
                 },
                 onNavigateClick = { item ->
@@ -510,6 +605,7 @@ private fun mainNavEntryProvider(
                         is MediaCollection,
                         is Genre,
                         is Track,
+                        is PodcastEpisode,
                             -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(
@@ -546,7 +642,10 @@ private fun mainNavEntryProvider(
                             } else {
                                 // BrowseFolder carries an explicit `path`; `uri` is only a fallback.
                                 multiBackStack.add(
-                                    MainNav.Browse(path = item.path ?: item.uri, title = item.displayName),
+                                    MainNav.Browse(
+                                        path = item.path ?: item.uri,
+                                        title = item.displayName,
+                                    ),
                                 )
                             }
 
@@ -558,7 +657,8 @@ private fun mainNavEntryProvider(
                         is MediaCollection,
                         is Genre,
                         is Track,
-                        -> multiBackStack.add(
+                        is PodcastEpisode,
+                            -> multiBackStack.add(
                             MainNav.ItemDetails(
                                 itemId = item.itemId,
                                 mediaType = item.mediaType,
@@ -594,6 +694,7 @@ private fun mainNavEntryProvider(
                         is MediaCollection,
                         is Genre,
                         is Track,
+                        is PodcastEpisode,
                             -> {
                             multiBackStack.add(
                                 MainNav.ItemDetails(

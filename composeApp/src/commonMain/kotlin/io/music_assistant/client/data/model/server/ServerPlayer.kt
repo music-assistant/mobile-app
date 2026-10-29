@@ -89,6 +89,8 @@ data class ServerPlayerMedia(
     @SerialName("album") val album: String? = null,
     @SerialName("image_url") val imageUrl: String? = null,
     @SerialName("duration") val duration: Double? = null,
+    @SerialName("elapsed_time") val elapsedTime: Double? = null,
+    @SerialName("elapsed_time_last_updated") val elapsedTimeLastUpdated: Double? = null,
     @SerialName("source_id") val sourceId: String? = null,
     @SerialName("queue_item_id") val queueItemId: String? = null,
     // @SerialName("palette") val palette: MediaItemPalette? = null,

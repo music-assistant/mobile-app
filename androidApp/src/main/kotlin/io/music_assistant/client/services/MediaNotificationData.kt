@@ -49,6 +49,8 @@ data class MediaNotificationData(
     // Name of the current radio queue item. This remains stable while the server's
     // currentMedia title and artist change with the song currently on air.
     val stationName: String? = null,
+    // A radio stream cannot seek, not even in a song whose length it reports.
+    val isSeekable: Boolean = true,
 ) {
     companion object {
         /**
@@ -115,6 +117,7 @@ data class MediaNotificationData(
                 ?.takeIf { it.mediaType == MediaType.RADIO }
                 ?.displayName
                 ?.takeIf { it.isNotBlank() },
+            isSeekable = currentQueueTrack?.mediaType != MediaType.RADIO,
             )
         }
 

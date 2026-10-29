@@ -122,7 +122,6 @@ fun ArtistGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.localizedSubtitle().orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -188,7 +187,6 @@ fun AlbumGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.subtitleText(subtitle).orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -269,7 +267,6 @@ fun PlaylistGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.localizedSubtitle().orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -366,7 +363,6 @@ fun PodcastGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.localizedSubtitle().orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -684,7 +680,6 @@ internal fun AudiobookGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.localizedSubtitle().orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -750,7 +745,6 @@ private fun GridPlayableItemLabels(item: PlayableItem) {
                 ?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
         }",
         subtitle = subtitleText,
-        textAlign = TextAlign.Center,
     )
 }
 
@@ -797,13 +791,14 @@ fun BoxScope.Badges(
 fun BoxScope.ProgressBadge(
     fullyPlayed: Boolean?,
     resumePositionMs: Long?,
+    badgeSize: Dp = 18.dp,
+    badgePadding: Dp = 0.dp,
 ) {
+    val modifier = Modifier.align(Alignment.TopEnd).padding(badgePadding).size(badgeSize)
     when {
         fullyPlayed == true -> {
             Icon(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(18.dp)
+                modifier = modifier
                     .background(
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f),
                         CircleShape,
@@ -817,9 +812,7 @@ fun BoxScope.ProgressBadge(
 
         resumePositionMs != null && resumePositionMs > 0 -> {
             Icon(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(18.dp)
+                modifier = modifier
                     .background(
                         MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
                         CircleShape,
@@ -1054,7 +1047,6 @@ fun GenreGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.localizedSubtitle().orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -1147,7 +1139,6 @@ internal fun FolderCell(
             MediaItemLabels(
                 title = item.displayName,
                 subtitle = null,
-                textAlign = TextAlign.Center,
             )
         }
     }
@@ -1228,7 +1219,6 @@ internal fun MediaCollectionGridItem(
         MediaItemLabels(
             title = item.displayName,
             subtitle = item.localizedSubtitle().orEmpty(),
-            textAlign = TextAlign.Center,
         )
     }
 }
@@ -1263,7 +1253,6 @@ private const val SUBTITLE_ALPHA = 0.6f
 internal fun MediaItemLabels(
     title: String,
     subtitle: String?,
-    textAlign: TextAlign? = null,
     titleMaxLines: Int = 1,
 ) {
     Text(
@@ -1271,7 +1260,6 @@ internal fun MediaItemLabels(
         text = title,
         style = mediaItemTitleStyle(),
         fontWeight = MEDIA_TITLE_WEIGHT,
-        textAlign = textAlign,
         maxLines = titleMaxLines,
         overflow = TextOverflow.Ellipsis,
     )
@@ -1289,7 +1277,6 @@ internal fun MediaItemLabels(
                 style = subtitleStyle,
                 fontWeight = MEDIA_TITLE_WEIGHT,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = SUBTITLE_ALPHA),
-                textAlign = textAlign,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

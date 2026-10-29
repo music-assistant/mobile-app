@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.nav.NavigationBarSemantics
+import io.music_assistant.client.nav.NavigationDrawerSemantics
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.isTab
 import io.music_assistant.client.support.withinTag
@@ -34,8 +36,16 @@ import musicassistantclient.composeapp.generated.resources.cd_playing
 import musicassistantclient.composeapp.generated.resources.common_apply
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_empty
-import musicassistantclient.composeapp.generated.resources.nav_home
-import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.media_type_albums
+import musicassistantclient.composeapp.generated.resources.media_type_artists
+import musicassistantclient.composeapp.generated.resources.media_type_audiobooks
+import musicassistantclient.composeapp.generated.resources.media_type_genres
+import musicassistantclient.composeapp.generated.resources.media_type_playlists
+import musicassistantclient.composeapp.generated.resources.media_type_podcasts
+import musicassistantclient.composeapp.generated.resources.media_type_radio
+import musicassistantclient.composeapp.generated.resources.media_type_tracks
+import musicassistantclient.composeapp.generated.resources.nav_discover
+import musicassistantclient.composeapp.generated.resources.nav_menu
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_nothing
@@ -76,18 +86,23 @@ fun ComposePage.clickItemNavigationOption(
     return ItemPage(target.name, type, navigationItem, composeTestRule).assertOnPage()
 }
 
-fun ComposePage.assertNavBar(items: List<String>, selected: String) {
+fun ComposePage.assertNavBar(items: List<String>, selected: String?) {
     items.forEach {
         if (it == selected) {
-            composeTestRule.onNode(isTab(it)).assertIsSelected()
+            composeTestRule
+                .onNode(withinTag(NavigationBarSemantics.TAG).and(isTab(it))).assertIsSelected()
         } else {
-            composeTestRule.onNode(isTab(it)).assertIsNotSelected()
+            composeTestRule
+                .onNode(withinTag(NavigationBarSemantics.TAG).and(isTab(it))).assertIsNotSelected()
         }
     }
 }
 
 fun ComposePage.clickNavBarItem(item: String) {
-    composeTestRule.onNode(isTab(item)).assertIsDisplayed().performClick()
+    composeTestRule
+        .onNode(withinTag(NavigationBarSemantics.TAG).and(isTab(item)))
+        .assertIsDisplayed()
+        .performClick()
 }
 
 fun ComposePage.clickSearch(): SearchPage {
@@ -101,22 +116,60 @@ fun <T : Page> ComposePage.clickSearch(destination: T): T {
 }
 
 fun <T : Page> ComposePage.clickHome(destination: T): T {
-    clickNavBarItem(Res.string.nav_home.get())
+    clickNavBarItem(Res.string.nav_discover.get())
     return destination.assertOnPage()
 }
 
-fun ComposePage.clickLibrary(): LibraryPage {
-    clickNavBarItem(Res.string.nav_library.get())
-    return LibraryPage(composeTestRule).assertOnPage()
+fun ComposePage.clickAlbums(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_albums.get())
 }
 
-fun <T : Page> ComposePage.clickLibrary(destination: T): T {
-    clickNavBarItem(Res.string.nav_library.get())
-    return destination.assertOnPage()
+fun ComposePage.clickArtists(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_artists.get())
+}
+
+fun ComposePage.clickPlaylists(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_playlists.get())
+}
+
+fun ComposePage.clickTracks(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_tracks.get())
+}
+
+fun ComposePage.clickAudiobooks(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_audiobooks.get())
+}
+
+fun ComposePage.clickPodcasts(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_podcasts.get())
+}
+
+fun ComposePage.clickRadio(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_radio.get())
+}
+
+fun ComposePage.clickGenres(): LibraryListPage {
+    return clickLibraryType(Res.string.media_type_genres.get())
+}
+
+private fun ComposePage.clickLibraryType(type: String): LibraryListPage {
+    openNavDrawer()
+    clickNavDrawerItem(type)
+    return LibraryListPage(type, composeTestRule).assertOnPage()
+}
+
+private fun <T : ComposePage> T.openNavDrawer(): T {
+    clickNavBarItem(Res.string.nav_menu.get())
+    return this
+}
+
+private fun ComposePage.clickNavDrawerItem(item: String) {
+    composeTestRule.onNode(withinTag(NavigationDrawerSemantics.TAG).and(isTab(item))).performClick()
 }
 
 fun ComposePage.clickSettings(): SettingsPage {
-    clickNavBarItem(Res.string.nav_settings.get())
+    openNavDrawer()
+    clickNavDrawerItem(Res.string.nav_settings.get())
     return SettingsPage(composeTestRule).assertOnPage()
 }
 
@@ -154,6 +207,20 @@ fun <T : ComposePage> T.playMedia(item: ServerMediaItem, withinTag: String? = nu
 fun <T : ComposePage> T.pause(): T {
     composeTestRule.onNodeWithContentDescription(Res.string.action_pause.get()).performClick()
     return this
+}
+
+fun <T : ComposePage> T.clickCurrentPlayer(name: String): PlayerSelectionPage<T> {
+    composeTestRule.waitUntil {
+        composeTestRule
+            .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+            .isDisplayed()
+    }
+
+    composeTestRule
+        .onNodeWithContentDescription(Res.string.cd_current_player.get().format(name))
+        .performClick()
+
+    return PlayerSelectionPage(this, composeTestRule).assertOnPage()
 }
 
 fun <T : ComposePage> T.assertPlayer(

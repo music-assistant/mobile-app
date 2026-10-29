@@ -1,5 +1,6 @@
 package io.music_assistant.client.ui.compose.item
 
+import io.music_assistant.client.data.model.client.ArtistType
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.server.ProviderMapping
 import kotlinx.serialization.json.Json
@@ -17,6 +18,26 @@ class ItemListSortContextTest {
         assertEquals(SubItemContext.ARTIST_TOP_TRACKS, ItemList.ArtistTopTracks(listOf(mapping)).sortContext)
         assertEquals(SubItemContext.ARTIST_TOP_TRACKS, ItemList.ArtistLibraryTopTracks("1", "lastfm").sortContext)
         assertEquals(SubItemContext.ARTIST_LIBRARY_ALBUMS, ItemList.ArtistLibrary("1").sortContext)
+        assertEquals(
+            SubItemContext.ARTIST_AUDIOBOOKS,
+            ItemList.ArtistAudiobooks(listOf(mapping), ArtistType.AUTHOR).sortContext,
+        )
+        assertEquals(
+            SubItemContext.ARTIST_AUDIOBOOKS,
+            ItemList.ArtistLibraryAudiobooks("1", ArtistType.NARRATOR).sortContext,
+        )
+    }
+
+    @Test
+    fun `author lists send the artist type and the library list stays in the library`() {
+        val provider = ItemList.ArtistAudiobooks(listOf(mapping), ArtistType.NARRATOR).toRequests().single()
+        assertEquals("music/artists/artist_audiobooks", provider.command)
+        assertEquals("narrator", provider.args?.get("artist_type")?.jsonPrimitive?.content)
+        assertEquals("false", provider.args?.get("in_library_only")?.jsonPrimitive?.content)
+
+        val library = ItemList.ArtistLibraryAudiobooks("1", ArtistType.AUTHOR).toRequests().single()
+        assertEquals("library", library.args?.get("provider_instance_id_or_domain")?.jsonPrimitive?.content)
+        assertEquals("true", library.args?.get("in_library_only")?.jsonPrimitive?.content)
     }
 
     @Test

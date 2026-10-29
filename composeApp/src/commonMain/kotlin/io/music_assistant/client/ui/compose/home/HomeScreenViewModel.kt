@@ -7,11 +7,13 @@ import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.Shortcut
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
@@ -23,6 +25,7 @@ import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.data.repository.fetchRecommendationRowItems
 import io.music_assistant.client.data.repository.fetchRecommendationRows
@@ -90,6 +93,7 @@ class HomeScreenViewModel(
     private val settings: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val playDispatcher: PlayDispatcher,
+    private val transcriptRepository: TranscriptRepository,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
@@ -109,6 +113,12 @@ class HomeScreenViewModel(
 
     /** Live elapsed-time flow for the slider. Ticks at 500 ms only while playing + subscribed. */
     fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
+
+    /** Loads the transcript of [episode] once, for the lyrics sheet. See [TranscriptRepository]. */
+    fun loadTranscript(episode: PodcastEpisode) = transcriptRepository.load(episode)
+
+    /** The transcript of [episode], as [loadTranscript] loads it. */
+    fun transcript(episode: PodcastEpisode): StateFlow<DataState<Lyrics>> = transcriptRepository.transcript(episode)
 
     /**
      * Server-synced `audiobook_chapter_progress` gate for the chapter-relative timeline.

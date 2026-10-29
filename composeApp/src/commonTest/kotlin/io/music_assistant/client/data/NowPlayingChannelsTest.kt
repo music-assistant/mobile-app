@@ -133,12 +133,13 @@ private fun streamMedia(
     artist: String? = "Artist",
     queueItemId: String? = "queue-item-1",
     imageUrl: String? = null,
+    duration: Double? = null,
 ) = PlayerMedia(
     title = title,
     artist = artist,
     album = null,
     imageUrl = imageUrl,
-    duration = null,
+    duration = duration,
     queueId = "queue-1",
     queueItemId = queueItemId,
     mediaType = MediaType.RADIO,
@@ -185,6 +186,12 @@ class NowPlayingRadioStreamMetadataTest {
         assertEquals("name", built.album)
         assertEquals("id", built.mediaItemId)
         assertEquals("https://example.invalid/song.jpg", built.artworkUrl)
+    }
+
+    @Test
+    fun aStreamReportingItsSongPresentsTheSongLength() {
+        assertEquals(430.0, radioTrack(streamMedia(duration = 430.0)).duration)
+        assertNull(radioTrack(streamMedia()).duration)
     }
 
     @Test

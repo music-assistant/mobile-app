@@ -7,12 +7,15 @@ import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyricsOf
+import io.music_assistant.client.data.model.client.transcriptOf
 import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerTranscriptCue
 import io.music_assistant.client.data.model.server.events.FavoriteUpdatedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
@@ -22,6 +25,7 @@ import io.music_assistant.client.data.model.server.pagesPlaylistTracksAndEpisode
 import io.music_assistant.client.data.model.server.sendsFavoriteUpdates
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
+import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -40,6 +44,8 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.time.Duration.Companion.seconds
 
 interface MediaItemRepository {
@@ -57,6 +63,10 @@ interface MediaItemRepository {
     /** The lyrics the server finds for [track]; `Result.success(null)` when it has none. */
     suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?>
     fun supportsRadioTracks(): Boolean
+
+    /** The transcript of [episode] as [Lyrics]; `Result.success(null)` when the server has none. */
+    suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?>
+
     fun publishLocalChange(change: MediaItemChange)
 }
 
@@ -68,6 +78,7 @@ interface MediaItemRepository {
  * and centralizes the "decode payload + map to client model" boilerplate
  * that was duplicated across every list/get/search call site.
  */
+
 class ServiceClientMediaItemRepository(
     private val apiClient: ServiceClient,
     private val factory: MediaItemFactory,
@@ -138,6 +149,20 @@ class ServiceClientMediaItemRepository(
             apiClient.sendRequest(Request.Metadata.getTrackLyrics(track)).map { answer ->
                 answer.resultAs<List<String?>>()
                     ?.let { lyricsOf(plain = it.getOrNull(0), lrc = it.getOrNull(1)) }
+            }
+        }
+
+    /** `music/podcasts/podcast_episode_transcript` answers a `[text, cues]` tuple. */
+    override suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?> =
+        withContext(workDispatcher) {
+            val request = Request.Podcast.getEpisodeTranscript(episode.itemId, episode.provider)
+            apiClient.sendRequest(request).mapCatching { answer ->
+                answer.resultAs<JsonArray>()?.let { tuple ->
+                    transcriptOf(
+                        text = tuple.getOrNull(0)?.let { myJson.decodeFromJsonElement<String?>(it) },
+                        cues = tuple.getOrNull(1)?.let { myJson.decodeFromJsonElement<List<ServerTranscriptCue>?>(it) },
+                    )
+                }
             }
         }
 

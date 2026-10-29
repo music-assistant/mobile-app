@@ -12,15 +12,15 @@ import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.library_quick_search
 import musicassistantclient.composeapp.generated.resources.library_search_global
-import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.search_query_label
 
 class LibraryListPage(type: String, composeTestRule: ComposeTestRule) :
-    ItemListPage(type, Res.string.nav_library.get(), composeTestRule) {
+    ItemListPage(type, Res.string.nav_discover.get(), composeTestRule) {
     fun clickOnMedia(item: ServerMediaItem): ItemPage {
         return clickOnMedia(
             item,
-            Res.string.nav_library.get(),
+            Res.string.nav_discover.get(),
             provider = ServerMediaItem.LIBRARY_PROVIDER,
         )
     }

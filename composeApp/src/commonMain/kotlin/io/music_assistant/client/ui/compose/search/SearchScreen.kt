@@ -45,8 +45,11 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.stringResource
+import io.music_assistant.client.nav.ScreenState
 import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.MultiSelectDialog
+import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.ui.compose.common.SettingsSheet
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.ToastState
@@ -71,18 +74,18 @@ import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.library.FilterAction
-import io.music_assistant.client.ui.compose.nav.ScreenState
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.filter_sources
 import musicassistantclient.composeapp.generated.resources.genre_filter_media_type
 import musicassistantclient.composeapp.generated.resources.search_error
 import musicassistantclient.composeapp.generated.resources.search_in_library_only
 import musicassistantclient.composeapp.generated.resources.search_no_results
 import musicassistantclient.composeapp.generated.resources.search_query_label
-import musicassistantclient.composeapp.generated.resources.search_start
+import musicassistantclient.composeapp.generated.resources.search_source_library
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -97,6 +100,7 @@ fun SearchScreen(
     onSearchConsumed: () -> Unit = {},
 ) {
     val searchState by searchViewModel.state.collectAsStateWithLifecycle()
+    val recentSearches by searchViewModel.recentSearches.collectAsStateWithLifecycle()
     val toastState = rememberToastState()
 
     LaunchedEffect(Unit) {
@@ -128,14 +132,18 @@ fun SearchScreen(
         ProvideClickActions(ClickContext.SEARCH) {
             SearchContent(
                 state = searchState,
+                recentSearches = recentSearches,
+                onRecentSearchClick = searchViewModel::onRecentSearchClick,
                 toastState = toastState,
                 onItemClick = { item ->
+                    searchViewModel.onResultOpened()
                     when (item) {
                         is Artist,
                         is Album,
                         is Playlist,
                         is Podcast,
                         is Audiobook,
+                        is Genre,
                         is Track,
                             -> {
                             onNavigateToItem(item.itemId, item.mediaType, item.provider)
@@ -161,7 +169,7 @@ private fun SearchTopBar(
     searchState: SearchViewModel.SearchState,
     onQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
-    onFiltersChanged: (List<MediaType>, Boolean) -> Unit,
+    onFiltersChanged: (List<MediaType>, Boolean, List<String>?) -> Unit,
 ) {
     TopAppBar(
         title = {
@@ -177,28 +185,32 @@ private fun SearchTopBar(
                 searchState.mediaTypes.map { it.type },
                 searchState.selectedMediaTypes,
                 searchState.libraryOnly,
+                searchState.sources,
                 onFiltersChanged,
             )
         },
     )
 }
 
+/** On a server with [SearchSources], the source picker replaces the "In library only" switch. */
 @Composable
 private fun SearchFilterAction(
     mediaTypes: List<MediaType>,
     selectedMediaTypes: List<MediaType>,
     libraryOnly: Boolean,
-    onFiltersChanged: (List<MediaType>, Boolean) -> Unit,
+    sources: SearchSources?,
+    onFiltersChanged: (List<MediaType>, Boolean, List<String>?) -> Unit,
 ) {
     FilterAction(
-        state = { SearchFilterState(selectedMediaTypes, libraryOnly) },
-        active = selectedMediaTypes.isNotEmpty() || libraryOnly,
-        onApply = { onFiltersChanged(it.selectedMediaTypes, it.libraryOnly.value) },
+        state = { SearchFilterState(selectedMediaTypes, libraryOnly, sources?.selected) },
+        active = selectedMediaTypes.isNotEmpty() || libraryOnly || !sources?.selected.isNullOrEmpty(),
+        onApply = { onFiltersChanged(it.selectedMediaTypes, it.libraryOnly.value, it.sources?.toList()) },
         canReset = { it.hasActive },
         onReset = { it.reset() },
     ) { state ->
         val workingSelectedMediaTypes = state.selectedMediaTypes
         var workingLibraryOnly by state.libraryOnly
+        var pickingSources by remember { mutableStateOf(false) }
 
         SettingsSheet.MultiChoiceChipsRow(
             label = Res.string.genre_filter_media_type,
@@ -214,7 +226,26 @@ private fun SearchFilterAction(
             },
         )
 
-        SettingsSheet.SwitchRow(
+        sources?.let { offered ->
+            val workingSources = state.sources ?: return@let
+            SettingsSheet.PickerRow(Res.string.filter_sources, workingSources.size) { pickingSources = true }
+            if (pickingSources) {
+                val library = SelectOption(SearchSources.LIBRARY, stringResource(Res.string.search_source_library))
+                MultiSelectDialog(
+                    title = Res.string.filter_sources,
+                    optionsState = offered.providers
+                        ?.let { DataState.Data(listOf(library) + it) }
+                        ?: DataState.Loading(),
+                    selected = workingSources.toSet(),
+                    onConfirm = {
+                        workingSources.clear()
+                        workingSources.addAll(it)
+                        pickingSources = false
+                    },
+                    onDismiss = { pickingSources = false },
+                )
+            }
+        } ?: SettingsSheet.SwitchRow(
             label = Res.string.search_in_library_only,
             checked = workingLibraryOnly,
             onChange = { workingLibraryOnly = it },
@@ -222,21 +253,32 @@ private fun SearchFilterAction(
     }
 }
 
-private class SearchFilterState(selectedMediaTypes: List<MediaType>, libraryOnly: Boolean) {
+private class SearchFilterState(
+    selectedMediaTypes: List<MediaType>,
+    libraryOnly: Boolean,
+    sources: List<String>?,
+) {
     val selectedMediaTypes = selectedMediaTypes.toMutableStateList()
     val libraryOnly = mutableStateOf(libraryOnly)
 
-    val hasActive: Boolean get() = selectedMediaTypes.isNotEmpty() || libraryOnly.value
+    // Null on a server without the source choice.
+    val sources = sources?.toMutableStateList()
+
+    val hasActive: Boolean
+        get() = selectedMediaTypes.isNotEmpty() || libraryOnly.value || !sources.isNullOrEmpty()
 
     fun reset() {
         selectedMediaTypes.clear()
         libraryOnly.value = false
+        sources?.clear()
     }
 }
 
 @Composable
 private fun SearchContent(
     state: SearchViewModel.State,
+    recentSearches: List<String>,
+    onRecentSearchClick: (String) -> Unit,
     toastState: ToastState,
     onItemClick: (AppMediaItem) -> Unit,
     onPlayClick: PlayHandler<AppMediaItem>,
@@ -424,14 +466,12 @@ private fun SearchContent(
                     }
                 }
 
-                is DataState.NoData -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(stringResource(Res.string.search_start))
-                    }
-                }
+                is DataState.NoData -> RecentSearches(
+                    recentSearches = recentSearches,
+                    query = state.searchState.query,
+                    onClick = onRecentSearchClick,
+                    contentPadding = contentPadding,
+                )
             }
         }
 

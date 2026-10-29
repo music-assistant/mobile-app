@@ -53,7 +53,7 @@ fun FloatingBar(
                 if (expanded) {
                     it.fillMaxHeight()
                 } else {
-                    it.wrapContentHeight().clickable { onExpand(true) }
+                    it.wrapContentHeight().clickable(interactionSource = null, indication = null) { onExpand(true) }
                 }
             },
         color = MaterialTheme.colorScheme.surfaceContainerHigh,

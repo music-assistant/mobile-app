@@ -88,7 +88,7 @@ private fun TabsCustomizeList(
 @Composable
 private fun PreviewCustomizeLibraryCategoriesDialog() {
     CustomizeLibraryCategoriesDialog(
-        initialConfig = libraryTabCategories.mapIndexed { i, t -> t to (i < 5) },
+        initialConfig = libraryCategories.mapIndexed { i, t -> t to (i < 5) },
         onDismissRequest = {},
         onConfirm = {},
     )

@@ -148,6 +148,32 @@ class AuthenticationViewModelTest {
     }
 
     @Test
+    fun `a new connection to the same server fetches providers again`() = runTest {
+        auth.providersResult = Result.success(REMOTE_PROVIDERS)
+
+        viewModel().providers.test {
+            assertEquals(emptyList(), awaitItem())
+
+            sessionState.value = connectedDirect(AuthProcessState.LoggedOut)
+            assertEquals(REMOTE_PROVIDERS, awaitItem())
+
+            // The server closes the socket on logout, so the next socket loads the list again.
+            auth.providersResult = Result.success(listOf(BUILTIN_PROVIDER_FIXTURE))
+            sessionState.value = SessionState.Reconnecting.Direct(
+                attempt = 1,
+                connectionInfo = DIRECT_CONNECTION_INFO,
+                connectionData = ConnectionData(serverInfo = SERVER_INFO),
+            )
+            expectNoEvents()
+            sessionState.value = connectedDirect(AuthProcessState.NotStarted)
+            assertEquals(listOf(BUILTIN_PROVIDER_FIXTURE), awaitItem())
+
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(2, auth.getProvidersCalls, "The same address on a new socket must load again")
+    }
+
+    @Test
     fun `transition to Authenticated leaves the provider list intact`() = runTest {
         auth.providersResult = Result.success(REMOTE_PROVIDERS)
 
@@ -362,6 +388,17 @@ class AuthenticationViewModelTest {
     }
 
     @Test
+    fun `loginWithToken delegates to AuthCoordinator with the current token`() = runTest {
+        val vm = viewModel()
+        vm.token.value = "long-lived"
+
+        vm.loginWithToken()
+
+        assertEquals(listOf("long-lived"), auth.tokenLogins)
+        assertTrue(auth.loginCalls.isEmpty(), "A token login must not also try credential login")
+    }
+
+    @Test
     fun `logout delegates to AuthCoordinator`() = runTest {
         val vm = viewModel()
         vm.logout()
@@ -446,6 +483,13 @@ private class FakeAuthCoordinator : AuthCoordinator {
         password: String,
     ): Result<Unit> {
         loginCalls += LoginCall(providerId, username, password)
+        return Result.success(Unit)
+    }
+
+    val tokenLogins = mutableListOf<String>()
+
+    override suspend fun loginWithToken(token: String): Result<Unit> {
+        tokenLogins += token
         return Result.success(Unit)
     }
 

@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   release:
@@ -194,6 +195,7 @@ jobs:
             ${PREV_TAG:+-f previous_tag_name="$PREV_TAG"} \
             --jq .body > /tmp/release-notes.md
           echo "file=/tmp/release-notes.md" >> "$GITHUB_OUTPUT"
+          echo "prev_tag=$PREV_TAG" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -207,6 +209,14 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A labeling failure must not stop the build bump below.
+      - name: Label released issues
+        continue-on-error: true
+        run: .github/scripts/label-released-issues.sh '${{ steps.notes.outputs.prev_tag }}' '${{ steps.version.outputs.tag }}' 0A84FF
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
 
       - name: Push build bump branch
         id: bump

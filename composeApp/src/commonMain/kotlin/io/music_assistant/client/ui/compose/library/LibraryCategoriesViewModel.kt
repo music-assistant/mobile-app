@@ -35,10 +35,13 @@ class LibraryCategoriesViewModel(
         }
     }
 
-    fun onTabsConfigChanged(newOrder: List<Pair<LibraryCategory, Boolean>>) {
+    fun onEnabledChanged(enabledCategories: List<String>) {
         settingsRepository.setLibraryCategoryConfig(
-            mergeHiddenCategories(newOrder, reconciled).map { (tab, enabled) ->
-                SettingsRepository.LibraryCategoryPref(name = tab.name, enabled = enabled)
+            reconciled.map { (category, _) ->
+                SettingsRepository.LibraryCategoryPref(
+                    category.name,
+                    enabledCategories.contains(category.name),
+                )
             },
         )
     }

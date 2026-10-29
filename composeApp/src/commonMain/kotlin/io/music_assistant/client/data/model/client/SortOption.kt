@@ -102,6 +102,7 @@ object SortConfig {
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
         -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.ARTIST_NAME, SortField.YEAR)
+        SubItemContext.ARTIST_AUDIOBOOKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
     }
 
     /**
@@ -120,6 +121,7 @@ object SortConfig {
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_AUDIOBOOKS,
         -> SortOption(SortField.ORIGINAL)
         else -> SortOption(SortField.NAME)
     }
@@ -141,6 +143,9 @@ enum class SubItemContext {
     ARTIST_TOP_TRACKS,
     ARTIST_ALL_ALBUMS,
     ARTIST_LIBRARY_ALBUMS,
+
+    // The audiobooks of an author or a narrator, in the library and on a provider.
+    ARTIST_AUDIOBOOKS,
 }
 
 fun <T> List<T>.clientSorted(option: SortOption, context: SubItemContext? = null): List<T> {

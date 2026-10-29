@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.auth.AuthCoordinator
+import io.music_assistant.client.auth.AuthState
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.MediaType
@@ -21,29 +23,43 @@ import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.Playlist
+import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.ownerLine
+import io.music_assistant.client.data.model.client.items.refreshItemAction
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
+import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.data.repository.favoriteAfter
+import io.music_assistant.client.settings.PlayedFilter
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -54,6 +70,9 @@ class ItemDetailsViewModel(
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val providerRepository: ProviderRepository,
+    private val itemRefresher: ItemRefresher,
+    private val authCoordinator: AuthCoordinator,
+    private val transcriptRepository: TranscriptRepository,
     private val itemId: String,
     private val mediaType: MediaType,
     private val providerId: String,
@@ -69,16 +88,37 @@ class ItemDetailsViewModel(
         val radioVersionsState: DataState<List<RadioStation>> = DataState.NoData(),
         /** NoData while no provider has [SIMILAR_TRACKS_FEATURE]: then the tab is not shown. */
         val similarTracksState: DataState<List<Track>> = DataState.NoData(),
-        /** Lyrics of the loaded [Track]; null for other items and for a track without lyrics. */
+        /** The lyrics of the loaded [Track] or the transcript of the loaded [PodcastEpisode]; null without one. */
         val lyrics: Lyrics? = null,
         val albumsSortOption: SortOption? = null,
         val playableItemsSortOption: SortOption? = null,
+        /** Podcast only: whether the episodes tab hides the episodes played to the end. */
+        val episodesPlayedFilter: PlayedFilter = PlayedFilter.ALL,
         /** In-list text filter; null while the search field is closed, "" once opened. */
         val playableItemsQuery: String? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
         val userSelectedTab: ItemDetailsTab? = null,
         val radioTracksSupported: Boolean = false,
+        /** True while `music/refresh_item` runs for the item, from this page or an earlier one. */
+        val refreshingItem: Boolean = false,
+        /** The library genres of a library artist or album; empty for every other item. */
+        val genres: List<Genre> = emptyList(),
+        /** The owner line of a playlist; null for every other item and for a playlist without one. */
+        val playlistOwnerLine: PlaylistOwnerLine? = null,
     ) {
+        /**
+         * The count and the total playing time of the loaded tracks of an album or a playlist, for
+         * the facts line of the header. Null while they load, for an empty list, and for a type
+         * without a fixed track list: a dynamic playlist yields its tracks on demand.
+         */
+        val playableSummary: PlayableSummary?
+            get() = when (val item = itemOrNull()) {
+                is Album -> playableItemsState
+                is Playlist -> playableItemsState.takeUnless { item.isDynamic }
+                else -> null
+            }?.dataOrNull?.takeIf { it.isNotEmpty() }
+                ?.let { items -> PlayableSummary(items.size, items.sumOf { it.duration ?: 0.0 }) }
+
         /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
         val tabs: List<ItemDetailsTab>
             get() = itemOrNull()?.let { item ->
@@ -124,6 +164,7 @@ class ItemDetailsViewModel(
     private var rawAlbums: List<Album> = emptyList()
     private var rawPlayableItems: List<PlayableItem> = emptyList()
     private var playableItemsContext: SubItemContext? = null
+    private var transcriptJob: Job? = null
 
     /** Inputs of the visible playable list. Null while that list is not Data; see [setPlayableItemsState]. */
     private val playableInputs = MutableStateFlow<PlayableInputs?>(null)
@@ -149,6 +190,16 @@ class ItemDetailsViewModel(
     )
     val state = _state.asStateFlow()
 
+    /** The refresh entry of the item menu; null hides it. */
+    val refreshAction: StateFlow<RefreshItemAction?> =
+        combine(
+            _state.map { it.itemOrNull() }.distinctUntilChanged(),
+            mainDataSource.refreshItemAccess,
+            providerRepository.providers,
+        ) { item, access, providers ->
+            item?.refreshItemAction(access, providers.dataOrNull)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), null)
+
     init {
         // Listen to library changes; refresh the open item + its sub-lists.
         // The repository already handles the library-fallback re-keying that
@@ -163,6 +214,24 @@ class ItemDetailsViewModel(
                     }
                 }
                 updateSubItemIfNeeded(updated, change)
+            }
+        }
+        viewModelScope.launch {
+            combine(
+                _state.map { it.itemOrNull()?.uri }.distinctUntilChanged(),
+                itemRefresher.refreshingUris,
+            ) { uri, uris -> uri in uris }
+                .distinctUntilChanged()
+                .collect { refreshing -> _state.update { it.copy(refreshingItem = refreshing) } }
+        }
+        // The refresh changes the listings of the item, so the sub-items load again. The answer
+        // replaces the item by uri, because a substitute shares no mapping with an unavailable item.
+        viewModelScope.launch {
+            itemRefresher.refreshed.collect { (uri, refreshed) ->
+                val current = _state.value.itemOrNull()?.takeIf { it.uri == uri } ?: return@collect
+                val item = refreshed.withFavorite(current.favorite)
+                _state.update { it.copy(itemState = DataState.Data(item)) }
+                loadSubItems(item)
             }
         }
         // Filter and sort off Main. mapLatest drops a superseded run; the identity check drops a
@@ -218,6 +287,7 @@ class ItemDetailsViewModel(
             MediaType.GENRE -> Request.Genre.get(itemId, providerId)
             MediaType.COLLECTION -> Request.Audiobook.getCollection(itemId)
             MediaType.TRACK -> Request.Track.get(itemId, providerId)
+            MediaType.PODCAST_EPISODE -> Request.Podcast.getEpisode(itemId, providerId)
             else -> return null
         }
 
@@ -231,6 +301,7 @@ class ItemDetailsViewModel(
                 // first per-artist lookup (lastfm + matching) is the slow part, so we pay it while
                 // the user browses albums/tracks rather than on the menu tap.
                 loadSimilarArtists()
+                loadGenres(item)
             }
 
             is Album -> {
@@ -242,6 +313,7 @@ class ItemDetailsViewModel(
                     )
                 }
                 loadAlbumTracks(item.itemId, item.provider)
+                loadGenres(item)
             }
 
             is Playlist -> {
@@ -253,6 +325,7 @@ class ItemDetailsViewModel(
                     )
                 }
                 loadPlaylistTracks(item.itemId, item.provider)
+                loadPlaylistOwner(item)
             }
             is RadioStation -> {
                 loadRadioVersions(item)
@@ -285,6 +358,7 @@ class ItemDetailsViewModel(
                         albumsState = DataState.NoData(),
                         albumsSortOption = null,
                         playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PODCAST_EPISODES),
+                        episodesPlayedFilter = settingsRepository.getPodcastEpisodesPlayedFilter(),
                     )
                 }
                 loadPodcastEpisodes(item.itemId, item.provider)
@@ -335,6 +409,19 @@ class ItemDetailsViewModel(
                 loadTrackDetails(item)
             }
 
+            is PodcastEpisode -> {
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = settingsRepository.getSortOption(SubItemContext.PODCAST_EPISODES),
+                        episodesPlayedFilter = settingsRepository.getPodcastEpisodesPlayedFilter(),
+                    )
+                }
+                loadOtherEpisodes(item)
+                loadTranscript(item)
+            }
+
             else -> {
                 _state.update {
                     it.copy(
@@ -346,6 +433,34 @@ class ItemDetailsViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /** The library genres mapped to a library item. The server maps none to an item of a music service. */
+    private fun loadGenres(item: AppMediaItem) {
+        if (!item.isInLibrary) {
+            _state.update { it.copy(genres = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            val genres = fetchList<Genre>(Request.Genre.forItem(item.mediaType, item.itemId))
+            _state.update { it.copy(genres = genres.dataOrNull.orEmpty()) }
+        }
+    }
+
+    /**
+     * The owner line at once, then with the name of another owner when the viewer may list the
+     * members (`library.write`). A refused or failed listing keeps the line without the name.
+     */
+    private fun loadPlaylistOwner(playlist: Playlist) {
+        val viewerId = (authCoordinator.authState.value as? AuthState.Authenticated)?.user?.userId
+        val accessSupported = mainDataSource.playlistAccessSupported.value
+        _state.update { it.copy(playlistOwnerLine = playlist.ownerLine(accessSupported, viewerId, null)) }
+        val ownerId = playlist.access?.owner?.takeIf { accessSupported && it != viewerId } ?: return
+        if (!mainDataSource.grantedScopes.value.canEditLibrary) return
+        viewModelScope.launch {
+            val name = providerRepository.shareCandidates()?.firstOrNull { it.userId == ownerId }?.name ?: return@launch
+            _state.update { it.copy(playlistOwnerLine = playlist.ownerLine(accessSupported, viewerId, name)) }
         }
     }
 
@@ -425,24 +540,51 @@ class ItemDetailsViewModel(
         }
     }
 
-    private fun loadPodcastEpisodes(itemId: String, provider: String) {
-        viewModelScope.launch {
+    // Server 2.11 filters played episodes before paging; older servers may ignore
+    // the argument, so filter locally too. Cancel previous loads when the filter changes.
+    private fun loadPodcastEpisodes(
+        itemId: String,
+        provider: String,
+        exceptItemId: String? = null,
+    ) {
+        episodesLoad?.cancel()
+        episodesLoad = viewModelScope.launch {
             setPlayableItemsState(DataState.Loading())
+            val hidePlayed = _state.value.episodesPlayedFilter == PlayedFilter.HIDE_PLAYED
 
             try {
                 val episodes = mediaItemRepository.fetchAllMediaItems(
                     Request.Podcast.getEpisodes(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
+                        fullyPlayed = false.takeIf { hidePlayed },
                     ),
                 )
                     ?.filterIsInstance<PodcastEpisode>()
+                    ?.filterNot { hidePlayed && it.fullyPlayed == true }
+                    ?.filterNot { it.itemId == exceptItemId }
                     ?: emptyList()
 
                 setPlayableItems(episodes, SubItemContext.PODCAST_EPISODES)
             } catch (e: Exception) {
                 Logger.e("Failed to load podcast episodes", e)
                 setPlayableItemsState(DataState.Error())
+            }
+        }
+    }
+
+    /** The other episodes of the podcast of [episode], like the web page. Nothing without the podcast. */
+    private fun loadOtherEpisodes(episode: PodcastEpisode) {
+        val podcast = episode.podcast ?: return setPlayableItemsState(DataState.NoData())
+        loadPodcastEpisodes(podcast.itemId, podcast.provider, exceptItemId = episode.itemId)
+    }
+
+    /** Follows the transcript of [episode] into [State.lyrics]; the repository loads it once. */
+    private fun loadTranscript(episode: PodcastEpisode) {
+        transcriptJob?.cancel()
+        transcriptJob = viewModelScope.launch {
+            transcriptRepository.also { it.load(episode) }.transcript(episode).collect { transcript ->
+                _state.update { it.copy(lyrics = transcript.dataOrNull) }
             }
         }
     }
@@ -584,7 +726,8 @@ class ItemDetailsViewModel(
     }
 
     fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
-        val parent = (_state.value.itemState as? DataState.Data)?.data
+        // The rows of an episode page belong to its podcast, so "from here" plays the podcast.
+        val parent = (_state.value.itemState as? DataState.Data)?.data?.let { (it as? PodcastEpisode)?.podcast ?: it }
         val (itemToPlay, startItem) = if (mode.fromHereInParent && parent != null) {
             Pair(parent, item)
         } else {
@@ -629,6 +772,22 @@ class ItemDetailsViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private var episodesLoad: Job? = null
+
+    /** The filter is a server argument on 2.11, so the episodes load again. */
+    fun onEpisodesPlayedFilterToggled() {
+        val item = _state.value.itemOrNull()
+        if (item !is Podcast && item !is PodcastEpisode) return
+        val filter = _state.value.episodesPlayedFilter.toggled()
+        settingsRepository.setPodcastEpisodesPlayedFilter(filter)
+        _state.update { it.copy(episodesPlayedFilter = filter) }
+        when (item) {
+            is Podcast -> loadPodcastEpisodes(item.itemId, item.provider)
+            is PodcastEpisode -> loadOtherEpisodes(item)
+            else -> Unit
         }
     }
 
@@ -678,6 +837,11 @@ class ItemDetailsViewModel(
         if (_state.value.playableItemsState is DataState.Loading) return
         val playlist = (state.value.itemState as? DataState.Data)?.data as? Playlist ?: return
         loadPlaylistTracks(playlist.itemId, playlist.provider, forceRefresh = true)
+    }
+
+    /** The [ItemRefresher] sends it in the app scope; [ItemRefresher.refreshed] gives the answer. */
+    fun refreshItem() {
+        _state.value.itemOrNull()?.uri?.let(itemRefresher::refresh)
     }
 
     fun reload() {
@@ -784,6 +948,7 @@ private fun ItemDetailsTab.subState(
     ItemDetailsTab.PLAYLIST_ITEMS,
     ItemDetailsTab.RADIO_TRACKS,
     ItemDetailsTab.PODCAST_EPISODES,
+    ItemDetailsTab.OTHER_EPISODES,
     ItemDetailsTab.COLLECTION_ITEMS,
         -> state.playableItemsState
 
@@ -797,3 +962,6 @@ private fun DataState<List<*>>.hasItems(): Boolean = when (this) {
     is DataState.Stale -> data.isNotEmpty()
     else -> false
 }
+
+/** The count and the total playing time, in seconds, of a loaded track list. */
+data class PlayableSummary(val count: Int, val totalSeconds: Double)

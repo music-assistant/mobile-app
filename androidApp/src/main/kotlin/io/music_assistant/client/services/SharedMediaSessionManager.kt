@@ -93,6 +93,14 @@ private val SESSION_TRANSPORT_ACTIONS: Long =
         PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
         PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
 
+/** [SESSION_TRANSPORT_ACTIONS] for [data]: no seek bar to drag where it cannot seek. */
+internal fun sessionTransportActions(data: MediaNotificationData): Long =
+    if (data.isSeekable) {
+        SESSION_TRANSPORT_ACTIONS
+    } else {
+        SESSION_TRANSPORT_ACTIONS and PlaybackStateCompat.ACTION_SEEK_TO.inv()
+    }
+
 // The API 33+ media card shows the first two custom actions; the pre-33 notification mirrors it.
 private const val NOTIFICATION_CUSTOM_ACTION_SLOTS = 2
 
@@ -646,7 +654,7 @@ class SharedMediaSessionManager(
             PlaybackStateCompat.STATE_PAUSED
         }
         val playbackState = PlaybackStateCompat.Builder()
-            .setActions(SESSION_TRANSPORT_ACTIONS)
+            .setActions(sessionTransportActions(data))
             .setState(
                 state,
                 data.elapsedTime ?: PlaybackState.PLAYBACK_POSITION_UNKNOWN,

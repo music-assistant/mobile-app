@@ -138,6 +138,8 @@ private fun withRadioStreamMetadata(
         artist = media?.artist?.takeIf { it.isNotBlank() },
         album = base.title,
         artworkUrl = media?.imageUrl ?: base.artworkUrl,
+        // The song's length, when the stream reports its position in it.
+        duration = media?.duration ?: base.duration,
     )
 }
 

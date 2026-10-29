@@ -6,16 +6,18 @@ import io.music_assistant.client.utils.UniqueIdGenerator
 object ServerPlayerFixtures {
     private val uniqueIdGenerator = UniqueIdGenerator()
 
-    fun player(): ServerPlayer {
-        val playerId = uniqueIdGenerator.nextInt().toString()
+    fun player(
+        id: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Player $id",
+    ): ServerPlayer {
         return ServerPlayer(
-            playerId = playerId,
-            displayName = "Player $playerId",
+            playerId = id,
+            displayName = name,
             available = true,
             hidden = false,
             enabled = true,
             currentMedia = null,
-            activeSource = playerId,
+            activeSource = id,
         )
     }
 }

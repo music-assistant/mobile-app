@@ -3,7 +3,7 @@ package io.music_assistant.client.ui.compose.library
 import io.music_assistant.client.settings.SettingsRepository
 
 /**
- * Reconcile a stored library-tab config against the live [libraryTabCategories] universe: drop
+ * Reconcile a stored library-tab config against the live [libraryCategories] universe: drop
  * unknown names (a category removed from the app) and append any categories missing from the
  * stored config (a category added after the user's config was saved, e.g. BROWSE) at the end,
  * enabled.
@@ -14,14 +14,14 @@ import io.music_assistant.client.settings.SettingsRepository
 internal fun reconcileLibraryCategories(
     stored: List<SettingsRepository.LibraryCategoryPref>?,
 ): List<Pair<LibraryCategory, Boolean>> {
-    if (stored == null) return libraryTabCategories.map { it to true }
+    if (stored == null) return libraryCategories.map { it to true }
     val parsed = stored.mapNotNull { pref ->
         runCatching { LibraryCategory.valueOf(pref.name) }.getOrNull()
-            ?.takeIf { it in libraryTabCategories }
+            ?.takeIf { it in libraryCategories }
             ?.let { it to pref.enabled }
     }
     val present = parsed.map { it.first }.toSet()
-    val missing = libraryTabCategories.filter { it !in present }.map { it to true }
+    val missing = libraryCategories.filter { it !in present }.map { it to true }
     return parsed + missing
 }
 

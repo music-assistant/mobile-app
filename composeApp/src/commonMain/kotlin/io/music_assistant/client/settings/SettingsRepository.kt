@@ -783,6 +783,16 @@ class SettingsRepository(
         settings.putString(SERIES_GROUPING_KEY, grouping.name)
     }
 
+    // Podcast-episodes display choice, shared by every podcast; the item ViewModel is the only writer.
+    fun getPodcastEpisodesPlayedFilter(): PlayedFilter =
+        settings.getStringOrNull(PODCAST_EPISODES_PLAYED_FILTER_KEY)
+            ?.let { runCatching { PlayedFilter.valueOf(it) }.getOrNull() }
+            ?: PlayedFilter.ALL
+
+    fun setPodcastEpisodesPlayedFilter(filter: PlayedFilter) {
+        settings.putString(PODCAST_EPISODES_PLAYED_FILTER_KEY, filter.name)
+    }
+
     fun getSortOption(context: SubItemContext): SortOption {
         // A fixed-order context has no chip, so a value persisted by an older app version could
         // never be changed back — including a stale descending flag on ORIGINAL. Ignore it outright.
@@ -816,6 +826,7 @@ class SettingsRepository(
         private const val SERVER_ID_PREFIX = "id_"
         private const val CLIENT_CERTIFICATE_ALIAS_KEY = "client_certificate_alias"
         private const val SERIES_GROUPING_KEY = "library_series_grouping"
+        private const val PODCAST_EPISODES_PLAYED_FILTER_KEY = "podcast_episodes_played_filter"
         private val SECRET_STRING_KEYS = listOf(
             "host",
             "webrtc_remote_id",

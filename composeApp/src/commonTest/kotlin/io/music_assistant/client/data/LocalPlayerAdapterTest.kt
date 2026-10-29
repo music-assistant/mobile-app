@@ -50,7 +50,7 @@ class LocalPlayerAdapterTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val tracker = PlayerPositionTracker()
     private val adapter = run {
-        val preferences = UserPreferences()
+        val preferences = UserPreferences(client)
         LocalPlayerAdapter(
             settings = settings,
             apiClient = client,

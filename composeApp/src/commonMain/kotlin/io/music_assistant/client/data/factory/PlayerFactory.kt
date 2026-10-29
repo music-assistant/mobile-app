@@ -5,6 +5,7 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerMedia
 import io.music_assistant.client.data.model.client.PlayerType
+import io.music_assistant.client.data.model.client.SongTiming
 import io.music_assistant.client.data.model.server.PlayerFeature
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.ServerPlayer
@@ -58,17 +59,28 @@ class PlayerFactory(
 
     private fun createPlayerMedia(server: ServerPlayerMedia): PlayerMedia = with(server) {
         val clientMediaType = MediaType.fromServer(mediaType)
+        val songTiming = songTiming(clientMediaType)
         PlayerMedia(
             title = title,
             artist = artist,
             album = album,
             imageUrl = imageUrl?.let(apiClient::rebaseServerImageUrl),
-            duration = duration.takeIf { clientMediaType != MediaType.RADIO },
+            // A radio stream has a duration only for a song it reports its position in.
+            duration = if (clientMediaType == MediaType.RADIO) songTiming?.duration else duration,
             queueId = sourceId,
             queueItemId = queueItemId,
             mediaType = clientMediaType,
             uri = uri,
+            songTiming = songTiming,
         )
+    }
+
+    private fun ServerPlayerMedia.songTiming(clientMediaType: MediaType?): SongTiming? {
+        if (clientMediaType != MediaType.RADIO) return null
+        val songDuration = duration?.takeIf { it > 0 } ?: return null
+        val elapsed = elapsedTime ?: return null
+        val updatedAt = elapsedTimeLastUpdated ?: return null
+        return SongTiming(duration = songDuration, elapsed = elapsed, updatedAt = updatedAt)
     }
 
     private companion object {

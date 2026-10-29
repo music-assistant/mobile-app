@@ -1,6 +1,8 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -8,32 +10,32 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
+import io.music_assistant.client.ui.compose.ScreenSemantics
 import io.music_assistant.client.ui.compose.home.HomeScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.home_edit_rows
-import musicassistantclient.composeapp.generated.resources.home_save_rows
+import musicassistantclient.composeapp.generated.resources.discover_edit_rows
+import musicassistantclient.composeapp.generated.resources.discover_save_rows
 import musicassistantclient.composeapp.generated.resources.library_error
-import musicassistantclient.composeapp.generated.resources.nav_home
-import musicassistantclient.composeapp.generated.resources.nav_library
+import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_search
-import musicassistantclient.composeapp.generated.resources.nav_settings
 
 class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) {
     override fun assert() {
-        composeTestRule.onNodeWithText(Res.string.nav_home.get()).assertIsDisplayed()
+        composeTestRule
+            .onNode(hasTestTag(ScreenSemantics.TITLE_TAG).and(hasText(Res.string.nav_discover.get())))
+            .assertIsDisplayed()
+
         assertNavBar(
             items = listOf(
-                Res.string.nav_home.get(),
-                Res.string.nav_library.get(),
+                Res.string.nav_discover.get(),
                 Res.string.nav_search.get(),
-                Res.string.nav_settings.get(),
             ),
-            selected = Res.string.nav_home.get(),
+            selected = Res.string.nav_discover.get(),
         )
     }
 
     fun clickOnMedia(item: ServerMediaItem, withinTag: String? = null): ItemPage {
-        return clickOnMedia(item, Res.string.nav_home.get(), withinTag)
+        return clickOnMedia(item, Res.string.nav_discover.get(), withinTag)
     }
 
     fun refresh(): HomePage {
@@ -42,19 +44,19 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     }
 
     fun editRows(): HomePage {
-        composeTestRule.onNodeWithContentDescription(Res.string.home_edit_rows.get()).performClick()
+        composeTestRule.onNodeWithContentDescription(Res.string.discover_edit_rows.get()).performClick()
         return this
     }
 
     fun saveRows(): HomePage {
-        composeTestRule.onNodeWithContentDescription(Res.string.home_save_rows.get()).performClick()
+        composeTestRule.onNodeWithContentDescription(Res.string.discover_save_rows.get()).performClick()
         return this
     }
 
     fun clickOnShortcut(item: ServerMediaItem): ItemPage {
         return clickOnMedia(
             item,
-            Res.string.nav_home.get(),
+            Res.string.nav_discover.get(),
             withinTag = HomeScreenSemantics.SHORTCUTS_ROW_TAG,
         )
     }

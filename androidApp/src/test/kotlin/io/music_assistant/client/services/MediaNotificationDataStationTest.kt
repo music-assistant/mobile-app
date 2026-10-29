@@ -1,6 +1,7 @@
 package io.music_assistant.client.services
 
 import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.MediaType
@@ -43,6 +44,37 @@ class MediaNotificationDataStationTest {
         assertEquals("On Air Song", data.name)
         assertEquals("On Air Artist", data.artist)
         assertEquals("On Air Album", data.album)
+    }
+
+    @Test
+    fun `a radio song shows its length without a seek bar to drag`() {
+        val data = MediaNotificationData.from(
+            playerData(
+                station = radioStation("Example Radio"),
+                media = PlayerMedia(
+                    title = "On Air Song",
+                    artist = "On Air Artist",
+                    album = null,
+                    imageUrl = null,
+                    duration = 430.0,
+                    queueId = "queue",
+                    queueItemId = "radio-item",
+                    mediaType = MediaType.RADIO,
+                    uri = null,
+                ),
+            ),
+            multiplePlayers = false,
+            canEditLibrary = false,
+            effectiveElapsedSec = 104.0,
+        )
+
+        assertEquals(430_000L, data.duration)
+        assertEquals(104_000L, data.elapsedTime)
+        assertEquals(0L, sessionTransportActions(data) and PlaybackStateCompat.ACTION_SEEK_TO)
+        assertEquals(
+            PlaybackStateCompat.ACTION_SEEK_TO,
+            sessionTransportActions(data.copy(isSeekable = true)) and PlaybackStateCompat.ACTION_SEEK_TO,
+        )
     }
 
     @Test
