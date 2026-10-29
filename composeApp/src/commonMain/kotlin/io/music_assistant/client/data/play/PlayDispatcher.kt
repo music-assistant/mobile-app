@@ -29,10 +29,14 @@ import kotlinx.coroutines.launch
  * keeps short. The server serializes play actions per queue and never cancels a running
  * one, so sending a burst of taps would only make it play each of them in turn. Lanes of
  * different queues are independent.
+ *
+ * [beforeSend] runs before each request leaves, with its queue id. The local player uses it
+ * to bring its audio link up first: the server rejects a play for a player it cannot reach.
  */
 class PlayDispatcher(
     private val apiClient: ServiceClient,
     private val scope: CoroutineScope,
+    private val beforeSend: suspend (queueId: String) -> Unit = {},
 ) {
     private val log = Logger.withTag("PlayDispatch")
 
@@ -77,6 +81,7 @@ class PlayDispatcher(
         try {
             while (true) {
                 val next = takeNext(queueId) ?: return
+                beforeSend(queueId)
                 apiClient.sendRequest(next.toRequest())
                     .onFailure { log.w(it) { "play_media failed for $next: ${it.message}" } }
             }

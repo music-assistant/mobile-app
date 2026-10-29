@@ -346,7 +346,9 @@ private fun PlayerSelection(
                         )
                     }
 
-                    if (!item.isLocal) {
+                    // The phone offers grouping only while the server lists it (then it has
+                    // child candidates), like the web frontend, which hides a hidden player.
+                    if (!item.isLocal || item.childrenBinds.isNotEmpty() || item.player.isGrouped) {
                         IconButton(onClick = { onGroupRequest(item) }) {
                             BadgedBox(
                                 badge = {
@@ -379,26 +381,31 @@ private fun PlayerSelection(
                         )
                     }
 
-                    if (!item.isLocal) {
-                        Icon(
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .draggableHandle(
-                                    onDragStopped = {
-                                        dragEndIndex?.let {
-                                            onReorder(
-                                                internalPlayers.map { p -> p.player.id },
-                                                item.player.id,
-                                            )
-                                        }
-                                    },
-                                )
-                                .size(16.dp),
-                            imageVector = TablerIcons.GripVertical,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
+                    // The local player is pinned first, so its handle is invisible and inert;
+                    // it keeps the group buttons of all rows aligned.
+                    val handle = if (item.isLocal) {
+                        Modifier.alpha(0f)
+                    } else {
+                        Modifier.draggableHandle(
+                            onDragStopped = {
+                                dragEndIndex?.let {
+                                    onReorder(
+                                        internalPlayers.map { p -> p.player.id },
+                                        item.player.id,
+                                    )
+                                }
+                            },
                         )
                     }
+                    Icon(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .then(handle)
+                            .size(16.dp),
+                        imageVector = TablerIcons.GripVertical,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
                 }
             }
         }
