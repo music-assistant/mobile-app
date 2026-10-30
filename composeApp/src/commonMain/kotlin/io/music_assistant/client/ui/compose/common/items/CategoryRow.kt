@@ -84,6 +84,7 @@ fun <T, U> CategoryRow(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
+    viewAllColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (data is DataState.Data) {
         CategoryRow(
@@ -97,6 +98,7 @@ fun <T, U> CategoryRow(
             libraryActions = libraryActions,
             progressActions = progressActions,
             providerIconFetcher = providerIconFetcher,
+            viewAllColor = viewAllColor,
         )
     } else if (data is DataState.Loading) {
         val placeholderColor by rememberInfiniteTransition().animateColor(
@@ -136,6 +138,7 @@ fun <T> CategoryRow(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
+    viewAllColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (itemCategory.items.isEmpty() && itemCategory.filter == null) {
         return
@@ -161,6 +164,7 @@ fun <T> CategoryRow(
                     rowTitle = title,
                     onNavigateToList = onNavigateToList,
                     itemList = itemCategory.list,
+                    color = viewAllColor,
                 )
             }
         },
@@ -385,6 +389,7 @@ private fun ViewAllButton(
     rowTitle: String,
     onNavigateToList: (String, ItemList) -> Unit,
     itemList: ItemList,
+    color: Color,
 ) {
     val viewAllContentDescription = stringResource(Res.string.cd_view_all, rowTitle)
     TextButton(
@@ -395,7 +400,10 @@ private fun ViewAllButton(
             onNavigateToList(rowTitle, itemList)
         },
     ) {
-        Text(stringResource(Res.string.action_view_all))
+        Text(
+            text = stringResource(Res.string.action_view_all),
+            color = color,
+        )
     }
 }
 
