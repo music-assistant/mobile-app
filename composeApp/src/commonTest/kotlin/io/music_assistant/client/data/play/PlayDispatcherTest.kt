@@ -106,6 +106,27 @@ class PlayDispatcherTest {
         assertEquals(setOf("kitchen", "office"), dispatcher.busyQueueIds.value)
     }
 
+    @Test
+    fun `beforeSend runs with the queue id before each request leaves`() = runTest {
+        val client = GatedClient()
+        val prepared = mutableListOf<String>()
+        val dispatcher = PlayDispatcher(client, backgroundScope) { queueId ->
+            prepared += queueId
+            assertEquals(prepared.size - 1, client.sentMedia.size)
+        }
+
+        dispatcher.play(play("a", queue = "kitchen"))
+        runCurrent()
+        client.answer()
+        dispatcher.play(play("b", queue = "kitchen"))
+        runCurrent()
+        client.answer()
+        runCurrent()
+
+        assertEquals(listOf("kitchen", "kitchen"), prepared)
+        assertEquals(listOf("a", "b"), client.sentMedia)
+    }
+
     /** Holds every request until the test answers it, oldest first. */
     private class GatedClient : StubServiceClient() {
         private val sent = mutableListOf<Request>()
