@@ -53,6 +53,7 @@ import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
+import io.music_assistant.client.ui.compose.common.items.SoundEffectWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.grid.gridItemMinSize
@@ -230,10 +231,13 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                // Reaches the client only as a queue item (an AI Radio host clip), never
-                // through a library list, a search result or a browse folder. Named rather
-                // than folded into an `else` so a genuinely new media type still fails here.
-                is SoundEffect -> Unit
+                is SoundEffect -> SoundEffectWithMenu(
+                    item = item,
+                    viewMode = viewMode,
+                    onPlayOption = onPlayClick,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = null,
+                )
             }
         }
 

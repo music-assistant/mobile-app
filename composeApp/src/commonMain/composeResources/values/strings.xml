@@ -267,7 +267,8 @@
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_series">Series</string>
-  <string name="item_subtitle_sound_effect">AI host</string>
+  <string name="item_subtitle_ai_host">AI host</string>
+  <string name="item_subtitle_sound_effect">Sound effect</string>
   <string name="item_subtitle_unknown">Unknown</string>
   <string name="item_tab_other_episodes">Other episodes</string>
   <string name="item_tab_similar_tracks">Similar tracks</string>
