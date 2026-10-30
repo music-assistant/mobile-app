@@ -234,7 +234,6 @@ class LocalPlayerAdapterTest {
         val local = playing()
         adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
         player.state.value = PlayerState.Disabled
-        delay(SETTLE_MS) // the adapter derives its command readiness from the player state
 
         adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Play)
 
@@ -299,9 +298,15 @@ class LocalPlayerAdapterTest {
         tracker.setAnchor(QUEUE_ID, elapsedSec = EPISODE_POSITION_SEC, isPlaying = false)
     }
 
-    /** Injects the synthetic local player and lets the server report it as playing. */
+    /**
+     * Injects the synthetic local player and lets the server report it as playing. The adapter
+     * mirrors the connected player id into the settings on its own scope, so the injection waits
+     * for it: a synthetic made before the mirror lands carries the old id, and the test would then
+     * push that id back through the server update.
+     */
     private suspend fun playing(): Player {
         player.connect()
+        await { settings.sendspinEffectivePlayerId.value.takeIf { it == PLAYER_ID } }
         adapter.onInitialPlayersReceived(hasLocalPlayer = false)
         val synthetic = await { adapter.localPlayerData.value?.player }
         adapter.onServerPlayerUpdate(synthetic.copy(isPlaying = true))
@@ -329,7 +334,7 @@ class LocalPlayerAdapterTest {
         }
 
         fun connect() {
-            state.value = PlayerState.Connected("player", "server", ClockQuality.Good, AudioStatus.IDLE)
+            state.value = PlayerState.Connected(PLAYER_ID, "server", ClockQuality.Good, AudioStatus.IDLE)
         }
 
         /** Waits for [subscribers] collectors first: the flow has no replay. */
@@ -365,6 +370,7 @@ class LocalPlayerAdapterTest {
         val NEXT = APICommands.playersCmd("next")
         val STOP = APICommands.playersCmd("stop")
         const val QUEUE_ID = "queue"
+        const val PLAYER_ID = "player"
         const val EPISODE_POSITION_SEC = 1800.0
         const val TIMEOUT_MS = 5_000L
         const val POLL_MS = 10L

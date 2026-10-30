@@ -22,6 +22,7 @@ import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.utils.combineState
 import io.music_assistant.client.utils.mapState
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.Endpoint
@@ -171,8 +172,9 @@ class LocalPlayerAdapter(
 
     /** A command needs the MA session and a registered player: the server drops a command for a player it cannot reach. */
     private val isReadyForCommands: StateFlow<Boolean> =
-        combine(apiClient.isReadyForCommands, player.state) { ready, state -> ready && state is PlayerState.Connected }
-            .stateIn(this, SharingStarted.Eagerly, false)
+        combineState(apiClient.isReadyForCommands, player.state) { ready, state ->
+            ready && state is PlayerState.Connected
+        }
 
     private val commands = LocalCommandQueue(
         isReady = isReadyForCommands,
