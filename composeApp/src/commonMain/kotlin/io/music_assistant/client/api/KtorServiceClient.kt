@@ -395,7 +395,6 @@ class KtorServiceClient(
                 is SessionState.Connected.WebRTC -> BackgroundedConnectionInfo.WebRTC(s.remoteId)
                 else -> null
             } ?: return false
-        backgroundedConnectionInfo = null
         logger.i { "Force reconnect: $reason" }
 
         // forceConnect / forceConnectWebRTC bypass the public guard and handle
@@ -429,11 +428,17 @@ class KtorServiceClient(
 
     /**
      * Called while the local player plays, or while a local pause is not yet confirmed by the
-     * server (the adapter's `wantsSession`). Prevents background teardown.
+     * server (the adapter's `wantsSession`). Prevents background teardown. A stream that the
+     * server starts on the local player while the session is torn down in the background
+     * brings it back, like a car host does: the app must show what the phone plays.
      */
     override fun onPlaybackActive() {
         hasActivePlayback = true
-        logger.i { "Playback active (state=${stateLabel(_sessionState.value)})" }
+        val state = _sessionState.value
+        logger.i { "Playback active (state=${stateLabel(state)})" }
+        if (state is SessionState.Disconnected.Backgrounded) {
+            reconnectFromCurrent("playback active (was Backgrounded)")
+        }
     }
 
     /**
@@ -705,6 +710,9 @@ class KtorServiceClient(
         // New connection episode: the silent-failure budget is per-server-session, so
         // a prior server's failures must not pre-charge this one's escape hatch.
         silentReauth.reset()
+        // A JIT reconnect also consumes the backgrounded session: a stale copy would make the
+        // next foreground tear down this live transport and connect again over it.
+        backgroundedConnectionInfo = null
         tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
         startConnectWatchdog()
 
@@ -762,6 +770,7 @@ class KtorServiceClient(
     /** WebRTC twin of [forceConnect]. */
     private fun forceConnectWebRTC(remoteId: RemoteId) {
         silentReauth.reset()
+        backgroundedConnectionInfo = null
         tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
         startConnectWatchdog()
 
