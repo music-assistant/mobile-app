@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -194,6 +195,7 @@ fun ItemDescriptionBlock(
     description: ItemDescription,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
+    moreColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     var clamped by remember(description) { mutableStateOf(false) }
     val more = stringResource(Res.string.item_description_more)
@@ -220,7 +222,7 @@ fun ItemDescriptionBlock(
             Text(
                 text = more,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
+                color = moreColor,
             )
         }
     }
