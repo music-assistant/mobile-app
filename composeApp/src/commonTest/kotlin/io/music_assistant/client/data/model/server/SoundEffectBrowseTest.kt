@@ -7,11 +7,13 @@ import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.SoundEffect
+import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.ui.compose.common.items.ItemAction
 import io.music_assistant.client.ui.compose.common.items.resolveLongClickActions
 import io.music_assistant.client.utils.myJson
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -52,6 +54,8 @@ class SoundEffectBrowseTest {
             providerMappings = listOf(ProviderMapping("clip", "ai_radio", "opaque-instance")),
         )
         assertTrue(host.isAiHost)
+        assertFalse(host.canBeFavorited)
+        assertFalse(sound.canBeFavorited)
         assertEquals(Icons.Default.RecordVoiceOver, host.defaultIcon)
         val otherSound = host.copy(
             providerMappings = listOf(ProviderMapping("clip", "ambient_sounds", "opaque-instance")),
