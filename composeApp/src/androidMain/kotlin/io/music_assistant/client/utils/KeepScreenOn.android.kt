@@ -1,8 +1,5 @@
 package io.music_assistant.client.utils
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,8 +20,3 @@ actual fun KeepScreenOn(enabled: Boolean) {
         onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
 }
-
-private fun Context.findActivity(): Activity? =
-    generateSequence(this) { (it as? ContextWrapper)?.baseContext }
-        .filterIsInstance<Activity>()
-        .firstOrNull()

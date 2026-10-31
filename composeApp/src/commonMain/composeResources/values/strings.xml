@@ -40,6 +40,8 @@
   <string name="action_remove_from_library">Remove from library</string>
   <string name="action_remove_from_playlist">Remove from playlist</string>
   <string name="action_replace_next">Add next and replace the rest</string>
+  <string name="action_show_artwork_only">Show artwork only</string>
+  <string name="action_show_player_controls">Show player controls</string>
   <string name="action_similar_artists">Similar artists</string>
   <string name="action_start_endless_mix">Start endless mix</string>
   <string name="action_start_radio">Start radio</string>
