@@ -1,5 +1,8 @@
 package io.music_assistant.client.data.model.server
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.RecordVoiceOver
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.QueueOption
@@ -37,6 +40,24 @@ class SoundEffectBrowseTest {
             assertTrue(item.isPlayable)
             assertEquals("${item.provider}://sound_effect/${item.itemId}", item.mediaUri)
         }
+    }
+
+    @Test
+    fun `host classification and fallback icon use provider mappings only`() {
+        val sound = browseItem("ai_radio--instance", "clip", "Introduction", 30)
+        assertEquals(false, sound.isAiHost)
+        assertEquals(Icons.Default.GraphicEq, sound.defaultIcon)
+        val host = sound.copy(
+            provider = "opaque-instance",
+            providerMappings = listOf(ProviderMapping("clip", "ai_radio", "opaque-instance")),
+        )
+        assertTrue(host.isAiHost)
+        assertEquals(Icons.Default.RecordVoiceOver, host.defaultIcon)
+        val otherSound = host.copy(
+            providerMappings = listOf(ProviderMapping("clip", "ambient_sounds", "opaque-instance")),
+        )
+        assertEquals(false, otherSound.isAiHost)
+        assertEquals(Icons.Default.GraphicEq, otherSound.defaultIcon)
     }
 
     @Test

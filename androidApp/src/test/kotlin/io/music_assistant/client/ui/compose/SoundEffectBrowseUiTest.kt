@@ -100,7 +100,7 @@ class SoundEffectBrowseUiTest {
             )
         }
         composeTestRule.onNodeWithText(
-            "Sound effect | Sound effect | AI host | AI host | Sound effect",
+            "Sound effect | Sound effect | Sound effect | AI host | Sound effect",
         ).assertIsDisplayed()
     }
 

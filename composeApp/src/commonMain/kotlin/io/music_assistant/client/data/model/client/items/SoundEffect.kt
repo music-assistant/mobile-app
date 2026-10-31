@@ -1,6 +1,7 @@
 package io.music_assistant.client.data.model.client.items
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
@@ -34,14 +35,14 @@ data class SoundEffect(
     override val uri: String?,
 ) : AppMediaItem(), PlayableItem {
     val isAiHost: Boolean
-        get() = providerMappings?.any { it.providerDomain == AI_RADIO_DOMAIN } == true ||
-            provider == AI_RADIO_DOMAIN || provider.startsWith("$AI_RADIO_DOMAIN--")
+        get() = providerMappings?.any { it.providerDomain == AI_RADIO_DOMAIN } == true
 
     override val mediaType: MediaType = MediaType.SOUND_EFFECT
     override val favorite: Boolean? = null
     override val version: String? = null
     override val position: Int? = null
     override val parentName: String? = null
-    override val defaultIcon = Icons.Default.RecordVoiceOver
+    override val defaultIcon
+        get() = if (isAiHost) Icons.Default.RecordVoiceOver else Icons.Default.GraphicEq
     override fun withFavorite(favorite: Boolean?) = this
 }

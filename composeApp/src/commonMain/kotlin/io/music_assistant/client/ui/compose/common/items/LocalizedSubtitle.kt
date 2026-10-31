@@ -23,7 +23,7 @@ import musicassistantclient.composeapp.generated.resources.item_subtitle_playlis
 import musicassistantclient.composeapp.generated.resources.item_subtitle_podcast
 import musicassistantclient.composeapp.generated.resources.item_subtitle_radio
 import musicassistantclient.composeapp.generated.resources.item_subtitle_series
-import musicassistantclient.composeapp.generated.resources.item_subtitle_sound_effect
+import musicassistantclient.composeapp.generated.resources.item_subtitle_sound
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -46,7 +46,7 @@ fun AppMediaItem.localizedSubtitle(): String? = when (this) {
     is MediaCollection -> stringResource(Res.string.item_subtitle_series)
     is Podcast -> stringResource(Res.string.item_subtitle_podcast)
     is RadioStation -> stringResource(Res.string.item_subtitle_radio)
-    is SoundEffect -> stringResource(if (isAiHost) Res.string.item_subtitle_ai_host else Res.string.item_subtitle_sound_effect)
+    is SoundEffect -> stringResource(if (isAiHost) Res.string.item_subtitle_ai_host else Res.string.item_subtitle_sound)
     is AudioSource -> stringResource(Res.string.item_subtitle_audio_source)
     else -> null
 }

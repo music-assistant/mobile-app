@@ -40,11 +40,11 @@ import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumSubtitle
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
-import io.music_assistant.client.ui.compose.common.items.AudioSourceWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.FolderWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.LiveStreamWithMenu
 import io.music_assistant.client.ui.compose.common.items.MediaCollectionWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
@@ -53,7 +53,6 @@ import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.PodcastWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
-import io.music_assistant.client.ui.compose.common.items.SoundEffectWithMenu
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.grid.gridItemMinSize
@@ -223,7 +222,7 @@ fun AdaptiveMediaGrid(
                     libraryActions = libraryActions,
                 )
 
-                is AudioSource -> AudioSourceWithMenu(
+                is AudioSource -> LiveStreamWithMenu(
                     item = item,
                     viewMode = viewMode,
                     onPlayOption = onPlayClick,
@@ -231,7 +230,7 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                is SoundEffect -> SoundEffectWithMenu(
+                is SoundEffect -> LiveStreamWithMenu(
                     item = item,
                     viewMode = viewMode,
                     onPlayOption = onPlayClick,
