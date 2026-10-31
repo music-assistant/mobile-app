@@ -17,7 +17,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
@@ -177,13 +176,13 @@ fun RadioWithMenu(
 }
 
 @Composable
-fun AudioSourceWithMenu(
-    item: AudioSource,
+fun <T> LiveStreamWithMenu(
+    item: T,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: PlayHandler<AudioSource>,
+    onPlayOption: PlayHandler<T>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
             ViewMode.GRID -> Modifier
