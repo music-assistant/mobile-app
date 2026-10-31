@@ -474,6 +474,7 @@ private fun ItemContent(
                         contentPadding = contentPadding,
                         heroSlot = heroSlot,
                         providerDetails = providerDetails,
+                        controlTint = colors.controlTint,
                     )
                 }
             } else if (tabs.isEmpty()) {
@@ -527,6 +528,7 @@ private fun ItemContent(
                                 heroSlot = heroSlot,
                                 tabsSlot = tabsSlot,
                                 gridState = gridState,
+                                controlTint = colors.controlTint,
                             )
                         }
                     }
@@ -677,6 +679,7 @@ private fun TabContent(
     heroSlot: @Composable () -> Unit,
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
+    controlTint: Color,
 ) {
     when (tab) {
         ItemDetailsTab.GENRE_ALBUMS,
@@ -718,6 +721,7 @@ private fun TabContent(
             heroSlot = heroSlot,
             tabsSlot = tabsSlot,
             gridState = gridState,
+            controlTint = controlTint,
         )
 
         ItemDetailsTab.TRACK_VERSIONS,
@@ -743,6 +747,7 @@ private fun TabContent(
             heroSlot = heroSlot,
             tabsSlot = tabsSlot,
             gridState = gridState,
+            controlTint = controlTint,
         )
 
         ItemDetailsTab.GENRE_ARTISTS -> ArtistsTabContent(
@@ -766,6 +771,7 @@ private fun TabContent(
             heroSlot = heroSlot,
             tabsSlot = tabsSlot,
             gridState = gridState,
+            controlTint = controlTint,
         )
     }
 }
@@ -962,6 +968,7 @@ private fun PlayablesTabContent(
     heroSlot: @Composable () -> Unit,
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
+    controlTint: Color,
 ) {
     val viewMode = viewModeProvider(MediaType.TRACK)
     // Shared row body for both the flat and the disc-sectioned layouts.
@@ -1048,7 +1055,7 @@ private fun PlayablesTabContent(
                     val disc = (track as? Track)?.discNumber ?: return@forEachIndexed
                     val prevDisc = (tracks.getOrNull(index - 1) as? Track)?.discNumber
                     if (index == 0 || disc != prevDisc) {
-                        fullSpanItem("disc-header-$disc") { DiscHeader(disc) }
+                        fullSpanItem("disc-header-$disc") { DiscHeader(disc, controlTint) }
                     }
                     item(key = trackKeys[index], span = listSpan) { trackItem(track) }
                 }
@@ -1067,11 +1074,11 @@ private fun PlayablesTabContent(
 }
 
 @Composable
-private fun DiscHeader(disc: Int) {
+private fun DiscHeader(disc: Int, controlTint: Color) {
     Text(
         text = stringResource(Res.string.album_disc_header, disc),
         style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        color = controlTint,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp),
     )
 }
@@ -1088,6 +1095,7 @@ private fun ArtistContent(
     contentPadding: PaddingValues,
     heroSlot: @Composable () -> Unit,
     providerDetails: (String) -> ProviderDetails?,
+    controlTint: Color,
 ) {
     val artistDetailsViewModel = koinViewModel<ArtistDetailsViewModel> { parametersOf(artist) }
     val librarySection by artistDetailsViewModel.library.collectAsStateWithLifecycle()
@@ -1113,6 +1121,7 @@ private fun ArtistContent(
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
                     providerDetails = providerDetails,
+                    viewAllColor = controlTint,
                 )
             }
 
@@ -1134,6 +1143,7 @@ private fun ArtistContent(
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
                     providerDetails = providerDetails,
+                    viewAllColor = controlTint,
                 )
             }
 
@@ -1151,6 +1161,7 @@ private fun ArtistContent(
                     libraryActions = libraryActions,
                     providerIconFetcher = providerIconFetcher,
                     providerDetails = providerDetails,
+                    viewAllColor = controlTint,
                 )
             }
         }
@@ -1171,6 +1182,7 @@ private fun <T : AppMediaItem> SectionRow(
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher,
     providerDetails: (String) -> ProviderDetails?,
+    viewAllColor: Color,
 ) {
     val providerNameDisplayString: (String) -> DisplayString = { domain ->
         when (domain) {
@@ -1207,6 +1219,7 @@ private fun <T : AppMediaItem> SectionRow(
         playlistActions = playlistActions,
         libraryActions = libraryActions,
         providerIconFetcher = providerIconFetcher,
+        viewAllColor = viewAllColor,
     )
 }
 
@@ -1219,6 +1232,7 @@ private fun ChaptersTabContent(
     heroSlot: @Composable () -> Unit,
     tabsSlot: @Composable () -> Unit,
     gridState: LazyGridState,
+    controlTint: Color,
 ) {
     DetailGrid(contentPadding, heroSlot, tabsSlot, gridState) {
         if (chapters.isEmpty()) {
@@ -1230,6 +1244,7 @@ private fun ChaptersTabContent(
                         chapter = chapter,
                         isResumePoint = chapter.position == resumeChapterPosition,
                         onClick = { onChapterClick(chapter.position) },
+                        controlTint = controlTint,
                     )
                 }
             }
@@ -1252,6 +1267,7 @@ private fun ChapterRow(
     chapter: Chapter,
     isResumePoint: Boolean,
     onClick: () -> Unit,
+    controlTint: Color,
 ) {
     Row(
         modifier = Modifier
@@ -1265,14 +1281,14 @@ private fun ChapterRow(
             Icon(
                 imageVector = Icons.Default.Schedule,
                 contentDescription = stringResource(Res.string.cd_in_progress),
-                tint = MaterialTheme.colorScheme.primary,
+                tint = controlTint,
                 modifier = Modifier.padding(end = 8.dp).size(18.dp),
             )
         }
         Text(
             text = chapter.name,
             style = MaterialTheme.typography.bodyLarge,
-            color = if (isResumePoint) MaterialTheme.colorScheme.primary else Color.Unspecified,
+            color = if (isResumePoint) controlTint else Color.Unspecified,
             fontWeight = if (isResumePoint) FontWeight.Bold else null,
             modifier = Modifier.weight(1f),
             maxLines = 2,

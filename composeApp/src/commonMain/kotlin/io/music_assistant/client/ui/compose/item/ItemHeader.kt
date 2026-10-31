@@ -186,6 +186,7 @@ fun ItemHeader(
                     description = it,
                     onOpen = onOpenDescription,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                    moreColor = colors.controlTint,
                 )
             }
         }
