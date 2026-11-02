@@ -12,7 +12,6 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyricsOf
 import io.music_assistant.client.data.model.client.transcriptOf
-import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerTranscriptCue
@@ -62,11 +61,9 @@ interface MediaItemRepository {
 
     /** The lyrics the server finds for [track]; `Result.success(null)` when it has none. */
     suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?>
-    fun supportsRadioTracks(): Boolean
 
     /** The transcript of [episode] as [Lyrics]; `Result.success(null)` when the server has none. */
     suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?>
-
     fun publishLocalChange(change: MediaItemChange)
 }
 
@@ -78,7 +75,6 @@ interface MediaItemRepository {
  * and centralizes the "decode payload + map to client model" boilerplate
  * that was duplicated across every list/get/search call site.
  */
-
 class ServiceClientMediaItemRepository(
     private val apiClient: ServiceClient,
     private val factory: MediaItemFactory,
@@ -117,9 +113,6 @@ class ServiceClientMediaItemRepository(
 
     private fun schemaVersion(): Int? =
         (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
-
-    override fun supportsRadioTracks(): Boolean =
-        schemaVersion()?.let { it >= SERVER_2_11_SCHEMA } == true
 
     /**
      * Issue [request] and decode its payload as a single client media item.

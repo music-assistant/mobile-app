@@ -104,7 +104,6 @@ import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.items.playableLazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
-import io.music_assistant.client.ui.compose.common.map
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
@@ -296,12 +295,9 @@ fun ItemDetails(
                             is RadioStation,
                             is PodcastEpisode,
                                 -> {
-                                onNavigateToItem(
-                                    item.itemId,
-                                    item.mediaType,
-                                    item.provider,
-                                )
+                                onNavigateToItem(item.itemId, item.mediaType, item.provider)
                             }
+
                             else -> Unit
                         }
                     },
@@ -736,10 +732,7 @@ private fun TabContent(
             playableItemsState = when (tab) {
                 ItemDetailsTab.TRACK_VERSIONS -> state.trackVersionsState
                 ItemDetailsTab.SIMILAR_TRACKS -> state.similarTracksState
-                ItemDetailsTab.RADIO_VERSIONS ->
-                    state.radioVersionsState.map { versions ->
-                        versions.map { it as PlayableItem }
-                    }
+                ItemDetailsTab.RADIO_VERSIONS -> state.radioVersionsState
             },
             parentItem = item,
             playableItemsSortOption = null,
@@ -1015,6 +1008,7 @@ private fun PlayablesTabContent(
             is RadioStation -> RadioWithMenu(
                 item = track,
                 viewMode = viewMode,
+                navigateToItem = onNavigateClick,
                 onPlayOption = onPlayChildClick,
                 playlistActions = playlistActions,
                 onRemoveFromPlaylist = onRemove,

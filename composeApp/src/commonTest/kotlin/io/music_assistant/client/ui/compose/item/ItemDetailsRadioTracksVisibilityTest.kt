@@ -1,4 +1,5 @@
 package io.music_assistant.client.ui.compose.item
+
 import io.music_assistant.client.data.model.client.testRadio
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlin.test.Test
@@ -7,30 +8,20 @@ import kotlin.test.assertTrue
 
 class ItemDetailsRadioTracksVisibilityTest {
     private fun state(
-        isEndless: Boolean?,
+        isEndless: Boolean,
         isDynamic: Boolean = false,
-        supported: Boolean = true,
     ) = ItemDetailsViewModel.State(
         itemState = DataState.Data(
             testRadio(isDynamic = isDynamic, isEndless = isEndless),
         ),
         albumsState = DataState.NoData(),
         playableItemsState = DataState.NoData(),
-        radioTracksSupported = supported,
     )
 
     @Test
-    fun `radio tracks tab appears for supported finite non-dynamic station`() {
+    fun `radio tracks tab appears for finite non-dynamic station`() {
         assertTrue(
             ItemDetailsTab.RADIO_TRACKS in state(isEndless = false).tabs,
-        )
-    }
-
-    @Test
-    fun `radio tracks tab is hidden when server does not support it`() {
-        assertFalse(
-            ItemDetailsTab.RADIO_TRACKS in
-                    state(isEndless = false, supported = false).tabs,
         )
     }
 
@@ -50,19 +41,11 @@ class ItemDetailsRadioTracksVisibilityTest {
     }
 
     @Test
-    fun `radio tracks tab is hidden when endless status is unknown`() {
-        assertFalse(
-            ItemDetailsTab.RADIO_TRACKS in state(isEndless = null).tabs,
-        )
-    }
-
-    @Test
     fun `radio versions tab is hidden when request returns no versions`() {
         val state = ItemDetailsViewModel.State(
             itemState = DataState.Data(testRadio(isEndless = false)),
             albumsState = DataState.NoData(),
             playableItemsState = DataState.NoData(),
-            radioTracksSupported = true,
             radioVersionsState = DataState.Data(emptyList()),
         )
 
@@ -75,7 +58,6 @@ class ItemDetailsRadioTracksVisibilityTest {
             itemState = DataState.Data(testRadio(isEndless = false)),
             albumsState = DataState.NoData(),
             playableItemsState = DataState.NoData(),
-            radioTracksSupported = true,
             radioVersionsState =
                 DataState.Data(listOf(testRadio(isEndless = false))),
         )
@@ -89,7 +71,6 @@ class ItemDetailsRadioTracksVisibilityTest {
             itemState = DataState.Data(testRadio(isEndless = false)),
             albumsState = DataState.NoData(),
             playableItemsState = DataState.NoData(),
-            radioTracksSupported = true,
             radioVersionsState = DataState.Loading(),
         )
 
@@ -102,7 +83,6 @@ class ItemDetailsRadioTracksVisibilityTest {
             itemState = DataState.Data(testRadio(isEndless = false)),
             albumsState = DataState.NoData(),
             playableItemsState = DataState.NoData(),
-            radioTracksSupported = true,
             radioVersionsState = DataState.Error(),
         )
 
