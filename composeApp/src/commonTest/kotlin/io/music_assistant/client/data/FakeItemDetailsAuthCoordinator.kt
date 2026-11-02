@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class FakeItemDetailsAuthCoordinator : AuthCoordinator {
-
     override val authState: StateFlow<AuthState> =
         MutableStateFlow(AuthState.Idle)
 

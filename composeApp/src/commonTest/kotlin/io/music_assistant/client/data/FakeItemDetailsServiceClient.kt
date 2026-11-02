@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 
 class FakeItemDetailsServiceClient : StubServiceClient() {
-
     override val sessionState: StateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
 

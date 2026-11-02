@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 class FakeItemDetailsMainDataSource : ItemDetailsMainDataSource {
-
     override val refreshItemAccess: StateFlow<RefreshItemAccess> =
         MutableStateFlow(RefreshItemAccess.NONE)
 

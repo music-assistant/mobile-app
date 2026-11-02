@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 class RecordingItemDetailsMediaItemRepository(
     private val radioStation: RadioStation,
 ) : MediaItemRepository {
-
     val requests = mutableListOf<Request>()
 
     private val _itemChanges = MutableSharedFlow<MediaItemChange>()

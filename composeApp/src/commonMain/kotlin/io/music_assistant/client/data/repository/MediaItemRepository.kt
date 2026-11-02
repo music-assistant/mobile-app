@@ -12,7 +12,6 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyricsOf
 import io.music_assistant.client.data.model.client.transcriptOf
-import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerTranscriptCue
@@ -116,7 +115,6 @@ class ServiceClientMediaItemRepository(
 
     private fun schemaVersion(): Int? =
         (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
-
 
     /**
      * Issue [request] and decode its payload as a single client media item.
