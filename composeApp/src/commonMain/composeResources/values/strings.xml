@@ -16,6 +16,7 @@
   <string name="action_go_to_episode">Go to episode</string>
   <string name="action_go_to_podcast">Go to podcast</string>
   <string name="action_go_to_track">Go to track</string>
+  <string name="action_go_to_radio">Go to radio</string>
   <string name="action_insert_next">Add next</string>
   <string name="action_insert_next_and_play">Add next and play</string>
   <string name="action_lyrics">Lyrics</string>

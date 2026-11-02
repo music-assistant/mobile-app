@@ -64,6 +64,7 @@ interface MediaItemRepository {
 
     /** The transcript of [episode] as [Lyrics]; `Result.success(null)` when the server has none. */
     suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?>
+
     fun publishLocalChange(change: MediaItemChange)
 }
 
@@ -75,6 +76,7 @@ interface MediaItemRepository {
  * and centralizes the "decode payload + map to client model" boilerplate
  * that was duplicated across every list/get/search call site.
  */
+
 class ServiceClientMediaItemRepository(
     private val apiClient: ServiceClient,
     private val factory: MediaItemFactory,

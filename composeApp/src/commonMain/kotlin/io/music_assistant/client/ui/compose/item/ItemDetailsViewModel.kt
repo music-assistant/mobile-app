@@ -6,7 +6,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthState
-import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.ItemDetailsMainDataSource
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
@@ -26,9 +26,11 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.hasFiniteTracklist
 import io.music_assistant.client.data.model.client.items.ownerLine
 import io.music_assistant.client.data.model.client.items.refreshItemAction
 import io.music_assistant.client.data.play.PlayDispatcher
@@ -44,6 +46,7 @@ import io.music_assistant.client.settings.PlayedFilter
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.map
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -64,7 +67,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class ItemDetailsViewModel(
     private val playDispatcher: PlayDispatcher,
-    private val mainDataSource: MainDataSource,
+    private val mainDataSource: ItemDetailsMainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val providerRepository: ProviderRepository,
@@ -83,6 +86,7 @@ class ItemDetailsViewModel(
         /** Lazily loaded on demand from the artist overflow menu; NoData until then. */
         val similarArtistsState: DataState<List<Artist>> = DataState.NoData(),
         val trackVersionsState: DataState<List<Track>> = DataState.NoData(),
+        val radioVersionsState: DataState<List<RadioStation>> = DataState.NoData(),
         /** NoData while no provider has [SIMILAR_TRACKS_FEATURE]: then the tab is not shown. */
         val similarTracksState: DataState<List<Track>> = DataState.NoData(),
         /** The lyrics of the loaded [Track] or the transcript of the loaded [PodcastEpisode]; null without one. */
@@ -118,8 +122,23 @@ class ItemDetailsViewModel(
         /** Tabs derive purely from the loaded item, so there's nothing to store or keep in sync. */
         val tabs: List<ItemDetailsTab>
             get() = itemOrNull()?.let { item ->
-                tabsFor(item).filterNot {
-                    it == ItemDetailsTab.SIMILAR_TRACKS && similarTracksState is DataState.NoData
+                tabsFor(item).filterNot { tab ->
+                    when (tab) {
+                        ItemDetailsTab.SIMILAR_TRACKS ->
+                            similarTracksState is DataState.NoData
+
+                        ItemDetailsTab.RADIO_TRACKS -> {
+                            val radio = item as? RadioStation
+                            radio == null || !radio.hasFiniteTracklist
+                        }
+                        ItemDetailsTab.RADIO_VERSIONS ->
+                            when (val state = radioVersionsState) {
+                                is DataState.Data -> state.data.isEmpty()
+                                is DataState.Stale -> state.data.isEmpty()
+                                else -> false
+                            }
+                        else -> false
+                    }
                 }
             } ?: emptyList()
 
@@ -259,6 +278,7 @@ class ItemDetailsViewModel(
             MediaType.ARTIST -> Request.Artist.get(itemId, providerId)
             MediaType.ALBUM -> Request.Album.get(itemId, providerId)
             MediaType.PLAYLIST -> Request.Playlist.get(itemId, providerId)
+            MediaType.RADIO -> Request.RadioStation.get(itemId, providerId)
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)
             MediaType.AUDIOBOOK -> Request.Audiobook.get(itemId, providerId)
             MediaType.GENRE -> Request.Genre.get(itemId, providerId)
@@ -303,6 +323,23 @@ class ItemDetailsViewModel(
                 }
                 loadPlaylistTracks(item.itemId, item.provider)
                 loadPlaylistOwner(item)
+            }
+            is RadioStation -> {
+                loadRadioVersions(item)
+
+                _state.update {
+                    it.copy(
+                        albumsState = DataState.NoData(),
+                        albumsSortOption = null,
+                        playableItemsSortOption = null,
+                    )
+                }
+
+                if (item.hasFiniteTracklist) {
+                    loadRadioTracks(item.itemId, item.provider)
+                } else {
+                    setPlayableItemsState(DataState.NoData())
+                }
             }
 
             is Podcast -> {
@@ -466,10 +503,41 @@ class ItemDetailsViewModel(
         }
     }
 
+    private fun loadRadioTracks(
+        itemId: String,
+        provider: String,
+    ) {
+        viewModelScope.launch {
+            setPlayableItemsState(DataState.Loading())
+
+            val result = mediaItemRepository.fetchMediaItems(
+                Request.RadioStation.getTracks(
+                    itemId = itemId,
+                    providerInstanceIdOrDomain = provider,
+                ),
+            )
+
+            val items = result.getOrElse { error ->
+                if (error is CancellationException) throw error
+
+                Logger.e("Failed to load radio tracks", error)
+                setPlayableItemsState(DataState.Error())
+                return@launch
+            }
+
+            val tracks = items.filterIsInstance<PlayableItem>()
+            setPlayableItems(tracks, SubItemContext.RADIO_TRACKS)
+        }
+    }
+
     // Server 2.11 filters the played episodes before it pages; an older server ignores the
     // argument, so the answer is filtered here as well (a no-op on 2.11). A toggle of the filter
     // loads again, so the load in flight is cancelled: its answer must not land last.
-    private fun loadPodcastEpisodes(itemId: String, provider: String, exceptItemId: String? = null) {
+    private fun loadPodcastEpisodes(
+        itemId: String,
+        provider: String,
+        exceptItemId: String? = null,
+    ) {
         episodesLoad?.cancel()
         episodesLoad = viewModelScope.launch {
             setPlayableItemsState(DataState.Loading())
@@ -586,6 +654,21 @@ class ItemDetailsViewModel(
                 .onFailure { Logger.e("Failed to load track lyrics", it) }
                 .getOrNull()
             _state.update { it.copy(lyrics = lyrics) }
+        }
+    }
+
+    private fun loadRadioVersions(radio: RadioStation) {
+        _state.update {
+            it.copy(radioVersionsState = DataState.Loading())
+        }
+
+        viewModelScope.launch {
+            val versions = fetchList<RadioStation>(
+                Request.RadioStation.getVersions(radio.itemId, radio.provider),
+            )
+            _state.update {
+                it.copy(radioVersionsState = versions)
+            }
         }
     }
 
@@ -850,9 +933,11 @@ private fun ItemDetailsTab.subState(
         -> state.albumsState
 
     ItemDetailsTab.TRACK_VERSIONS -> state.trackVersionsState
+    ItemDetailsTab.RADIO_VERSIONS -> state.radioVersionsState
     ItemDetailsTab.SIMILAR_TRACKS -> state.similarTracksState
     ItemDetailsTab.ALBUM_TRACKS,
     ItemDetailsTab.PLAYLIST_ITEMS,
+    ItemDetailsTab.RADIO_TRACKS,
     ItemDetailsTab.PODCAST_EPISODES,
     ItemDetailsTab.OTHER_EPISODES,
     ItemDetailsTab.COLLECTION_ITEMS,

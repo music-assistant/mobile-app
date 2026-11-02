@@ -549,6 +549,23 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             providerInstanceIdOrDomain: String,
         ) = Library.get(APICommands.KIND_RADIOS, itemId, providerInstanceIdOrDomain)
 
+        fun getTracks(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_RADIOS_RADIO_TRACKS,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+        fun getVersions(
+            itemId: String,
+            providerInstanceIdOrDomain: String,
+        ) = Library.subItems(
+            APICommands.MUSIC_RADIOS_RADIO_VERSIONS,
+            itemId,
+            providerInstanceIdOrDomain,
+        )
+
         fun listLibrary(
             favorite: Boolean? = null,
             search: String? = null,

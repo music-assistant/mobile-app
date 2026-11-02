@@ -21,6 +21,7 @@ data class RadioStation(
     override val version: String?,
     override val isPlayable: Boolean,
     val isDynamic: Boolean,
+    val isEndless: Boolean = true,
     override val position: Int? = null,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.RADIO
@@ -29,6 +30,12 @@ data class RadioStation(
     override val defaultIcon = RadioIcon
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
 }
+
+/**
+ * A finite, fixed tracklist that `music/radios/radio_tracks` lists in full.
+ */
+val RadioStation.hasFiniteTracklist: Boolean
+    get() = isEndless == false && isDynamic != true
 
 /**
  * An AI Radio show that the server mirrors into the library as a Radio item. The AI Radio

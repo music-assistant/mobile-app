@@ -138,6 +138,7 @@ fun PodcastEpisodeWithMenu(
 fun RadioWithMenu(
     item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
+    navigateToItem: ((AppMediaItem) -> Unit)? = null,
     onPlayOption: PlayHandler<RadioStation>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -150,6 +151,7 @@ fun RadioWithMenu(
             ViewMode.LIST -> Modifier.fillMaxWidth()
         },
         item = item,
+        navigateToItem = navigateToItem,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
