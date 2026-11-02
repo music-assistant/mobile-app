@@ -231,9 +231,13 @@ actual class PlatformFeature {
 - **AI Radio**: The client supports server schema 88 and higher only (`supportsAiRadio`). Both gates,
   `MainDataSource.aiRadioAvailable` and `aiRadioQueueDjAvailable`, need it. A station is a finite
   Radio item (`ai_radio://radio/<station_id>`, `ServerAiRadioStation.uri`). Play it through
-  `PlayDispatcher` like any radio. There is no start, stop or status command. The server also mirrors
-  each show into the library as a Radio row. The Radio lists hide these rows (`isAiRadioShow`),
-  because the AI Radio section lists them. The `ai_radio` plugin
+  `PlayDispatcher` like any other radio. There is no start, stop or status command. Finite radio
+  stations expose a tracklist when `is_endless` is false and `is_dynamic` is not true
+  (`RadioStation.hasFiniteTracklist`). The tracklist is fetched through
+  `music/radios/radio_tracks` using `Library.subItems`; endless and dynamic stations do not expose
+  this tab. Missing `is_endless` defaults to true. The server also mirrors each show into the
+  library as a Radio row. The Radio lists hide these rows (`isAiRadioShow`),
+  because the **AI Radio** section lists them. The `ai_radio` plugin
   sends `provider_event` refetch hints (`object_id` `ai_radio`). The hints have no state, so re-read
   the endpoint that the hint names. `AiRadioRepository.changes` maps the hints to `AiRadioChange`.
   It also sends `RESYNC` when the command session comes back, because the server does not send

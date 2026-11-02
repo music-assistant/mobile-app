@@ -170,7 +170,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Podcast episode page with transcript | no | yes | no | no | no | Missing | `podcast_episode`, `podcast_episode_transcript` |
 | Audiobook page with chapters | yes | yes | yes | n/a | buttons | Parity | Tap a chapter to play from it |
 | Collection (series) page | yes | yes | yes | flat | flat | Parity | |
-| Radio page | yes | yes | no | n/a | n/a | Missing | `radio_versions`; 2.11 adds `radio_tracks` for finite stations |
+| Radio page | yes | yes | yes | n/a | n/a | Parity | `radio_versions`; finite stations expose `radio_tracks` |
 | Genre page | yes | yes | yes | no | no | Parity | Artists and Albums tabs from `genres/overview` |
 | Descriptions, biography, publisher, narrators | yes | yes | no | no | no | Adjust-partial | The DTO parses the fields. No screen renders them |
 | User-customizable detail rows | no | yes | no | n/a | n/a | Missing | Low value on a phone |
@@ -281,7 +281,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 |---|---|---|---|---|---|---|---|
 | Library radio list | yes | yes | yes | yes | yes | Parity | App hides AI Radio show rows |
 | Favorite the song on air | no | no | yes | yes | no | Parity | App extra, schema 27 |
-| Finite station tracklist | no | yes | no | no | no | Missing | `Radio.is_endless`, `radio_tracks` |
+| Finite station tracklist | no | yes | yes | no | no | Parity | `Radio.is_endless`, `radio_tracks`; excludes dynamic stations |
 | AI Radio shows: list and play | session API | Radio items | Radio items | yes | yes | Parity | App needs schema 88; 2.10 sessions are not supported |
 | AI Radio show and host editing | yes | yes | no | no | no | Out of scope | Scope `config.providers.write` |
 
@@ -571,9 +571,9 @@ URL on the PKCE path. See `.claude/settings-screen.md`.
   shows "Playing from" with the container of `origin`. The text opens the details screen of the
   container if the app has one. A folder shows as text only. An older server does not send the
   fields, so the app shows nothing. These fields need no schema gate.
-- `Radio.is_endless` (schema 88) and the finite station tracklist moved to issue #1190. Only
-  AI Radio shows are finite. `radio_tracks` returns a new shuffled snapshot on each call, so the
-  list does not match the order that plays.
+- `Radio.is_endless` (schema 88) and the **finite station tracklist** moved to issue #1190.
+  A radio station exposes a tracklist when `is_endless=false` and `is_dynamic` is not true.
+  `radio_tracks` returns a new shuffled snapshot on each call, so the list does not match the order that plays.
 - The frontend 2.11 refuses servers below schema 86. The app has no minimum of its own. The app
   constant `LOCAL_SCHEMA_VERSION` is 65 (`app/data/model/server/ServerInfo.kt:7`), because the app
   was checked against server 2.10.6 and 2.10.7. Both report 65, so they show no dialog. The nightly

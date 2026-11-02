@@ -736,10 +736,7 @@ private fun TabContent(
             playableItemsState = when (tab) {
                 ItemDetailsTab.TRACK_VERSIONS -> state.trackVersionsState
                 ItemDetailsTab.SIMILAR_TRACKS -> state.similarTracksState
-                ItemDetailsTab.RADIO_VERSIONS ->
-                    state.radioVersionsState.map { versions ->
-                        versions.map { it as PlayableItem }
-                    }
+                ItemDetailsTab.RADIO_VERSIONS -> state.radioVersionsState
             },
             parentItem = item,
             playableItemsSortOption = null,
@@ -1015,6 +1012,7 @@ private fun PlayablesTabContent(
             is RadioStation -> RadioWithMenu(
                 item = track,
                 viewMode = viewMode,
+                navigateToItem = onNavigateClick,
                 onPlayOption = onPlayChildClick,
                 playlistActions = playlistActions,
                 onRemoveFromPlaylist = onRemove,

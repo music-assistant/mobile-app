@@ -62,7 +62,6 @@ interface MediaItemRepository {
 
     /** The lyrics the server finds for [track]; `Result.success(null)` when it has none. */
     suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?>
-    fun supportsRadioTracks(): Boolean
 
     /** The transcript of [episode] as [Lyrics]; `Result.success(null)` when the server has none. */
     suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?>
@@ -118,8 +117,6 @@ class ServiceClientMediaItemRepository(
     private fun schemaVersion(): Int? =
         (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
 
-    override fun supportsRadioTracks(): Boolean =
-        schemaVersion()?.let { it >= SERVER_2_11_SCHEMA } == true
 
     /**
      * Issue [request] and decode its payload as a single client media item.

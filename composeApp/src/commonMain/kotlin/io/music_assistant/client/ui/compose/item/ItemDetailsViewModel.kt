@@ -6,7 +6,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthState
-import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.ItemDetailsMainDataSource
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.QueueOption
@@ -27,6 +27,7 @@ import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
+import io.music_assistant.client.data.model.client.items.hasFiniteTracklist
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.RefreshItemAction
 import io.music_assistant.client.data.model.client.items.Track
@@ -66,7 +67,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class ItemDetailsViewModel(
     private val playDispatcher: PlayDispatcher,
-    private val mainDataSource: MainDataSource,
+    private val mainDataSource: ItemDetailsMainDataSource,
     private val settingsRepository: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val providerRepository: ProviderRepository,
@@ -98,7 +99,6 @@ class ItemDetailsViewModel(
         val playableItemsQuery: String? = null,
         /** The user's manual tab choice; null means "follow the auto-selected default". */
         val userSelectedTab: ItemDetailsTab? = null,
-        val radioTracksSupported: Boolean = false,
         /** True while `music/refresh_item` runs for the item, from this page or an earlier one. */
         val refreshingItem: Boolean = false,
         /** The library genres of a library artist or album; empty for every other item. */
@@ -129,10 +129,7 @@ class ItemDetailsViewModel(
 
                         ItemDetailsTab.RADIO_TRACKS -> {
                             val radio = item as? RadioStation
-                            radio == null ||
-                                    !radioTracksSupported ||
-                                    radio.isEndless != false ||
-                                    radio.isDynamic == true
+                            radio == null || !radio.hasFiniteTracklist
                         }
                         ItemDetailsTab.RADIO_VERSIONS ->
                             when (val state = radioVersionsState) {
@@ -329,23 +326,16 @@ class ItemDetailsViewModel(
             }
             is RadioStation -> {
                 loadRadioVersions(item)
-                val supportsRadioTracks = mediaItemRepository.supportsRadioTracks()
 
                 _state.update {
                     it.copy(
                         albumsState = DataState.NoData(),
                         albumsSortOption = null,
-                        playableItemsSortOption =
-                            settingsRepository.getSortOption(SubItemContext.RADIO_TRACKS),
-                        radioTracksSupported = supportsRadioTracks,
+                        playableItemsSortOption = null,
                     )
                 }
 
-                if (
-                    supportsRadioTracks &&
-                    item.isEndless == false &&
-                    item.isDynamic != true
-                ) {
+                if (item.hasFiniteTracklist) {
                     loadRadioTracks(item.itemId, item.provider)
                 } else {
                     setPlayableItemsState(DataState.NoData())
@@ -540,8 +530,9 @@ class ItemDetailsViewModel(
         }
     }
 
-    // Server 2.11 filters played episodes before paging; older servers may ignore
-    // the argument, so filter locally too. Cancel previous loads when the filter changes.
+    // Server 2.11 filters the played episodes before it pages; an older server ignores the
+    // argument, so the answer is filtered here as well (a no-op on 2.11). A toggle of the filter
+    // loads again, so the load in flight is cancelled: its answer must not land last.
     private fun loadPodcastEpisodes(
         itemId: String,
         provider: String,

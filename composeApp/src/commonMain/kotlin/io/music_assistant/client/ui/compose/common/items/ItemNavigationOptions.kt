@@ -15,6 +15,7 @@ import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import musicassistantclient.composeapp.generated.resources.Res
@@ -22,12 +23,13 @@ import musicassistantclient.composeapp.generated.resources.action_go_to_album
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_episode
 import musicassistantclient.composeapp.generated.resources.action_go_to_podcast
+import musicassistantclient.composeapp.generated.resources.action_go_to_radio
 import musicassistantclient.composeapp.generated.resources.action_go_to_track
 import org.jetbrains.compose.resources.stringResource
 
 /**
- * "Go to track" / "Go to album" / "Go to artist" / "Go to episode" / "Go to podcast" entries for [this] item.
- *
+ * "Go to track" / "Go to album" / "Go to artist" / "Go to episode" /
+ * "Go to podcast" / "Go to radio" entries for [this] item.
  * @param containerItem the item whose screen this list belongs to. Its own entry is dropped,
  * because navigating there would push a duplicate of the screen the user already sees.
  */
@@ -77,6 +79,15 @@ fun AppMediaItem.navigationOptions(
                     title = stringResource(Res.string.action_go_to_podcast),
                     icon = Icons.Default.Podcasts,
                     onClick = { navigateToItem(podcast) },
+                ),
+            )
+        }
+        if (item is RadioStation && !item.isSameItemAs(containerItem)) {
+            add(
+                OverflowMenuOption(
+                    title = stringResource(Res.string.action_go_to_radio),
+                    icon = Icons.Default.MusicNote,
+                    onClick = { navigateToItem(item) },
                 ),
             )
         }

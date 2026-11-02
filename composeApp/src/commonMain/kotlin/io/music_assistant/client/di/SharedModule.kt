@@ -8,6 +8,7 @@ import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.connection.ConnectionManager
 import io.music_assistant.client.data.CarDspApplier
+import io.music_assistant.client.data.ItemDetailsMainDataSource
 import io.music_assistant.client.data.LocalPlayerAdapter
 import io.music_assistant.client.data.LocalPlayerEndpoints
 import io.music_assistant.client.data.LocalPlayerFactory
@@ -199,6 +200,7 @@ fun sharedModule(
         }
         singleOf(::LibrarySortRepository)   // Library sort choices; caches the 2.11 sort_options
         singleOf(::MainDataSource)          // Singleton - held by foreground service
+        single<ItemDetailsMainDataSource> { get<MainDataSource>() }
         single(createdAtStart = true) {     // Eager - must observe car edges from launch
             CarDspApplier(get(), get(), get(), get())
         }

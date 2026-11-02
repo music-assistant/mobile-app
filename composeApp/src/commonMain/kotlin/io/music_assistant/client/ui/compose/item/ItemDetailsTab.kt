@@ -25,7 +25,7 @@ enum class ItemDetailsTab(
     ALBUM_TRACKS(SubItemContext.ALBUM_TRACKS, MediaType.TRACK),
     PLAYLIST_ITEMS(SubItemContext.PLAYLIST_ITEMS, MediaType.TRACK),
     RADIO_TRACKS(SubItemContext.RADIO_TRACKS, MediaType.TRACK),
-    RADIO_VERSIONS(null, MediaType.RADIO),
+    RADIO_VERSIONS(null, MediaType.TRACK),
     PODCAST_EPISODES(SubItemContext.PODCAST_EPISODES, MediaType.TRACK),
 
     /** The other episodes of the podcast of an episode; the same list and sort as [PODCAST_EPISODES]. */
