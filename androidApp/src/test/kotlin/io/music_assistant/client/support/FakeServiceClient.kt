@@ -14,6 +14,7 @@ import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
+import io.music_assistant.client.data.model.server.Scope
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -120,6 +121,18 @@ class FakeServiceClient : ServiceClient {
                                 type = "builtin",
                                 requiresRedirect = false,
                             ),
+                        ),
+                    ),
+                )
+            }
+
+            APICommands.AUTH_SCOPES -> {
+                // Give the test user admin rights
+                Result.success(
+                    answer(
+                        request = request,
+                        result = mapOf(
+                            "user" to listOf(Scope.LIBRARY_WRITE, Scope.LIBRARY_MANAGE),
                         ),
                     ),
                 )
