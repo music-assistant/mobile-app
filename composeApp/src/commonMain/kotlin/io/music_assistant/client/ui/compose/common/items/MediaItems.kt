@@ -836,9 +836,11 @@ internal fun TrackRowItem(
     onClick: (Track) -> Unit,
     onLongClick: (Track) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
+    titleMaxLines: Int = 2,
 ) {
     RowItem(
         modifier = modifier,
+        titleMaxLines = titleMaxLines,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
         description = contentDescription(item),
@@ -975,9 +977,11 @@ internal fun PodcastEpisodeRowItem(
     onClick: (PodcastEpisode) -> Unit,
     onLongClick: (PodcastEpisode) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
+    titleMaxLines: Int = 2,
 ) {
     RowItem(
         modifier = modifier,
+        titleMaxLines = titleMaxLines,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
         description = contentDescription(item),
@@ -1004,9 +1008,11 @@ internal fun <T> LiveStreamRowItem(
     onClick: (T) -> Unit,
     onLongClick: (T) -> Unit,
     providerIconFetcher: ProviderIconFetcher?,
+    titleMaxLines: Int = 2,
 ) where T : AppMediaItem, T : PlayableItem {
     RowItem(
         modifier = modifier,
+        titleMaxLines = titleMaxLines,
         name = item.displayName,
         subtitle = item.localizedSubtitle(),
         description = contentDescription(item),
@@ -1305,6 +1311,7 @@ internal fun RowItem(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     enabled: Boolean = true,
+    titleMaxLines: Int = 2,
     suffixContent: @Composable (RowScope.() -> Unit)? = null,
 ) {
     // clearAndSetSemantics wipes every descendant's semantics too. On a whole-row tap target
@@ -1335,7 +1342,7 @@ internal fun RowItem(
             MediaItemLabels(
                 title = name,
                 subtitle = subtitle,
-                titleMaxLines = 2,
+                titleMaxLines = titleMaxLines,
             )
         }
         suffixContent?.invoke(this)
