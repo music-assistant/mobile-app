@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
         // Handle OAuth callback / page deep link if launched from one
         handleIncomingUri(intent)
 
-        dataSource.isAnythingPlaying.asLiveData()
+        dataSource.isAnyQueueItemPlaying.asLiveData()
             .observe(this) {
                 if (it) {
                     val serviceIntent = Intent(this, MainMediaPlaybackService::class.java)
