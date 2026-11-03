@@ -138,6 +138,12 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
+            APICommands.MUSIC_REFRESH_ITEM -> {
+                val uri = request.getArg("media_item")
+                val item = mediaItemStore.getByUri(uri)!!.enrichLibraryItem()
+                Result.success(answer(request = request, result = item))
+            }
+
             APICommands.MUSIC_ITEM_BY_URI -> {
                 val item = mediaItemStore.getByUri(request.getArg("uri"))!!
                 Result.success(answer(request = request, result = item.enrichLibraryItem()))

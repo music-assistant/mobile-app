@@ -60,6 +60,7 @@ object ServerMediaItemFixtures {
                     providerInstance = provider.instanceId,
                 ),
             ),
+            uri = "http://example.com/artist/$itemId",
         )
     }
 
