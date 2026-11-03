@@ -40,11 +40,11 @@ import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.items.AlbumSubtitle
 import io.music_assistant.client.ui.compose.common.items.AlbumWithMenu
 import io.music_assistant.client.ui.compose.common.items.ArtistWithMenu
-import io.music_assistant.client.ui.compose.common.items.AudioSourceWithMenu
 import io.music_assistant.client.ui.compose.common.items.AudiobookWithMenu
 import io.music_assistant.client.ui.compose.common.items.FolderWithMenu
 import io.music_assistant.client.ui.compose.common.items.GenreWithMenu
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.LiveStreamWithMenu
 import io.music_assistant.client.ui.compose.common.items.MediaCollectionWithMenu
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
@@ -222,7 +222,7 @@ fun AdaptiveMediaGrid(
                     libraryActions = libraryActions,
                 )
 
-                is AudioSource -> AudioSourceWithMenu(
+                is AudioSource -> LiveStreamWithMenu(
                     item = item,
                     viewMode = viewMode,
                     onPlayOption = onPlayClick,
@@ -230,10 +230,13 @@ fun AdaptiveMediaGrid(
                     providerIconFetcher = null,
                 )
 
-                // Reaches the client only as a queue item (an AI Radio host clip), never
-                // through a library list, a search result or a browse folder. Named rather
-                // than folded into an `else` so a genuinely new media type still fails here.
-                is SoundEffect -> Unit
+                is SoundEffect -> LiveStreamWithMenu(
+                    item = item,
+                    viewMode = viewMode,
+                    onPlayOption = onPlayClick,
+                    libraryActions = libraryActions,
+                    providerIconFetcher = null,
+                )
             }
         }
 
