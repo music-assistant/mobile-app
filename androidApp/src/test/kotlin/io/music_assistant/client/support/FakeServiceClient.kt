@@ -52,7 +52,6 @@ import kotlinx.serialization.json.encodeToJsonElement
 import java.util.concurrent.atomic.AtomicBoolean
 
 class FakeServiceClient : ServiceClient {
-    private var legacyVersion: LegacyVersion? = null
     private val requestErrors = AtomicBoolean(false)
     private var connectionError: Exception? = null
 
@@ -132,9 +131,6 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.MUSIC_RECOMMENDATIONS -> {
-                // Legacy servers embed each row's items; current servers return
-                // item-less rows resolved via MUSIC_RECOMMENDATIONS_ITEMS.
-                val embedItems = legacyVersion != null
                 Result.success(
                     answer(
                         request = request,
@@ -144,11 +140,7 @@ class FakeServiceClient : ServiceClient {
                                 provider = "library",
                                 name = name,
                                 mediaType = MediaType.FOLDER.serverValue,
-                                items = if (embedItems) {
-                                    recommendationRowItems(itemId)
-                                } else {
-                                    emptyList()
-                                },
+                                items = emptyList(),
                             )
                         },
                     ),
@@ -156,17 +148,12 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.MUSIC_RECOMMENDATIONS_ITEMS -> {
-                if (legacyVersion != null) {
-                    // Command doesn't exist on legacy servers.
-                    Result.failure(UnsupportedOperationException())
-                } else {
-                    Result.success(
-                        answer(
-                            request = request,
-                            result = recommendationRowItems(request.getArg("item_id")),
-                        ),
-                    )
-                }
+                Result.success(
+                    answer(
+                        request = request,
+                        result = recommendationRowItems(request.getArg("item_id")),
+                    ),
+                )
             }
 
             APICommands.MUSIC_SEARCH -> {
@@ -782,10 +769,7 @@ class FakeServiceClient : ServiceClient {
                     serverInfo = ServerInfo(
                         serverId = serverId,
                         serverVersion = "fake",
-                        // Schema 39+ moved recommendation row items behind
-                        // MUSIC_RECOMMENDATIONS_ITEMS; this fake serves that
-                        // shape unless a legacy version is set.
-                        schemaVersion = if (legacyVersion != null) -1 else schemaVersion,
+                        schemaVersion = schemaVersion,
                         baseUrl = "http://homeassistant.example",
                     ),
                 )
@@ -940,10 +924,6 @@ class FakeServiceClient : ServiceClient {
         requestErrors.set(requestError)
     }
 
-    fun setLegacyVersion(version: LegacyVersion) {
-        this.legacyVersion = version
-    }
-
     fun setReconnecting(reconnecting: Boolean) {
         if (reconnecting) {
             _sessionState.update {
@@ -1030,8 +1010,6 @@ class FakeServiceClient : ServiceClient {
     private fun List<ServerMediaItem>.enrichLibraryItems(): List<ServerMediaItem> {
         return this.map { mediaItemStore.enrichLibraryItem(it) }
     }
-
-    enum class LegacyVersion
 }
 
 private fun answer(request: Request, result: JsonElement): Answer {
