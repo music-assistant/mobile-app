@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
@@ -115,10 +115,12 @@ import kotlinx.serialization.modules.polymorphic
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.nav_discover
+import musicassistantclient.composeapp.generated.resources.nav_explore
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_menu
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
+import musicassistantclient.composeapp.generated.resources.nav_system
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -450,11 +452,11 @@ private fun navigationItems(
     goToSettings: () -> Unit,
 ): List<Section> {
     val explore = Section(
-        title = "Explore",
+        title = stringResource(Res.string.nav_explore),
         items = listOf(
             multiBackStack.createNavigationItem(
                 backStack = 0,
-                icon = Icons.Default.Home,
+                icon = Icons.Default.Explore,
                 label = stringResource(Res.string.nav_discover),
                 screenState = homeScreenState.value,
             ),
@@ -483,7 +485,7 @@ private fun navigationItems(
     )
 
     val system = Section(
-        title = "System",
+        title = stringResource(Res.string.nav_system),
         items = listOf(
             NavigationItem(
                 selected = false,
