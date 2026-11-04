@@ -50,6 +50,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -87,8 +88,9 @@ import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.artistNavigation
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.inactive
-import io.music_assistant.client.ui.utils.DeviceChrome
+import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import io.music_assistant.client.ui.utils.fadingEdges
+import io.music_assistant.client.utils.conditional
 import io.music_assistant.client.utils.formatDuration
 import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
@@ -336,23 +338,26 @@ fun FullPlayerItem(
     val controlTint = colors.controlTint
 
     // Across a horizontal fold the artwork ends above the crease, which leaves the controls, pushed
-    // down by SpaceBetween, on the lower half.
+    // down by SpaceBetween, on the lower half. Without a fold the position is not measured, so a drag
+    // or an animation that moves the player does not recompose it.
     val density = LocalDensity.current
+    val horizontalFold = LocalDeviceChrome.current.horizontalFoldRegion
     var topInWindow by remember { mutableStateOf(0.dp) }
-    val artworkMaxHeight = DeviceChrome.horizontalFoldRegion?.let { (it.start - topInWindow).coerceAtLeast(0.dp) }
+    val artworkMaxHeight = horizontalFold?.let { (it.start - topInWindow).coerceAtLeast(0.dp) }
 
     // Do not add padding here - title/subtitle should be full width.
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .onGloballyPositioned {
-                topInWindow = with(density) { it.positionInWindow().y.toDp() }
+            .conditional(horizontalFold != null) {
+                onGloballyPositioned { topInWindow = with(density) { it.positionInWindow().y.toDp() } }
             },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
             modifier = Modifier.padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
+                .testTag(FullPlayerSemantics.ARTWORK_TAG)
                 .weight(1f, fill = false)
                 .then(artworkMaxHeight?.let { Modifier.heightIn(max = it) } ?: Modifier)
                 .aspectRatio(1f)
@@ -839,6 +844,10 @@ fun FullPlayerItem(
 }
 
 private val FULL_PLAYER_HORIZONTAL_PADDING = 16.dp
+
+object FullPlayerSemantics {
+    const val ARTWORK_TAG = "FullPlayerArtwork"
+}
 
 private val previewPoweredOffColors = PlayerColors(dominant = Color.DarkGray, controlTint = Color.White)
 

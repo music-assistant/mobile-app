@@ -1,8 +1,7 @@
 package io.music_assistant.client.ui.utils
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.Dp
 
 /**
@@ -22,17 +21,29 @@ data class VerticalBarArea(val trailingInset: Dp, val top: Dp, val bottom: Dp, v
  */
 data class FoldRegion(val start: Dp, val end: Dp)
 
-/** System window geometry that platform code reports and shared layouts adapt to. */
-object DeviceChrome {
-    /** Null unless the platform lays its controls out vertically in the current window. */
-    var verticalBarArea by mutableStateOf<VerticalBarArea?>(null)
-
-    /** The hinge of an upright book-style window, open or partially folded; else null. */
-    var pageSplit by mutableStateOf<FoldRegion?>(null)
-
-    /** Null unless the window is partially folded along a vertical line. */
-    var foldRegion by mutableStateOf<FoldRegion?>(null)
-
-    /** Null unless the window is partially folded along a horizontal line. */
-    var horizontalFoldRegion by mutableStateOf<FoldRegion?>(null)
+/**
+ * System window geometry that platform code reports and shared layouts adapt to. Read it through
+ * [LocalDeviceChrome]. Every value is null unless the platform reports it, so the layouts then
+ * behave as on any other device.
+ *
+ * @property verticalBarArea null unless the platform lays its controls out vertically in the window.
+ * @property pageSplit null unless the window is upright and book-style, open or partially folded. Then it is
+ *   the hinge.
+ * @property foldRegion null unless the window is partially folded along a vertical line.
+ * @property horizontalFoldRegion null unless the window is partially folded along a horizontal line.
+ */
+@Immutable
+data class DeviceChrome(
+    val verticalBarArea: VerticalBarArea? = null,
+    val pageSplit: FoldRegion? = null,
+    val foldRegion: FoldRegion? = null,
+    val horizontalFoldRegion: FoldRegion? = null,
+) {
+    companion object {
+        /** The value for a window without a reported vertical bar, hinge or fold. */
+        val None = DeviceChrome()
+    }
 }
+
+/** The [DeviceChrome] of the current window. `App` provides it. The default reports nothing. */
+val LocalDeviceChrome = compositionLocalOf { DeviceChrome.None }

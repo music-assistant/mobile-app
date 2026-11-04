@@ -68,6 +68,7 @@ import io.music_assistant.client.nav.BackHandler
 import io.music_assistant.client.nav.MultiBackStack
 import io.music_assistant.client.nav.NavigationItem
 import io.music_assistant.client.nav.NoSequentialDuplicatesBackstackAdder
+import io.music_assistant.client.nav.PlaybackItem
 import io.music_assistant.client.nav.ScreenState
 import io.music_assistant.client.nav.Section
 import io.music_assistant.client.nav.createNavigationItem
@@ -123,6 +124,7 @@ import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.action_stop
 import musicassistantclient.composeapp.generated.resources.app_name
+import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.media_action_next
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -368,9 +370,8 @@ fun MainNavigationRoot(
             val pending = player.pendingPlay && !player.player.isPlaying
             val showsPause = player.player.isPlaying || pending
             listOf(
-                NavigationItem(
-                    selected = false,
-                    clickable = transport.playerEnabled && (transport.buttonsEnabled || transport.showStop),
+                PlaybackItem(
+                    enabled = transport.playerEnabled && (transport.buttonsEnabled || transport.showStop),
                     onClick = {
                         homeScreenViewModel.playerAction(
                             player,
@@ -394,9 +395,8 @@ fun MainNavigationRoot(
                         },
                     ),
                 ),
-                NavigationItem(
-                    selected = false,
-                    clickable = transport.playerEnabled && transport.buttonsEnabled && transport.skipForwardEnabled,
+                PlaybackItem(
+                    enabled = transport.playerEnabled && transport.buttonsEnabled && transport.skipForwardEnabled,
                     onClick = { homeScreenViewModel.playerAction(player, PlayerAction.Next) },
                     icon = SkipForwardIcon,
                     label = stringResource(Res.string.media_action_next),
@@ -412,6 +412,7 @@ fun MainNavigationRoot(
             playbackItems = if (playerExpanded) emptyList() else playbackItems,
             showNavigation = !playerExpanded,
             menuLabel = stringResource(Res.string.nav_menu),
+            moreLabel = stringResource(Res.string.cd_more),
             onEdited = { enabled ->
                 libraryCategoriesViewModel.onEnabledChanged(enabled)
             },

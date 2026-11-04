@@ -1,5 +1,8 @@
 package io.music_assistant.client.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.ui.utils.DeviceChrome
@@ -8,45 +11,44 @@ import io.music_assistant.client.ui.utils.VerticalBarArea
 
 /** Lets Swift report the geometry it reads from UIKit. Values are in points. */
 object DeviceChromeBridge {
+    /** The last reported geometry. `MainViewController` gives it to `App`. */
+    var deviceChrome by mutableStateOf(DeviceChrome.None)
+        private set
+
     fun setVerticalBarArea(trailingInset: Double, top: Double, bottom: Double, end: Double) = publish {
-        DeviceChrome.verticalBarArea = VerticalBarArea(
-            trailingInset = trailingInset.dp,
-            top = top.dp,
-            bottom = bottom.dp,
-            end = end.dp,
+        it.copy(
+            verticalBarArea = VerticalBarArea(
+                trailingInset = trailingInset.dp,
+                top = top.dp,
+                bottom = bottom.dp,
+                end = end.dp,
+            ),
         )
     }
 
-    fun clearVerticalBarArea() = publish {
-        DeviceChrome.verticalBarArea = null
-    }
+    fun clearVerticalBarArea() = publish { it.copy(verticalBarArea = null) }
 
     fun setPageSplit(start: Double, end: Double) = publish {
-        DeviceChrome.pageSplit = FoldRegion(start = start.dp, end = end.dp)
+        it.copy(pageSplit = FoldRegion(start = start.dp, end = end.dp))
     }
 
-    fun clearPageSplit() = publish {
-        DeviceChrome.pageSplit = null
-    }
+    fun clearPageSplit() = publish { it.copy(pageSplit = null) }
 
     fun setFoldRegion(start: Double, end: Double) = publish {
-        DeviceChrome.foldRegion = FoldRegion(start = start.dp, end = end.dp)
-        DeviceChrome.horizontalFoldRegion = null
+        it.copy(foldRegion = FoldRegion(start = start.dp, end = end.dp), horizontalFoldRegion = null)
     }
 
     fun setHorizontalFoldRegion(top: Double, bottom: Double) = publish {
-        DeviceChrome.horizontalFoldRegion = FoldRegion(start = top.dp, end = bottom.dp)
-        DeviceChrome.foldRegion = null
+        it.copy(foldRegion = null, horizontalFoldRegion = FoldRegion(start = top.dp, end = bottom.dp))
     }
 
-    fun clearFoldRegion() = publish {
-        DeviceChrome.foldRegion = null
-        DeviceChrome.horizontalFoldRegion = null
-    }
+    fun clearFoldRegion() = publish { it.copy(foldRegion = null, horizontalFoldRegion = null) }
 
-    /** These writes come from outside composition, so nothing else tells Compose about them. */
-    private inline fun publish(write: () -> Unit) {
-        write()
+    private inline fun publish(change: (DeviceChrome) -> DeviceChrome) {
+        val next = change(deviceChrome)
+        if (next == deviceChrome) return
+        deviceChrome = next
+        // This write comes from outside composition, so nothing else tells Compose about it.
         Snapshot.sendApplyNotifications()
     }
 }

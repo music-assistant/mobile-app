@@ -73,10 +73,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -125,8 +128,8 @@ import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.ui.compose.home.Queue
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.inactive
-import io.music_assistant.client.ui.utils.DeviceChrome
 import io.music_assistant.client.ui.utils.FoldRegion
+import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.utils.conditional
 import io.music_assistant.sendspin.api.PlayerState
@@ -159,24 +162,33 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
-// Width split between the player pane and the side queue pane when both are shown.
 /**
  * On a foldable each pane takes a page instead of a share of the width, with the player under the
  * right thumb. Partially folded the pages meet at the fold; fully open the player takes the extra
  * width. Null when the window is not a book-style foldable.
+ *
+ * The platform measures the hinge from the left edge of the window. [pagerStart] is the left edge
+ * of the pager in the window. The result starts at the left edge of a page.
  */
 @Composable
-internal fun pageSplitOrNull(lyricsOpen: Boolean): FoldRegion? {
+internal fun pageSplitOrNull(lyricsOpen: Boolean, pagerStart: Dp = 0.dp): FoldRegion? {
     val wide = WindowClass.isWide()
-    return DeviceChrome.pageSplit?.takeIf { wide }?.let { hinge ->
-        // Lyrics need room, so they split at the hinge: each page is then a physical half of the phone.
-        DeviceChrome.foldRegion
-            ?: if (lyricsOpen) hinge else FoldRegion(start = OPEN_QUEUE_PAGE_WIDTH, end = OPEN_QUEUE_PAGE_WIDTH)
-    }
+    val deviceChrome = LocalDeviceChrome.current
+    val hinge = deviceChrome.pageSplit?.takeIf { wide } ?: return null
+    // Lyrics need room, so they split at the hinge: each page is then a physical half of the phone.
+    val split = deviceChrome.foldRegion ?: hinge.takeIf { lyricsOpen }
+        ?: return FoldRegion(start = OPEN_QUEUE_PAGE_WIDTH, end = OPEN_QUEUE_PAGE_WIDTH)
+    return FoldRegion(
+        start = (split.start - pagerStart).coerceAtLeast(0.dp),
+        end = (split.end - pagerStart).coerceAtLeast(0.dp),
+    )
 }
 
+// Width split between the player pane and the side queue pane when both are shown.
 private const val PLAYER_PANE_WEIGHT = 2f
 private const val QUEUE_PANE_WEIGHT = 1f
+
+// Width of the queue page on a fully open foldable, measured from the left edge of the page.
 private val OPEN_QUEUE_PAGE_WIDTH = 300.dp
 
 @Composable
@@ -244,6 +256,11 @@ fun PlayersPager(
         // resolves the request against the newest player data and clears it once the player or
         // the track it names is gone.
         var dialogRequest by remember { mutableStateOf<PlayerDialogRequest?>(null) }
+        // Only the expanded player has the lyrics button. Lyrics beside the player close with it, so a
+        // later fold or rotation cannot show them in a sheet over the collapsed player.
+        LaunchedEffect(expanded) {
+            if (!expanded && dialogRequest is PlayerDialogRequest.Lyrics) dialogRequest = null
+        }
         PlayerDialogHost(
             request = dialogRequest,
             players = playerDataList,
@@ -268,25 +285,34 @@ fun PlayersPager(
             )
         }
         val isWideScreen = WindowClass.isWide()
+        val deviceChrome = LocalDeviceChrome.current
+        val density = LocalDensity.current
+        // The left edge of the pager in the window, for the page split. The pager stays in place while
+        // its pages scroll, so a swipe between players does not change it. Measured only where the
+        // window has a page split.
+        var pagerStart by remember { mutableStateOf(0.dp) }
         val modifier = if (!expanded) {
             Modifier
         } else {
             Modifier.windowInsetsPadding(
                 WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
             )
+        }.conditional(deviceChrome.pageSplit != null) {
+            onGloballyPositioned { pagerStart = with(density) { it.positionInWindow().x.toDp() } }
         }
         Column(modifier = modifier) {
             if (playerDataList.size > 1) {
                 // Over the player's own page, not over the queue beside it.
                 val split = pageSplitOrNull(
                     lyricsOpen = dialogRequest is PlayerDialogRequest.Lyrics,
+                    pagerStart = pagerStart,
                 ).takeIf { expanded }
                 HorizontalPagerIndicator(
                     modifier = Modifier
                         .padding(top = 4.dp)
                         .padding(
                             start = split?.end ?: 0.dp,
-                            end = if (expanded) DeviceChrome.verticalBarArea?.trailingInset ?: 0.dp else 0.dp,
+                            end = if (expanded) deviceChrome.verticalBarArea?.trailingInset ?: 0.dp else 0.dp,
                         ),
                     pagerState = playerPagerState,
                 )
@@ -476,6 +502,7 @@ fun PlayersPager(
                                 bufferedAheadSecFlow = bufferedAheadSecFlow,
                                 lyricsAvailable = isCurrentPage && lyrics != null,
                                 onLyricsClick = onLyricsClick,
+                                pagerStart = pagerStart,
                                 leftPageOverride = (dialogRequest as? PlayerDialogRequest.Lyrics)
                                     ?.takeIf { it.playerId == playerId && lyricsOnPage }
                                     ?.let { request ->
@@ -594,6 +621,8 @@ private fun ExpandedPlayerPage(
     chapterProgressEnabled: Boolean = true,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
+    // The left edge of the pager in the window. See [pageSplitOrNull].
+    pagerStart: Dp = 0.dp,
     leftPageOverride: (@Composable (Modifier) -> Unit)? = null,
 ) {
     // The queue sits beside the player whenever the window is wide (see
@@ -601,7 +630,7 @@ private fun ExpandedPlayerPage(
     // then split the width 2:1, so the layout degrades smoothly from a large
     // tablet down to a phone in landscape.
     val showSideQueue = WindowClass.isWide()
-    val pageSplit = pageSplitOrNull(lyricsOpen = leftPageOverride != null)
+    val pageSplit = pageSplitOrNull(lyricsOpen = leftPageOverride != null, pagerStart = pagerStart)
     // Navigating away from the player collapses it, so the target screen is visible.
     val navigateAndClose: (AppMediaItem) -> Unit = remember(navigateToItem, onClose) {
         {
@@ -623,7 +652,7 @@ private fun ExpandedPlayerPage(
         }
     }
     // Inside the page, so that the page background still runs under the vertical bar.
-    Box(modifier = Modifier.padding(end = DeviceChrome.verticalBarArea?.trailingInset ?: 0.dp)) {
+    Box(modifier = Modifier.padding(end = LocalDeviceChrome.current.verticalBarArea?.trailingInset ?: 0.dp)) {
         if (pageSplit != null) {
             val pageModifier = Modifier.width(pageSplit.start).fillMaxHeight()
             when {
@@ -653,346 +682,346 @@ private fun ExpandedPlayerPage(
                 }
             }
         }
-    Column(
-        modifier = Modifier
-            .padding(vertical = 4.dp)
-            .padding(start = pageSplit?.end ?: 0.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CenteredThreeSlotRow(
-            modifier = Modifier.fillMaxWidth(),
-            start = {
-                IconButton(onClick = onClose) {
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        "Collapse",
-                        modifier = Modifier.size(32.dp),
+        Column(
+            modifier = Modifier
+                .padding(vertical = 4.dp)
+                .padding(start = pageSplit?.end ?: 0.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CenteredThreeSlotRow(
+                modifier = Modifier.fillMaxWidth(),
+                start = {
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            Icons.Default.ExpandMore,
+                            "Collapse",
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+                },
+                center = {
+                    PlayerSelectionButton(
+                        player = player,
+                        controlTint = colors.controlTint,
+                        sendSpinState = sendspinState,
+                        onSelectPlayer = onSelectPlayer,
+                    )
+                },
+                end = {
+                    PlayerOverflowMenu(
+                        currentPlayer = player,
+                        allPlayers = allPlayers,
+                        playerAction = { playerAction(player, it) },
+                        queueAction = queueAction,
+                        navigateToItem = navigateAndClose,
+                        onPlayerSelected = { moveToPlayer(it) },
+                        onOpenDsp = onDspButton,
+                        onAnnounce = onAnnounceButton,
+                        onAmbientSound = onAmbientSoundButton,
+                        onAddToPlaylist = onAddToPlaylist,
+                        queueDjMenu = queueDjMenu,
+                        onQueueDjSelected = onQueueDjSelected,
+                    )
+                },
+            )
+
+            // Status badges live on their own fixed-height row so appearing/disappearing
+            // badges never reflow the player below, and so they never compete with the
+            // player name for width.
+            PlayerBadgesRow(
+                player = player,
+                tint = colors.controlTint,
+                onSleepTimerClick = onSleepTimerButton,
+                onToggleAutoplay = { current ->
+                    playerAction(player, PlayerAction.ToggleDontStopTheMusic(current = current))
+                },
+                onToggleCrossfade = { current ->
+                    playerAction(player, PlayerAction.ToggleCrossfade(current = current))
+                },
+            )
+
+            AnimatedVisibility(
+                visible = isQueueExpanded,
+                enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .fillMaxWidth()
+                        .wrapContentSize()
+                        .clickable { onExpandQueue(false) },
+                ) {
+                    CompactPlayerItem(
+                        modifier = Modifier,
+                        item = player,
+                        colors = colors,
+                        playerAction = playerAction,
+                        onSelectPlayer = if (isWideScreen && !isQueueExpanded) onSelectPlayer else null,
+                        showAdditionalControls = isWideScreen,
+                        sendSpinState = sendspinState,
+                        chapterProgressEnabled = chapterProgressEnabled,
+                        livePositionFlow = livePositionFlow,
                     )
                 }
-            },
-            center = {
-                PlayerSelectionButton(
-                    player = player,
-                    controlTint = colors.controlTint,
-                    sendSpinState = sendspinState,
-                    onSelectPlayer = onSelectPlayer,
-                )
-            },
-            end = {
-                PlayerOverflowMenu(
-                    currentPlayer = player,
-                    allPlayers = allPlayers,
-                    playerAction = { playerAction(player, it) },
-                    queueAction = queueAction,
-                    navigateToItem = navigateAndClose,
-                    onPlayerSelected = { moveToPlayer(it) },
-                    onOpenDsp = onDspButton,
-                    onAnnounce = onAnnounceButton,
-                    onAmbientSound = onAmbientSoundButton,
-                    onAddToPlaylist = onAddToPlaylist,
-                    queueDjMenu = queueDjMenu,
-                    onQueueDjSelected = onQueueDjSelected,
-                )
-            },
-        )
-
-        // Status badges live on their own fixed-height row so appearing/disappearing
-        // badges never reflow the player below, and so they never compete with the
-        // player name for width.
-        PlayerBadgesRow(
-            player = player,
-            tint = colors.controlTint,
-            onSleepTimerClick = onSleepTimerButton,
-            onToggleAutoplay = { current ->
-                playerAction(player, PlayerAction.ToggleDontStopTheMusic(current = current))
-            },
-            onToggleCrossfade = { current ->
-                playerAction(player, PlayerAction.ToggleCrossfade(current = current))
-            },
-        )
-
-        AnimatedVisibility(
-            visible = isQueueExpanded,
-            enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-            exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 2.dp)
-                    .fillMaxWidth()
-                    .wrapContentSize()
-                    .clickable { onExpandQueue(false) },
-            ) {
-                CompactPlayerItem(
-                    modifier = Modifier,
-                    item = player,
-                    colors = colors,
-                    playerAction = playerAction,
-                    onSelectPlayer = if (isWideScreen && !isQueueExpanded) onSelectPlayer else null,
-                    showAdditionalControls = isWideScreen,
-                    sendSpinState = sendspinState,
-                    chapterProgressEnabled = chapterProgressEnabled,
-                    livePositionFlow = livePositionFlow,
-                )
             }
-        }
 
-        Row {
-            Column(
-                modifier = Modifier
-                    .padding(top = 8.dp)
-                    .conditional(showSideQueue && pageSplit == null) {
-                        weight(PLAYER_PANE_WEIGHT)
-                            .widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp)
-                    },
-            ) {
+            Row {
                 Column(
                     modifier = Modifier
-                        .conditional(
-                            condition = !isQueueExpanded,
-                            ifTrue = { weight(1f) },
-                            ifFalse = { wrapContentHeight() },
-                        ),
+                        .padding(top = 8.dp)
+                        .conditional(showSideQueue && pageSplit == null) {
+                            weight(PLAYER_PANE_WEIGHT)
+                                .widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp)
+                        },
                 ) {
-                    AnimatedVisibility(
-                        visible = !isQueueExpanded,
-                        enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-                        exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
-                    ) {
-                        FullPlayerItem(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .pointerInput(
-                                    onClose,
-                                    onExpandQueue,
-                                    showSideQueue,
-                                    dismissThresholdPx,
-                                    minFlingVelocityPx,
-                                ) {
-                                    var totalDrag = 0f
-                                    val velocityTracker = VelocityTracker()
-                                    detectVerticalDragGestures(
-                                        onDragStart = {
-                                            totalDrag = 0f
-                                            velocityTracker.resetTracking()
-                                        },
-                                        onDragCancel = {
-                                            totalDrag = 0f
-                                            velocityTracker.resetTracking()
-                                        },
-                                        onVerticalDrag = { change, dragAmount ->
-                                            totalDrag += dragAmount
-                                            velocityTracker.addPointerInputChange(change)
-                                        },
-                                        onDragEnd = {
-                                            // Fire only on a true fling: far enough AND fast enough,
-                                            // so a slow crawl past the threshold no longer triggers.
-                                            val velocity = velocityTracker.calculateVelocity().y
-                                            if (totalDrag > dismissThresholdPx &&
-                                                velocity > minFlingVelocityPx
-                                            ) {
-                                                onClose()
-                                            } else if (!showSideQueue &&
-                                                totalDrag < -dismissThresholdPx &&
-                                                velocity < -minFlingVelocityPx
-                                            ) {
-                                                onExpandQueue(true)
-                                            }
-                                            totalDrag = 0f
-                                        },
-                                    )
-                                },
-                            item = player,
-                            colors = colors,
-                            playerAction = playerAction,
-                            onFavoriteChange = onFavoriteChange,
-                            onFavoriteStreamClick = onFavoriteStreamClick,
-                            canFavoriteStream = canFavoriteStream,
-                            lyricsAvailable = lyricsAvailable,
-                            onLyricsClick = onLyricsClick,
-                            onAudioChainClick = onAudioChainClick,
-                            onPlaybackSpeedClick = onPlaybackSpeedClick,
-                            onAmbientSoundClick = onAmbientSoundButton,
-                            livePositionFlow = livePositionFlow,
-                            bufferedAheadSecFlow = bufferedAheadSecFlow,
-                            chapterProgressEnabled = chapterProgressEnabled,
-                            navigateToItem = navigateAndClose,
-                            onChooseArtist = onChooseArtist,
-                        )
-                    }
-                }
-
-                // Fixed-height shell keeps album art space consistent whether
-                // the volume control is shown for this player.
-                Box(modifier = Modifier.fillMaxWidth().height(36.dp)) {
-                    if (player.player.isVolumeSliderAccessible && player.player.currentVolume != null) {
-                        var currentVolume by remember(player.player.currentVolume) {
-                            mutableStateOf(player.player.currentVolume)
-                        }
-                        val controlTint = colors.controlTint
-                        val volumeSliderColors = SliderDefaults.colors().copy(
-                            thumbColor = controlTint,
-                            activeTrackColor = controlTint,
-                            inactiveTrackColor = controlTint.inactive(),
-                        )
-                        val isGroupBound = player.childrenBinds.any { it.isBound }
-                        val isGroupForGesture by rememberUpdatedState(isGroupBound)
-                        Row(
-                            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Icon(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .alphaOn(player.player.canMute)
-                                    .clickable(enabled = player.player.canMute) {
-                                        playerAction(
-                                            player,
-                                            if (player.childrenBinds.none { it.isBound }) {
-                                                PlayerAction.ToggleMute(player.player.currentMuteState)
-                                            } else {
-                                                PlayerAction.GroupToggleMute(player.player.currentMuteState)
-                                            },
-                                        )
-                                    },
-                                imageVector = if (player.player.currentMuteState) {
-                                    VolumeMutedIcon
-                                } else {
-                                    VolumeIcon
-                                },
-                                contentDescription = if (player.player.currentMuteState) {
-                                    stringResource(
-                                        Res.string.cd_unmute,
-                                    )
-                                } else {
-                                    stringResource(Res.string.cd_mute)
-                                },
-                                tint = controlTint,
-                            )
-                            VolumeSliderBox(
-                                modifier = Modifier.weight(1f),
-                                volume = { currentVolume },
-                                onStepDown = {
-                                    playerAction(
-                                        player,
-                                        if (isGroupForGesture) {
-                                            PlayerAction.GroupVolumeDown
-                                        } else {
-                                            PlayerAction.VolumeDown
-                                        },
-                                    )
-                                },
-                                onStepUp = {
-                                    playerAction(
-                                        player,
-                                        if (isGroupForGesture) {
-                                            PlayerAction.GroupVolumeUp
-                                        } else {
-                                            PlayerAction.VolumeUp
-                                        },
-                                    )
-                                },
-                            ) {
-                                Slider(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    value = currentVolume,
-                                    valueRange = 0f..100f,
-                                    onValueChange = {
-                                        currentVolume = it
-                                    },
-                                    onValueChangeFinished = {
-                                        playerAction(
-                                            player,
-                                            if (player.childrenBinds.none { it.isBound }) {
-                                                PlayerAction.VolumeSet(currentVolume.toDouble())
-                                            } else {
-                                                PlayerAction.GroupVolumeSet(currentVolume.toDouble())
-                                            },
-                                        )
-                                    },
-                                    thumb = {
-                                        SliderDefaults.Thumb(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            thumbSize = DpSize(16.dp, 16.dp),
-                                            colors = volumeSliderColors,
-                                        )
-                                    },
-                                    track = { sliderState ->
-                                        SliderDefaults.Track(
-                                            sliderState = sliderState,
-                                            colors = volumeSliderColors,
-                                            thumbTrackGapSize = 0.dp,
-                                            trackInsideCornerSize = 0.dp,
-                                            drawStopIndicator = null,
-                                            // Square inside corners leave 0 % and 100 % with a square end.
-                                            modifier = Modifier.height(4.dp).clip(CircleShape),
-                                        )
-                                    },
-                                )
-                            }
-                            VolumeValue(
-                                volume = currentVolume.roundToInt(),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = controlTint,
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
-
-                if (!showSideQueue) {
-                    CollapsibleQueue(
-                        onAddToPlaylist = onAddToPlaylist,
-                        onStartEndlessMix = onStartEndlessMix,
+                    Column(
                         modifier = Modifier
                             .conditional(
-                                condition = isQueueExpanded,
-                                ifTrue = {
-                                    weight(1f).nestedScroll(queueCollapseNestedScroll)
-                                },
+                                condition = !isQueueExpanded,
+                                ifTrue = { weight(1f) },
                                 ifFalse = { wrapContentHeight() },
                             ),
+                    ) {
+                        AnimatedVisibility(
+                            visible = !isQueueExpanded,
+                            enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                            exit = fadeOut(tween(200)) + shrinkVertically(tween(300)),
+                        ) {
+                            FullPlayerItem(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(
+                                        onClose,
+                                        onExpandQueue,
+                                        showSideQueue,
+                                        dismissThresholdPx,
+                                        minFlingVelocityPx,
+                                    ) {
+                                        var totalDrag = 0f
+                                        val velocityTracker = VelocityTracker()
+                                        detectVerticalDragGestures(
+                                            onDragStart = {
+                                                totalDrag = 0f
+                                                velocityTracker.resetTracking()
+                                            },
+                                            onDragCancel = {
+                                                totalDrag = 0f
+                                                velocityTracker.resetTracking()
+                                            },
+                                            onVerticalDrag = { change, dragAmount ->
+                                                totalDrag += dragAmount
+                                                velocityTracker.addPointerInputChange(change)
+                                            },
+                                            onDragEnd = {
+                                                // Fire only on a true fling: far enough AND fast enough,
+                                                // so a slow crawl past the threshold no longer triggers.
+                                                val velocity = velocityTracker.calculateVelocity().y
+                                                if (totalDrag > dismissThresholdPx &&
+                                                    velocity > minFlingVelocityPx
+                                                ) {
+                                                    onClose()
+                                                } else if (!showSideQueue &&
+                                                    totalDrag < -dismissThresholdPx &&
+                                                    velocity < -minFlingVelocityPx
+                                                ) {
+                                                    onExpandQueue(true)
+                                                }
+                                                totalDrag = 0f
+                                            },
+                                        )
+                                    },
+                                item = player,
+                                colors = colors,
+                                playerAction = playerAction,
+                                onFavoriteChange = onFavoriteChange,
+                                onFavoriteStreamClick = onFavoriteStreamClick,
+                                canFavoriteStream = canFavoriteStream,
+                                lyricsAvailable = lyricsAvailable,
+                                onLyricsClick = onLyricsClick,
+                                onAudioChainClick = onAudioChainClick,
+                                onPlaybackSpeedClick = onPlaybackSpeedClick,
+                                onAmbientSoundClick = onAmbientSoundButton,
+                                livePositionFlow = livePositionFlow,
+                                bufferedAheadSecFlow = bufferedAheadSecFlow,
+                                chapterProgressEnabled = chapterProgressEnabled,
+                                navigateToItem = navigateAndClose,
+                                onChooseArtist = onChooseArtist,
+                            )
+                        }
+                    }
+
+                    // Fixed-height shell keeps album art space consistent whether
+                    // the volume control is shown for this player.
+                    Box(modifier = Modifier.fillMaxWidth().height(36.dp)) {
+                        if (player.player.isVolumeSliderAccessible && player.player.currentVolume != null) {
+                            var currentVolume by remember(player.player.currentVolume) {
+                                mutableStateOf(player.player.currentVolume)
+                            }
+                            val controlTint = colors.controlTint
+                            val volumeSliderColors = SliderDefaults.colors().copy(
+                                thumbColor = controlTint,
+                                activeTrackColor = controlTint,
+                                inactiveTrackColor = controlTint.inactive(),
+                            )
+                            val isGroupBound = player.childrenBinds.any { it.isBound }
+                            val isGroupForGesture by rememberUpdatedState(isGroupBound)
+                            Row(
+                                modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Icon(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .alphaOn(player.player.canMute)
+                                        .clickable(enabled = player.player.canMute) {
+                                            playerAction(
+                                                player,
+                                                if (player.childrenBinds.none { it.isBound }) {
+                                                    PlayerAction.ToggleMute(player.player.currentMuteState)
+                                                } else {
+                                                    PlayerAction.GroupToggleMute(player.player.currentMuteState)
+                                                },
+                                            )
+                                        },
+                                    imageVector = if (player.player.currentMuteState) {
+                                        VolumeMutedIcon
+                                    } else {
+                                        VolumeIcon
+                                    },
+                                    contentDescription = if (player.player.currentMuteState) {
+                                        stringResource(
+                                            Res.string.cd_unmute,
+                                        )
+                                    } else {
+                                        stringResource(Res.string.cd_mute)
+                                    },
+                                    tint = controlTint,
+                                )
+                                VolumeSliderBox(
+                                    modifier = Modifier.weight(1f),
+                                    volume = { currentVolume },
+                                    onStepDown = {
+                                        playerAction(
+                                            player,
+                                            if (isGroupForGesture) {
+                                                PlayerAction.GroupVolumeDown
+                                            } else {
+                                                PlayerAction.VolumeDown
+                                            },
+                                        )
+                                    },
+                                    onStepUp = {
+                                        playerAction(
+                                            player,
+                                            if (isGroupForGesture) {
+                                                PlayerAction.GroupVolumeUp
+                                            } else {
+                                                PlayerAction.VolumeUp
+                                            },
+                                        )
+                                    },
+                                ) {
+                                    Slider(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = currentVolume,
+                                        valueRange = 0f..100f,
+                                        onValueChange = {
+                                            currentVolume = it
+                                        },
+                                        onValueChangeFinished = {
+                                            playerAction(
+                                                player,
+                                                if (player.childrenBinds.none { it.isBound }) {
+                                                    PlayerAction.VolumeSet(currentVolume.toDouble())
+                                                } else {
+                                                    PlayerAction.GroupVolumeSet(currentVolume.toDouble())
+                                                },
+                                            )
+                                        },
+                                        thumb = {
+                                            SliderDefaults.Thumb(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                thumbSize = DpSize(16.dp, 16.dp),
+                                                colors = volumeSliderColors,
+                                            )
+                                        },
+                                        track = { sliderState ->
+                                            SliderDefaults.Track(
+                                                sliderState = sliderState,
+                                                colors = volumeSliderColors,
+                                                thumbTrackGapSize = 0.dp,
+                                                trackInsideCornerSize = 0.dp,
+                                                drawStopIndicator = null,
+                                                // Square inside corners leave 0 % and 100 % with a square end.
+                                                modifier = Modifier.height(4.dp).clip(CircleShape),
+                                            )
+                                        },
+                                    )
+                                }
+                                VolumeValue(
+                                    volume = currentVolume.roundToInt(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = controlTint,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.fillMaxWidth().height(8.dp))
+
+                    if (!showSideQueue) {
+                        CollapsibleQueue(
+                            onAddToPlaylist = onAddToPlaylist,
+                            onStartEndlessMix = onStartEndlessMix,
+                            modifier = Modifier
+                                .conditional(
+                                    condition = isQueueExpanded,
+                                    ifTrue = {
+                                        weight(1f).nestedScroll(queueCollapseNestedScroll)
+                                    },
+                                    ifFalse = { wrapContentHeight() },
+                                ),
+                            queue = player.queue,
+                            isQueueExpanded = isQueueExpanded,
+                            onQueueExpandedSwitch = { onExpandQueue(!isQueueExpanded) },
+                            onGoToLibrary = onClose,
+                            queueAction = queueAction,
+                            tint = colors.controlTint,
+                            isCurrentPage = isCurrentPage,
+                            contentPadding = contentPadding,
+                            livePositionFlow = livePositionFlow,
+                            onChapterClick = { chapter ->
+                                playerAction(player, PlayerAction.SeekTo(chapterSeekSeconds(chapter.start)))
+                            },
+                        )
+                    } else {
+                        Spacer(
+                            modifier = Modifier.fillMaxWidth()
+                                .height(contentPadding.calculateBottomPadding()),
+                        )
+                    }
+                }
+
+                if (showSideQueue && pageSplit == null && player.queue is DataState.Data) {
+                    Queue(
+                        modifier = Modifier.weight(QUEUE_PANE_WEIGHT),
                         queue = player.queue,
-                        isQueueExpanded = isQueueExpanded,
-                        onQueueExpandedSwitch = { onExpandQueue(!isQueueExpanded) },
                         onGoToLibrary = onClose,
-                        queueAction = queueAction,
-                        tint = colors.controlTint,
+                        isQueueExpanded = true,
                         isCurrentPage = isCurrentPage,
                         contentPadding = contentPadding,
+                        queueAction = queueAction,
+                        onAddToPlaylist = onAddToPlaylist,
                         livePositionFlow = livePositionFlow,
                         onChapterClick = { chapter ->
                             playerAction(player, PlayerAction.SeekTo(chapterSeekSeconds(chapter.start)))
                         },
                     )
-                } else {
-                    Spacer(
-                        modifier = Modifier.fillMaxWidth()
-                            .height(contentPadding.calculateBottomPadding()),
-                    )
                 }
             }
-
-            if (showSideQueue && pageSplit == null && player.queue is DataState.Data) {
-                Queue(
-                    modifier = Modifier.weight(QUEUE_PANE_WEIGHT),
-                    queue = player.queue,
-                    onGoToLibrary = onClose,
-                    isQueueExpanded = true,
-                    isCurrentPage = isCurrentPage,
-                    contentPadding = contentPadding,
-                    queueAction = queueAction,
-                    onAddToPlaylist = onAddToPlaylist,
-                    livePositionFlow = livePositionFlow,
-                    onChapterClick = { chapter ->
-                        playerAction(player, PlayerAction.SeekTo(chapterSeekSeconds(chapter.start)))
-                    },
-                )
-            }
         }
-    }
     }
 }
 
@@ -1228,17 +1257,18 @@ private fun CollapsedPlayerPage(
     chapterProgressEnabled: Boolean = true,
     livePositionFlow: Flow<Double>? = null,
 ) {
+    val verticalBarArea = LocalDeviceChrome.current.verticalBarArea
     CompactPlayerItem(
         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
         item = player,
         colors = colors,
         playerAction = playerAction,
         // The vertical bar already carries the player selection.
-        onSelectPlayer = if (isWideScreen && DeviceChrome.verticalBarArea == null) onSelectPlayer else null,
+        onSelectPlayer = if (isWideScreen && verticalBarArea == null) onSelectPlayer else null,
         sendSpinState = sendspinState,
         chapterProgressEnabled = chapterProgressEnabled,
         livePositionFlow = livePositionFlow,
-        transportOnBar = DeviceChrome.verticalBarArea != null,
+        transportOnBar = verticalBarArea != null,
     )
 }
 
