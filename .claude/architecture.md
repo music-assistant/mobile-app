@@ -267,6 +267,15 @@ actual class PlatformFeature {
 - Use `remember`/`derivedStateOf` for computed values
 - Split large composables into smaller files by meaning
 - Previews only when explicitly requested
+- **Stacked rows**: `CategoryRow` (`ui/compose/common/items/`) shows a row of tap-to-play items as list items, two
+  in each column. The other rows show one row of grid tiles. A tap-to-play item is a track, a podcast episode or a
+  radio station (`playsOnTap`). An audiobook is not a tap-to-play item, because its tile opens the item page. The
+  stacked items are the `ViewMode.LIST` items (`RowItem`) with one title line (`titleMaxLines`), so both items of a
+  column have the same height. A column is 70% of the row width, and 360 dp at most. Each stacked item has a card
+  background: `surfaceVariant` at 30% alpha, with the shape of the `RowItem` ripple.
+
+  The placeholders that show while a row loads are always grid tiles. So a stacked row gets shorter when its items
+  load, and the rows below it move up. This is a known limit.
 
 ## State Management
 

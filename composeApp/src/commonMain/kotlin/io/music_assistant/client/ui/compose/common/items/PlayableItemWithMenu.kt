@@ -41,6 +41,7 @@ typealias PlayHandler<T> = (item: T, mode: PlayMode) -> Unit
 fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
     showTrackNumber: Boolean = false,
     navigateToItem: (AppMediaItem) -> Unit,
     containerItem: AppMediaItem? = null,
@@ -71,6 +72,7 @@ fun TrackWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> TrackGridItem(
@@ -89,6 +91,7 @@ fun TrackWithMenu(
 fun PodcastEpisodeWithMenu(
     item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
     navigateToItem: ((AppMediaItem) -> Unit)? = null,
     containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<PodcastEpisode>,
@@ -119,6 +122,7 @@ fun PodcastEpisodeWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> PodcastEpisodeGridItem(
@@ -137,6 +141,7 @@ fun PodcastEpisodeWithMenu(
 fun RadioWithMenu(
     item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
     onPlayOption: PlayHandler<RadioStation>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -161,6 +166,7 @@ fun RadioWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> LiveStreamGridItem(
