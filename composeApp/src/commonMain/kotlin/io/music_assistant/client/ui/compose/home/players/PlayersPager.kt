@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -72,6 +74,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpSize
@@ -122,6 +125,8 @@ import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.ui.compose.home.Queue
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.inactive
+import io.music_assistant.client.ui.utils.DeviceChrome
+import io.music_assistant.client.ui.utils.FoldRegion
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.utils.conditional
 import io.music_assistant.sendspin.api.PlayerState
@@ -146,6 +151,7 @@ import musicassistantclient.composeapp.generated.resources.players_dsp_settings
 import musicassistantclient.composeapp.generated.resources.players_loading
 import musicassistantclient.composeapp.generated.resources.players_none_available
 import musicassistantclient.composeapp.generated.resources.queue_clear
+import musicassistantclient.composeapp.generated.resources.queue_label
 import musicassistantclient.composeapp.generated.resources.queue_no_other_players
 import musicassistantclient.composeapp.generated.resources.queue_transfer
 import org.jetbrains.compose.resources.painterResource
@@ -154,8 +160,24 @@ import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 // Width split between the player pane and the side queue pane when both are shown.
+/**
+ * On a foldable each pane takes a page instead of a share of the width, with the player under the
+ * right thumb. Partially folded the pages meet at the fold; fully open the player takes the extra
+ * width. Null when the window is not a book-style foldable.
+ */
+@Composable
+internal fun pageSplitOrNull(lyricsOpen: Boolean): FoldRegion? {
+    val wide = WindowClass.isWide()
+    return DeviceChrome.pageSplit?.takeIf { wide }?.let { hinge ->
+        // Lyrics need room, so they split at the hinge: each page is then a physical half of the phone.
+        DeviceChrome.foldRegion
+            ?: if (lyricsOpen) hinge else FoldRegion(start = OPEN_QUEUE_PAGE_WIDTH, end = OPEN_QUEUE_PAGE_WIDTH)
+    }
+}
+
 private const val PLAYER_PANE_WEIGHT = 2f
 private const val QUEUE_PANE_WEIGHT = 1f
+private val OPEN_QUEUE_PAGE_WIDTH = 300.dp
 
 @Composable
 fun PlayersPager(
@@ -213,6 +235,8 @@ fun PlayersPager(
                 )
             }
         var isQueueExpanded by remember { mutableStateOf(false) }
+        // Lyrics go beside the player only where the layout has pages; otherwise in a sheet.
+        val lyricsOnPage = pageSplitOrNull(lyricsOpen = true) != null
         // Extract playerData list to ensure proper recomposition
         val playerDataList = state.playerData
         // Every player dialog lives outside the pager, so removing or reordering a page cannot
@@ -253,8 +277,17 @@ fun PlayersPager(
         }
         Column(modifier = modifier) {
             if (playerDataList.size > 1) {
+                // Over the player's own page, not over the queue beside it.
+                val split = pageSplitOrNull(
+                    lyricsOpen = dialogRequest is PlayerDialogRequest.Lyrics,
+                ).takeIf { expanded }
                 HorizontalPagerIndicator(
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier
+                        .padding(top = 4.dp)
+                        .padding(
+                            start = split?.end ?: 0.dp,
+                            end = if (expanded) DeviceChrome.verticalBarArea?.trailingInset ?: 0.dp else 0.dp,
+                        ),
                     pagerState = playerPagerState,
                 )
             }
@@ -310,7 +343,13 @@ fun PlayersPager(
                 }
                 val onLyricsClick: () -> Unit = remember(playerId, lyricsItemId) {
                     {
-                        lyricsItemId?.let { dialogRequest = PlayerDialogRequest.Lyrics(playerId, it) }
+                        lyricsItemId?.let {
+                            dialogRequest = if (dialogRequest is PlayerDialogRequest.Lyrics) {
+                                null
+                            } else {
+                                PlayerDialogRequest.Lyrics(playerId, it)
+                            }
+                        }
                     }
                 }
                 val onChooseArtist: () -> Unit = remember(playerId, trackId) {
@@ -437,6 +476,20 @@ fun PlayersPager(
                                 bufferedAheadSecFlow = bufferedAheadSecFlow,
                                 lyricsAvailable = isCurrentPage && lyrics != null,
                                 onLyricsClick = onLyricsClick,
+                                leftPageOverride = (dialogRequest as? PlayerDialogRequest.Lyrics)
+                                    ?.takeIf { it.playerId == playerId && lyricsOnPage }
+                                    ?.let { request ->
+                                        {
+                                            pageModifier ->
+                                            LyricsPage(
+                                                request = request,
+                                                players = playerDataList,
+                                                homeScreenViewModel = homeScreenViewModel,
+                                                onDismiss = { dialogRequest = null },
+                                                modifier = pageModifier,
+                                            )
+                                        }
+                                    },
                                 onAudioChainClick = onAudioChainClick,
                                 onPlaybackSpeedClick = onPlaybackSpeedClick,
                                 onChooseArtist = onChooseArtist,
@@ -541,12 +594,14 @@ private fun ExpandedPlayerPage(
     chapterProgressEnabled: Boolean = true,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
+    leftPageOverride: (@Composable (Modifier) -> Unit)? = null,
 ) {
     // The queue sits beside the player whenever the window is wide (see
     // [WindowClass.isWide]); otherwise it collapses underneath it. The two panes
     // then split the width 2:1, so the layout degrades smoothly from a large
     // tablet down to a phone in landscape.
     val showSideQueue = WindowClass.isWide()
+    val pageSplit = pageSplitOrNull(lyricsOpen = leftPageOverride != null)
     // Navigating away from the player collapses it, so the target screen is visible.
     val navigateAndClose: (AppMediaItem) -> Unit = remember(navigateToItem, onClose) {
         {
@@ -567,8 +622,41 @@ private fun ExpandedPlayerPage(
             }
         }
     }
+    // Inside the page, so that the page background still runs under the vertical bar.
+    Box(modifier = Modifier.padding(end = DeviceChrome.verticalBarArea?.trailingInset ?: 0.dp)) {
+        if (pageSplit != null) {
+            val pageModifier = Modifier.width(pageSplit.start).fillMaxHeight()
+            when {
+                leftPageOverride != null -> leftPageOverride(pageModifier)
+
+                player.queue is DataState.Data -> Column(modifier = pageModifier) {
+                    Text(
+                        modifier = Modifier.padding(start = 20.dp, top = 40.dp, bottom = 16.dp),
+                        text = stringResource(Res.string.queue_label),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Queue(
+                        modifier = Modifier.weight(1f),
+                        queue = player.queue,
+                        onGoToLibrary = onClose,
+                        isQueueExpanded = true,
+                        isCurrentPage = isCurrentPage,
+                        contentPadding = contentPadding,
+                        queueAction = queueAction,
+                        onAddToPlaylist = onAddToPlaylist,
+                        livePositionFlow = livePositionFlow,
+                        onChapterClick = { chapter ->
+                            playerAction(player, PlayerAction.SeekTo(chapterSeekSeconds(chapter.start)))
+                        },
+                    )
+                }
+            }
+        }
     Column(
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .padding(start = pageSplit?.end ?: 0.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         CenteredThreeSlotRow(
@@ -653,7 +741,7 @@ private fun ExpandedPlayerPage(
             Column(
                 modifier = Modifier
                     .padding(top = 8.dp)
-                    .conditional(showSideQueue) {
+                    .conditional(showSideQueue && pageSplit == null) {
                         weight(PLAYER_PANE_WEIGHT)
                             .widthIn(max = WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND.dp)
                     },
@@ -887,7 +975,7 @@ private fun ExpandedPlayerPage(
                 }
             }
 
-            if (showSideQueue && player.queue is DataState.Data) {
+            if (showSideQueue && pageSplit == null && player.queue is DataState.Data) {
                 Queue(
                     modifier = Modifier.weight(QUEUE_PANE_WEIGHT),
                     queue = player.queue,
@@ -904,6 +992,7 @@ private fun ExpandedPlayerPage(
                 )
             }
         }
+    }
     }
 }
 
@@ -1144,10 +1233,12 @@ private fun CollapsedPlayerPage(
         item = player,
         colors = colors,
         playerAction = playerAction,
-        onSelectPlayer = if (isWideScreen) onSelectPlayer else null,
+        // The vertical bar already carries the player selection.
+        onSelectPlayer = if (isWideScreen && DeviceChrome.verticalBarArea == null) onSelectPlayer else null,
         sendSpinState = sendspinState,
         chapterProgressEnabled = chapterProgressEnabled,
         livePositionFlow = livePositionFlow,
+        transportOnBar = DeviceChrome.verticalBarArea != null,
     )
 }
 

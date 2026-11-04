@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,15 +23,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,18 +44,24 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRail
 import androidx.compose.material3.WideNavigationRailValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -63,6 +74,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
+import io.music_assistant.client.ui.utils.DeviceChrome
+import io.music_assistant.client.ui.utils.VerticalBarArea
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.ui.utils.fadingEdges
 import kotlinx.coroutines.launch
@@ -78,6 +91,7 @@ fun AdaptiveNavigationBarLayout(
     appName: String,
     sections: List<Section>,
     trailingItem: NavigationItem? = null,
+    playbackItems: List<NavigationItem> = emptyList(),
     showNavigation: Boolean = true,
     drawInitiallyOpen: Boolean = false,
     navigationBarHeight: Dp = 64.dp,
@@ -100,8 +114,11 @@ fun AdaptiveNavigationBarLayout(
         RailLayout(
             appName = appName,
             sections = sections,
+            trailingItem = trailingItem,
+            playbackItems = playbackItems,
             showNavigation = showNavigation,
             editState = editState,
+            maxNavigationBarItems = maxNavigationBarItems,
             content = content,
         )
     } else {
@@ -109,6 +126,7 @@ fun AdaptiveNavigationBarLayout(
             appName = appName,
             sections = sections,
             trailingItem = trailingItem,
+            playbackItems = playbackItems,
             showNavigation = showNavigation,
             navigationBarHeight = navigationBarHeight,
             menuLabel = menuLabel,
@@ -124,14 +142,21 @@ fun AdaptiveNavigationBarLayout(
 private fun RailLayout(
     appName: String,
     sections: List<Section>,
+    trailingItem: NavigationItem?,
+    playbackItems: List<NavigationItem>,
     showNavigation: Boolean,
     editState: EditableListState?,
+    maxNavigationBarItems: Int,
     content: @Composable (BoxScope.(PaddingValues, Boolean) -> Unit),
 ) {
+    // Across a vertical fold the rail takes the left page and the content the right one.
+    val fold = DeviceChrome.foldRegion
+    val verticalBarArea = DeviceChrome.verticalBarArea
+    Box(Modifier.fillMaxSize()) {
     Row(Modifier.fillMaxWidth()) {
         if (showNavigation) {
             WideNavigationRail(
-                modifier = Modifier.width(280.dp),
+                modifier = Modifier.width(fold?.start ?: 280.dp),
                 state = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded),
                 header = {
                     SidebarHeader(
@@ -146,11 +171,32 @@ private fun RailLayout(
                     editState = editState,
                 )
             }
+            if (fold != null) {
+                Spacer(Modifier.width(fold.end - fold.start))
+            }
         }
 
-        Box {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                // An expanded player keeps its background under the strip and insets its own content.
+                .padding(end = if (showNavigation) verticalBarArea?.trailingInset ?: 0.dp else 0.dp),
+        ) {
             content(PaddingValues(), false)
         }
+    }
+    if (verticalBarArea != null) {
+        VerticalNavigationBar(
+            area = verticalBarArea,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = verticalBarArea.end, bottom = verticalBarArea.bottom),
+            items = playbackItems +
+                sections.first().items.take(maxNavigationBarItems) +
+                listOfNotNull(trailingItem),
+        )
+    }
     }
 }
 
@@ -159,6 +205,7 @@ private fun BarWithDrawerLayout(
     appName: String,
     sections: List<Section>,
     trailingItem: NavigationItem?,
+    playbackItems: List<NavigationItem>,
     showNavigation: Boolean,
     navigationBarHeight: Dp,
     menuLabel: String,
@@ -183,9 +230,11 @@ private fun BarWithDrawerLayout(
         }
     }
 
+    val noRoomForBar = DeviceChrome.verticalBarArea?.let { verticalBarCapacity(it) == 0 } == true
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = drawerIsOpeningOrOpen,
+        // Without room for the vertical bar there is no menu button, so the edge swipe has to open it.
+        gesturesEnabled = drawerIsOpeningOrOpen || noRoomForBar,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.testTag(NavigationDrawerSemantics.TAG),
@@ -220,16 +269,42 @@ private fun BarWithDrawerLayout(
                 .asPaddingValues()
                 .calculateBottomPadding()
 
+            val verticalBarArea = DeviceChrome.verticalBarArea
             content(
-                if (showNavigation) {
-                    PaddingValues(bottom = navigationBarHeight + bottomInset)
-                } else {
-                    PaddingValues()
+                when {
+                    // An expanded player keeps its background under the strip and insets its content.
+                    !showNavigation -> PaddingValues()
+                    verticalBarArea != null -> PaddingValues(end = verticalBarArea.trailingInset)
+                    else -> PaddingValues(bottom = navigationBarHeight + bottomInset)
                 },
                 drawerIsOpeningOrOpen,
             )
 
-            if (showNavigation) {
+            val menuItem = NavigationItem(
+                selected = false,
+                onClick = {
+                    scope.launch { drawerState.open() }
+                },
+                icon = Icons.Default.Menu,
+                label = menuLabel,
+            )
+            val barItems = buildList {
+                add(menuItem)
+                addAll(sections.first().items.take(maxNavigationBarItems))
+                if (trailingItem != null) {
+                    add(trailingItem)
+                }
+            }
+
+            if (verticalBarArea != null) {
+                VerticalNavigationBar(
+                    area = verticalBarArea,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = verticalBarArea.end, bottom = verticalBarArea.bottom),
+                    items = playbackItems + barItems,
+                )
+            } else if (showNavigation) {
                 // Two concerns are split so icon placement doesn't depend on M3's inset handling:
                 //  - the wrapper Box (navigationBarHeight + bottomInset tall) paints the bar background
                 //    down behind the system nav / home indicator, so no white bleeds through edge-to-edge;
@@ -251,24 +326,6 @@ private fun BarWithDrawerLayout(
                         containerColor = Color.Transparent,
                         windowInsets = WindowInsets(0, 0, 0, 0),
                     ) {
-                        val menuItem = NavigationItem(
-                            selected = false,
-                            onClick = {
-                                scope.launch { drawerState.open() }
-                            },
-                            icon = Icons.Default.Menu,
-                            label = menuLabel,
-                        )
-
-                        val firstSection = sections.first()
-                        val barItems = buildList {
-                            add(menuItem)
-                            addAll(firstSection.items.take(maxNavigationBarItems))
-                            if (trailingItem != null) {
-                                add(trailingItem)
-                            }
-                        }
-
                         barItems.forEach {
                             NavigationBarItem(it)
                         }
@@ -367,6 +424,106 @@ private fun SectionTitle(title: String) {
     )
 }
 
+/** How many buttons of the vertical bar fit between the system areas above and below it. */
+@Composable
+private fun verticalBarCapacity(area: VerticalBarArea): Int {
+    val density = LocalDensity.current
+    val windowHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    return ((windowHeight - area.top - area.bottom) / VerticalBarWidth).toInt().coerceAtLeast(0)
+}
+
+/**
+ * The navigation bar for a [VerticalBarArea]: icons only, because the strip is too narrow for labels.
+ *
+ * The strip is shared with the status bar and the Dynamic Island, which grows downwards when a Live
+ * Activity arrives. Buttons that no longer fit move into an overflow menu, as Apple's guidelines ask.
+ */
+@Composable
+private fun VerticalNavigationBar(
+    items: List<NavigationItem>,
+    area: VerticalBarArea,
+    modifier: Modifier = Modifier,
+) {
+    // Never more buttons than the area the system left for the bar; with room for one, only "more".
+    val capacity = verticalBarCapacity(area)
+    if (capacity == 0) return
+    val visible = if (capacity >= 2 && items.size <= capacity) items else items.take(capacity - 1)
+    val overflow = items.drop(visible.size)
+    var overflowOpen by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = modifier
+            .width(VerticalBarWidth)
+            .testTag(NavigationBarSemantics.TAG),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+        shadowElevation = 3.dp,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            visible.forEach { item ->
+                VerticalBarButton(item = item, onClick = item.onClick)
+            }
+            if (overflow.isNotEmpty()) {
+                Box {
+                    VerticalBarButton(
+                        item = NavigationItem(
+                            selected = overflow.any { it.selected },
+                            onClick = {},
+                            icon = Icons.Default.MoreVert,
+                            label = "More",
+                        ),
+                        onClick = { overflowOpen = true },
+                    )
+                    DropdownMenu(expanded = overflowOpen, onDismissRequest = { overflowOpen = false }) {
+                        overflow.forEach { item ->
+                            DropdownMenuItem(
+                                text = { Text(item.label) },
+                                enabled = item.clickable,
+                                leadingIcon = { Icon(item.icon, contentDescription = null) },
+                                onClick = {
+                                    overflowOpen = false
+                                    item.onClick()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VerticalBarButton(item: NavigationItem, onClick: () -> Unit) {
+    IconButton(
+        modifier = Modifier.size(VerticalBarWidth),
+        onClick = onClick,
+        enabled = item.clickable,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(
+                    color = if (item.selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.contentDescription ?: item.label,
+            )
+        }
+    }
+}
+
+private val VerticalBarWidth = 56.dp
+
 @Composable
 private fun RowScope.NavigationBarItem(item: NavigationItem) {
     NavigationBarItem(
@@ -416,6 +573,8 @@ data class NavigationItem(
     val enabled: Boolean = true,
     val editable: Boolean = false,
     val id: String = label,
+    // False dims the item and ignores taps; unlike [enabled], which says whether a category is shown.
+    val clickable: Boolean = true,
 )
 
 fun <T : NavKey> MultiBackStack<T>.createNavigationItem(
