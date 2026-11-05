@@ -45,6 +45,10 @@ object APICommands {
     const val MUSIC_PLAYLISTS_ADD_PLAYLIST_TRACKS = "music/playlists/add_playlist_tracks"
     const val MUSIC_PLAYLISTS_REMOVE_PLAYLIST_TRACKS = "music/playlists/remove_playlist_tracks"
 
+    // Builtin provider: add a stream by URL
+    const val BUILTIN_ADD_RADIO = "builtin/add_radio"
+    const val BUILTIN_ADD_TRACK = "builtin/add_track"
+
     // Podcast commands
     const val MUSIC_PODCASTS_LIBRARY_ITEMS = "music/podcasts/library_items"
     const val MUSIC_PODCASTS_PODCAST_EPISODES = "music/podcasts/podcast_episodes"

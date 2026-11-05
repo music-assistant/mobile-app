@@ -543,6 +543,20 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
     }
 
+    data object Builtin {
+        fun addRadio(url: String, name: String) = addStream(APICommands.BUILTIN_ADD_RADIO, url, name)
+
+        fun addTrack(url: String, name: String) = addStream(APICommands.BUILTIN_ADD_TRACK, url, name)
+
+        private fun addStream(command: String, url: String, name: String) = Request(
+            command = command,
+            args = buildJsonObject {
+                put("url", JsonPrimitive(url.trim()))
+                put("name", JsonPrimitive(name.trim()))
+            },
+        )
+    }
+
     data object RadioStation {
         fun get(
             itemId: String,

@@ -129,6 +129,7 @@
   <string name="bound_player_playing_with">%1$s is playing with %2$s\n(tap to view)</string>
   <string name="bound_player_playing_with_group">%1$s is playing with group %2$s\n(tap to view)</string>
   <string name="browse_subtitle">Artists, Albums, Tracks &amp; more</string>
+  <string name="cd_add_by_url">Add by URL</string>
   <string name="cd_add_playlist">Add playlist</string>
   <string name="cd_add_to_group">Add to group</string>
   <string name="cd_album_item">Album "%1$s" from %2$s</string>
@@ -201,6 +202,7 @@
   <string name="codec_opus_description">compressed, lowest bandwidth</string>
   <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
   <string name="codec_pcm_description">lossless, high bandwidth</string>
+  <string name="common_add">Add</string>
   <string name="common_apply">Apply</string>
   <string name="common_back">Back</string>
   <string name="common_cancel">Cancel</string>
@@ -360,6 +362,9 @@
   <string name="playlist_access_personal">Personal</string>
   <string name="playlist_access_shared">Shared</string>
   <string name="playlist_add_button">Add playlist</string>
+  <string name="add_by_url_title">Add by URL</string>
+  <string name="add_by_url_url_label">Stream URL</string>
+  <string name="add_by_url_name_label">Name (optional)</string>
   <string name="playlist_add_new">Add new</string>
   <string name="playlist_add_to_title">Add to playlist</string>
   <string name="playlist_create_title">Create new playlist</string>
@@ -533,6 +538,7 @@
   <string name="sort_release_date">Release date</string>
   <string name="sort_year">Year</string>
   <string name="toast_added_to_playlist">Added to %1$s</string>
+  <string name="toast_error_add_by_url">Error adding by URL</string>
   <string name="toast_error_add_playlist">Error adding to playlist</string>
   <string name="toast_error_create_playlist">Error creating playlist</string>
   <string name="toast_error_favorite_stream_track">Could not favorite the on-air song. The server may be unable to resolve its title.</string>

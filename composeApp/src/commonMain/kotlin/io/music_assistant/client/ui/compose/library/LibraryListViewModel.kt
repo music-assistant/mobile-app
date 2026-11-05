@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.toast_error_add_by_url
 import musicassistantclient.composeapp.generated.resources.toast_error_create_playlist
 import org.jetbrains.compose.resources.getString
 
@@ -435,6 +436,22 @@ class LibraryListViewModel(
                 .onFailure {
                     Logger.e("Failed to create playlist", it)
                     _toasts.emit(getString(Res.string.toast_error_create_playlist))
+                }
+        }
+    }
+
+    // Like createPlaylist, the list refresh comes from the MediaItemAddedEvent.
+    fun addByUrl(url: String, name: String) {
+        val request = when (state.value.mediaType) {
+            MediaType.RADIO -> Request.Builtin.addRadio(url, name)
+            MediaType.TRACK -> Request.Builtin.addTrack(url, name)
+            else -> return
+        }
+        viewModelScope.launch {
+            apiClient.sendRequest(request)
+                .onFailure {
+                    Logger.e("Failed to add ${state.value.mediaType} by URL", it)
+                    _toasts.emit(getString(Res.string.toast_error_add_by_url))
                 }
         }
     }

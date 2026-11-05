@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -17,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -34,6 +36,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.items.AddByUrlDialog
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -43,6 +46,7 @@ import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.nav.TwoRowTopAppBar
 import io.music_assistant.client.ui.compose.search.SearchInput
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_add_by_url
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.library_quick_search
@@ -107,6 +111,10 @@ fun LibraryListScreen(
                 genreOptions = genreOptions,
                 audiobookArtistTypes = audiobookArtistTypes,
                 onLoadFilterOptions = libraryListViewModel::loadFilterOptions,
+                onAddByUrl = libraryListViewModel::addByUrl.takeIf {
+                    (state.mediaType == MediaType.RADIO || state.mediaType == MediaType.TRACK) &&
+                        LocalGrantedScopes.current.canEditLibrary
+                },
             )
         },
     ) {
@@ -165,8 +173,19 @@ private fun LibraryListTopBar(
     genreOptions: DataState<List<SelectOption<Int>>>,
     audiobookArtistTypes: List<ArtistType>,
     onLoadFilterOptions: () -> Unit,
+    onAddByUrl: ((url: String, name: String) -> Unit)?,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
+    var showAddByUrlDialog by rememberSaveable { mutableStateOf(false) }
+    if (onAddByUrl != null && showAddByUrlDialog) {
+        AddByUrlDialog(
+            onDismiss = { showAddByUrlDialog = false },
+            onAdd = { url, name ->
+                showAddByUrlDialog = false
+                onAddByUrl(url, name)
+            },
+        )
+    }
     Column {
         TwoRowTopAppBar(
             title = {
@@ -228,6 +247,11 @@ private fun LibraryListTopBar(
                             onFiltersChange(it)
                         },
                     )
+                }
+                if (onAddByUrl != null && !showSearch) {
+                    IconButton(onClick = { showAddByUrlDialog = true }) {
+                        Icon(Icons.Default.Add, stringResource(Res.string.cd_add_by_url))
+                    }
                 }
                 IconButton(
                     onClick = {
