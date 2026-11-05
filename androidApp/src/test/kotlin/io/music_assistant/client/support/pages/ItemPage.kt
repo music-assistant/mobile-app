@@ -22,6 +22,7 @@ import io.music_assistant.client.ui.compose.item.ItemDetailsScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_play_now
+import musicassistantclient.composeapp.generated.resources.action_refresh_item
 import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
@@ -103,6 +104,12 @@ class ItemPage(
         composeTestRule.waitUntil("tab '$label' is displayed") {
             composeTestRule.onNodeInContent(isTab(label)).isDisplayed()
         }
+    }
+
+    fun refreshItem(): ItemPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).performClick()
+        return this
     }
 
     fun clickGoToArtist(artist: String): ItemPage {

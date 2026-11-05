@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.itemList
 import io.music_assistant.client.data.model.client.items.set
+import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -84,6 +85,20 @@ class ArtistDetailsViewModel(
 
     init {
         loadSections(artist)
+
+        viewModelScope.launch {
+            mediaItemRepository.itemChanges.collect {
+                when (it) {
+                    is MediaItemChange.Updated -> {
+                        if (artist.hasAnyMappingFrom(it.item)) {
+                            loadSections(it.item as Artist)
+                        }
+                    }
+
+                    else -> {}
+                }
+            }
+        }
     }
 
     private fun loadSections(artist: Artist) {
