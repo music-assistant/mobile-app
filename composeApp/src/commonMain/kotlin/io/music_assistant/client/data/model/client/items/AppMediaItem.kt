@@ -69,6 +69,9 @@ sealed class AppMediaItem {
     abstract val sortName: String?
     abstract val uri: String?
     abstract val images: Map<ImageType, ImageInfo>
+
+    /** The icon of the media type: the artwork placeholder and the type badge. */
+    abstract val defaultIcon: ImageVector
     open val canStartEndlessMix: Boolean get() = false
 
     /** Returns a copy of this item with its [favorite] flag set to [favorite]. */

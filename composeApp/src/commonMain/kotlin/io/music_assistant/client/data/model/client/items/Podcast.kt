@@ -1,5 +1,7 @@
 package io.music_assistant.client.data.model.client.items
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Podcasts
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
@@ -19,4 +21,5 @@ data class Podcast(
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.PODCAST
+    override val defaultIcon = Icons.Default.Podcasts
 }

@@ -6,6 +6,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 
 data class Album(
     override val itemId: String,
@@ -25,6 +26,7 @@ data class Album(
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.ALBUM
+    override val defaultIcon = AlbumIcon
     override val canStartEndlessMix: Boolean = true
     override val displayName =
         "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}"

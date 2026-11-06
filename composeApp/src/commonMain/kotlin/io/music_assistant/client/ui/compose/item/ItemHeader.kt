@@ -81,7 +81,6 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
-import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.items.ItemAction
@@ -555,7 +554,7 @@ private fun Image(
         val placeholder = rememberPlaceholderPainter(
             backgroundColor = MaterialTheme.colorScheme.background,
             iconColor = MaterialTheme.colorScheme.secondary,
-            icon = TrackIcon,
+            icon = item.defaultIcon,
         )
 
         val shape = if (item is Artist) {
