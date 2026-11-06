@@ -132,7 +132,12 @@ class FakeServiceClient : ServiceClient {
                     answer(
                         request = request,
                         result = mapOf(
-                            "user" to listOf(Scope.LIBRARY_WRITE, Scope.LIBRARY_MANAGE),
+                            "user" to listOf(
+                                Scope.LIBRARY_READ,
+                                Scope.LIBRARY_WRITE,
+                                Scope.LIBRARY_MANAGE,
+                                Scope.QUEUES_CONTROL,
+                            ),
                         ),
                     ),
                 )

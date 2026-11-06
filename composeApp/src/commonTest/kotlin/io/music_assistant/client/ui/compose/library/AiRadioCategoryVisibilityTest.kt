@@ -38,7 +38,32 @@ class AiRadioCategoryVisibilityTest {
     }
 
     @Test
+    fun `saving while AI Radio is hidden keeps it enabled`() {
+        // The plugin list has not arrived yet, so the editor never listed AI Radio.
+        val reconciled = reconcileLibraryCategories(null)
+        val visible = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
+
+        val saved = applyEnabledCategories(reconciled, visible.toSet(), visible.map { it.name })
+
+        assertEquals(reconciled, saved)
+    }
+
+    @Test
     fun `saving while AI Radio is hidden preserves its stored disabled flag`() {
+        // The user turned AI Radio off, then the plugin went away.
+        val stored = libraryCategories.map {
+            pref(it, enabled = it != LibraryCategory.AI_RADIO)
+        }
+        val reconciled = reconcileLibraryCategories(stored)
+        val visible = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
+
+        val saved = applyEnabledCategories(reconciled, visible.toSet(), visible.map { it.name })
+
+        assertEquals(reconciled, saved)
+    }
+
+    @Test
+    fun `car merge keeps a hidden AI Radio with its stored disabled flag`() {
         // The user turned AI Radio off, then the plugin went away.
         val stored = libraryCategories.map {
             pref(it, enabled = it != LibraryCategory.AI_RADIO)
@@ -54,7 +79,7 @@ class AiRadioCategoryVisibilityTest {
     }
 
     @Test
-    fun `merge keeps the editor's order and appends only what it dropped`() {
+    fun `car merge keeps the editor's order and appends only what it dropped`() {
         val reconciled = reconcileLibraryCategories(null)
         val edited = listOf(LibraryCategory.TRACKS to true, LibraryCategory.ALBUMS to false)
 
@@ -63,6 +88,18 @@ class AiRadioCategoryVisibilityTest {
         assertEquals(edited, merged.take(edited.size))
         assertEquals(libraryCategories.size, merged.size)
         assertEquals(libraryCategories.toSet(), merged.map { it.first }.toSet())
+    }
+
+    @Test
+    fun `saving applies the editor's choice to the visible categories in the stored order`() {
+        val reconciled = reconcileLibraryCategories(null)
+        val visible = visibleCategories(reconciled, aiRadioAvailable = true).map { it.first }.toSet()
+        val enabled = visible.filterNot { it == LibraryCategory.ALBUMS }.map { it.name }
+
+        val saved = applyEnabledCategories(reconciled, visible, enabled)
+
+        assertEquals(reconciled.map { it.first }, saved.map { it.first })
+        assertEquals(reconciled.map { it.first != LibraryCategory.ALBUMS }, saved.map { it.second })
     }
 
     @Test

@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -165,6 +166,17 @@ private fun <T : ComposePage> T.openNavDrawer(): T {
 
 private fun ComposePage.clickNavDrawerItem(item: String) {
     composeTestRule.onNode(withinTag(NavigationDrawerSemantics.TAG).and(isTab(item))).performClick()
+}
+
+fun <T : ComposePage> T.assertNavDrawerItemDisplayed(item: String): T {
+    openNavDrawer()
+    val matcher = withinTag(NavigationDrawerSemantics.TAG).and(isTab(item))
+    // The gates behind a drawer item resolve on Dispatchers.Default, which the rule does not idle on.
+    composeTestRule.waitUntil("'$item' is in the navigation drawer") {
+        composeTestRule.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule.onNode(matcher).performScrollTo().assertIsDisplayed()
+    return this
 }
 
 fun ComposePage.clickSettings(): SettingsPage {
