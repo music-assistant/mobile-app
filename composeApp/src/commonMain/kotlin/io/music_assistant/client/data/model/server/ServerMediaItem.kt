@@ -46,6 +46,7 @@ data class ServerMediaItem(
     @SerialName("owner") val owner: String? = null,
     @SerialName("is_editable") val isEditable: Boolean? = null,
     @SerialName("is_dynamic") val isDynamic: Boolean? = null,
+    @SerialName("is_endless") val isEndless: Boolean = true,
     @SerialName("supported_mediatypes") val supportedMediatypes: List<String>? = null,
     // Server 2.11: who a Music Assistant playlist serves. Absent on an older server.
     @SerialName("access") val access: ServerPlaylistAccess? = null,

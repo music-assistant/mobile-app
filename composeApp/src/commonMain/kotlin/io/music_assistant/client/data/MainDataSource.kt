@@ -158,7 +158,7 @@ class MainDataSource(
     private val queueFactory: QueueFactory,
     private val playDispatcher: PlayDispatcher,
     providerRepository: ProviderRepository,
-) : CoroutineScope {
+) : ItemDetailsMainDataSource, CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
     /** Combined inputs for a [MainDataSource] player-data rebuild. */
@@ -189,7 +189,7 @@ class MainDataSource(
      * arrives, and after a failed fetch.
      */
     private val _grantedScopes = MutableStateFlow(GrantedScopes.NONE)
-    val grantedScopes: StateFlow<GrantedScopes> = _grantedScopes.asStateFlow()
+    override val grantedScopes: StateFlow<GrantedScopes> = _grantedScopes.asStateFlow()
 
     /**
      * Whether the optional `ai_radio` plugin is loaded and the server plays shows as Radio items
@@ -223,7 +223,7 @@ class MainDataSource(
         }.stateIn(this, SharingStarted.Eagerly, false)
 
     /** The `music/refresh_item` actions of the user ([refreshItemAccess]). Fails closed with [grantedScopes]. */
-    val refreshItemAccess: StateFlow<RefreshItemAccess> =
+    override val refreshItemAccess: StateFlow<RefreshItemAccess> =
         combine(apiClient.sessionState, _grantedScopes) { session, scopes ->
             refreshItemAccess(scopes, (session as? HasConnectionData)?.serverInfo?.schemaVersion)
         }.stateIn(this, SharingStarted.Eagerly, RefreshItemAccess.NONE)
@@ -235,7 +235,7 @@ class MainDataSource(
             .stateIn(this, SharingStarted.Eagerly, false)
 
     /** Whether a playlist carries its access record ([supportsPlaylistAccess]). False while no session is up. */
-    val playlistAccessSupported: StateFlow<Boolean> =
+    override val playlistAccessSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsPlaylistAccess((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(this, SharingStarted.Eagerly, false)
@@ -365,7 +365,7 @@ class MainDataSource(
         }
     }.stateIn(this, SharingStarted.Eagerly, null)
 
-    val selectedPlayer: PlayerData?
+    override val selectedPlayer: PlayerData?
         get() = _selectedPlayerId.value?.let { id -> (_playersData.value as? DataState.Data)?.data?.byId(id) }
 
     // --- Canonical media-session "now playing" source ---
