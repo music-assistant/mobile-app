@@ -18,7 +18,7 @@ class LibraryCategoriesViewModel(
 ) : ViewModel() {
     /**
      * The last reconciled config, INCLUDING the categories filtered out of [state]. Kept so a
-     * save can merge the hidden ones back instead of dropping them — see [mergeHiddenCategories].
+     * save keeps their stored flag instead of turning them off — see [applyEnabledCategories].
      */
     private var reconciled: List<Pair<LibraryCategory, Boolean>> = emptyList()
 
@@ -36,12 +36,10 @@ class LibraryCategoriesViewModel(
     }
 
     fun onEnabledChanged(enabledCategories: List<String>) {
+        val visible = _state.value.categories.mapTo(HashSet()) { it.libraryCategory }
         settingsRepository.setLibraryCategoryConfig(
-            reconciled.map { (category, _) ->
-                SettingsRepository.LibraryCategoryPref(
-                    category.name,
-                    enabledCategories.contains(category.name),
-                )
+            applyEnabledCategories(reconciled, visible, enabledCategories).map { (category, enabled) ->
+                SettingsRepository.LibraryCategoryPref(category.name, enabled)
             },
         )
     }

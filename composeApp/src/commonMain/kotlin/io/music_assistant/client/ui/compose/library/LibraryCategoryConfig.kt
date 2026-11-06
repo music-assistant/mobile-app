@@ -51,7 +51,8 @@ fun reconcileCarTabs(
  * while the optional `ai_radio` plugin is loaded and the user holds its scope, so it is hidden
  * from the grid, from the tab editor and from both car browse trees when it is not.
  *
- * Filtering for display only — the stored config keeps its entry, see [mergeHiddenCategories].
+ * Filtering for display only — the stored config keeps its entry, see [applyEnabledCategories]
+ * and [mergeHiddenCategories].
  */
 fun visibleCategories(
     reconciled: List<Pair<LibraryCategory, Boolean>>,
@@ -60,7 +61,8 @@ fun visibleCategories(
     reconciled.filter { (category, _) -> category != LibraryCategory.AI_RADIO || aiRadioAvailable }
 
 /**
- * Re-append the categories [visibleCategories] hid, keeping their stored enabled flag.
+ * Re-append the categories [visibleCategories] hid, keeping their stored enabled flag. For the
+ * car tab editor, which reorders.
  *
  * Without this, saving the tab editor while a category is hidden would drop it from the stored
  * config, and [reconcileLibraryCategories] would then re-append it *enabled* — silently
@@ -73,3 +75,17 @@ fun mergeHiddenCategories(
     val visible = newOrder.map { it.first }.toSet()
     return newOrder + reconciled.filterNot { it.first in visible }
 }
+
+/**
+ * Apply the enabled set that the sidebar editor saved, in the stored order. The editor lists only
+ * the [visible] categories, so a category that [visibleCategories] hid keeps its stored flag: an
+ * edit while the `ai_radio` plugin is not reported yet must not store AI Radio as disabled.
+ */
+fun applyEnabledCategories(
+    reconciled: List<Pair<LibraryCategory, Boolean>>,
+    visible: Set<LibraryCategory>,
+    enabledNames: Collection<String>,
+): List<Pair<LibraryCategory, Boolean>> =
+    reconciled.map { (category, enabled) ->
+        category to if (category in visible) category.name in enabledNames else enabled
+    }

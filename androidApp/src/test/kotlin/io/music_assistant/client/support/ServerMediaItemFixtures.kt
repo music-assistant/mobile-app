@@ -1,6 +1,7 @@
 package io.music_assistant.client.support
 
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerProviderInstance
@@ -232,6 +233,14 @@ object ServerMediaItemFixtures {
             supportedFeatures = supportedFeatures,
         )
     }
+
+    /** The loaded `ai_radio` plugin, as the `providers` command lists it. */
+    fun aiRadioPlugin(): ServerProviderInstance = ServerProviderInstance(
+        domain = AI_RADIO_DOMAIN,
+        instanceId = AI_RADIO_DOMAIN,
+        name = "AI Radio",
+        type = "plugin",
+    )
 
     private const val DEFAULT_PROVIDER_DOMAIN = "test-domain"
     private const val DEFAULT_PROVIDER_INSTANCE = "test-instance"
