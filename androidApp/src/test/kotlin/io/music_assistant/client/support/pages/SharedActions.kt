@@ -181,10 +181,12 @@ fun <T : ComposePage> T.assertMediaDisplayed(
 ): T {
     val matcher = mediaItemMatcher(serverMediaItem, withinTag, provider)
     composeTestRule.waitUntil("media '${serverMediaItem.name}' is displayed") {
-        if (inScrollable != null) {
-            composeTestRule.inScrollable(inScrollable) { onNode(matcher) }
-        }
-        composeTestRule.onNode(matcher).isDisplayed()
+        // A scroll to a node that is not in the list throws. The list loads on Dispatchers.Default,
+        // which the rule does not idle on, so a node can arrive after a poll: retry, do not fail.
+        val inList = inScrollable?.let { tag ->
+            runCatching { composeTestRule.inScrollable(tag) { onNode(matcher) } }.isSuccess
+        } ?: true
+        inList && composeTestRule.onNode(matcher).isDisplayed()
     }
 
     return this
