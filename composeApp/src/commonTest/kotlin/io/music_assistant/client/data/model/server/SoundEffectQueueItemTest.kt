@@ -31,7 +31,12 @@ class SoundEffectQueueItemTest {
             "item_id": "dj-session-1_000",
             "provider": "ai_radio--abcdef",
             "name": "Weather",
-            "media_type": "sound_effect"
+            "media_type": "sound_effect",
+            "provider_mappings": [{
+              "item_id": "dj-session-1_000",
+              "provider_domain": "ai_radio",
+              "provider_instance": "ai_radio--abcdef"
+            }]
           }
         }
     """.trimIndent()
@@ -46,7 +51,8 @@ class SoundEffectQueueItemTest {
         )
 
         assertEquals("dj-session-1_000", track.id)
-        assertIs<SoundEffect>(track.track)
+        val clip = assertIs<SoundEffect>(track.track)
+        assertTrue(clip.isAiHost)
         assertEquals(MediaType.SOUND_EFFECT, track.track.mediaType)
         assertEquals("Weather", track.track.displayName)
         // The clip's duration rides on the queue item, not on the nested media item, so the

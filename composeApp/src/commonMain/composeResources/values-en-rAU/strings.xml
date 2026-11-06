@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="action_customize">Customise…</string>
+  <string name="action_favorite">Favourite</string>
+  <string name="action_unfavorite">Unfavourite</string>
+  <string name="auth_authorize_ha">Authorise with Home Assistant</string>
+  <string name="cd_customize_tabs">Customise categories</string>
+  <string name="cd_favorite">Favourite</string>
+  <string name="filter_favorites">Favourites</string>
+  <string name="library_customize">Customise</string>
+  <string name="sort_date_favorited">Date favourited</string>
+  <string name="toast_error_favorite_stream_track">Could not favourite the on-air song. The server may be unable to resolve its title.</string>
+  <string name="toast_favorited_stream_track">Added the on-air song to favourites</string>
+</resources>

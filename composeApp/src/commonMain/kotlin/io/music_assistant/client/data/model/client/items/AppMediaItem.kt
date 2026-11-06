@@ -132,9 +132,9 @@ sealed class AppMediaItem {
 
 /**
  * A quick favorite toggle is possible only when the add path has a [uri] to send. A live
- * input has a uri, but nothing on the server to favorite.
+ * input or sound effect has a uri, but nothing on the server to favorite.
  */
-val AppMediaItem.canBeFavorited: Boolean get() = uri != null && this !is AudioSource
+val AppMediaItem.canBeFavorited: Boolean get() = uri != null && this !is AudioSource && this !is SoundEffect
 
 fun PlayableItem.image(type: ImageType): ImageInfo? =
     images[type] ?: images[ImageType.MAIN] ?: images.firstNotNullOfOrNull { it.value }

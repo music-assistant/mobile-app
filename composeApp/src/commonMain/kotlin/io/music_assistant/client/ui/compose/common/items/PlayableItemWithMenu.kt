@@ -17,7 +17,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
@@ -42,6 +41,7 @@ typealias PlayHandler<T> = (item: T, mode: PlayMode) -> Unit
 fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
     showTrackNumber: Boolean = false,
     navigateToItem: (AppMediaItem) -> Unit,
     containerItem: AppMediaItem? = null,
@@ -72,6 +72,7 @@ fun TrackWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> TrackGridItem(
@@ -90,6 +91,7 @@ fun TrackWithMenu(
 fun PodcastEpisodeWithMenu(
     item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
     navigateToItem: ((AppMediaItem) -> Unit)? = null,
     containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<PodcastEpisode>,
@@ -120,6 +122,7 @@ fun PodcastEpisodeWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> PodcastEpisodeGridItem(
@@ -139,6 +142,7 @@ fun RadioWithMenu(
     item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
     navigateToItem: ((AppMediaItem) -> Unit)? = null,
+    titleMaxLines: Int = 2,
     onPlayOption: PlayHandler<RadioStation>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -164,6 +168,7 @@ fun RadioWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> LiveStreamGridItem(
@@ -179,13 +184,13 @@ fun RadioWithMenu(
 }
 
 @Composable
-fun AudioSourceWithMenu(
-    item: AudioSource,
+fun <T> LiveStreamWithMenu(
+    item: T,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: PlayHandler<AudioSource>,
+    onPlayOption: PlayHandler<T>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
             ViewMode.GRID -> Modifier

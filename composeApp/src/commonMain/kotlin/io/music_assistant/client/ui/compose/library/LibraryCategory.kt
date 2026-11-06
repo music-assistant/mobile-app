@@ -1,7 +1,7 @@
 package io.music_assistant.client.ui.compose.library
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.outlined.Folder
@@ -79,5 +79,5 @@ fun LibraryCategory.icon(): ImageVector = when (this) {
     LibraryCategory.GENRES -> GenreIcon
     LibraryCategory.BROWSE -> Icons.Outlined.Folder
     LibraryCategory.AI_RADIO -> Icons.Default.SmartToy
-    LibraryCategory.HOME -> Icons.Default.Home
+    LibraryCategory.HOME -> Icons.Default.Explore
 }

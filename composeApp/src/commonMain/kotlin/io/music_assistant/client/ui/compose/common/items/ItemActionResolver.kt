@@ -13,6 +13,7 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.PlayMediaSupport
 
@@ -58,6 +59,8 @@ fun resolveLongClickActions(
         return@buildList
     }
     if (item.isPlayable) addPlaybackActions(item, clickContext, playMediaSupport)
+    // Provider sounds can be played from Browse, but have no library or per-kind tap settings.
+    if (item is SoundEffect) return@buildList
     if (customizationAllowed) add(ItemAction.Customize)
     if (!canEditLibrary) return@buildList
     if (librarySupported) {
