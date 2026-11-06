@@ -84,6 +84,7 @@ import io.music_assistant.client.ui.compose.home.players.iconRes
 import io.music_assistant.client.ui.compose.home.players.label
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
+import io.music_assistant.client.ui.compose.home.players.statusDotColor
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListScreen
@@ -324,6 +325,7 @@ fun MainNavigationRoot(
                         selected = false,
                         onClick = { showPlayerSelection = true },
                         icon = vectorResource(selectedPlayer.iconRes()),
+                        badgeColor = selectedPlayer.statusDotColor(state.sendspinState),
                         label = selectedPlayer.label(),
                         marqueeLabel = true,
                         contentDescription = selectedPlayer.contentDescription(),
