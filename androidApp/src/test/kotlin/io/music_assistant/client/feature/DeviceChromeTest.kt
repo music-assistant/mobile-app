@@ -9,6 +9,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.nav.NavigationBarSemantics
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
@@ -97,6 +99,39 @@ class DeviceChromeTest {
     }
 
     @Test
+    fun `a group keeps its count in overflow and its badge in bottom navigation`() {
+        assertPlayerSelectionLabels(
+            player = ServerPlayerFixtures.player(id = "kitchen", name = PLAYER_NAME).copy(
+                type = "group",
+                groupMembers = setOf("a", "b", "c"),
+            ),
+            overflowLabel = "Kitchen (3)",
+            badge = "3",
+        )
+    }
+
+    @Test
+    fun `a sync leader keeps its bound count in overflow and its badge in bottom navigation`() {
+        assertPlayerSelectionLabels(
+            player = ServerPlayerFixtures.player(id = "kitchen", name = PLAYER_NAME).copy(
+                groupMembers = setOf("kitchen", "a", "b"),
+                canGroupWith = listOf("spare"),
+            ),
+            overflowLabel = "Kitchen + 2",
+            badge = "+2",
+        )
+    }
+
+    @Test
+    fun `a solo player keeps its plain name in overflow and bottom navigation`() {
+        assertPlayerSelectionLabels(
+            player = ServerPlayerFixtures.player(id = "kitchen", name = PLAYER_NAME),
+            overflowLabel = "Kitchen",
+            badge = null,
+        )
+    }
+
+    @Test
     fun `a horizontal fold keeps the artwork of the full player above the fold`() {
         playTrack().expandPlayer(PLAYER_NAME, playing = true, item = TRACK_NAME)
         val flat = artworkInWindow()
@@ -116,6 +151,50 @@ class DeviceChromeTest {
         deviceChrome = DeviceChrome.None
         composeTestRule.waitForIdle()
         assertEquals(flat.bottom, artworkInWindow().bottom, 1f)
+    }
+
+    private fun assertPlayerSelectionLabels(player: ServerPlayer, overflowLabel: String, badge: String?) {
+        val members = player.groupMembers.orEmpty().filter { it != player.playerId }.map {
+            ServerPlayerFixtures.player(id = it, name = "Member $it")
+        }
+        serviceClient.addPlayers(
+            player,
+            *members.toTypedArray(),
+            ServerPlayerFixtures.player(id = "spare", name = "Spare"),
+        )
+        launchLoggedInApp(composeTestRule, serviceClient) { deviceChrome }
+
+        // The bottom bar keeps the plain name and the separate count badge.
+        val nameInBar = withinTag(NavigationBarSemantics.TAG).and(hasText(PLAYER_NAME))
+        composeTestRule.waitUntil("the selected player appears in bottom navigation") {
+            composeTestRule.onNode(nameInBar, useUnmergedTree = true).isDisplayed()
+        }
+        if (badge != null) {
+            composeTestRule.onNode(
+                withinTag(NavigationBarSemantics.TAG).and(hasText(badge)),
+                useUnmergedTree = true,
+            ).assertIsDisplayed()
+            composeTestRule.onNode(
+                withinTag(NavigationBarSemantics.TAG).and(hasText(overflowLabel)),
+                useUnmergedTree = true,
+            ).assertDoesNotExist()
+        } else {
+            listOf("3", "+2").forEach {
+                composeTestRule.onNode(
+                    withinTag(NavigationBarSemantics.TAG).and(hasText(it)),
+                    useUnmergedTree = true,
+                ).assertDoesNotExist()
+            }
+        }
+
+        val rootHeight = composeTestRule.onRoot().getUnclippedBoundsInRoot().height
+        deviceChrome = DeviceChrome(
+            verticalBarArea = BAR.copy(top = rootHeight - BAR.bottom - VERTICAL_BAR_WIDTH_DP.dp * 2.5f),
+        )
+        composeTestRule.onNode(inBar(Res.string.cd_more.get())).assertIsDisplayed().performClick()
+        composeTestRule.onNode(
+            hasAnyAncestor(isPopup()).and(hasText(overflowLabel)),
+        ).assertIsDisplayed()
     }
 
     private fun launch(): HomePage {

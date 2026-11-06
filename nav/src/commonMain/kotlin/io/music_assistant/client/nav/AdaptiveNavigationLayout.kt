@@ -563,7 +563,7 @@ private fun PlaybackItem.toBarEntry() = VerticalBarEntry(
 
 private fun NavigationItem.toBarEntry() = VerticalBarEntry(
     icon = icon,
-    label = label,
+    label = overflowLabel ?: label,
     contentDescription = contentDescription ?: label,
     selected = selected,
     enabled = true,
@@ -647,6 +647,8 @@ data class NavigationItem(
     val enabled: Boolean = true,
     val editable: Boolean = false,
     val id: String = label,
+    /** Text for the vertical overflow menu. Null uses [label]. */
+    val overflowLabel: String? = null,
 )
 
 /**

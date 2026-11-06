@@ -89,6 +89,7 @@ import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
 import io.music_assistant.client.ui.compose.home.players.groupBadge
 import io.music_assistant.client.ui.compose.home.players.iconRes
+import io.music_assistant.client.ui.compose.home.players.overflowLabel
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.statusDotColor
@@ -350,6 +351,7 @@ fun MainNavigationRoot(
                             @Composable { GroupCountBadge(count) }
                         },
                         label = selectedPlayer.player.name,
+                        overflowLabel = selectedPlayer.overflowLabel(),
                         marqueeLabel = true,
                         contentDescription = selectedPlayer.contentDescription(),
                     )
