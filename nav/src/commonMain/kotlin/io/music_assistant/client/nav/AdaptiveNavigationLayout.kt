@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
@@ -380,10 +381,15 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
         selected = item.selected,
         onClick = item.onClick,
         icon = {
-            Box {
-                Icon(item.icon, contentDescription = null)
-                item.badgeColor?.let { StatusBadge(it) }
+            val icon = @Composable {
+                Box {
+                    Icon(item.icon, contentDescription = null)
+                    item.badgeColor?.let { StatusBadge(it) }
+                }
             }
+            item.iconBadge?.let { badge ->
+                BadgedBox(badge = { badge() }) { icon() }
+            } ?: icon()
         },
         label = {
             val modifier = if (item.marqueeLabel) {
@@ -429,6 +435,8 @@ data class NavigationItem(
     val selected: Boolean,
     val onClick: () -> Unit,
     val icon: ImageVector,
+    /** Drawn on the top-right corner of [icon] in the bottom bar. */
+    val iconBadge: (@Composable () -> Unit)? = null,
     val label: String,
     val contentDescription: String? = null,
     /** Colour of the status dot on the icon, or null for no dot. Shown in the bottom bar only. */
