@@ -1,9 +1,13 @@
 package io.music_assistant.client.ui.compose.home.players
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -17,6 +21,8 @@ import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.announcement.AnnouncementDialog
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
+import io.music_assistant.client.ui.utils.DeviceChrome
+import kotlinx.coroutines.flow.Flow
 import org.koin.compose.koinInject
 
 /**
@@ -60,25 +66,10 @@ fun PlayerDialogHost(
             onDismissRequest = onDismiss,
         )
 
-        is PlayerDialogRequest.Lyrics -> {
-            val item = player.queueInfo?.currentItem?.track
-            val lyrics = when (item) {
-                is Track -> item.lyrics
-                is PodcastEpisode -> remember(item.provider, item.itemId) { homeScreenViewModel.transcript(item) }
-                    .collectAsStateWithLifecycle().value.dataOrNull
-
-                else -> null
-            } ?: return DismissEffect(request, onDismiss)
-            val queueId = player.queueId
-            val livePositionFlow = remember(queueId) {
-                queueId?.let { homeScreenViewModel.observePosition(it) }
+        is PlayerDialogRequest.Lyrics -> if (pageSplitOrNull(lyricsOpen = true) == null) {
+            ResolvedLyrics(player, homeScreenViewModel, request, onDismiss) { lyrics, livePositionFlow, kind ->
+                LyricsSheet(lyrics, livePositionFlow, onDismiss, kind)
             }
-            LyricsSheet(
-                lyrics = lyrics,
-                livePositionFlow = livePositionFlow,
-                onDismiss = onDismiss,
-                kind = if (item is PodcastEpisode) LyricsSheetKind.TRANSCRIPT else LyricsSheetKind.LYRICS,
-            )
         }
 
         is PlayerDialogRequest.ChooseArtist -> (player.queueInfo?.currentItem?.track as? Track)?.let {
@@ -147,4 +138,46 @@ fun PlayerDialogHost(
 @Composable
 private fun DismissEffect(request: PlayerDialogRequest, onDismiss: () -> Unit) {
     LaunchedEffect(request) { onDismiss() }
+}
+
+/** Lyrics on the page beside the player, for windows with a [DeviceChrome.pageSplit]. */
+@Composable
+fun LyricsPage(
+    request: PlayerDialogRequest.Lyrics,
+    players: List<PlayerData>,
+    homeScreenViewModel: HomeScreenViewModel,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val player = players.byId(request.playerId) ?: return
+    ResolvedLyrics(player, homeScreenViewModel, request, onDismiss) { lyrics, livePositionFlow, kind ->
+        LyricsPanel(lyrics, livePositionFlow, onDismiss, kind, modifier, closeIcon = Icons.Default.Close)
+    }
+}
+
+@Composable
+private fun ResolvedLyrics(
+    player: PlayerData,
+    homeScreenViewModel: HomeScreenViewModel,
+    request: PlayerDialogRequest,
+    onDismiss: () -> Unit,
+    content: @Composable (Lyrics, Flow<Double>?, LyricsSheetKind) -> Unit,
+) {
+    val item = player.queueInfo?.currentItem?.track
+    val lyrics = when (item) {
+        is Track -> item.lyrics
+        is PodcastEpisode -> remember(item.provider, item.itemId) { homeScreenViewModel.transcript(item) }
+            .collectAsStateWithLifecycle().value.dataOrNull
+
+        else -> null
+    } ?: return DismissEffect(request, onDismiss)
+    val queueId = player.queueId
+    val livePositionFlow = remember(queueId) {
+        queueId?.let { homeScreenViewModel.observePosition(it) }
+    }
+    content(
+        lyrics,
+        livePositionFlow,
+        if (item is PodcastEpisode) LyricsSheetKind.TRANSCRIPT else LyricsSheetKind.LYRICS,
+    )
 }

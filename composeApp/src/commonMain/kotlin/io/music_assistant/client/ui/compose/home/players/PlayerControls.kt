@@ -64,27 +64,15 @@ fun PlayerControls(
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
-    val playerEnabled = player.canPlay && !player.isAnnouncing
-    val buttonsEnabled = queue?.currentItem?.isPlayable == true
+    val transport = playerData.transportState(chapterProgressEnabled)
+    val playerEnabled = transport.playerEnabled
+    val buttonsEnabled = transport.buttonsEnabled
     // Audiobooks / podcast episodes swap shuffle & repeat for skip-back / skip-forward seek.
     val isLongForm = queue?.currentItem?.track.isLongFormSpokenContent
     // A live input never ends, so shuffle and repeat have nothing to act on.
     val isLiveInput = queue?.currentItem?.track is AudioSource
-    val itemsCount = playerData.queueItems?.size ?: 0
-    // Like the web app, Stop stays available while playing even if the item is not playable.
-    val showStop = player.isPlaying && !playerData.canPauseContent
-    // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
-    // enabled while a chapter starts after the (event-driven, close-enough) position.
-    val elapsedSec = queue?.elapsedTime ?: 0.0
-    val hasUpcomingChapter = chapterProgressEnabled &&
-        queue?.currentItem?.track.navigationChapters()?.any { it.start > elapsedSec } == true
-    val skipForwardEnabled = when {
-        queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
-        hasUpcomingChapter -> true
-        // Chapterless/last-chapter fallback: an in-progress audiobook still takes a plain next.
-        (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
-        else -> false
-    }
+    val showStop = transport.showStop
+    val skipForwardEnabled = transport.skipForwardEnabled
     val smallButtonSize = (mainButtonSize.value * 0.6).dp
     Row(
         modifier = modifier
@@ -276,4 +264,36 @@ private fun PreviewNoAdditional() {
 @Composable
 private fun PreviewNoSkipNoAdditional() {
     Preview(showSkip = false, showAdditionButtons = false, showSkipBack = false)
+}
+
+/** What the transport buttons may do for a player. Shared by the player and the vertical bar. */
+internal class TransportState(
+    val playerEnabled: Boolean,
+    val buttonsEnabled: Boolean,
+    // Like the web app, Stop stays available while playing even if the item is not playable.
+    val showStop: Boolean,
+    val skipForwardEnabled: Boolean,
+)
+
+internal fun PlayerData.transportState(chapterProgressEnabled: Boolean): TransportState {
+    val queue = queueInfo
+    val itemsCount = queueItems?.size ?: 0
+    // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
+    // enabled while a chapter starts after the (event-driven, close-enough) position.
+    val elapsedSec = queue?.elapsedTime ?: 0.0
+    val hasUpcomingChapter = chapterProgressEnabled &&
+        queue?.currentItem?.track.navigationChapters()?.any { it.start > elapsedSec } == true
+    val skipForwardEnabled = when {
+        queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
+        hasUpcomingChapter -> true
+        // Chapterless/last-chapter fallback: an in-progress audiobook still takes a plain next.
+        (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
+        else -> false
+    }
+    return TransportState(
+        playerEnabled = player.canPlay && !player.isAnnouncing,
+        buttonsEnabled = queue?.currentItem?.isPlayable == true,
+        showStop = player.isPlaying && !canPauseContent,
+        skipForwardEnabled = skipForwardEnabled,
+    )
 }

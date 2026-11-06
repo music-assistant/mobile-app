@@ -67,11 +67,17 @@ import io.music_assistant.client.nav.BackHandler
 import io.music_assistant.client.nav.MultiBackStack
 import io.music_assistant.client.nav.NavigationItem
 import io.music_assistant.client.nav.NoSequentialDuplicatesBackstackAdder
+import io.music_assistant.client.nav.PlaybackItem
 import io.music_assistant.client.nav.ScreenState
 import io.music_assistant.client.nav.Section
 import io.music_assistant.client.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.icons.PauseIcon
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import io.music_assistant.client.ui.compose.common.icons.StopIcon
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -83,9 +89,11 @@ import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
 import io.music_assistant.client.ui.compose.home.players.groupBadge
 import io.music_assistant.client.ui.compose.home.players.iconRes
+import io.music_assistant.client.ui.compose.home.players.overflowLabel
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.statusDotColor
+import io.music_assistant.client.ui.compose.home.players.transportState
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
 import io.music_assistant.client.ui.compose.item.ItemListScreen
@@ -113,7 +121,12 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_pause
+import musicassistantclient.composeapp.generated.resources.action_play
+import musicassistantclient.composeapp.generated.resources.action_stop
 import musicassistantclient.composeapp.generated.resources.app_name
+import musicassistantclient.composeapp.generated.resources.cd_more
+import musicassistantclient.composeapp.generated.resources.media_action_next
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_explore
 import musicassistantclient.composeapp.generated.resources.nav_library
@@ -299,6 +312,13 @@ fun MainNavigationRoot(
 
     Box(modifier = Modifier.fillMaxSize()) {
         val libraryCategories by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
+        // The player lies over the screens, so picking a destination has to close it first.
+        val closePlayerFirst: (NavigationItem) -> NavigationItem = { item ->
+            item.copy(onClick = {
+                playerExpanded = false
+                item.onClick()
+            })
+        }
         val navigationItems = navigationItems(
             multiBackStack = multiBackStack,
             homeScreenState = homeScreenState,
@@ -316,7 +336,7 @@ fun MainNavigationRoot(
                 }
             },
             goToSettings = goToSettings,
-        )
+        ).map { section -> section.copy(items = section.items.map(closePlayerFirst)) }
 
         val playSelectionItem: NavigationItem? = playersState.let { state ->
             if (state is HomeScreenViewModel.PlayersState.Data) {
@@ -331,6 +351,7 @@ fun MainNavigationRoot(
                             @Composable { GroupCountBadge(count) }
                         },
                         label = selectedPlayer.player.name,
+                        overflowLabel = selectedPlayer.overflowLabel(),
                         marqueeLabel = true,
                         contentDescription = selectedPlayer.contentDescription(),
                     )
@@ -342,12 +363,59 @@ fun MainNavigationRoot(
             }
         }
 
+        val playingPlayer = (playersState as? HomeScreenViewModel.PlayersState.Data)?.selectedPlayer
+            ?.takeIf { it.player.currentMedia != null }
+        val chapterProgressEnabled by homeScreenViewModel.chapterProgressEnabled.collectAsStateWithLifecycle()
+        val playbackItems = playingPlayer?.let { player ->
+            // The same rules as the buttons in the player: Stop for streams that cannot pause,
+            // dimmed buttons when the queue cannot play or skip, and a cancel while play is pending.
+            val transport = player.transportState(chapterProgressEnabled)
+            val pending = player.pendingPlay && !player.player.isPlaying
+            val showsPause = player.player.isPlaying || pending
+            listOf(
+                PlaybackItem(
+                    enabled = transport.playerEnabled && (transport.buttonsEnabled || transport.showStop),
+                    onClick = {
+                        homeScreenViewModel.playerAction(
+                            player,
+                            when {
+                                pending -> PlayerAction.Pause
+                                transport.showStop -> PlayerAction.Stop
+                                else -> PlayerAction.TogglePlayPause
+                            },
+                        )
+                    },
+                    icon = when {
+                        transport.showStop -> StopIcon
+                        showsPause -> PauseIcon
+                        else -> PlayIcon
+                    },
+                    label = stringResource(
+                        when {
+                            transport.showStop -> Res.string.action_stop
+                            showsPause -> Res.string.action_pause
+                            else -> Res.string.action_play
+                        },
+                    ),
+                ),
+                PlaybackItem(
+                    enabled = transport.playerEnabled && transport.buttonsEnabled && transport.skipForwardEnabled,
+                    onClick = { homeScreenViewModel.playerAction(player, PlayerAction.Next) },
+                    icon = SkipForwardIcon,
+                    label = stringResource(Res.string.media_action_next),
+                ),
+            )
+        }.orEmpty()
+
         AdaptiveNavigationBarLayout(
             appName = stringResource(Res.string.app_name),
             sections = navigationItems,
-            trailingItem = playSelectionItem,
+            // The full player has its own transport and player chip, so the bar keeps to navigation.
+            trailingItem = playSelectionItem.takeUnless { playerExpanded },
+            playbackItems = if (playerExpanded) emptyList() else playbackItems,
             showNavigation = !playerExpanded,
             menuLabel = stringResource(Res.string.nav_menu),
+            moreLabel = stringResource(Res.string.cd_more),
             onEdited = { enabled ->
                 libraryCategoriesViewModel.onEnabledChanged(enabled)
             },

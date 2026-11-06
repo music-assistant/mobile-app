@@ -28,6 +28,16 @@ fun PlayerData.groupBadge(): String? {
     }
 }
 
+/** The player name and count for the text-only navigation overflow menu. */
+fun PlayerData.overflowLabel(): String {
+    val count = groupBadge()
+    return when {
+        count == null -> player.name
+        player.isGroup -> "${player.name} ($count)"
+        else -> "${player.name} + ${count.removePrefix("+")}"
+    }
+}
+
 fun PlayerData.iconRes(): DrawableResource {
     val iconId = if (this.isLocal) SharedIcons.SMARTPHONE else this.player.icon
     return SharedIcons.getResource(iconId)
