@@ -296,6 +296,10 @@ actual class PlatformFeature {
   same corners without the type. A row image has no badge, because it is too small. A row shows the badges
   in a line under the labels (`RowBadges`, the `badges` slot of `RowItem`): type, provider or favorite,
   explicit, played state. The AI Radio station row shows the category icon in that line.
+  An artist has no type badge, because its round image tells the type, and its provider icon or favorite
+  heart sits at the bottom center of the circle, in the grid and in the item page header.
+  The type chip of an item that plays on tap (`AppMediaItem.playsOnTap`) is filled, and the chip of an item
+  that opens its page is translucent.
 - **Stacked rows**: `CategoryRow` (`ui/compose/common/items/`) shows a row of tap-to-play items as list items, two
   in each column. The other rows show one row of grid tiles. A tap-to-play item is a track, a podcast episode or a
   radio station (`playsOnTap`). An audiobook is not a tap-to-play item, because its tile opens the item page. The

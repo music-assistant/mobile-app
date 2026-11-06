@@ -100,7 +100,7 @@ fun ArtistGridItem(
     ) {
         Box {
             ArtistImage(item)
-            Badges(item, providerIconFetcher)
+            Badges(item, providerIconFetcher, favoriteOrProviderAlignment = Alignment.BottomCenter)
         }
         Spacer(Modifier.height(4.dp))
         MediaItemLabels(
@@ -424,17 +424,31 @@ private val GRID_BADGE_PADDING = 2.dp
 /** The size of a badge in the badge line of a row. */
 internal val ROW_BADGE_SIZE = 14.dp
 
-/** The icon of a media type on a translucent primary chip. */
+/**
+ * The icon of a media type on a primary chip. The chip of an item that plays on tap is filled,
+ * and the chip of an item that opens its page is translucent.
+ */
 @Composable
-internal fun TypeBadge(icon: ImageVector, size: Dp, modifier: Modifier = Modifier) {
+internal fun TypeBadge(
+    icon: ImageVector,
+    size: Dp,
+    playsOnTap: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val (container, content) = if (playsOnTap) {
+        scheme.primary to scheme.onPrimary
+    } else {
+        scheme.primaryContainer.copy(alpha = 0.85f) to scheme.primary
+    }
     Icon(
         modifier = modifier
             .size(size)
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f), CircleShape)
+            .background(container, CircleShape)
             .padding(2.dp),
         imageVector = icon,
         contentDescription = null,
-        tint = MaterialTheme.colorScheme.primary,
+        tint = content,
     )
 }
 
@@ -471,6 +485,9 @@ private fun ExplicitBadge(modifier: Modifier) {
  * The corner badges of an artwork: the favorite heart or the provider icon at the bottom end, and
  * the explicit mark at the top end. A grid tile adds [GridTypeBadge] and [ProgressBadge], so the
  * four corners never share a badge.
+ *
+ * @param favoriteOrProviderAlignment where the favorite heart or the provider icon sits. A corner
+ *   of a round artist image is outside the circle, so the artist uses the bottom center.
  */
 @Composable
 fun BoxScope.Badges(
@@ -478,9 +495,10 @@ fun BoxScope.Badges(
     providerIconFetcher: ProviderIconFetcher?,
     badgeSize: Dp = GRID_BADGE_SIZE,
     badgePadding: Dp = GRID_BADGE_PADDING,
+    favoriteOrProviderAlignment: Alignment = Alignment.BottomEnd,
 ) {
     val modifier = Modifier.padding(badgePadding).size(badgeSize)
-    FavoriteOrProviderBadge(item, providerIconFetcher, modifier.align(Alignment.BottomEnd))
+    FavoriteOrProviderBadge(item, providerIconFetcher, modifier.align(favoriteOrProviderAlignment))
     if (item.isExplicit) {
         ExplicitBadge(modifier.align(Alignment.TopEnd))
     }
@@ -488,20 +506,28 @@ fun BoxScope.Badges(
 
 /** The type badge of a grid tile, at the top start. */
 @Composable
-private fun BoxScope.GridTypeBadge(icon: ImageVector) {
-    TypeBadge(icon, GRID_BADGE_SIZE, Modifier.align(Alignment.TopStart).padding(GRID_BADGE_PADDING))
+private fun BoxScope.GridTypeBadge(item: AppMediaItem) {
+    TypeBadge(
+        icon = item.defaultIcon,
+        size = GRID_BADGE_SIZE,
+        playsOnTap = item.playsOnTap,
+        modifier = Modifier.align(Alignment.TopStart).padding(GRID_BADGE_PADDING),
+    )
 }
 
 /** The type badge and the [Badges] of a grid tile. */
 @Composable
 private fun BoxScope.GridBadges(item: AppMediaItem, providerIconFetcher: ProviderIconFetcher?) {
-    GridTypeBadge(item.defaultIcon)
+    GridTypeBadge(item)
     Badges(item, providerIconFetcher)
 }
 
 /**
  * The badge line of a row, under the labels: the type, the provider or the favorite heart, the
  * explicit mark, and the played state. A row image carries no badge, because it is too small.
+ *
+ * @param typeIcon the icon of the type badge, or null for none: the round artist image already
+ *   tells the type.
  */
 @Composable
 private fun RowBadges(
@@ -509,13 +535,14 @@ private fun RowBadges(
     providerIconFetcher: ProviderIconFetcher?,
     fullyPlayed: Boolean? = null,
     resumePositionMs: Long? = null,
+    typeIcon: ImageVector? = item.defaultIcon,
 ) {
     val badge = Modifier.size(ROW_BADGE_SIZE)
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TypeBadge(item.defaultIcon, ROW_BADGE_SIZE)
+        typeIcon?.let { TypeBadge(it, ROW_BADGE_SIZE, playsOnTap = item.playsOnTap) }
         FavoriteOrProviderBadge(item, providerIconFetcher, badge)
         if (item.isExplicit) {
             ExplicitBadge(badge)
@@ -646,7 +673,7 @@ internal fun ArtistRowItem(
         subtitle = item.localizedSubtitle(),
         description = contentDescription(item),
         prefixContent = { ArtistImage(item) },
-        badges = { RowBadges(item, providerIconFetcher) },
+        badges = { RowBadges(item, providerIconFetcher, typeIcon = null) },
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     )
@@ -814,7 +841,7 @@ internal fun FolderCell(
         ) {
             Box {
                 MediaArtwork(item)
-                GridTypeBadge(item.defaultIcon)
+                GridTypeBadge(item)
             }
             Spacer(Modifier.height(4.dp))
             MediaItemLabels(
@@ -861,7 +888,7 @@ internal fun MediaCollectionGridItem(
     ) {
         Box {
             MediaArtwork(item)
-            GridTypeBadge(item.defaultIcon)
+            GridTypeBadge(item)
         }
         Spacer(Modifier.height(4.dp))
         MediaItemLabels(
