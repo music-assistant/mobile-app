@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,7 +107,6 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -141,16 +139,11 @@ fun MainNavigationRoot(
     libraryCategoriesViewModel: LibraryCategoriesViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
     val toastState = rememberToastState()
     val playerActionsViewModel: ActionsViewModel = koinViewModel(key = "player-actions")
     val errorBus: ErrorMessageBus = koinInject()
     val deepLinkBus: DeepLinkBus = koinInject()
     val volumeButtonService: VolumeButtonService = koinInject()
-
-    LaunchedEffect(Unit) {
-        homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
-    }
 
     // Surface server-side RPC errors as toasts on top of whichever screen is active.
     // (Per-screen ToastHosts handle ActionsViewModel toasts.)
