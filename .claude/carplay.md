@@ -12,14 +12,14 @@ The iOS app exposes Music Assistant as both a CarPlay audio app and a Siri media
 
 ```
 Root: CPListTemplate ("Library")
-├── Section 1: Browse → CPGridTemplate (7 categories)
+├── Section 1: Browse → CPGridTemplate (up to 7 categories, order and visibility from Settings → Car → Tabs)
 │   ├── Artists    (mic.fill)                          → push CPListTemplate
 │   ├── Albums     (opticaldisc.fill)                  → push CPListTemplate
-│   ├── Tracks     (music.note)                        → push CPListTemplate
 │   ├── Playlists  (list.bullet.rectangle.fill)        → push CPListTemplate
 │   ├── Audiobooks (book.fill)                         → push CPListTemplate
 │   ├── Podcasts   (antenna.radiowaves.left.and.right) → push CPListTemplate
-│   └── Radio      (radio.fill)                        → push CPListTemplate
+│   ├── Radio      (radio.fill)                        → push CPListTemplate
+│   └── AI Radio   (sparkles)                          → push CPListTemplate (only with the ai_radio plugin and its scope)
 └── Section 2: Recommendations (CPListImageRowItem, async loaded)
     └── RecommendationFolders with artwork thumbnails (up to 8 per folder)
 ```

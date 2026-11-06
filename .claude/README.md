@@ -67,7 +67,7 @@ This directory contains project documentation for the Music Assistant KMP Client
 
 ### WebRTC Remote Access
 
-**[webrtc-implementation-plan.md](webrtc-implementation-plan.md)** ⭐ **COMPLETE - PRODUCTION READY**
+**[webrtc-completion-summary.md](webrtc-completion-summary.md)** ⭐ **COMPLETE - PRODUCTION READY**
 - **Status**: ✅ Fully functional on Android (updated 2026-02-08)
 - WebRTC peer-to-peer connections for remote access
 - Cloud signaling server integration (`wss://signaling.music-assistant.io/ws`)

@@ -499,7 +499,6 @@
   <string name="settings_sendspin_advanced_summary">buffer, custom connection, and more</string>
   <string name="settings_sendspin_advanced_title">Advanced Configuration</string>
   <string name="settings_sendspin_intro">Enable to play music directly through your device.</string>
-  <string name="settings_sendspin_require_encryption">Require encrypted connection</string>
   <string name="settings_sendspin_reset_defaults">Reset to defaults</string>
   <string name="settings_sendspin_save_changes">Save changes</string>
   <string name="settings_server">Server</string>

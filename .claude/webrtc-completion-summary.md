@@ -288,7 +288,7 @@ ServiceClient (dual-mode: Direct + WebRTC)
 ## References
 
 ### Documentation
-- [WebRTC Implementation Plan](webrtc-implementation-plan.md) - Original plan (now archived)
+- WebRTC Implementation Plan - original plan (archived, no longer in the repository)
 - [Sendspin WebRTC Status](sendspin-webrtc-status.md) - Sendspin integration details
 - [Music Assistant Frontend](https://github.com/music-assistant/frontend) - Reference implementation
 
