@@ -76,12 +76,13 @@ import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
+import io.music_assistant.client.ui.compose.home.players.GroupCountBadge
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.home.players.QueueDjViewModel
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
+import io.music_assistant.client.ui.compose.home.players.groupBadge
 import io.music_assistant.client.ui.compose.home.players.iconRes
-import io.music_assistant.client.ui.compose.home.players.label
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.statusDotColor
@@ -326,7 +327,10 @@ fun MainNavigationRoot(
                         onClick = { showPlayerSelection = true },
                         icon = vectorResource(selectedPlayer.iconRes()),
                         badgeColor = selectedPlayer.statusDotColor(state.sendspinState),
-                        label = selectedPlayer.label(),
+                        iconBadge = selectedPlayer.groupBadge()?.let { count ->
+                            @Composable { GroupCountBadge(count) }
+                        },
+                        label = selectedPlayer.player.name,
                         marqueeLabel = true,
                         contentDescription = selectedPlayer.contentDescription(),
                     )

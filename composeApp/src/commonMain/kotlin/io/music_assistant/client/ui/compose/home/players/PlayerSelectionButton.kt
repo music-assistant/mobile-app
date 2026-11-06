@@ -32,6 +32,8 @@ fun PlayerSelectionButton(
     player: PlayerData,
     controlTint: Color = MaterialTheme.colorScheme.primary,
     sendSpinState: PlayerState?,
+    /** The group count after the name, from [groupBadge]. Null hides it. */
+    groupBadge: String? = null,
     onSelectPlayer: () -> Unit = {},
 ) {
     val dotColor = player.statusDotColor(sendSpinState)
@@ -49,6 +51,7 @@ fun PlayerSelectionButton(
             player = player,
             controlTint = controlTint,
             dotColor = dotColor,
+            groupBadge = groupBadge,
         )
     }
 }
@@ -58,6 +61,7 @@ private fun PlayerButtonContent(
     player: PlayerData,
     controlTint: Color,
     dotColor: Color?,
+    groupBadge: String?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -78,13 +82,14 @@ private fun PlayerButtonContent(
             )
         }
 
-        val playerLabel = player.label()
-
         Text(
-            text = playerLabel,
+            text = player.player.name,
+            modifier = Modifier.weight(1f, fill = false),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+
+        groupBadge?.let { GroupCountBadge(it) }
     }
 }
 
@@ -130,6 +135,7 @@ private fun PlayerSelectionButtonPreview() {
                 groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = false)),
             ),
             sendSpinState = null,
+            groupBadge = "+1",
         )
     }
 }

@@ -15,14 +15,17 @@ fun PlayerData.contentDescription(): String {
     return currentPlayerContentDescription
 }
 
-fun PlayerData.label(): String {
+/**
+ * The text of the group badge on the player icon: the member count of a group, "+N" for the
+ * players synced to a leader, or null for a player that plays alone.
+ */
+fun PlayerData.groupBadge(): String? {
     val boundCount = childrenBinds.count { it.isBound }
-    val playerLabel = when {
-        player.isGroup -> "${player.name} (${player.groupMembers?.size ?: 0})"
-        boundCount > 0 -> "${player.name} + $boundCount"
-        else -> player.name
+    return when {
+        player.isGroup -> (player.groupMembers?.size ?: 0).toString()
+        boundCount > 0 -> "+$boundCount"
+        else -> null
     }
-    return playerLabel
 }
 
 fun PlayerData.iconRes(): DrawableResource {

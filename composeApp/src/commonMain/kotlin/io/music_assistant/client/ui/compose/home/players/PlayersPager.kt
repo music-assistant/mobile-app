@@ -587,6 +587,7 @@ private fun ExpandedPlayerPage(
                     player = player,
                     controlTint = colors.controlTint,
                     sendSpinState = sendspinState,
+                    groupBadge = player.groupBadge(),
                     onSelectPlayer = onSelectPlayer,
                 )
             },
