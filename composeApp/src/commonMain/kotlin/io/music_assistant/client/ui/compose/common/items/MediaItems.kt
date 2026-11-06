@@ -1254,12 +1254,16 @@ private const val SUBTITLE_ALPHA = 0.6f
  * Canonical title + optional subtitle for every list/grid media item.
  * Title is emphasised via weight; the subtitle is dimmed with alpha rather than a
  * distinct color, keeping the hierarchy sleek and consistent app-wide.
+ *
+ * @param reserveSubtitleLine true keeps an empty subtitle line, so grid tiles of one row align.
+ *   false drops it, so a row centers a lone title vertically.
  */
 @Composable
 internal fun MediaItemLabels(
     title: String,
     subtitle: String?,
     titleMaxLines: Int = 1,
+    reserveSubtitleLine: Boolean = true,
 ) {
     Text(
         modifier = Modifier.fillMaxWidth(),
@@ -1269,6 +1273,8 @@ internal fun MediaItemLabels(
         maxLines = titleMaxLines,
         overflow = TextOverflow.Ellipsis,
     )
+
+    if (subtitle.isNullOrBlank() && !reserveSubtitleLine) return
 
     val subtitleStyle = mediaItemSubtitleStyle()
     val subtitleLineHeight = with(LocalDensity.current) {
@@ -1343,6 +1349,7 @@ internal fun RowItem(
                 title = name,
                 subtitle = subtitle,
                 titleMaxLines = titleMaxLines,
+                reserveSubtitleLine = false,
             )
         }
         suffixContent?.invoke(this)
