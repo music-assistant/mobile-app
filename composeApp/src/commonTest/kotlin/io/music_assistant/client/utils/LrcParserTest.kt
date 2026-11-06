@@ -121,4 +121,23 @@ class LrcParserTest {
         val lines = LrcParser.parse("[00:30.00]")
         assertEquals(listOf(LrcLine(30_000, "")), lines)
     }
+
+    @Test
+    fun `parses timestamps of 100 minutes and more`() {
+        val lines = LrcParser.parse(
+            """
+            [98:10.00]line A
+            [102:30.00]line B
+            [107:27.00]line C
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf(
+                LrcLine(5_890_000, "line A"),
+                LrcLine(6_150_000, "line B"),
+                LrcLine(6_447_000, "line C"),
+            ),
+            lines,
+        )
+    }
 }
