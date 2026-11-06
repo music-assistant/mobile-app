@@ -63,8 +63,10 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.DisplayString
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.toDisplayString
+import io.music_assistant.client.ui.compose.grid.GridImageCard
 import io.music_assistant.client.ui.compose.grid.GridItem
 import io.music_assistant.client.ui.compose.grid.gridItemMinSize
+import io.music_assistant.client.ui.compose.grid.mediaItemCardColor
 import io.music_assistant.client.ui.compose.item.ItemList
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_view_all
@@ -333,7 +335,7 @@ fun CategoryRow(
                     modifier = Modifier.widthIn(max = 360.dp).fillParentMaxWidth(STACKED_COLUMN_FRACTION),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    val cardColor = mediaItemCardColor()
                     pair.forEach {
                         // The card shape matches the ripple shape of RowItem.
                         Box(Modifier.clip(RoundedCornerShape(8.dp)).background(cardColor)) {
@@ -630,13 +632,15 @@ fun PlaceholderGridItem(
         onClick = {  },
         onLongClick = {  },
     ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(color)
-                .fillMaxWidth()
-                .aspectRatio(1f),
-        )
+        GridImageCard {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(color)
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
+            )
+        }
 
         Spacer(Modifier.height(4.dp))
 

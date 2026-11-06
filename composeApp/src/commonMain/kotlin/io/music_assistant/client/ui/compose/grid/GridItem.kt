@@ -1,6 +1,9 @@
 package io.music_assistant.client.ui.compose.grid
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +53,25 @@ fun GridItem(
             content()
         }
     }
+}
+
+/** The card color of a media item: a stacked row item, or the image section of a grid tile. */
+@Composable
+fun mediaItemCardColor() = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+
+/**
+ * The card behind the image section of a grid tile. The labels stay outside it.
+ * The corner radius is the image radius plus the padding, so the corners stay concentric.
+ */
+@Composable
+fun GridImageCard(content: @Composable BoxScope.() -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(mediaItemCardColor())
+            .padding(6.dp),
+        content = content,
+    )
 }
 
 @Composable

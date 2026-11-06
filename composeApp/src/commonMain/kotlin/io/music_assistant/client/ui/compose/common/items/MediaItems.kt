@@ -77,6 +77,7 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.painters.rememberVinylRecordPainter
 import io.music_assistant.client.ui.compose.common.painters.rememberWaveformPainter
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
+import io.music_assistant.client.ui.compose.grid.GridImageCard
 import io.music_assistant.client.ui.compose.grid.GridItem
 import io.music_assistant.client.ui.theme.favoriteTint
 import io.music_assistant.client.utils.rowImageSize
@@ -111,7 +112,7 @@ fun ArtistGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             ArtistImage(item)
             Badges(
                 item = item,
@@ -176,7 +177,7 @@ fun AlbumGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             AlbumImage(item)
             Badges(
                 item = item,
@@ -256,7 +257,7 @@ fun PlaylistGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             PlaylistImage(item)
             Badges(
                 item = item,
@@ -352,7 +353,7 @@ fun PodcastGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             PodcastImage(item)
             Badges(
                 item = item,
@@ -448,7 +449,7 @@ internal fun TrackGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             TrackImage(item)
             Badges(
                 item = item,
@@ -516,7 +517,7 @@ internal fun PodcastEpisodeGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             PodcastEpisodeImage(item)
             Badges(
                 item = item,
@@ -604,7 +605,7 @@ internal fun <T> LiveStreamGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             LiveStreamImage(item)
             Badges(
                 item = item,
@@ -665,7 +666,7 @@ internal fun AudiobookGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             AudiobookImage(item)
             Badges(
                 item = item,
@@ -1042,7 +1043,7 @@ fun GenreGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        Box {
+        GridImageCard {
             GenreImage(item)
             Badges(
                 item = item,
@@ -1140,7 +1141,7 @@ internal fun FolderCell(
             onClick = { onClick(item) },
             onLongClick = { onLongClick(item) },
         ) {
-            FolderImage(item)
+            GridImageCard { FolderImage(item) }
             Spacer(Modifier.height(4.dp))
             MediaItemLabels(
                 title = item.displayName,
@@ -1220,7 +1221,7 @@ internal fun MediaCollectionGridItem(
         onClick = { onClick(item) },
         onLongClick = { onLongClick(item) },
     ) {
-        AudiobookImage(item)
+        GridImageCard { AudiobookImage(item) }
         Spacer(Modifier.height(4.dp))
         MediaItemLabels(
             title = item.displayName,
