@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +31,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,14 +82,16 @@ import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
+import io.music_assistant.client.ui.compose.home.players.GroupCountBadge
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.home.players.QueueDjViewModel
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
+import io.music_assistant.client.ui.compose.home.players.groupBadge
 import io.music_assistant.client.ui.compose.home.players.iconRes
-import io.music_assistant.client.ui.compose.home.players.label
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
+import io.music_assistant.client.ui.compose.home.players.statusDotColor
 import io.music_assistant.client.ui.compose.home.players.transportState
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
 import io.music_assistant.client.ui.compose.item.ItemDetailsViewModel
@@ -115,7 +116,6 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -127,10 +127,12 @@ import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.media_action_next
 import musicassistantclient.composeapp.generated.resources.nav_discover
+import musicassistantclient.composeapp.generated.resources.nav_explore
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_menu
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
+import musicassistantclient.composeapp.generated.resources.nav_system
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -151,16 +153,11 @@ fun MainNavigationRoot(
     libraryCategoriesViewModel: LibraryCategoriesViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
-    val uriHandler = LocalUriHandler.current
     val toastState = rememberToastState()
     val playerActionsViewModel: ActionsViewModel = koinViewModel(key = "player-actions")
     val errorBus: ErrorMessageBus = koinInject()
     val deepLinkBus: DeepLinkBus = koinInject()
     val volumeButtonService: VolumeButtonService = koinInject()
-
-    LaunchedEffect(Unit) {
-        homeScreenViewModel.links.collectLatest { url -> uriHandler.openUri(url) }
-    }
 
     // Surface server-side RPC errors as toasts on top of whichever screen is active.
     // (Per-screen ToastHosts handle ActionsViewModel toasts.)
@@ -348,7 +345,11 @@ fun MainNavigationRoot(
                         selected = false,
                         onClick = { showPlayerSelection = true },
                         icon = vectorResource(selectedPlayer.iconRes()),
-                        label = selectedPlayer.label(),
+                        badgeColor = selectedPlayer.statusDotColor(state.sendspinState),
+                        iconBadge = selectedPlayer.groupBadge()?.let { count ->
+                            @Composable { GroupCountBadge(count) }
+                        },
+                        label = selectedPlayer.player.name,
                         marqueeLabel = true,
                         contentDescription = selectedPlayer.contentDescription(),
                     )
@@ -516,11 +517,11 @@ private fun navigationItems(
     goToSettings: () -> Unit,
 ): List<Section> {
     val explore = Section(
-        title = "Explore",
+        title = stringResource(Res.string.nav_explore),
         items = listOf(
             multiBackStack.createNavigationItem(
                 backStack = 0,
-                icon = Icons.Default.Home,
+                icon = Icons.Default.Explore,
                 label = stringResource(Res.string.nav_discover),
                 screenState = homeScreenState.value,
             ),
@@ -549,7 +550,7 @@ private fun navigationItems(
     )
 
     val system = Section(
-        title = "System",
+        title = stringResource(Res.string.nav_system),
         items = listOf(
             NavigationItem(
                 selected = false,

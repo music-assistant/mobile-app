@@ -4,7 +4,8 @@ import io.music_assistant.client.data.model.client.LrcLine
 
 /**
  * Minimal LRC parser. Handles standard line-level timestamps
- * `[mm:ss]`, `[mm:ss.xx]`, `[mm:ss.xxx]` (also tolerating the `:` fraction
+ * `[mm:ss]`, `[mm:ss.xx]`, `[mm:ss.xxx]`, with any number of minute digits so
+ * tracks longer than 99 minutes keep their later lines (also tolerating the `:` fraction
  * separator some encoders emit), including multiple timestamps on one line
  * (`[00:12.00][00:47.00] chorus` → two lines). The `[offset:±ms]` ID tag is
  * honoured — a global timestamp correction where a positive value makes lines
@@ -17,8 +18,9 @@ import io.music_assistant.client.data.model.client.LrcLine
  * parseable as synced LRC" — callers should fall back to plain text.
  */
 object LrcParser {
-    // Leading timestamp tag: minutes:seconds with an optional 1–3 digit fraction.
-    private val timeTag = Regex("""\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?]""")
+    // Leading timestamp tag: minutes (any digit count, e.g. [102:30.00]):seconds with an
+    // optional 1–3 digit fraction.
+    private val timeTag = Regex("""\[(\d+):(\d{2})(?:[.:](\d{1,3}))?]""")
 
     // Global offset tag, e.g. [offset:+250] / [offset:-1000]; whitespace tolerated.
     private val offsetTag = Regex("""\[offset:\s*([+-]?\d+)\s*]""", RegexOption.IGNORE_CASE)

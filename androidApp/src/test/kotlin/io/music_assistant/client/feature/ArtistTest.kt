@@ -310,6 +310,41 @@ class ArtistTest {
             .clickOnMedia(artist, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
             .assertRowShown(Res.string.artist_section_top.get(), false)
     }
+
+    @Test
+    fun `clicking refresh updates providers`() {
+        val provider1 = ServerMediaItemFixtures.provider(
+            domain = "domain1",
+            instance = "instance1",
+            name = "Instance 1",
+        )
+        val provider2 = ServerMediaItemFixtures.provider(
+            domain = "domain2",
+            instance = "instance2",
+            name = "Instance 2",
+        )
+        serviceClient.addProvider(provider1)
+        serviceClient.addProvider(provider2)
+
+        val artist1 = ServerMediaItemFixtures.artist(provider = provider1)
+        val album1 = ServerMediaItemFixtures.album(artist = artist1, provider = provider1)
+        serviceClient.addItems(album1)
+        serviceClient.addToLibrary(artist1)
+
+        val artistPage = launchLoggedInApp(composeTestRule, serviceClient)
+            .clickOnMedia(artist1, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
+            .assertMediaDisplayed(album1, provider = provider1.domain)
+
+        val artist2 = ServerMediaItemFixtures.artist(provider = provider2)
+        val album2 = ServerMediaItemFixtures.album(artist = artist2, provider = provider2)
+        serviceClient.addItems(album2)
+        serviceClient.matchItem(artist1, artist2)
+
+        artistPage.refreshItem()
+            .switchProvider(Res.string.artist_section_all.get(), provider1.name, provider2.name)
+            .assertMediaNotDisplayed(album1, provider = provider1.domain)
+            .assertMediaDisplayed(album2, provider = provider2.domain)
+    }
 }
 
 // Server ProviderFeature value of a provider that serves artist top tracks.

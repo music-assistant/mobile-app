@@ -32,10 +32,11 @@ fun PlayerSelectionButton(
     player: PlayerData,
     controlTint: Color = MaterialTheme.colorScheme.primary,
     sendSpinState: PlayerState?,
+    /** The group count after the name, from [groupBadge]. Null hides it. */
+    groupBadge: String? = null,
     onSelectPlayer: () -> Unit = {},
 ) {
-    val isLocalPlayer = player.isLocal
-    val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
+    val dotColor = player.statusDotColor(sendSpinState)
 
     val playerContentDescription = player.contentDescription()
     val modifier = Modifier.clearAndSetSemantics {
@@ -50,6 +51,7 @@ fun PlayerSelectionButton(
             player = player,
             controlTint = controlTint,
             dotColor = dotColor,
+            groupBadge = groupBadge,
         )
     }
 }
@@ -59,6 +61,7 @@ private fun PlayerButtonContent(
     player: PlayerData,
     controlTint: Color,
     dotColor: Color?,
+    groupBadge: String?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -79,15 +82,20 @@ private fun PlayerButtonContent(
             )
         }
 
-        val playerLabel = player.label()
-
         Text(
-            text = playerLabel,
+            text = player.player.name,
+            modifier = Modifier.weight(1f, fill = false),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+
+        groupBadge?.let { GroupCountBadge(it) }
     }
 }
+
+/** The Sendspin link colour for the local player, or null for a server player. */
+internal fun PlayerData.statusDotColor(sendspinState: PlayerState?): Color? =
+    sendspinState?.takeIf { isLocal }?.toDotColor()
 
 private fun PlayerState.toDotColor(): Color = when (this) {
     is PlayerState.Connected -> Color(0xFF4CAF50) // Green
@@ -127,6 +135,7 @@ private fun PlayerSelectionButtonPreview() {
                 groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = false)),
             ),
             sendSpinState = null,
+            groupBadge = "+1",
         )
     }
 }

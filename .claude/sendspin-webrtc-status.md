@@ -337,7 +337,7 @@ MediaPlayerController
 ## References
 
 - **Main Sendspin Docs:** `sendspin-status.md`
-- **WebRTC Implementation:** `webrtc-implementation-plan.md`
+- **WebRTC Implementation:** `webrtc-completion-summary.md`
 - **Transport Interface:** `SendspinTransport.kt`
 - **WebRTC Transport:** `WebRTCDataChannelTransport.kt`
 - **Factory Logic:** `SendspinClientFactory.kt`

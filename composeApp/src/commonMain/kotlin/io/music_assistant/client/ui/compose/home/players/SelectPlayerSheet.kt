@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -350,16 +349,9 @@ private fun PlayerSelection(
                         IconButton(onClick = { onGroupRequest(item) }) {
                             BadgedBox(
                                 badge = {
-                                    val groupMembers = item.player.groupMembers?.size ?: 0
-                                    val playerCount = if (groupMembers > 0) {
-                                        groupMembers
-                                    } else {
-                                        1
-                                    }
-
-                                    Badge {
-                                        Text(playerCount.toString())
-                                    }
+                                    val playerCount =
+                                        (item.player.groupMembers?.size ?: 0).coerceAtLeast(1)
+                                    GroupCountBadge(playerCount.toString())
                                 },
                             ) {
                                 Icon(

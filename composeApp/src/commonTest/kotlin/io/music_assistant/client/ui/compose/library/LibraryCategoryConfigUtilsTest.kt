@@ -1,5 +1,7 @@
 package io.music_assistant.client.ui.compose.library
 
+import io.music_assistant.client.settings.SettingsRepository.LibraryCategoryPref
+import io.music_assistant.client.ui.compose.common.enabledFirst
 import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -88,5 +90,41 @@ class LibraryCategoryConfigUtilsTest {
             listOf("A" to false, "B" to false, "C" to false),
             result,
         )
+    }
+
+    @Test
+    fun `enabledFirst moves enabled items above disabled ones and keeps each section order`() {
+        val items = listOf(
+            "A" to true,
+            "B" to false,
+            "C" to true,
+            "D" to false,
+            "E" to true,
+        )
+        assertEquals(
+            listOf("A" to true, "C" to true, "E" to true, "B" to false, "D" to false),
+            items.enabledFirst(),
+        )
+    }
+
+    @Test
+    fun `a car tab added after the config was saved lands in the enabled section`() {
+        // Saved before HOME existed, with one tab turned off: reconcile appends HOME after it.
+        val stored = listOf(
+            LibraryCategoryPref(LibraryCategory.ARTISTS.name, true),
+            LibraryCategoryPref(LibraryCategory.ALBUMS.name, true),
+            LibraryCategoryPref(LibraryCategory.PLAYLISTS.name, true),
+            LibraryCategoryPref(LibraryCategory.PODCASTS.name, false),
+            LibraryCategoryPref(LibraryCategory.RADIOS.name, true),
+            LibraryCategoryPref(LibraryCategory.AUDIOBOOKS.name, true),
+            LibraryCategoryPref(LibraryCategory.AI_RADIO.name, true),
+        )
+        val items = reconcileCarTabs(stored).enabledFirst()
+        val enabledCount = items.count { it.second }
+        assertEquals(
+            LibraryCategory.HOME,
+            items[enabledCount - 1].first,
+        )
+        assertEquals(listOf(LibraryCategory.PODCASTS to false), items.drop(enabledCount))
     }
 }

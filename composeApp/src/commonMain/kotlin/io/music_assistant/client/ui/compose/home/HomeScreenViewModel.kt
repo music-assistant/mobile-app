@@ -46,11 +46,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -98,9 +96,6 @@ class HomeScreenViewModel(
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
     private var deepLinkPlayerJob: Job? = null
-
-    private val _links = MutableSharedFlow<String>()
-    val links = _links.asSharedFlow()
 
     // Local (Sendspin) player identity — used by the group dialog to decide
     // whether to show the playback-delay adjuster.
@@ -527,19 +522,6 @@ class HomeScreenViewModel(
     fun clearSleepTimer(playerId: String) = dataSource.clearSleepTimer(playerId)
 
     fun onPlayersSortChanged(newSort: List<String>) = dataSource.onPlayersSortChanged(newSort)
-    fun openPlayerSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
-        onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id")
-    }
-
-    fun openPlayerDspSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
-        onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id/dsp")
-    }
-
-    private fun currentServerToken(): String? =
-        (apiClient.sessionState.value as? SessionState.Connected)
-            ?.serverInfo?.serverId?.let { settings.getTokenForServer(it) }
-
-    private fun onOpenExternalLink(url: String) = viewModelScope.launch { _links.emit(url) }
 
     /**
      * Persists the edited working list. Prefs for folders not currently present

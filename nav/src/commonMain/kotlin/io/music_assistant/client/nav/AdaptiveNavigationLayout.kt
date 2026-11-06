@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
@@ -58,6 +60,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
@@ -186,6 +189,9 @@ private fun RailLayout(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    // The content slides while it changes screens. Clip it, so that a screen that leaves
+                    // does not draw over the rail.
+                    .clipToBounds()
                     // An expanded player keeps its background under the strip and insets its own content.
                     .padding(end = if (showNavigation) verticalBarArea?.trailingInset ?: 0.dp else 0.dp),
             ) {
@@ -577,7 +583,15 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
         selected = item.selected,
         onClick = item.onClick,
         icon = {
-            Icon(item.icon, contentDescription = null)
+            val icon = @Composable {
+                Box {
+                    Icon(item.icon, contentDescription = null)
+                    item.badgeColor?.let { StatusBadge(it) }
+                }
+            }
+            item.iconBadge?.let { badge ->
+                BadgedBox(badge = { badge() }) { icon() }
+            } ?: icon()
         },
         label = {
             val modifier = if (item.marqueeLabel) {
@@ -600,6 +614,20 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
     )
 }
 
+/** A dot on the bottom-end corner of the icon, ringed in the bar colour so it reads over the glyph. */
+@Composable
+private fun BoxScope.StatusBadge(color: Color) {
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .offset(x = 2.dp, y = 2.dp)
+            .size(10.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+            .padding(1.dp)
+            .background(color, CircleShape),
+    )
+}
+
 data class Section(
     val title: String,
     val items: List<NavigationItem>,
@@ -609,8 +637,12 @@ data class NavigationItem(
     val selected: Boolean,
     val onClick: () -> Unit,
     val icon: ImageVector,
+    /** Drawn on the top-right corner of [icon] in the bottom bar. */
+    val iconBadge: (@Composable () -> Unit)? = null,
     val label: String,
     val contentDescription: String? = null,
+    /** Colour of the status dot on the icon, or null for no dot. Shown in the bottom bar only. */
+    val badgeColor: Color? = null,
     val marqueeLabel: Boolean = false,
     val enabled: Boolean = true,
     val editable: Boolean = false,
