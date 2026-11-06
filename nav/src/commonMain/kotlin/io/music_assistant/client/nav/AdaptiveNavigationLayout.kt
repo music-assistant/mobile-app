@@ -17,11 +17,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
@@ -378,7 +380,10 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
         selected = item.selected,
         onClick = item.onClick,
         icon = {
-            Icon(item.icon, contentDescription = null)
+            Box {
+                Icon(item.icon, contentDescription = null)
+                item.badgeColor?.let { StatusBadge(it) }
+            }
         },
         label = {
             val modifier = if (item.marqueeLabel) {
@@ -401,6 +406,20 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
     )
 }
 
+/** A dot on the bottom-end corner of the icon, ringed in the bar colour so it reads over the glyph. */
+@Composable
+private fun BoxScope.StatusBadge(color: Color) {
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .offset(x = 2.dp, y = 2.dp)
+            .size(10.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+            .padding(1.dp)
+            .background(color, CircleShape),
+    )
+}
+
 data class Section(
     val title: String,
     val items: List<NavigationItem>,
@@ -412,6 +431,8 @@ data class NavigationItem(
     val icon: ImageVector,
     val label: String,
     val contentDescription: String? = null,
+    /** Colour of the status dot on the icon, or null for no dot. Shown in the bottom bar only. */
+    val badgeColor: Color? = null,
     val marqueeLabel: Boolean = false,
     val enabled: Boolean = true,
     val editable: Boolean = false,

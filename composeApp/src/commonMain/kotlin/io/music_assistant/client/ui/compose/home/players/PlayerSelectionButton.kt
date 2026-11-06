@@ -34,8 +34,7 @@ fun PlayerSelectionButton(
     sendSpinState: PlayerState?,
     onSelectPlayer: () -> Unit = {},
 ) {
-    val isLocalPlayer = player.isLocal
-    val dotColor = (if (isLocalPlayer) sendSpinState else null)?.toDotColor()
+    val dotColor = player.statusDotColor(sendSpinState)
 
     val playerContentDescription = player.contentDescription()
     val modifier = Modifier.clearAndSetSemantics {
@@ -88,6 +87,10 @@ private fun PlayerButtonContent(
         )
     }
 }
+
+/** The Sendspin link colour for the local player, or null for a server player. */
+internal fun PlayerData.statusDotColor(sendspinState: PlayerState?): Color? =
+    sendspinState?.takeIf { isLocal }?.toDotColor()
 
 private fun PlayerState.toDotColor(): Color = when (this) {
     is PlayerState.Connected -> Color(0xFF4CAF50) // Green
