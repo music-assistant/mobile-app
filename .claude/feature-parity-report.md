@@ -281,8 +281,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 |---|---|---|---|---|---|---|---|
 | Library radio list | yes | yes | yes | yes | yes | Parity | App hides AI Radio show rows |
 | Favorite the song on air | no | no | yes | yes | no | Parity | App extra, schema 27 |
-| Finite station tracklist | no | yes | yes | no | no | Parity | `Radio.is_endless`, `radio_tracks`; excludes
-  dynamic stations |
+| Finite station tracklist | no | yes | yes | no | no | Parity | is_endless, radio_tracks; not dynamic |
 | AI Radio shows: list and play | session API | Radio items | Radio items | yes | yes | Parity | App needs schema 88; 2.10 sessions are not supported |
 | AI Radio show and host editing | yes | yes | no | no | no | Out of scope | Scope `config.providers.write` |
 
