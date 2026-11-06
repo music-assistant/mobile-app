@@ -52,6 +52,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
@@ -151,7 +152,9 @@ private fun RailLayout(
             }
         }
 
-        Box {
+        // The content slides while it changes screens. Clip it, so that a screen that leaves
+        // does not draw over the rail.
+        Box(modifier = Modifier.clipToBounds()) {
             content(PaddingValues(), false)
         }
     }
