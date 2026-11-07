@@ -36,9 +36,12 @@ User taps an item → `CarPlayContentManager.playItem()` → `KmpHelper.playMedi
 ### Browse icons
 
 `CPGridTemplate` with SF Symbols, adaptive theming via `UIImageAsset`:
-- Dark: background `#404378` (primaryContainer), icon tint `#C0C1FF` (primary)
-- Light: background `#E0DEFF`, icon tint `#575992`
-- Icons centered, scaled to 80% of available space.
+- The icon tint is the `primary` role of the accent color setting (see the Accent color bullet in
+  `.claude/architecture.md`). `KmpHelper.carPlayAccent()` gives it as ARGB for the light and the dark
+  appearance. The wallpaper accent has no iOS scheme, so it gives the default blue.
+- The scene delegate reads the tint once in `didConnect`, before it builds a template. A CPListItem
+  image is immutable, so an accent change on the phone reaches CarPlay at the next connect.
+- The icons have no background. They are centered and scaled to 80% of the available space.
 
 ### Artwork loading
 
@@ -179,6 +182,7 @@ iOS-only Swift-callable API in `KmpHelper.kt`:
 | `setFavorite(item, favorite) -> Boolean` | `addFavorite(uri\|mediaUri)` or `removeFavorite(id, mediaType)`. False if no URI for add. |
 | `getServerUrl() -> String?` | The connected server's base URL |
 | `getServerId() -> String?` | The connected server's stable UUID (from `ServerInfo.server_id` in the handshake) |
+| `carPlayAccent() -> CarPlayAccent` | The accent primary as ARGB (`lightArgb`, `darkArgb`) for the browse icon tint |
 
 All completion handlers fire on `Dispatchers.Main` (= iOS main thread on Kotlin/Native).
 

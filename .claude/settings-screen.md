@@ -77,6 +77,13 @@ The Settings screen adapts its UI based on connection and authentication state:
 - MainDataSource automatically manages Sendspin lifecycle based on `sendspinEnabled` setting
 - Configuration changes only allowed when player is stopped
 
+### AccentColorSection
+- Always visible, above the Misc section
+- One round swatch for each `AccentColor` that the platform can give, in the primary color that the accent gives in the current light or dark theme
+- The line under the swatches names the current choice
+- `ThemeViewModel.accentColor` and `setAccentColor` read and write the setting (`SettingsRepository`, key `accent_color`)
+- The light, system and dark toggle stays in the top bar (`ThemeChooser`)
+
 ## Authentication Flow
 
 ### Builtin Authentication

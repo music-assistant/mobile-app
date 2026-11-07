@@ -2,6 +2,7 @@
 
 package io.music_assistant.client.di
 
+import androidx.compose.ui.graphics.toArgb
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.Request
@@ -9,6 +10,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthCallback
+import io.music_assistant.client.carplay.CarPlayAccent
 import io.music_assistant.client.carplay.CarPlayStrings
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.NowPlayingModes
@@ -50,6 +52,7 @@ import io.music_assistant.client.settings.planCarItemDispatch
 import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.compose.library.reconcileCarTabs
 import io.music_assistant.client.ui.compose.library.visibleCategories
+import io.music_assistant.client.ui.theme.accentPrimary
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.LocalNetworkPermissionProber
@@ -154,6 +157,14 @@ object KmpHelper : KoinComponent {
 
     /** Whether the local player is enabled; CarPlay gates attachment on this. */
     fun isLocalPlayerEnabled(): Boolean = settingsRepository.sendspinEnabled.value
+
+    /** The accent primary for the CarPlay icon tint. CarPlay reads it on each connect. */
+    fun carPlayAccent(): CarPlayAccent = settingsRepository.accentColor.value.let { accent ->
+        CarPlayAccent(
+            lightArgb = accentPrimary(accent, darkTheme = false).toArgb(),
+            darkArgb = accentPrimary(accent, darkTheme = true).toArgb(),
+        )
+    }
 
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()

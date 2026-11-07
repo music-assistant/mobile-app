@@ -128,6 +128,7 @@ kotlin {
 
             implementation(libs.kmpalette.core)
             implementation(libs.kmpalette.extensions.network)
+            implementation(libs.material.kolor)
 
             implementation(libs.material.icons.core)
             implementation(libs.material.icons.extended)

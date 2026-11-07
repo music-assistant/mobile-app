@@ -37,11 +37,12 @@ import io.music_assistant.client.ui.compose.common.ProvidePlayMediaSupport
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.compose.nav.exitApp
+import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.ui.theme.SystemAppearance
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
-import io.music_assistant.client.ui.theme.isSystemInDarkTheme
+import io.music_assistant.client.ui.theme.isDark
 import io.music_assistant.client.ui.utils.DeviceChrome
 import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import musicassistantclient.composeapp.generated.resources.Res
@@ -86,15 +87,12 @@ fun App(deviceChrome: DeviceChrome = DeviceChrome.None) {
     AppLifecycleObserver()
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
+    val accent = themeViewModel.accentColor.collectAsStateWithLifecycle(AccentColor.DEFAULT)
     val followsSystem = theme.value == ThemeSetting.FollowSystem
-    val darkTheme = when (theme.value) {
-        ThemeSetting.Dark -> true
-        ThemeSetting.Light -> false
-        ThemeSetting.FollowSystem -> isSystemInDarkTheme()
-    }
+    val darkTheme = theme.value.isDark()
     SystemAppearance(isDarkTheme = darkTheme, followsSystem = followsSystem)
     ProvideDynamicTypeFontScale {
-        AppTheme(darkTheme = darkTheme) {
+        AppTheme(darkTheme = darkTheme, accent = accent.value) {
             // Paint a themed background behind everything so the (light) platform window background
             // never bleeds through the transparent system bars in edge-to-edge — otherwise any region
             // Compose doesn't cover (e.g. the nav-bar strip beside the rail) shows as an off-theme white.

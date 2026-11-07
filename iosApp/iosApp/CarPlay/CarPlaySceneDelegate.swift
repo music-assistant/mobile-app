@@ -129,6 +129,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         // `(Boolean) -> Unit` from Kotlin exposes as `KotlinBoolean`; unbox.
         // The generation check (not just `interfaceController != nil`) rejects
         // completions from a connection that has since been torn down.
+        iconTint = Self.iconTint(for: KmpHelper.shared.carPlayAccent())
         let gen = connectionGen
         KmpHelper.shared.loadCarPlayStrings { [weak self] loaded in
             guard let self = self, self.connectionGen == gen,
@@ -353,22 +354,20 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     // MARK: - UI Construction
 
-    // App theme colors from Color.kt, adaptive for light/dark mode
-    // Light: primaryContainer ≈ #E0DEFF, primary = #575992
-    // Dark:  primaryContainer ≈ #404378, primary = #C0C1FF
-    private static let cardBackground = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0x40/255.0, green: 0x43/255.0, blue: 0x78/255.0, alpha: 1.0)
-            : UIColor(red: 0xE0/255.0, green: 0xDE/255.0, blue: 0xFF/255.0, alpha: 1.0)
-    }
-    private static let iconTint = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0xC0/255.0, green: 0xC1/255.0, blue: 0xFF/255.0, alpha: 1.0)
-            : UIColor(red: 0x57/255.0, green: 0x59/255.0, blue: 0x92/255.0, alpha: 1.0)
+    /// Icon tint from the accent color setting (the Compose `primary` role),
+    /// resolved for the light and the dark CarPlay appearance. Read on each
+    /// connect: a CPListItem image is immutable, so an accent change on the
+    /// phone reaches CarPlay at the next connect.
+    private var iconTint: UIColor = .label
+
+    private static func iconTint(for accent: CarPlayAccent) -> UIColor {
+        UIColor { trait in
+            UIColor(argb: trait.userInterfaceStyle == .dark ? accent.darkArgb : accent.lightArgb)
+        }
     }
 
-    private static func renderCategoryImage(symbol symbolName: String, size: CGSize, traits: UITraitCollection) -> UIImage {
-        let tintColor = iconTint.resolvedColor(with: traits)
+    private static func renderCategoryImage(symbol symbolName: String, size: CGSize, tint: UIColor, traits: UITraitCollection) -> UIImage {
+        let tintColor = tint.resolvedColor(with: traits)
         let symbol = UIImage(systemName: symbolName)!
 
         // Use scale: 0 to automatically match the screen scale
@@ -393,10 +392,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     }
 
     /// Creates a dynamic UIImage that re-renders for light/dark mode automatically
-    private static func dynamicCategoryImage(symbol: String, size: CGSize) -> UIImage {
-        let light = renderCategoryImage(symbol: symbol, size: size,
+    private func dynamicCategoryImage(symbol: String, size: CGSize) -> UIImage {
+        let light = Self.renderCategoryImage(symbol: symbol, size: size, tint: iconTint,
             traits: UITraitCollection(userInterfaceStyle: .light))
-        let dark = renderCategoryImage(symbol: symbol, size: size,
+        let dark = Self.renderCategoryImage(symbol: symbol, size: size, tint: iconTint,
             traits: UITraitCollection(userInterfaceStyle: .dark))
 
         let asset = UIImageAsset()
@@ -407,7 +406,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func createLibraryTemplate(_ strings: CarPlayStrings) -> CPListTemplate {
         // "Browse" item pushes a CPGridTemplate with all categories
-        let browseIcon = Self.dynamicCategoryImage(symbol: "square.grid.2x2.fill", size: CPListItem.maximumImageSize)
+        let browseIcon = dynamicCategoryImage(symbol: "square.grid.2x2.fill", size: CPListItem.maximumImageSize)
         let browseItem = CPListItem(text: strings.browse, detailText: strings.browseSubtitle, image: browseIcon)
         browseItem.handler = { [weak self] _, completion in
             self?.pushBrowseGrid()
@@ -581,13 +580,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             // AI Radio is not in allCategories: its rows are plugin stations, not AppMediaItem,
             // so attachHandlers would drop every tap. It gets its own template instead.
             if name == "AI_RADIO" {
-                let image = Self.dynamicCategoryImage(symbol: "sparkles", size: imageSize)
+                let image = dynamicCategoryImage(symbol: "sparkles", size: imageSize)
                 return CPGridButton(titleVariants: [strings.aiRadio], image: image) { [weak self] _ in
                     self?.pushAiRadioTemplate()
                 }
             }
             guard let category = allCategories[name] else { return nil }
-            let image = Self.dynamicCategoryImage(symbol: category.symbol, size: imageSize)
+            let image = dynamicCategoryImage(symbol: category.symbol, size: imageSize)
             return CPGridButton(titleVariants: [category.title], image: image) { [weak self] _ in
                 self?.pushCategoryTemplate(title: category.title, fetcher: category.fetcher)
             }
@@ -840,5 +839,18 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         )
         item.handler = nil
         return item
+    }
+}
+
+private extension UIColor {
+    /// A color from a Compose ARGB value (`Color.toArgb()`), as Kotlin `Int` crosses to Swift.
+    convenience init(argb: Int32) {
+        let value = UInt32(bitPattern: argb)
+        self.init(
+            red: CGFloat((value >> 16) & 0xFF) / 255.0,
+            green: CGFloat((value >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(value & 0xFF) / 255.0,
+            alpha: CGFloat((value >> 24) & 0xFF) / 255.0
+        )
     }
 }

@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
+  <string name="accent_color_blue">Blue</string>
+  <string name="accent_color_default">Default</string>
+  <string name="accent_color_green">Green</string>
+  <string name="accent_color_indigo">Indigo</string>
+  <string name="accent_color_orange">Orange</string>
+  <string name="accent_color_pink">Pink</string>
+  <string name="accent_color_purple">Purple</string>
+  <string name="accent_color_red">Red</string>
+  <string name="accent_color_teal">Teal</string>
+  <string name="accent_color_wallpaper">Wallpaper</string>
+  <string name="accent_color_yellow">Yellow</string>
   <string name="action_add_all_to_queue">Add all to queue</string>
   <string name="action_add_to_library">Add to library</string>
   <string name="action_add_to_playlist">Add to playlist</string>
@@ -423,6 +434,7 @@
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
+  <string name="settings_accent_color">Accent color</string>
   <string name="settings_allow_landscape">Allow landscape on all devices</string>
   <string name="settings_allow_landscape_hint">Experimental: some screens can look wrong in landscape. Use at your own risk.</string>
   <string name="settings_app_documentation">App documentation →</string>
