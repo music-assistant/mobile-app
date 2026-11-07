@@ -55,3 +55,7 @@ internal fun ColorScheme.withPrimaryGroupOf(accent: ColorScheme): ColorScheme = 
     onPrimaryFixed = accent.onPrimaryFixed,
     onPrimaryFixedVariant = accent.onPrimaryFixedVariant,
 )
+
+/** The primary color of [accent] without the platform: the wallpaper accent gives the default. */
+internal fun accentPrimary(accent: AccentColor, darkTheme: Boolean): Color =
+    accent.seed?.let { seedColorScheme(it, darkTheme).primary } ?: defaultColorScheme(darkTheme).primary

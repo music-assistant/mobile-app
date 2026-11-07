@@ -278,7 +278,8 @@ actual class PlatformFeature {
   iOS). `withPrimaryGroupOf` copies only the primary roles and the surface tint into the default scheme. The secondary,
   tertiary and neutral roles never change, so the favorite heart (`favoriteTint`, tertiary) and the surfaces keep their
   colors. `ThemeSetting.isDark()` resolves the light or dark choice. The settings picker (`AccentColorSection`) shows one
-  swatch for each accent that `accentColorScheme` can give on the platform. CarPlay keeps its own fixed colors.
+  swatch for each accent that `accentColorScheme` can give on the platform. CarPlay tints its browse icons with
+  `accentPrimary` through `KmpHelper.carPlayAccent`, read on each connect.
 - **Device chrome**: `DeviceChrome` (`ui-utils`) is the window geometry that the platform reports. It holds the area
   of the system vertical bar, the hinge of a book-style foldable and the fold. Read it from `LocalDeviceChrome`, which
   `App` provides. Only iOS gives a value, from iOS 27.1 (iPhone Duo). The probe in `ContentView.swift` reads it from
