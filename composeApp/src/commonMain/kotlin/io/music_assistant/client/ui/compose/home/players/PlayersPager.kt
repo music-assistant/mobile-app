@@ -903,7 +903,7 @@ private fun ExpandedPlayerPage(
                                 VolumeSliderBox(
                                     modifier = Modifier.weight(1f),
                                     hintColor = controlTint,
-                                    hintIconColor = colors.dominant,
+                                    hintIconColor = MaterialTheme.colorScheme.background,
                                     volume = { currentVolume },
                                     onStepDown = {
                                         playerAction(
