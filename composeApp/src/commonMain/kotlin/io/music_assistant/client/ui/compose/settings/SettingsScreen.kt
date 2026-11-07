@@ -79,8 +79,10 @@ import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
+import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.ui.theme.isDark
 import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
@@ -151,6 +153,7 @@ import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
+    val accent = themeViewModel.accentColor.collectAsStateWithLifecycle(AccentColor.DEFAULT)
     val viewModel = koinViewModel<SettingsViewModel>()
     val savedConnectionInfo by viewModel.savedConnectionInfo.collectAsStateWithLifecycle()
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
@@ -392,6 +395,12 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         }
                     }
                 }
+
+                AccentColorSection(
+                    current = accent.value,
+                    darkTheme = theme.value.isDark(),
+                    onChange = themeViewModel::setAccentColor,
+                )
 
                 // Misc settings - always visible
                 val shareLogsTitle = stringResource(Res.string.settings_share_logs)

@@ -3,6 +3,7 @@
 ## UI
 - **Compose Multiplatform** - Cross-platform UI
 - **Material3** - Design system
+- **MaterialKolor** (5.0.1) - Makes a Material 3 color scheme from one seed color. The accent color setting takes only the primary group from it.
 - **Material Icons Extended** - Icon set
 - **FontAwesome / Tabler Icons** - Additional icons
 

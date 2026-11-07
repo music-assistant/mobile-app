@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.sendspin.api.AudioCodec
@@ -96,6 +97,18 @@ class SettingsRepository(
     fun switchTheme(theme: ThemeSetting) {
         settings.putString("theme", theme.name)
         _theme.update { theme }
+    }
+
+    private val _accentColor = MutableStateFlow(
+        settings.getStringOrNull("accent_color").let { stored ->
+            AccentColor.entries.firstOrNull { it.name == stored } ?: AccentColor.DEFAULT
+        },
+    )
+    val accentColor = _accentColor.asStateFlow()
+
+    fun setAccentColor(accent: AccentColor) {
+        settings.putString("accent_color", accent.name)
+        _accentColor.update { accent }
     }
 
     private val _connectionInfo = MutableStateFlow(
