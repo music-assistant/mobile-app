@@ -69,6 +69,15 @@ sealed class AppMediaItem {
     abstract val sortName: String?
     abstract val uri: String?
     abstract val images: Map<ImageType, ImageInfo>
+
+    /** The icon of the media type: the artwork placeholder and the type badge. */
+    abstract val defaultIcon: ImageVector
+
+    /**
+     * True if a tap on the item plays it. A tap on every other item opens its page. An audiobook
+     * is playable, but a tap opens its page.
+     */
+    open val playsOnTap: Boolean get() = false
     open val canStartEndlessMix: Boolean get() = false
 
     /** Returns a copy of this item with its [favorite] flag set to [favorite]. */

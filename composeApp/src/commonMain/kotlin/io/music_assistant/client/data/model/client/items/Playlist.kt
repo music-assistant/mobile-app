@@ -5,6 +5,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.ui.compose.common.icons.PlaylistIcon
 
 data class Playlist(
     override val itemId: String,
@@ -27,6 +28,7 @@ data class Playlist(
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.PLAYLIST
+    override val defaultIcon = PlaylistIcon
     override val canStartEndlessMix: Boolean get() = !isDynamic
 
     /**

@@ -1,5 +1,7 @@
 package io.music_assistant.client.data.model.client.items
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
@@ -25,6 +27,7 @@ data class RecommendationFolder(
     override val metadata: Metadata? = null
     override val favorite: Boolean? = null
     override val mediaType: MediaType = MediaType.FOLDER
+    override val defaultIcon = Icons.Default.Folder
 
     // Browse folders can arrive with a blank name; fall back to the path's last (capitalized) segment.
     override val displayName: String

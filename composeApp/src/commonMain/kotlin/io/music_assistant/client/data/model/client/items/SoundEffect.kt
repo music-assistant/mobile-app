@@ -38,6 +38,7 @@ data class SoundEffect(
         get() = providerMappings?.any { it.providerDomain == AI_RADIO_DOMAIN } == true
 
     override val mediaType: MediaType = MediaType.SOUND_EFFECT
+    override val playsOnTap: Boolean = true
     override val favorite: Boolean? = null
     override val version: String? = null
     override val position: Int? = null

@@ -6,6 +6,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.ui.compose.common.icons.ArtistIcon
 
 data class Artist(
     override val itemId: String,
@@ -22,6 +23,7 @@ data class Artist(
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.ARTIST
+    override val defaultIcon = ArtistIcon
     override val canStartEndlessMix: Boolean = true
 
     /** An author or a narrator: the page shows audiobooks instead of albums and tracks. */

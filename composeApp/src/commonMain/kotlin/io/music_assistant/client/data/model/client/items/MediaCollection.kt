@@ -5,6 +5,7 @@ import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
 
 /**
  * A server-built group of library items, today an audiobook series. It exists only in a
@@ -27,6 +28,7 @@ data class MediaCollection(
     override val favorite: Boolean? = null
     override val sortName: String? = null
     override val mediaType: MediaType = MediaType.COLLECTION
+    override val defaultIcon = BookshelfIcon
 
     override fun equals(other: Any?): Boolean =
         other is MediaCollection && super.equals(other) && items == other.items

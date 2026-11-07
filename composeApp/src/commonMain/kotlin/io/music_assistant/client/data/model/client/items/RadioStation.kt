@@ -25,6 +25,7 @@ data class RadioStation(
     override val position: Int? = null,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.RADIO
+    override val playsOnTap: Boolean = true
     override val duration: Double? = null
     override val parentName: String? = null
     override val defaultIcon = RadioIcon
