@@ -99,7 +99,7 @@ Both the in-car AA voice path and the phone-side App Actions path terminate at *
                               Request.Library.play (REPLACE)
 ```
 
-When playback actually starts, `ensureNotificationService()` (running inside the bound AA service) observes `isAnythingPlaying` and starts `MainMediaPlaybackService` as a foreground service for background-audio survival. This is the **same** chain the in-car AA experience has always used.
+When playback actually starts, `ensureNotificationService()` (running inside the bound AA service) observes `isAnyQueueItemPlaying` (a player plays an item of its queue) and starts `MainMediaPlaybackService` as a foreground service for background-audio survival. This is the **same** chain the in-car AA experience has always used.
 
 ### Target player
 

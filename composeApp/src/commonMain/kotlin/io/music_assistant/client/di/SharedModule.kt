@@ -182,6 +182,7 @@ fun sharedModule(
             PlayDispatcher(
                 apiClient = get(),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+                beforeSend = get<LocalPlayerAdapter>()::prepareQueue,
             )
         }
         single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }

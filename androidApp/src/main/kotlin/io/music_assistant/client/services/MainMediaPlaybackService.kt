@@ -133,7 +133,7 @@ class MainMediaPlaybackService : MediaBrowserServiceCompat() {
         }
         scope.launch {
             // Block until everything is stopped, then bail
-            dataSource.doesAnythingHavePlayableItem.filter { !it }.first()
+            dataSource.doesAnythingHavePlayableItem.first { !it }
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }

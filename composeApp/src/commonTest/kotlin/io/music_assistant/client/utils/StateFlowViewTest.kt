@@ -39,4 +39,33 @@ class StateFlowViewTest {
         assertEquals(listOf(0, 1, 2), seen)
         job.cancel()
     }
+
+    @Test
+    fun `a combined value follows a write to either source at once`() {
+        val left = MutableStateFlow(false)
+        val right = MutableStateFlow(false)
+        val view = combineState(left, right) { a, b -> a && b }
+
+        left.value = true
+        assertEquals(false, view.value)
+        right.value = true
+
+        assertEquals(true, view.value)
+    }
+
+    @Test
+    fun `a combined collector gets each distinct change of either source`() = runTest {
+        val left = MutableStateFlow(1)
+        val right = MutableStateFlow(10)
+        val view = combineState(left, right) { a, b -> a + b }
+        val seen = mutableListOf<Int>()
+        val job = launch(UnconfinedTestDispatcher(testScheduler)) { view.toList(seen) }
+
+        left.value = 2
+        right.value = 20
+        right.value = 20
+
+        assertEquals(listOf(11, 12, 22), seen)
+        job.cancel()
+    }
 }
