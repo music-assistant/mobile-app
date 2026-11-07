@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,9 +22,10 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,10 +44,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
@@ -58,6 +65,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
 import musicassistantclient.composeapp.generated.resources.players_group_settings
@@ -68,6 +76,17 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+
+/**
+ * Keeps a scroll inside the sheet content from moving the sheet. The sheet collapses from
+ * the leftover of a content scroll (post-scroll and post-fling), so consuming that leftover
+ * here leaves the drag handle, the header, the back gesture and the close button as the
+ * only ways to close it.
+ */
+private object SheetStaysOnContentScroll : NestedScrollConnection {
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = available
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +110,7 @@ fun SelectPlayerSheet(
     ModalBottomSheet(
         sheetState = sheetState,
         onDismissRequest = onDismissRequest,
+        dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
         var showGroupSettings by remember { mutableStateOf<String?>(null) }
         val groupPlayer = showGroupSettings?.let { players.byId(it) }
@@ -130,7 +150,7 @@ private fun PlayerLayout(
     hideUnavailable: Boolean,
     onToggleHideUnavailable: () -> Unit,
 ) {
-    Column {
+    Column(modifier = Modifier.fillMaxHeight()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -172,7 +192,7 @@ private fun PlayerLayout(
             }
         }
 
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
             PlayerSelection(
                 players = shownPlayers,
                 selectedPlayer = selectedPlayer,
@@ -202,14 +222,14 @@ private fun GroupLayout(
     onAdjustPlaybackDelay: (Int) -> Unit,
     canLeaveGroup: Boolean,
 ) {
-    Column {
+    Column(modifier = Modifier.fillMaxHeight()) {
         Text(
             text = stringResource(Res.string.players_group_settings),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(start = 16.dp),
         )
 
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
             GroupSettings(
                 player = player,
                 onDismiss = onDismissRequest,
@@ -217,6 +237,21 @@ private fun GroupLayout(
                 localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
                 onAdjustPlaybackDelay = onAdjustPlaybackDelay,
                 canLeaveGroup = canLeaveGroup,
+            )
+        }
+    }
+}
+
+/** The drag handle of the sheet, with the close button at its end. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetHandle(onClose: () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
+        IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(Res.string.cd_close),
             )
         }
     }
@@ -266,7 +301,7 @@ private fun PlayerSelection(
             .testTag("PlayersList")
             .selectableGroup(),
         state = listState,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             items = internalPlayers,
@@ -291,7 +326,7 @@ private fun PlayerSelection(
             ) {
                 Row(
                     modifier = Modifier
-                        .height(80.dp)
+                        .height(56.dp)
                         .fillMaxWidth()
                         .clip(shape = plateShape)
                         .background(color = backgroundColor)
@@ -346,19 +381,14 @@ private fun PlayerSelection(
                     }
 
                     if (!item.isLocal) {
+                        item.groupBadge()?.let {
+                            GroupCountBadge(it, modifier = Modifier.padding(start = 8.dp))
+                        }
                         IconButton(onClick = { onGroupRequest(item) }) {
-                            BadgedBox(
-                                badge = {
-                                    val playerCount =
-                                        (item.player.groupMembers?.size ?: 0).coerceAtLeast(1)
-                                    GroupCountBadge(playerCount.toString())
-                                },
-                            ) {
-                                Icon(
-                                    vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-                                    contentDescription = null,
-                                )
-                            }
+                            Icon(
+                                vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+                                contentDescription = null,
+                            )
                         }
                     }
 

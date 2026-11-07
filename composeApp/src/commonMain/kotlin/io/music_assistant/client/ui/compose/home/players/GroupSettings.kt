@@ -15,17 +15,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,6 +60,9 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
+/** The height of each control row. Below the 48 dp default, so a long group fits the sheet. */
+private val ROW_HEIGHT = 40.dp
+
 @Composable
 fun GroupSettings(
     player: PlayerData,
@@ -75,7 +79,6 @@ fun GroupSettings(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, false),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (player.player.isGrouped) {
                 item(key = player.player.groupVolume) {
@@ -176,9 +179,7 @@ fun GroupSettings(
 
             val sortedChildren = player.childrenBinds.sortedByDescending { it.isBound }
             items(sortedChildren, key = { "${it.id}_${it.volume}" }) { bindInfo ->
-                GroupPlayerItemCard(
-                    background = if (bindInfo.isBound) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent,
-                ) {
+                GroupPlayerItemCard {
                     GroupItemTitle(
                         isEnabled = bindInfo.isBound,
                         name = bindInfo.name,
@@ -203,16 +204,18 @@ fun GroupSettings(
                         ),
                     )
 
+                    // A row outside the group is a bare checkbox row: its controls would
+                    // act on a player that does not follow the group.
+                    if (!bindInfo.isBound) {
+                        return@GroupPlayerItemCard
+                    }
                     if (bindInfo.id == localPlayerId) {
-                        PlaybackDelayButtons(
-                            isEnabled = bindInfo.isBound && onAdjustPlaybackDelay != null,
-                            onAdjust = onAdjustPlaybackDelay,
-                        )
+                        PlaybackDelayButtons(onAdjust = onAdjustPlaybackDelay)
                     } else {
                         VolumeRow(
                             volume = bindInfo.volume,
                             isMuted = bindInfo.isMuted,
-                            enabled = bindInfo.volumeSliderAccessible && bindInfo.volume != null && bindInfo.isBound,
+                            enabled = bindInfo.volumeSliderAccessible && bindInfo.volume != null,
                             onMuteToggle = {
                                 playerAction(
                                     bindInfo.id,
@@ -240,8 +243,9 @@ fun GroupSettings(
  *
  * For the local (Sendspin) player the volume/mute slider is replaced with a
  * row of playback-delay delta buttons — volume has no meaning for the
- * phone-speaker player. The row stays visible even when the local player
- * isn't joined to the group; the name and management buttons disabled.
+ * phone-speaker player. A member outside the group shows neither row.
+ *
+ * Every control in the card gets the [ROW_HEIGHT] touch height.
  */
 @Composable
 private fun GroupPlayerItemCard(
@@ -252,9 +256,11 @@ private fun GroupPlayerItemCard(
         modifier = Modifier
             .fillMaxWidth()
             .background(background, RoundedCornerShape(16.dp))
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            .padding(horizontal = 16.dp),
     ) {
-        content()
+        CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides ROW_HEIGHT) {
+            content()
+        }
     }
 }
 
@@ -277,7 +283,7 @@ private fun GroupItemTitle(
     toggle: GroupToggle? = null,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(48.dp),
+        modifier = Modifier.fillMaxWidth().height(ROW_HEIGHT),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -293,32 +299,21 @@ private fun GroupItemTitle(
             color = MaterialTheme.colorScheme.onSurface,
         )
 
-        // Rows with no grouping gesture (a pivot that cannot leave) show no button.
+        // Rows with no grouping gesture (a pivot that cannot leave) show no checkbox.
         toggle?.let { item ->
-            IconButton(
+            val description = stringResource(item.contentDescription)
+            Checkbox(
+                modifier = Modifier.semantics { contentDescription = description },
+                checked = item.isBound,
                 enabled = item.isManageable,
-                onClick = item.onClick,
-            ) {
-                Icon(
-                    modifier = Modifier.alphaOn(item.isManageable),
-                    imageVector = if (item.isBound) Icons.Default.Remove else Icons.Default.Add,
-                    contentDescription = stringResource(item.contentDescription),
-                    tint = if (item.isBound) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
-                )
-            }
+                onCheckedChange = { item.onClick() },
+            )
         }
     }
 }
 
 @Composable
-private fun PlaybackDelayButtons(
-    isEnabled: Boolean,
-    onAdjust: ((Int) -> Unit)?,
-) {
+private fun PlaybackDelayButtons(onAdjust: (Int) -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -332,8 +327,7 @@ private fun PlaybackDelayButtons(
             "+100ms" to HUNDRED,
         ).forEach { (label, delta) ->
             androidx.compose.material3.OutlinedButton(
-                onClick = { onAdjust?.invoke(delta) },
-                enabled = isEnabled,
+                onClick = { onAdjust(delta) },
                 modifier = Modifier.weight(1f),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
                     horizontal = 0.dp,
