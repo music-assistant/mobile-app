@@ -38,7 +38,8 @@ fun PlayerData.overflowLabel(): String {
     }
 }
 
-fun PlayerData.iconRes(): DrawableResource {
-    val iconId = if (this.isLocal) SharedIcons.SMARTPHONE else this.player.icon
-    return SharedIcons.getResource(iconId)
-}
+fun PlayerData.iconRes(): DrawableResource = playerIconRes(player.icon, isLocal)
+
+/** The icon of a player: the phone for the local player, else the shared icon [icon] names. */
+fun playerIconRes(icon: String?, isLocal: Boolean): DrawableResource =
+    SharedIcons.getResource(if (isLocal) SharedIcons.SMARTPHONE else icon)

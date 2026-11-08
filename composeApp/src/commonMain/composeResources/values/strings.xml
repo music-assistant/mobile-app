@@ -175,6 +175,8 @@
   <string name="cd_more">More</string>
   <string name="cd_mute">Mute</string>
   <string name="cd_play_now">Play now</string>
+  <string name="cd_player_delay">Playback delay of %1$s</string>
+  <string name="cd_player_volume">Volume of %1$s</string>
   <string name="cd_play_options">Play options</string>
   <string name="cd_playing">Playing %1$s</string>
   <string name="cd_provider_filter">Filtering %1$s by provider %2$s</string>
@@ -359,8 +361,10 @@
   <string name="player_standby">Player is in stand-by mode. Tap to wake.</string>
   <string name="player_unavailable">Unavailable</string>
   <string name="players_dsp_settings">DSP settings</string>
+  <string name="players_delay_slow_down">Slow down</string>
+  <string name="players_delay_speed_up">Speed up</string>
+  <string name="players_delay_step">%1$d ms</string>
   <string name="players_group_settings">Group settings</string>
-  <string name="players_group_volume">%1$s group volume</string>
   <string name="players_hide_unavailable">Hide unavailable</string>
   <string name="players_loading">Loading players…</string>
   <string name="players_none_available">No players available</string>

@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerDelay
 import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.alphaOn
@@ -99,7 +100,9 @@ fun SelectPlayerSheet(
     onPlayerAction: (String, PlayerAction) -> Unit = { _, _ -> },
     hideUnavailable: Boolean = false,
     onToggleHideUnavailable: () -> Unit = {},
-    onAdjustPlaybackDelay: (Int) -> Unit = {},
+    playerDelays: Map<String, PlayerDelay> = emptyMap(),
+    onLoadPlayerDelays: (Collection<String>) -> Unit = {},
+    onAdjustPlayerDelay: (String, Int) -> Unit = { _, _ -> },
     canLeaveGroup: Boolean = false,
 ) {
     val sheetState = rememberBottomSheetState(
@@ -121,7 +124,9 @@ fun SelectPlayerSheet(
                 players = players,
                 onDismissRequest = onDismissRequest,
                 onPlayerAction = onPlayerAction,
-                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                playerDelays = playerDelays,
+                onLoadPlayerDelays = onLoadPlayerDelays,
+                onAdjustPlayerDelay = onAdjustPlayerDelay,
                 canLeaveGroup = canLeaveGroup,
             )
         } else {
@@ -219,9 +224,16 @@ private fun GroupLayout(
     players: List<PlayerData>,
     onDismissRequest: () -> Unit,
     onPlayerAction: (String, PlayerAction) -> Unit,
-    onAdjustPlaybackDelay: (Int) -> Unit,
+    playerDelays: Map<String, PlayerDelay>,
+    onLoadPlayerDelays: (Collection<String>) -> Unit,
+    onAdjustPlayerDelay: (String, Int) -> Unit,
     canLeaveGroup: Boolean,
 ) {
+    // The pivot and the bound members show controls, so their delays load; a new member loads on join.
+    val memberIds = remember(player.playerId, player.childrenBinds) {
+        listOf(player.playerId) + player.childrenBinds.filter { it.isBound }.map { it.id }
+    }
+    LaunchedEffect(memberIds) { onLoadPlayerDelays(memberIds) }
     Column(modifier = Modifier.fillMaxHeight()) {
         Text(
             text = stringResource(Res.string.players_group_settings),
@@ -235,7 +247,8 @@ private fun GroupLayout(
                 onDismiss = onDismissRequest,
                 playerAction = onPlayerAction,
                 localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
-                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                playerDelays = playerDelays,
+                onAdjustPlayerDelay = onAdjustPlayerDelay,
                 canLeaveGroup = canLeaveGroup,
             )
         }

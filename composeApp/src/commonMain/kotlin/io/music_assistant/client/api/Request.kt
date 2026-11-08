@@ -231,6 +231,23 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("key", JsonPrimitive("tts_pre_announce"))
             },
         )
+
+        /** The full config of [playerId], with every entry that the player offers right now. */
+        fun config(playerId: String) = Request(
+            command = APICommands.CONFIG_PLAYERS_GET,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+            },
+        )
+
+        /** Saves one config value of [playerId]. The server answers with the full config. */
+        fun saveConfigValue(playerId: String, key: String, value: Int) = Request(
+            command = APICommands.CONFIG_PLAYERS_SAVE,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("values", buildJsonObject { put(key, JsonPrimitive(value)) })
+            },
+        )
     }
 
     data object Queue {

@@ -28,6 +28,7 @@ import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
+import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
 import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.imageloader.ArtworkDiskStore
@@ -198,6 +199,14 @@ fun sharedModule(
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
+        single {                            // Sendspin player delays; a save outlives the group sheet
+            SendspinDelayRepository(
+                apiClient = get(),
+                grantedScopes = get<MainDataSource>().grantedScopes,
+                settings = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
         singleOf(::LibrarySortRepository)   // Library sort choices; caches the 2.11 sort_options
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single<ItemDetailsMainDataSource> { get<MainDataSource>() }
@@ -253,7 +262,7 @@ fun sharedModule(
         factory { params -> ItemListViewModel(params[0], get(), get()) }
         factory { DspSettingsViewModel(get()) }
         factory { QueueDjViewModel(get(), get<MainDataSource>().aiRadioQueueDjAvailable) }
-        factory { HomeScreenViewModel(get(), get(), get(), get(), get(), get()) }
+        factory { HomeScreenViewModel(get(), get(), get(), get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get(), get(), get()) }
         factory { ProviderViewModel(get(), get()) }
     }

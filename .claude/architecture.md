@@ -86,6 +86,19 @@ actual class PlatformFeature {
   a `PlayerAction`, so the local player does not intercept it. A null `QueueInfo.overlay` means that the server
   has no overlay support. Show the feature only if a provider has the `sound_effects` feature. To turn the overlay
   off, send `enabled=false` only, because the server keeps the last sound and volume.
+- **Player delay**: the group sheet (`GroupSettings`) adjusts the playback delay of the Sendspin players
+  only. A higher value plays earlier (`PlayerDelay`, `data/model/client/`). The local player keeps its
+  delay in `SettingsRepository.sendspinStaticDelayMs`. The other Sendspin players keep it on the server, in
+  the player config entry `sendspin_static_delay` (0 to 5000 ms). The server offers the entry only for a
+  player that accepts the output delay command, and the app does not. `SendspinDelayRepository`
+  (`data/repository/`) loads the entry with `config/players/get` and saves it with `config/players/save`.
+  A device with more than one output protocol (an ESPHome device with a Sendspin output) carries the
+  entry under `<protocol player id>||protocol||sendspin_static_delay`, and its native output entries
+  under the bare key. `ServerPlayerConfig.outputEntry` picks the entry of the preferred output, and the
+  save goes to the parent player under that full key. A save applies at once and restarts nothing. The save needs `config.players.write`, so the repository
+  loads nothing for a user without it. `SendspinDelayRepository.delays` joins both sources and routes
+  an adjust by player id. `HomeScreenViewModel` forwards it, and the sheet shows the delay button for
+  a player in the map only.
 - **Play requests**: send every `player_queues/play_media` through `PlayDispatcher` (`data/play/`). Do not send it
   from a screen or from a car surface directly. The dispatcher runs each request in an app scope, because the server
   answers only after playback starts, and that can take tens of seconds. It sends one request for each queue at a

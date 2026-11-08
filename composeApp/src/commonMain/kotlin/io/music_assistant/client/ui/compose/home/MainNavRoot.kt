@@ -288,6 +288,7 @@ fun MainNavigationRoot(
                 if (showPlayerSelection) {
                     val leaderLeaveSupported by homeScreenViewModel.leaderLeaveSupported
                         .collectAsStateWithLifecycle()
+                    val playerDelays by homeScreenViewModel.playerDelays.collectAsStateWithLifecycle()
 
                     SelectPlayerSheet(
                         selectedPlayer = selectedPlayer,
@@ -302,7 +303,9 @@ fun MainNavigationRoot(
                         onPlayerAction = homeScreenViewModel::playerAction,
                         hideUnavailable = rememberHideUnavailablePlayers(),
                         onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
-                        onAdjustPlaybackDelay = homeScreenViewModel::adjustSendspinStaticDelayMs,
+                        playerDelays = playerDelays,
+                        onLoadPlayerDelays = homeScreenViewModel::loadPlayerDelays,
+                        onAdjustPlayerDelay = homeScreenViewModel::adjustPlayerDelay,
                         canLeaveGroup = leaderLeaveSupported,
                     )
                 }
