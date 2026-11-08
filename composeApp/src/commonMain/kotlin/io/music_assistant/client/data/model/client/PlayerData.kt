@@ -74,6 +74,8 @@ data class PlayerData(
         val volumeSliderAccessible: Boolean,
         val isMuted: Boolean?,
         val name: String,
+        /** The shared-icons id of the player, like [Player.icon]. */
+        val icon: String? = null,
         val isBound: Boolean,
         val isManageable: Boolean,
     )

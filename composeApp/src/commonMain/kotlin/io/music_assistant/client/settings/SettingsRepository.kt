@@ -565,12 +565,12 @@ class SettingsRepository(
     // later (escape hatch if this device somehow leads the group). Not reported
     // to the server. Range ±2000 ms.
     private val _sendspinStaticDelayMs = MutableStateFlow(
-        settings.getInt("sendspin_static_delay_ms", 0).coerceIn(-2000, 2000),
+        settings.getInt("sendspin_static_delay_ms", 0).coerceIn(SENDSPIN_STATIC_DELAY_RANGE),
     )
     val sendspinStaticDelayMs = _sendspinStaticDelayMs.asStateFlow()
 
     fun setSendspinStaticDelayMs(ms: Int) {
-        val clamped = ms.coerceIn(-2000, 2000)
+        val clamped = ms.coerceIn(SENDSPIN_STATIC_DELAY_RANGE)
         settings.putInt("sendspin_static_delay_ms", clamped)
         _sendspinStaticDelayMs.update { clamped }
     }
@@ -830,6 +830,9 @@ class SettingsRepository(
     }
 
     companion object {
+        /** The range of the local player's static delay, in ms. Positive plays earlier. */
+        val SENDSPIN_STATIC_DELAY_RANGE = -2000..2000
+
         private const val CAR_DSP_CONNECT_KEY = "car_dsp_action_connect"
         private const val CAR_DSP_DISCONNECT_KEY = "car_dsp_action_disconnect"
 

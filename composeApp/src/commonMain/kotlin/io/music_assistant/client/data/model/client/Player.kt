@@ -94,6 +94,7 @@ data class Player(
             id = id,
             parentId = other.id,
             name = name,
+            icon = icon,
             volume = volumeLevel,
             volumeSliderAccessible = isVolumeSliderAccessible,
             isMuted = currentMuteState.takeIf { canMute },
