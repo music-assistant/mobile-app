@@ -317,29 +317,11 @@ class MainDataSource(
      * The players the pager shows. An unreachable player is only listed dimmed: its stale queue
      * or "playing" state must not keep the media service, the notification or the Wi-Fi lock.
      */
-    private val displayedPlayers =
+    val displayedPlayers: StateFlow<List<PlayerData>> =
         playersData
             .mapNotNull { it as? DataState.Data<List<PlayerData>> }
             .map { it.data.filter { data -> data.player.isSelectable } }
-
-    val isAnythingPlaying =
-        displayedPlayers
-            .map { it.any { data -> data.player.isPlaying } }
-            .stateIn(this, SharingStarted.Eagerly, false)
-    val doesAnythingHavePlayableItem =
-        displayedPlayers
-            .map { it.any { data -> data.queueInfo?.currentItem != null } }
-            .stateIn(this, SharingStarted.Eagerly, false)
-
-    /**
-     * A player plays an item of its queue: the media service starts on it. A stream reports
-     * "playing" before its queue arrives, and a player on an external source plays with no
-     * queue item, so [isAnythingPlaying] alone would start a service with nothing to present.
-     */
-    val isAnyQueueItemPlaying =
-        displayedPlayers
-            .map { it.any { data -> data.player.isPlaying && data.queueInfo?.currentItem != null } }
-            .stateIn(this, SharingStarted.Eagerly, false)
+            .stateIn(this, SharingStarted.Eagerly, emptyList())
 
     /**
      * Persisted user choice. Restored from settings on startup and written

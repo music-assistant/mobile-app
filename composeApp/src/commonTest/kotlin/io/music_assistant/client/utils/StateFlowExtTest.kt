@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
  * could see the old value. The local player made pause decisions on such a stale read.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class StateFlowViewTest {
+class StateFlowExtTest {
     @Test
     fun `the value follows a write to the source at once`() {
         val source = MutableStateFlow(1)
@@ -42,30 +42,30 @@ class StateFlowViewTest {
 
     @Test
     fun `a combined value follows a write to either source at once`() {
-        val left = MutableStateFlow(false)
-        val right = MutableStateFlow(false)
-        val view = combineState(left, right) { a, b -> a && b }
+        val left = MutableStateFlow(1)
+        val right = MutableStateFlow(10)
+        val view = left.combineState(right) { a, b -> a to b }
 
-        left.value = true
-        assertEquals(false, view.value)
-        right.value = true
+        left.value = 2
+        assertEquals(2 to 10, view.value)
+        right.value = 20
 
-        assertEquals(true, view.value)
+        assertEquals(2 to 20, view.value)
     }
 
     @Test
     fun `a combined collector gets each distinct change of either source`() = runTest {
         val left = MutableStateFlow(1)
         val right = MutableStateFlow(10)
-        val view = combineState(left, right) { a, b -> a + b }
-        val seen = mutableListOf<Int>()
+        val view = left.combineState(right) { a, b -> a to b }
+        val seen = mutableListOf<Pair<Int, Int>>()
         val job = launch(UnconfinedTestDispatcher(testScheduler)) { view.toList(seen) }
 
         left.value = 2
         right.value = 20
         right.value = 20
 
-        assertEquals(listOf(11, 12, 22), seen)
+        assertEquals(listOf(1 to 10, 2 to 10, 2 to 20), seen)
         job.cancel()
     }
 }

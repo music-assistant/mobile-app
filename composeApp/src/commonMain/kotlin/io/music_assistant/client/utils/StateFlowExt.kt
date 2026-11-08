@@ -25,20 +25,19 @@ fun <T, R> StateFlow<T>.mapState(transform: (T) -> R): StateFlow<R> = object : S
 }
 
 /**
- * [first] and [second] seen through [transform], with the same read-on-demand [StateFlow.value]
+ * [this] and [other] seen through [transform], with the same read-on-demand [StateFlow.value]
  * as [mapState]: a write to either source is visible on the next read.
  */
 @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
-fun <A, B, R> combineState(
-    first: StateFlow<A>,
-    second: StateFlow<B>,
+fun <A, B, R> StateFlow<A>.combineState(
+    other: StateFlow<B>,
     transform: (A, B) -> R,
 ): StateFlow<R> = object : StateFlow<R> {
-    override val value: R get() = transform(first.value, second.value)
+    override val value: R get() = transform(this@combineState.value, other.value)
     override val replayCache: List<R> get() = listOf(value)
 
     override suspend fun collect(collector: FlowCollector<R>): Nothing {
-        combine(first, second, transform).distinctUntilChanged().collect(collector)
+        combine(this@combineState, other, transform).distinctUntilChanged().collect(collector)
         awaitCancellation()
     }
 }

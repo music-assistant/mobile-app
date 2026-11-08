@@ -172,7 +172,7 @@ class LocalPlayerAdapter(
 
     /** A command needs the MA session and a registered player: the server drops a command for a player it cannot reach. */
     private val isReadyForCommands: StateFlow<Boolean> =
-        combineState(apiClient.isReadyForCommands, player.state) { ready, state ->
+        apiClient.isReadyForCommands.combineState(player.state) { ready, state ->
             ready && state is PlayerState.Connected
         }
 

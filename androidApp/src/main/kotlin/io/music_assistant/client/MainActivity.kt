@@ -18,6 +18,7 @@ import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.services.MainMediaPlaybackService
+import io.music_assistant.client.services.isAnyQueueItemPlaying
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject

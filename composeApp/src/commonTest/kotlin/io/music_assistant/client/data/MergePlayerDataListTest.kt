@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
  * the server lists it and carries its sync parent. It takes part in grouping, as a child
  * candidate and as a leader, only while the server lists it, like in the web frontend.
  */
-class PlayerDataListTest {
+class MergePlayerDataListTest {
     private val leader = player(id = "leader", name = "Kitchen").copy(
         canGroupWith = listOf("provider"),
         groupMembers = setOf("leader", LOCAL_ID),

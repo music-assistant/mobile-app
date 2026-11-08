@@ -412,7 +412,7 @@ See `.claude/sendspin-integration-design.md` and `.claude/sendspin-android-servi
 
 - Don't ever use non-null assertions in live code (!!). Always handle nulls safely.
 - If code reads the `value` of a derived `StateFlow` after it writes the source, derive it with `mapState`
-  (`utils/StateFlowView.kt`). Do not use `map { }.stateIn(scope)` for it, because that value updates on
+  (`utils/StateFlowExt.kt`). Do not use `map { }.stateIn(scope)` for it, because that value updates on
   another coroutine and the read can get the old value.
 - Use Kotlin-like idioms (e.g., prefer `let`, `also`, `apply` for scoping).
 - Instead of `if-else` chains, prefer `when` expressions for better readability.
