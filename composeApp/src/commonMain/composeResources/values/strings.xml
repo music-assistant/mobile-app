@@ -158,6 +158,7 @@
   <string name="cd_delete_crash_logs">Delete crash logs</string>
   <string name="cd_disliked">Disliked</string>
   <string name="cd_expand_sendspin_advanced">Show advanced configuration</string>
+  <string name="cd_explicit">Explicit</string>
   <string name="cd_favorite">Favorite</string>
   <string name="cd_filter">Filters</string>
   <string name="cd_find_in_list">Search in list</string>
@@ -198,7 +199,6 @@
   <string name="cd_transcript_offset_increase">Show transcript earlier</string>
   <string name="cd_unmute">Unmute</string>
   <string name="cd_view_all">View all %1$s</string>
-  <string name="cd_vinyl_record">Vinyl Record</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artist</string>
   <string name="clickctx_browse">Browse</string>

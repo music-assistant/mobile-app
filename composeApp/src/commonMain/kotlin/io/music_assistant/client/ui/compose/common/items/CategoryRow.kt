@@ -364,10 +364,6 @@ fun CategoryRow(
     }
 }
 
-// An audiobook tile opens its page, so it is not a tap-to-play tile.
-private val AppMediaItem.playsOnTap: Boolean
-    get() = this is Track || this is PodcastEpisode || this is RadioStation
-
 @Composable
 private fun RowWithTitle(
     modifier: Modifier = Modifier,

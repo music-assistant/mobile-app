@@ -308,6 +308,19 @@ actual class PlatformFeature {
   In one test series on iPhone Duo (iOS 27.1), the hinge sent updates during each movement. The series did not show
   if the hinge can miss an update. On other devices each value is null and the layouts do not change. A test gives a
   value with `App(deviceChrome = …)` or `LocalDeviceChrome`.
+- **Item artwork**: `MediaArtwork` (`ui/compose/common/items/`) draws the artwork of every item but an artist:
+  a square with 8 dp corners and the type icon as the placeholder. `AppMediaItem.defaultIcon` gives the icon
+  of each type. An artist is a circle (`ArtistImage`), and its grid labels are centered. Do not add a custom
+  shape or an overlay for a type. A grid tile puts the badges 2 dp inside the artwork, one for each corner:
+  the type at the top start (not on an artist), the explicit mark at the top end, the provider icon or the
+  favorite heart at the bottom end, and the played state at the bottom start. The item page header has the
+  same corners without the type. A row image has no badge, because it is too small. A row shows the badges
+  in a line under the labels (`RowBadges`, the `badges` slot of `RowItem`): type, provider or favorite,
+  explicit, played state. The AI Radio station row shows the category icon in that line.
+  An artist has no type badge, because its round image tells the type, and its provider icon or favorite
+  heart sits at the bottom center of the circle, in the grid and in the item page header.
+  The type chip of an item that plays on tap (`AppMediaItem.playsOnTap`) is filled, and the chip of an item
+  that opens its page is translucent.
 - **Stacked rows**: `CategoryRow` (`ui/compose/common/items/`) shows a row of tap-to-play items as list items, two
   in each column. The other rows show one row of grid tiles. A tap-to-play item is a track, a podcast episode or a
   radio station (`playsOnTap`). An audiobook is not a tap-to-play item, because its tile opens the item page. The
