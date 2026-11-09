@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
+  <string name="accent_color_blue">Blauw</string>
+  <string name="accent_color_default">Standaard</string>
+  <string name="accent_color_green">Groen</string>
+  <string name="accent_color_indigo">Indigo</string>
+  <string name="accent_color_orange">Oranje</string>
+  <string name="accent_color_pink">Roze</string>
+  <string name="accent_color_purple">Paars</string>
+  <string name="accent_color_red">Rood</string>
+  <string name="accent_color_teal">Turkoois</string>
+  <string name="accent_color_wallpaper">Achtergrond</string>
+  <string name="accent_color_yellow">Geel</string>
   <string name="action_add_all_to_queue">Alle aan wachtrij toevoegen</string>
   <string name="action_add_to_library">Toevoegen aan bibliotheek</string>
   <string name="action_add_to_playlist">Aan afspeellijst toevoegen</string>
@@ -10,11 +21,12 @@
   <string name="action_dislike">Vind ik niet leuk</string>
   <string name="action_favorite">Favoriet</string>
   <string name="action_find_on_music_services">Zoek op je muziekdiensten</string>
-  <string name="action_go_to_album">Naar album</string>
-  <string name="action_go_to_artist">Naar artiest</string>
-  <string name="action_go_to_episode">Naar aflevering</string>
-  <string name="action_go_to_podcast">Naar podcast</string>
-  <string name="action_go_to_track">Naar nummer</string>
+  <string name="action_go_to_album">Ga naar album</string>
+  <string name="action_go_to_artist">Ga naar artiest</string>
+  <string name="action_go_to_episode">Ga naar aflevering</string>
+  <string name="action_go_to_podcast">Ga naar podcast</string>
+  <string name="action_go_to_radio">Ga naar radio</string>
+  <string name="action_go_to_track">Ga naar nummer</string>
   <string name="action_insert_next">Volgende invoegen</string>
   <string name="action_insert_next_and_play">Volgende invoegen en afspelen</string>
   <string name="action_lyrics">Songtekst</string>
@@ -164,6 +176,8 @@
   <string name="cd_mute">Dempen</string>
   <string name="cd_play_now">Nu afspelen</string>
   <string name="cd_play_options">Afspeelopties</string>
+  <string name="cd_player_delay">Afspeelvertraging van %1$s</string>
+  <string name="cd_player_volume">Volume van %1$s</string>
   <string name="cd_playing">Speelt %1$s</string>
   <string name="cd_provider_filter">%1$s op provider %2$s filteren</string>
   <string name="cd_provider_icon">Providerpictogram</string>
@@ -264,6 +278,7 @@
   <string name="item_section_biography">Biografie</string>
   <string name="item_section_description">Beschrijving</string>
   <string name="item_section_review">Recensie</string>
+  <string name="item_subtitle_ai_host">AI-presentator</string>
   <string name="item_subtitle_audio_source">Invoer</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Afspeellijst</string>
@@ -271,6 +286,7 @@
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_series">Serie</string>
+  <string name="item_subtitle_sound">Geluidseffecten</string>
   <string name="item_subtitle_sound_effect">AI-presentator</string>
   <string name="item_subtitle_unknown">Onbekend</string>
   <string name="item_tab_other_episodes">Andere afleveringen</string>
@@ -325,11 +341,13 @@
   <string name="menu_default_label">Standaard</string>
   <string name="nav_browse">Bladeren</string>
   <string name="nav_discover">Ontdekken</string>
+  <string name="nav_explore">Verkennen</string>
   <string name="nav_home">Home</string>
   <string name="nav_library">Bibliotheek</string>
   <string name="nav_menu">Menu</string>
   <string name="nav_search">Zoeken</string>
   <string name="nav_settings">Instellingen</string>
+  <string name="nav_system">Systeem</string>
   <string name="not_connected_retry">Niet verbonden — probeer opnieuw wanneer de verbinding hersteld is</string>
   <string name="playback_speed_dialog_title">Afspeelsnelheid</string>
   <string name="player_autoplay">Autoplay</string>
@@ -343,6 +361,9 @@
   <string name="player_sleep_timer">Slaaptimer</string>
   <string name="player_standby">De speler staat in de stand-by-modus. Tik om het te activeren.</string>
   <string name="player_unavailable">Niet beschikbaar</string>
+  <string name="players_delay_slow_down">Vertragen</string>
+  <string name="players_delay_speed_up">Versnellen</string>
+  <string name="players_delay_step">%1$d ms</string>
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
@@ -419,6 +440,7 @@
   <string name="server_id_mismatch_error">De server-ID is gewijzigd. Je moet je opnieuw authenticeren.</string>
   <string name="settings_about_description">Music Assistant is een gratis, open-source, zelfgehoste muziekserver. Maak hieronder verbinding met jouw server om door je bibliotheek te bladeren en de weergave in je hele huis te bedienen.</string>
   <string name="settings_about_learn_more">Meer informatie op music-assistant.io →</string>
+  <string name="settings_accent_color">Accentkleur</string>
   <string name="settings_allow_landscape">Sta landschapsmodus toe op alle apparaten</string>
   <string name="settings_allow_landscape_hint">Experimenteel: sommige schermen kunnen er in liggende modus vreemd uitzien. Gebruik op eigen risico.</string>
   <string name="settings_app_documentation">App-documentatie →</string>

@@ -25,8 +25,8 @@
   <string name="action_go_to_artist">Go to artist</string>
   <string name="action_go_to_episode">Go to episode</string>
   <string name="action_go_to_podcast">Go to podcast</string>
-  <string name="action_go_to_track">Go to track</string>
   <string name="action_go_to_radio">Go to radio</string>
+  <string name="action_go_to_track">Go to track</string>
   <string name="action_insert_next">Add next</string>
   <string name="action_insert_next_and_play">Add next and play</string>
   <string name="action_lyrics">Lyrics</string>
@@ -176,9 +176,9 @@
   <string name="cd_more">More</string>
   <string name="cd_mute">Mute</string>
   <string name="cd_play_now">Play now</string>
+  <string name="cd_play_options">Play options</string>
   <string name="cd_player_delay">Playback delay of %1$s</string>
   <string name="cd_player_volume">Volume of %1$s</string>
-  <string name="cd_play_options">Play options</string>
   <string name="cd_playing">Playing %1$s</string>
   <string name="cd_provider_filter">Filtering %1$s by provider %2$s</string>
   <string name="cd_provider_icon">Provider Icon</string>
@@ -199,6 +199,7 @@
   <string name="cd_transcript_offset_increase">Show transcript earlier</string>
   <string name="cd_unmute">Unmute</string>
   <string name="cd_view_all">View all %1$s</string>
+  <string name="cd_vinyl_record">Vinyl Record</string>
   <string name="clickctx_album">Album</string>
   <string name="clickctx_artist">Artist</string>
   <string name="clickctx_browse">Browse</string>
@@ -278,6 +279,7 @@
   <string name="item_section_biography">Biography</string>
   <string name="item_section_description">Description</string>
   <string name="item_section_review">Review</string>
+  <string name="item_subtitle_ai_host">AI host</string>
   <string name="item_subtitle_audio_source">Input</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Playlist</string>
@@ -285,8 +287,8 @@
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_series">Series</string>
-  <string name="item_subtitle_ai_host">AI host</string>
   <string name="item_subtitle_sound">Sound effect</string>
+  <string name="item_subtitle_sound_effect">AI host</string>
   <string name="item_subtitle_unknown">Unknown</string>
   <string name="item_tab_other_episodes">Other episodes</string>
   <string name="item_tab_similar_tracks">Similar tracks</string>
@@ -360,11 +362,12 @@
   <string name="player_sleep_timer">Sleep timer</string>
   <string name="player_standby">Player is in stand-by mode. Tap to wake.</string>
   <string name="player_unavailable">Unavailable</string>
-  <string name="players_dsp_settings">DSP settings</string>
   <string name="players_delay_slow_down">Slow down</string>
   <string name="players_delay_speed_up">Speed up</string>
   <string name="players_delay_step">%1$d ms</string>
+  <string name="players_dsp_settings">DSP settings</string>
   <string name="players_group_settings">Group settings</string>
+  <string name="players_group_volume">%1$s group volume</string>
   <string name="players_hide_unavailable">Hide unavailable</string>
   <string name="players_loading">Loading players…</string>
   <string name="players_none_available">No players available</string>
@@ -516,6 +519,7 @@
   <string name="settings_sendspin_advanced_summary">buffer, custom connection, and more</string>
   <string name="settings_sendspin_advanced_title">Advanced Configuration</string>
   <string name="settings_sendspin_intro">Enable to play music directly through your device.</string>
+  <string name="settings_sendspin_require_encryption">Require encrypted connection</string>
   <string name="settings_sendspin_reset_defaults">Reset to defaults</string>
   <string name="settings_sendspin_save_changes">Save changes</string>
   <string name="settings_server">Server</string>
