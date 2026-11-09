@@ -19,6 +19,7 @@ import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
 import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
+import io.music_assistant.client.data.model.server.supportsAutoplayRepeatLock
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
 import io.music_assistant.client.data.play.PlayDispatcher
@@ -146,6 +147,12 @@ class HomeScreenViewModel(
     val sleepTimerSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsSleepTimer((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /** Repeat ONE or ALL locks autoplay off from server 2.11 on. */
+    val repeatLocksAutoplay: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsAutoplayRepeatLock((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     /**

@@ -148,6 +148,7 @@
   <string name="cd_applied">Applied</string>
   <string name="cd_autoplay_off">Autoplay off</string>
   <string name="cd_autoplay_on">Autoplay on</string>
+  <string name="cd_autoplay_repeat_locked">Autoplay off while repeat is on</string>
   <string name="cd_close">Close</string>
   <string name="cd_collapse_sendspin_advanced">Hide advanced configuration</string>
   <string name="cd_connection_history">Connection history</string>
