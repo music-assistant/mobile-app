@@ -71,6 +71,7 @@ class PlayersPagerPageSplitTest {
                         toastState = rememberToastState(),
                         navigateToItem = {},
                         onSelectPlayer = {},
+                        onGroupPlayer = {},
                     )
                 }
             }

@@ -7,8 +7,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.providers.MdiCodepoints
 import io.music_assistant.client.ui.compose.support.inScrollable
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.players_group_settings
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -82,6 +85,27 @@ class SelectPlayerDialogTest {
         setDialog(unavailable, players, hideUnavailable = true)
 
         composeTestRule.onNodeWithText(unavailable.player.name).assertIsDisplayed()
+    }
+
+    @Test
+    fun `opens on the group settings of the start player`() {
+        val player = PlayerDataFixtures.playerData()
+        composeTestRule.setContent {
+            KoinApplication(
+                configuration = koinConfiguration(declaration = {
+                    modules(module { singleOf(::MdiCodepoints) })
+                }),
+                content = {
+                    SelectPlayerSheet(
+                        selectedPlayer = player,
+                        players = listOf(player),
+                        start = PlayerSheetStart.Group(player.playerId),
+                    )
+                },
+            )
+        }
+
+        composeTestRule.onNodeWithText(Res.string.players_group_settings.get()).assertIsDisplayed()
     }
 
     private fun playersWithOneUnavailable(): Triple<PlayerData, PlayerData, PlayerData> {
