@@ -596,9 +596,9 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
         label = {
             val modifier = if (item.marqueeLabel) {
                 Modifier
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 4.dp)
                     .fillMaxWidth()
-                    .fadingEdges(12.dp)
+                    .fadingEdges(4.dp)
                     .basicMarquee()
             } else {
                 Modifier
