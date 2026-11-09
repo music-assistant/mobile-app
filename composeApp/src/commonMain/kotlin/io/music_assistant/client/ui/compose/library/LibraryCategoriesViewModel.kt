@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.nav.SidebarEdit
 import io.music_assistant.client.settings.SettingsRepository
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,7 @@ class LibraryCategoriesViewModel(
 ) : ViewModel() {
     /**
      * The last reconciled config, INCLUDING the categories filtered out of [state]. Kept so a
-     * save keeps their stored flag instead of turning them off — see [applyEnabledCategories].
+     * save keeps their stored flag instead of turning them off — see [applySidebarEdit].
      */
     private var reconciled: List<Pair<LibraryCategory, Boolean>> = emptyList()
 
@@ -35,10 +36,10 @@ class LibraryCategoriesViewModel(
         }
     }
 
-    fun onEnabledChanged(enabledCategories: List<String>) {
+    fun onSidebarEdited(edit: SidebarEdit) {
         val visible = _state.value.categories.mapTo(HashSet()) { it.libraryCategory }
         settingsRepository.setLibraryCategoryConfig(
-            applyEnabledCategories(reconciled, visible, enabledCategories).map { (category, enabled) ->
+            applySidebarEdit(reconciled, visible, edit.enabledIds, edit.orderedIds).map { (category, enabled) ->
                 SettingsRepository.LibraryCategoryPref(category.name, enabled)
             },
         )

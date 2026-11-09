@@ -42,6 +42,8 @@ kotlin {
                 implementation(libs.androidx.navigation3.material3.adaptive)
                 implementation(libs.material)
                 implementation(libs.material.icons.core)
+                implementation(libs.icons.tabler)
+                implementation(libs.reorderable)
             }
         }
 

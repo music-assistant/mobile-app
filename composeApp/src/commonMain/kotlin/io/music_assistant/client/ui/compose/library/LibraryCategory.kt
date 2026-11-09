@@ -45,7 +45,10 @@ enum class LibraryCategory {
         }
 }
 
-/** Tabs the phone Library renders. [LibraryCategory.HOME] is car-only: the phone has its own home page. */
+/**
+ * Categories the phone sidebar shows: [LibraryCategory.BROWSE] in Explore, the others in Library.
+ * [LibraryCategory.HOME] is car-only: the phone has its own home page.
+ */
 val libraryCategories: List<LibraryCategory> = LibraryCategory.entries - LibraryCategory.HOME
 
 /** Tabs Android Auto / CarPlay can render at root — Tracks/Genres aren't AA tabs. */

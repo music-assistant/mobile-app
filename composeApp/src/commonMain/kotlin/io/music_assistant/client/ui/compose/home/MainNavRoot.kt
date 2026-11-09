@@ -416,9 +416,7 @@ fun MainNavigationRoot(
             showNavigation = !playerExpanded,
             menuLabel = stringResource(Res.string.nav_menu),
             moreLabel = stringResource(Res.string.cd_more),
-            onEdited = { enabled ->
-                libraryCategoriesViewModel.onEnabledChanged(enabled)
-            },
+            onEdited = libraryCategoriesViewModel::onSidebarEdited,
             content = { scaffoldContentPadding, drawerOpen ->
                 FloatingBarLayout(
                     modifier = Modifier.padding(scaffoldContentPadding),
@@ -519,6 +517,20 @@ private fun navigationItems(
     goToLibraryCategory: (LibraryCategory) -> Unit,
     goToSettings: () -> Unit,
 ): List<Section> {
+    val categoryItems = categories.map {
+        NavigationItem(
+            selected = false,
+            onClick = { goToLibraryCategory(it.libraryCategory) },
+            icon = it.libraryCategory.icon(),
+            label = stringResource(it.libraryCategory.stringResource()),
+            id = it.libraryCategory.name,
+            editable = true,
+            enabled = it.enabled,
+        )
+    }
+    // Browse sits in Explore, like in the web frontend. It can be hidden, but it keeps its place.
+    val (browse, libraryItems) = categoryItems.partition { it.id == LibraryCategory.BROWSE.name }
+
     val explore = Section(
         title = stringResource(Res.string.nav_explore),
         items = listOf(
@@ -534,22 +546,13 @@ private fun navigationItems(
                 label = stringResource(Res.string.nav_search),
                 screenState = searchScreenState.value,
             ),
-        ),
+        ) + browse,
     )
 
     val library = Section(
         title = stringResource(Res.string.nav_library),
-        items = categories.map {
-            NavigationItem(
-                selected = false,
-                onClick = { goToLibraryCategory(it.libraryCategory) },
-                icon = it.libraryCategory.icon(),
-                label = stringResource(it.libraryCategory.stringResource()),
-                id = it.libraryCategory.name,
-                editable = true,
-                enabled = it.enabled,
-            )
-        },
+        items = libraryItems,
+        reorderable = true,
     )
 
     val system = Section(
