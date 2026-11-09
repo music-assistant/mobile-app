@@ -65,6 +65,7 @@ import io.music_assistant.sendspin.api.estimatedBytesPerSecond
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_collapse_sendspin_advanced
 import musicassistantclient.composeapp.generated.resources.cd_expand_sendspin_advanced
+import musicassistantclient.composeapp.generated.resources.codec_hi_res_description
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.dialog_interrupting_playback
 import musicassistantclient.composeapp.generated.resources.dialog_interrupting_playback_confirm
@@ -73,11 +74,9 @@ import musicassistantclient.composeapp.generated.resources.settings_buffer_secon
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size_estimate
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size_hint
+import musicassistantclient.composeapp.generated.resources.settings_codec_hi_res_label
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin
-import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio
-import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_hint
-import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_lossless_only
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_unsupported
 import musicassistantclient.composeapp.generated.resources.settings_host
 import musicassistantclient.composeapp.generated.resources.settings_local_player
@@ -88,6 +87,9 @@ import musicassistantclient.composeapp.generated.resources.settings_port
 import musicassistantclient.composeapp.generated.resources.settings_sendspin_advanced_summary
 import musicassistantclient.composeapp.generated.resources.settings_sendspin_advanced_title
 import musicassistantclient.composeapp.generated.resources.settings_sendspin_intro
+import musicassistantclient.composeapp.generated.resources.settings_sendspin_pcm
+import musicassistantclient.composeapp.generated.resources.settings_sendspin_pcm_hint
+import musicassistantclient.composeapp.generated.resources.settings_sendspin_pcm_lossless_only
 import musicassistantclient.composeapp.generated.resources.settings_sendspin_reset_defaults
 import musicassistantclient.composeapp.generated.resources.settings_sendspin_save_changes
 import org.jetbrains.compose.resources.stringResource
@@ -149,11 +151,10 @@ fun SendspinSettingsSection(
             )
             CodecPreferenceSection(
                 codec = settings.codecPreference,
-                onCodecChange = { codec -> onSettingsChange { it.copy(codecPreference = codec) } },
-            )
-            HiResAudioSection(
-                settings = settings,
-                onBitDepthChange = { depth -> onSettingsChange { it.copy(bitDepth = depth) } },
+                bitDepth = settings.effectiveBitDepth(),
+                onCodecChange = { codec, depth ->
+                    onSettingsChange { it.copy(codecPreference = codec, bitDepth = depth) }
+                },
             )
             AdvancedConfigToggleSection(
                 expanded = showAdvancedConfig,
@@ -170,6 +171,12 @@ fun SendspinSettingsSection(
                         connection = settings.connectionOverride,
                         onConnectionChange = { connection ->
                             onSettingsChange { it.copy(connectionOverride = connection) }
+                        },
+                    )
+                    PcmSection(
+                        codec = settings.codecPreference,
+                        onPcmChange = { pcm ->
+                            onSettingsChange { it.copy(codecPreference = if (pcm) AudioCodec.PCM else AudioCodec.FLAC) }
                         },
                     )
                     BufferSizeSection(
@@ -189,7 +196,9 @@ fun SendspinSettingsSection(
 }
 
 private fun SendspinPlayerSettings.hasNonDefaultAdvancedSettings(): Boolean =
-    bufferSeconds != SendspinPlayerSettings.defaults.bufferSeconds || connectionOverride.enabled
+    bufferSeconds != SendspinPlayerSettings.defaults.bufferSeconds ||
+        connectionOverride.enabled ||
+        codecPreference == AudioCodec.PCM
 
 @Composable
 private fun InterruptPlaybackDialog(
@@ -246,8 +255,16 @@ private fun DeviceNameSection(
 @Composable
 private fun CodecPreferenceSection(
     codec: AudioCodec,
-    onCodecChange: (AudioCodec) -> Unit,
+    bitDepth: Int,
+    onCodecChange: (codec: AudioCodec, bitDepth: Int) -> Unit,
 ) {
+    // Opus, then the lossless codec at 16 and 24 bit. The PCM checkbox in the advanced settings picks the lossless codec.
+    val lossless = codec.takeIf { it != AudioCodec.OPUS } ?: AudioCodec.FLAC
+    val options = listOf(
+        AudioCodec.OPUS to SettingsRepository.BIT_DEPTH_DEFAULT,
+        lossless to SettingsRepository.BIT_DEPTH_DEFAULT,
+        lossless to SettingsRepository.BIT_DEPTH_HI_RES,
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -261,23 +278,44 @@ private fun CodecPreferenceSection(
             modifier = Modifier.fillMaxWidth(),
         )
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-            SettingsRepository.CODECS.forEachIndexed { index, option ->
+            options.forEachIndexed { index, (option, depth) ->
                 SegmentedButton(
-                    shape = SegmentedButtonDefaults.itemShape(
-                        index = index,
-                        count = SettingsRepository.CODECS.size,
-                    ),
-                    onClick = { onCodecChange(option) },
-                    selected = option == codec,
-                    label = { Text(option.displayName) },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    onClick = { onCodecChange(option, depth) },
+                    selected = option == codec && depth == bitDepth,
+                    enabled = depth != SettingsRepository.BIT_DEPTH_HI_RES || supportsHiResAudio,
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = option.displayName, maxLines = 1)
+                            if (depth == SettingsRepository.BIT_DEPTH_HI_RES) {
+                                Text(
+                                    text = " " + stringResource(Res.string.settings_codec_hi_res_label),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    },
                 )
             }
         }
         Text(
-            text = codec.localizedDescription(),
+            text = if (bitDepth == SettingsRepository.BIT_DEPTH_HI_RES) {
+                stringResource(Res.string.codec_hi_res_description)
+            } else {
+                codec.localizedDescription()
+            },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (!supportsHiResAudio) {
+            Text(
+                text = stringResource(Res.string.settings_hi_res_audio_unsupported),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -488,37 +526,39 @@ private const val TENTHS = 10
 private fun String.toPortOrDefault(): Int = toIntOrNull() ?: SettingsRepository.DEFAULT_SENDSPIN_PORT
 
 @Composable
-private fun HiResAudioSection(
-    settings: SendspinPlayerSettings,
-    onBitDepthChange: (Int) -> Unit,
+private fun PcmSection(
+    codec: AudioCodec,
+    onPcmChange: (Boolean) -> Unit,
 ) {
-    val available = settings.hiResAvailable()
-    ListItem(
-        headlineContent = { Text(stringResource(Res.string.settings_hi_res_audio)) },
-        supportingContent = {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                stringResource(
-                    when {
-                        !supportsHiResAudio -> Res.string.settings_hi_res_audio_unsupported
-                        !available -> Res.string.settings_hi_res_audio_lossless_only
-                        else -> Res.string.settings_hi_res_audio_hint
+                text = stringResource(Res.string.settings_sendspin_pcm),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = stringResource(
+                    if (codec == AudioCodec.OPUS) {
+                        Res.string.settings_sendspin_pcm_lossless_only
+                    } else {
+                        Res.string.settings_sendspin_pcm_hint
                     },
                 ),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        },
-        trailingContent = {
-            Switch(
-                checked = settings.effectiveBitDepth() == SettingsRepository.BIT_DEPTH_HI_RES,
-                onCheckedChange = { hiRes ->
-                    onBitDepthChange(
-                        if (hiRes) SettingsRepository.BIT_DEPTH_HI_RES else SettingsRepository.BIT_DEPTH_DEFAULT,
-                    )
-                },
-                enabled = available,
-            )
-        },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-    )
+        }
+        Checkbox(
+            checked = codec == AudioCodec.PCM,
+            onCheckedChange = onPcmChange,
+            enabled = codec != AudioCodec.OPUS,
+        )
+    }
 }
 
 @Composable

@@ -213,6 +213,7 @@
   <string name="codec_flac">FLAC (lossless, medium bandwidth)</string>
   <string name="codec_flac_description">lossless, medium bandwidth</string>
   <string name="codec_opus">Opus (compressed, lowest bandwidth)</string>
+  <string name="codec_hi_res_description">lossless 24-bit, highest bandwidth</string>
   <string name="codec_opus_description">compressed, lowest bandwidth</string>
   <string name="codec_pcm">PCM (lossless, high bandwidth)</string>
   <string name="codec_pcm_description">lossless, high bandwidth</string>
@@ -492,9 +493,10 @@
   <string name="settings_error_local_network_ios">Could not reach the server. iOS needs permission to access your local network — tap Allow if a prompt appeared, or enable it later in Settings &gt; Privacy &amp; Security &gt; Local Network. Also make sure your device is on the same network as the server, then try again.</string>
   <string name="settings_error_offline_ios">Could not reach the server. Check that the address is correct and your device is online and on the same network as the server, then try again.</string>
   <string name="settings_exit_app">EXIT APP</string>
-  <string name="settings_hi_res_audio">24-bit audio</string>
-  <string name="settings_hi_res_audio_hint">Uses 50% more bandwidth than 16-bit audio</string>
-  <string name="settings_hi_res_audio_lossless_only">Available with FLAC or PCM</string>
+  <string name="settings_codec_hi_res_label">(24-bit)</string>
+  <string name="settings_sendspin_pcm">Use PCM instead of FLAC</string>
+  <string name="settings_sendspin_pcm_hint">Uncompressed: more bandwidth than FLAC, but the phone does not have to decode it</string>
+  <string name="settings_sendspin_pcm_lossless_only">Select FLAC to use this</string>
   <string name="settings_hi_res_audio_unsupported">Needs Android 12 or newer</string>
   <string name="settings_history_direct">Direct</string>
   <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
