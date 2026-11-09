@@ -74,10 +74,7 @@ import io.music_assistant.client.nav.createNavigationItem
 import io.music_assistant.client.ui.compose.common.ToastDuration
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.ui.compose.common.icons.PauseIcon
-import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
-import io.music_assistant.client.ui.compose.common.icons.StopIcon
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -88,6 +85,7 @@ import io.music_assistant.client.ui.compose.home.players.QueueDjViewModel
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
 import io.music_assistant.client.ui.compose.home.players.iconRes
+import io.music_assistant.client.ui.compose.home.players.mainTransport
 import io.music_assistant.client.ui.compose.home.players.overflowLabel
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
@@ -120,9 +118,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_pause
-import musicassistantclient.composeapp.generated.resources.action_play
-import musicassistantclient.composeapp.generated.resources.action_stop
 import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.media_action_next
@@ -300,6 +295,7 @@ fun MainNavigationRoot(
                         },
                         onReorder = homeScreenViewModel::onPlayersSortChanged,
                         onPlayerAction = homeScreenViewModel::playerAction,
+                        onTransportAction = homeScreenViewModel::playerAction,
                         hideUnavailable = rememberHideUnavailablePlayers(),
                         onToggleHideUnavailable = rememberToggleHideUnavailablePlayers(),
                         playerDelays = playerDelays,
@@ -370,33 +366,13 @@ fun MainNavigationRoot(
             // The same rules as the buttons in the player: Stop for streams that cannot pause,
             // dimmed buttons when the queue cannot play or skip, and a cancel while play is pending.
             val transport = player.transportState(chapterProgressEnabled)
-            val pending = player.pendingPlay && !player.player.isPlaying
-            val showsPause = player.player.isPlaying || pending
+            val main = player.mainTransport()
             listOf(
                 PlaybackItem(
-                    enabled = transport.playerEnabled && (transport.buttonsEnabled || transport.showStop),
-                    onClick = {
-                        homeScreenViewModel.playerAction(
-                            player,
-                            when {
-                                pending -> PlayerAction.Pause
-                                transport.showStop -> PlayerAction.Stop
-                                else -> PlayerAction.TogglePlayPause
-                            },
-                        )
-                    },
-                    icon = when {
-                        transport.showStop -> StopIcon
-                        showsPause -> PauseIcon
-                        else -> PlayIcon
-                    },
-                    label = stringResource(
-                        when {
-                            transport.showStop -> Res.string.action_stop
-                            showsPause -> Res.string.action_pause
-                            else -> Res.string.action_play
-                        },
-                    ),
+                    enabled = main.enabled,
+                    onClick = { homeScreenViewModel.playerAction(player, main.action) },
+                    icon = main.button.icon,
+                    label = stringResource(main.button.label),
                 ),
                 PlaybackItem(
                     enabled = transport.playerEnabled && transport.buttonsEnabled && transport.skipForwardEnabled,

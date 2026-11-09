@@ -4,6 +4,7 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +71,7 @@ import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
 import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
+import musicassistantclient.composeapp.generated.resources.players_nothing
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -105,6 +107,8 @@ fun SelectPlayerSheet(
     onMoveToPlayer: (String) -> Unit = {},
     onReorder: (List<String>) -> Unit = {},
     onPlayerAction: (String, PlayerAction) -> Unit = { _, _ -> },
+    // The main transport button of a row, sent like the player's own button.
+    onTransportAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     hideUnavailable: Boolean = false,
     onToggleHideUnavailable: () -> Unit = {},
     playerDelays: Map<String, PlayerDelay> = emptyMap(),
@@ -145,6 +149,7 @@ fun SelectPlayerSheet(
                 onMoveToPlayer = onMoveToPlayer,
                 onReorder = onReorder,
                 onGroupRequest = { player -> showGroupSettings = player.playerId },
+                onTransportAction = onTransportAction,
                 hideUnavailable = hideUnavailable,
                 onToggleHideUnavailable = onToggleHideUnavailable,
             )
@@ -160,6 +165,7 @@ private fun PlayerLayout(
     onMoveToPlayer: (String) -> Unit,
     onReorder: (List<String>) -> Unit,
     onGroupRequest: (PlayerData) -> Unit,
+    onTransportAction: (PlayerData, PlayerAction) -> Unit,
     hideUnavailable: Boolean,
     onToggleHideUnavailable: () -> Unit,
 ) {
@@ -221,6 +227,7 @@ private fun PlayerLayout(
                     )
                 },
                 onGroupRequest = onGroupRequest,
+                onTransportAction = onTransportAction,
             )
         }
     }
@@ -286,6 +293,7 @@ private fun PlayerSelection(
     onSelectPlayer: (String) -> Unit,
     onReorder: (reordered: List<String>, movedId: String) -> Unit,
     onGroupRequest: (PlayerData) -> Unit,
+    onTransportAction: (PlayerData, PlayerAction) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
 
@@ -378,16 +386,27 @@ private fun PlayerSelection(
                         contentDescription = null,
                     )
 
-                    Text(
-                        text = item.player.name,
+                    Column(
                         modifier = Modifier
                             .padding(start = 8.dp)
                             .weight(1f)
                             .alphaOn(!dormant),
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    ) {
+                        Text(
+                            text = item.player.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        // Never blank, so the marquee always has text to scroll.
+                        Text(
+                            text = item.player.currentMedia?.title?.takeUnless { it.isBlank() }
+                                ?: stringResource(Res.string.players_nothing),
+                            modifier = Modifier.basicMarquee().alpha(0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
+                    }
 
                     if (item.player.isPlaying || item.player.isAnnouncing) {
                         NowPlayingIcon(
@@ -399,6 +418,15 @@ private fun PlayerSelection(
                                 Color(0xFF2196F3)
                             },
                         )
+                    }
+
+                    item.mainTransport().takeIf { it.enabled }?.let { main ->
+                        IconButton(onClick = { onTransportAction(item, main.action) }) {
+                            Icon(
+                                imageVector = main.button.icon,
+                                contentDescription = stringResource(main.button.label),
+                            )
+                        }
                     }
 
                     if (item.offersGrouping) {
