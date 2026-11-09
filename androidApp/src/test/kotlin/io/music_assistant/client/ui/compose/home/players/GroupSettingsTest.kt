@@ -1,16 +1,20 @@
 package io.music_assistant.client.ui.compose.home.players
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isPopup
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerDelay
+import io.music_assistant.client.data.model.client.PlayerType
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -61,5 +65,29 @@ class GroupSettingsTest {
         composeTestRule.onNodeWithContentDescription("Volume of ${member.name}").performClick()
 
         composeTestRule.onNode(hasAnyAncestor(isPopup()).and(hasText("40"))).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an ungrouped pivot shows its checkbox checked and disabled`() {
+        composeTestRule.setContent {
+            GroupSettings(player = PlayerDataFixtures.playerData(groupChildren = listOf(outside)), canLeaveGroup = true)
+        }
+
+        composeTestRule.onNodeWithContentDescription("Leave group")
+            .assertIsOn()
+            .assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a group player pivot has no reachable checkbox`() {
+        composeTestRule.setContent {
+            GroupSettings(
+                player = PlayerDataFixtures.playerData(groupChildren = listOf(member), playerType = PlayerType.GROUP),
+                canLeaveGroup = true,
+            )
+        }
+
+        composeTestRule.onNodeWithContentDescription("Leave group").assertDoesNotExist()
+        composeTestRule.onAllNodes(isToggleable()).assertCountEquals(1)
     }
 }

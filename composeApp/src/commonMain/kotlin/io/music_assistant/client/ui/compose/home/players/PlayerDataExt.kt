@@ -28,6 +28,13 @@ fun PlayerData.groupBadge(): String? {
     }
 }
 
+/**
+ * True if the player offers grouping. The phone offers it only while the server lists it (then
+ * it has child candidates), like the web frontend, which hides a hidden player.
+ */
+val PlayerData.offersGrouping: Boolean
+    get() = !isLocal || childrenBinds.isNotEmpty() || player.isGrouped
+
 /** The player name and count for the text-only navigation overflow menu. */
 fun PlayerData.overflowLabel(): String {
     val count = groupBadge()

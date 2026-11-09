@@ -120,6 +120,7 @@ dependencies {
 
     testImplementation(project(":nav"))
     testImplementation(project(":ui-utils"))
+    testImplementation(project(":sendspin-kmp"))
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.androidx.compose.ui.test.junit4)

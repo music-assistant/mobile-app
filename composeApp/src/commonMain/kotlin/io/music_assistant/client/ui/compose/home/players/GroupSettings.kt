@@ -42,11 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -100,8 +102,9 @@ private val DELAY_STEPS_MS = listOf(ONE, TEN, HUNDRED)
 
 /**
  * The group sheet: the pivot player first, then its members, bound before unbound. A row shows
- * the player icon, the name, a volume button, a delay button for a player in [playerDelays], and
- * the join or leave checkbox. A button opens its panel above the row; a tap outside closes it.
+ * the player icon, the name, a delay button for a player in [playerDelays], a volume button, and
+ * the join or leave checkbox. The pivot checkbox is always checked, and it is enabled only if the
+ * pivot can leave its group. A button opens its panel above the row; a tap outside closes it.
  * Only one panel is open at a time. A row outside the group shows no buttons, because they would
  * act on a player that does not follow the group.
  */
@@ -154,15 +157,16 @@ fun GroupSettings(
                         onOpenPanel = { kind -> openPanel = kind?.let { OpenPanel(pivot.id, it) } },
                         // The leader leaves via `ungroup`, not `set_members`: the server
                         // owns the choice of successor and moves the queue there.
+                        // A group player is not a member of itself, so its checkbox is an invisible placeholder.
                         toggle = GroupToggle(
                             isBound = true,
-                            isManageable = true,
+                            isManageable = canLeaveGroup && pivot.canLeaveOwnGroup,
                             contentDescription = Res.string.cd_leave_group,
                             onClick = {
                                 playerAction(pivot.id, PlayerAction.LeaveGroup)
                                 onDismiss()
                             },
-                        ).takeIf { canLeaveGroup && pivot.canLeaveOwnGroup },
+                        ).takeIf { !pivot.isGroup },
                     )
                 }
             }
@@ -328,15 +332,6 @@ private fun GroupPlayerRow(
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            volume?.let {
-                PanelButton(
-                    imageVector = if (it.isMuted == true) VolumeMutedIcon else VolumeIcon,
-                    contentDescription = stringResource(Res.string.cd_player_volume, name),
-                    enabled = it.enabled,
-                    selected = openPanel == PanelKind.VOLUME,
-                    onClick = { onOpenPanel(PanelKind.VOLUME) },
-                )
-            }
             delay?.let {
                 PanelButton(
                     imageVector = Icons.Outlined.Timer,
@@ -346,7 +341,17 @@ private fun GroupPlayerRow(
                     onClick = { onOpenPanel(PanelKind.DELAY) },
                 )
             }
-            // Rows with no grouping gesture (a pivot that cannot leave) show no checkbox.
+            volume?.let {
+                PanelButton(
+                    imageVector = if (it.isMuted == true) VolumeMutedIcon else VolumeIcon,
+                    contentDescription = stringResource(Res.string.cd_player_volume, name),
+                    enabled = it.enabled,
+                    selected = openPanel == PanelKind.VOLUME,
+                    onClick = { onOpenPanel(PanelKind.VOLUME) },
+                )
+            }
+            // A row with no grouping gesture (a group player pivot) keeps an invisible checkbox,
+            // so its buttons stay in the same column as the buttons of the other rows.
             toggle?.let { item ->
                 val description = stringResource(item.contentDescription)
                 Checkbox(
@@ -355,7 +360,13 @@ private fun GroupPlayerRow(
                     enabled = item.isManageable,
                     onCheckedChange = { item.onClick() },
                 )
-            }
+            } ?: Checkbox(
+                modifier = Modifier.alpha(0f).clearAndSetSemantics {},
+                checked = false,
+                enabled = false,
+                // A non-null callback gives the checkbox its touch size, like the other rows.
+                onCheckedChange = {},
+            )
         }
         // A row that lost its control while its panel was open shows no empty panel.
         val panel: (@Composable () -> Unit)? = when (openPanel) {

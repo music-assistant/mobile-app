@@ -7,11 +7,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SplitButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,32 +31,55 @@ import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.sendspin.api.PlayerState
 import org.jetbrains.compose.resources.painterResource
 
+/**
+ * The player chip. With [onGroup] and a player that offers grouping, it has two sections: the main
+ * section selects a player, and the additional section opens grouping and shows the group count.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlayerSelectionButton(
     player: PlayerData,
     controlTint: Color = MaterialTheme.colorScheme.primary,
     sendSpinState: PlayerState?,
-    /** The group count after the name, from [groupBadge]. Null hides it. */
-    groupBadge: String? = null,
     onSelectPlayer: () -> Unit = {},
+    onGroup: (() -> Unit)? = null,
 ) {
     val dotColor = player.statusDotColor(sendSpinState)
 
     val playerContentDescription = player.contentDescription()
-    val modifier = Modifier.clearAndSetSemantics {
+    val mainModifier = Modifier.clearAndSetSemantics {
         contentDescription = playerContentDescription
     }
 
-    OutlinedButton(
-        modifier = modifier,
+    onGroup?.takeIf { player.offersGrouping }?.let { group ->
+        // A Row, not SplitButtonLayout: that layout gives the main section the full width
+        // first, so a long name would push the group section out.
+        Row(horizontalArrangement = Arrangement.spacedBy(SplitButtonDefaults.Spacing)) {
+            SplitButtonDefaults.OutlinedLeadingButton(
+                modifier = mainModifier.weight(1f, fill = false),
+                onClick = onSelectPlayer,
+            ) {
+                PlayerButtonContent(player = player, controlTint = controlTint, dotColor = dotColor)
+            }
+            SplitButtonDefaults.TrailingButton(
+                onClick = group,
+                colors = ButtonDefaults.outlinedButtonColors(),
+                elevation = null,
+                border = ButtonDefaults.outlinedButtonBorder(),
+            ) {
+                // A 24 dp box keeps the badge on its corner, off the 18 dp glyph.
+                GroupIconWithCount(
+                    player = player,
+                    modifier = Modifier.size(24.dp).padding((24.dp - ButtonDefaults.IconSize) / 2),
+                    tint = controlTint,
+                )
+            }
+        }
+    } ?: OutlinedButton(
+        modifier = mainModifier,
         onClick = onSelectPlayer,
     ) {
-        PlayerButtonContent(
-            player = player,
-            controlTint = controlTint,
-            dotColor = dotColor,
-            groupBadge = groupBadge,
-        )
+        PlayerButtonContent(player = player, controlTint = controlTint, dotColor = dotColor)
     }
 }
 
@@ -61,7 +88,6 @@ private fun PlayerButtonContent(
     player: PlayerData,
     controlTint: Color,
     dotColor: Color?,
-    groupBadge: String?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -69,7 +95,7 @@ private fun PlayerButtonContent(
     ) {
         Icon(
             painter = painterResource(player.iconRes()),
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(ButtonDefaults.IconSize),
             tint = controlTint,
             contentDescription = null,
         )
@@ -88,8 +114,6 @@ private fun PlayerButtonContent(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-
-        groupBadge?.let { GroupCountBadge(it) }
     }
 }
 
@@ -135,7 +159,7 @@ private fun PlayerSelectionButtonPreview() {
                 groupChildren = listOf(PlayerDataFixtures.bind().copy(isBound = false)),
             ),
             sendSpinState = null,
-            groupBadge = "+1",
+            onGroup = {},
         )
     }
 }

@@ -59,7 +59,6 @@ import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDelay
 import io.music_assistant.client.data.model.client.byId
-import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
@@ -74,7 +73,6 @@ import musicassistantclient.composeapp.generated.resources.players_hide_unavaila
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.compose.resources.vectorResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -87,6 +85,15 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 private object SheetStaysOnContentScroll : NestedScrollConnection {
     override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = available
     override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+}
+
+/** What the player sheet shows when it opens. */
+sealed interface PlayerSheetStart {
+    /** The list of players. */
+    data object Players : PlayerSheetStart
+
+    /** The group settings of one player. */
+    data class Group(val playerId: String) : PlayerSheetStart
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,6 +111,7 @@ fun SelectPlayerSheet(
     onLoadPlayerDelays: (Collection<String>) -> Unit = {},
     onAdjustPlayerDelay: (String, Int) -> Unit = { _, _ -> },
     canLeaveGroup: Boolean = false,
+    start: PlayerSheetStart = PlayerSheetStart.Players,
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
@@ -115,7 +123,7 @@ fun SelectPlayerSheet(
         onDismissRequest = onDismissRequest,
         dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
-        var showGroupSettings by remember { mutableStateOf<String?>(null) }
+        var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
         val groupPlayer = showGroupSettings?.let { players.byId(it) }
 
         if (groupPlayer != null) {
@@ -393,18 +401,8 @@ private fun PlayerSelection(
                         )
                     }
 
-                    // The phone offers grouping only while the server lists it (then it has
-                    // child candidates), like the web frontend, which hides a hidden player.
-                    if (!item.isLocal || item.childrenBinds.isNotEmpty() || item.player.isGrouped) {
-                        item.groupBadge()?.let {
-                            GroupCountBadge(it, modifier = Modifier.padding(start = 8.dp))
-                        }
-                        IconButton(onClick = { onGroupRequest(item) }) {
-                            Icon(
-                                vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-                                contentDescription = null,
-                            )
-                        }
+                    if (item.offersGrouping) {
+                        GroupButton(player = item, onClick = { onGroupRequest(item) })
                     }
 
                     if (!item.player.isSelectable) {

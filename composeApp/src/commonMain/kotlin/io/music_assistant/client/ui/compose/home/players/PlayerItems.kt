@@ -132,6 +132,9 @@ fun CompactPlayerItem(
     livePositionFlow: Flow<Double>? = null,
     // True where the vertical bar carries Play and Next, as beside the collapsed player.
     transportOnBar: Boolean = false,
+    // Grouping goes into the player chip if there is one ([onSelectPlayer]), else before Play, in place of Next.
+    // A player without grouping shows neither.
+    onGroup: (() -> Unit)? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -251,6 +254,10 @@ fun CompactPlayerItem(
             }
         }
 
+        onGroup?.takeIf { onSelectPlayer == null && item.offersGrouping }?.let {
+            GroupButton(player = item, onClick = it, tint = colors.controlTint)
+        }
+
         if (item.player.isPoweredOff) {
             IconButton(
                 modifier = Modifier.size(48.dp),
@@ -269,7 +276,7 @@ fun CompactPlayerItem(
                     playerAction = playerAction,
                     showAdditionalButtons = showAdditionalControls,
                     mainButtonSize = 48.dp,
-                    showSkip = true,
+                    showSkip = onGroup == null || onSelectPlayer != null,
                     showSkipBack = onSelectPlayer != null,
                     tint = colors.controlTint,
                     chapterProgressEnabled = chapterProgressEnabled,
@@ -288,6 +295,7 @@ fun CompactPlayerItem(
                     controlTint = colors.controlTint,
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
+                    onGroup = onGroup,
                 )
             }
         }

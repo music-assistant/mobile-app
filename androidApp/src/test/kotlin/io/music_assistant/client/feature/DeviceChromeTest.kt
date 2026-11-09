@@ -42,6 +42,7 @@ import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.nav_menu
 import musicassistantclient.composeapp.generated.resources.nav_search
+import musicassistantclient.composeapp.generated.resources.players_group_settings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -99,7 +100,7 @@ class DeviceChromeTest {
     }
 
     @Test
-    fun `a group keeps its count in overflow and its badge in bottom navigation`() {
+    fun `a group keeps its count in overflow and on the group button`() {
         assertPlayerSelectionLabels(
             player = ServerPlayerFixtures.player(id = "kitchen", name = PLAYER_NAME).copy(
                 type = "group",
@@ -111,7 +112,7 @@ class DeviceChromeTest {
     }
 
     @Test
-    fun `a sync leader keeps its bound count in overflow and its badge in bottom navigation`() {
+    fun `a sync leader keeps its bound count in overflow and on the group button`() {
         assertPlayerSelectionLabels(
             player = ServerPlayerFixtures.player(id = "kitchen", name = PLAYER_NAME).copy(
                 groupMembers = setOf("kitchen", "a", "b"),
@@ -164,27 +165,22 @@ class DeviceChromeTest {
         )
         launchLoggedInApp(composeTestRule, serviceClient) { deviceChrome }
 
-        // The bottom bar keeps the plain name and the separate count badge.
+        // The bottom bar keeps the plain name. The count is on the group button of the collapsed player.
         val nameInBar = withinTag(NavigationBarSemantics.TAG).and(hasText(PLAYER_NAME))
         composeTestRule.waitUntil("the selected player appears in bottom navigation") {
             composeTestRule.onNode(nameInBar, useUnmergedTree = true).isDisplayed()
         }
-        if (badge != null) {
+        listOf("3", "+2").forEach {
             composeTestRule.onNode(
-                withinTag(NavigationBarSemantics.TAG).and(hasText(badge)),
-                useUnmergedTree = true,
-            ).assertIsDisplayed()
-            composeTestRule.onNode(
-                withinTag(NavigationBarSemantics.TAG).and(hasText(overflowLabel)),
+                withinTag(NavigationBarSemantics.TAG).and(hasText(it)),
                 useUnmergedTree = true,
             ).assertDoesNotExist()
-        } else {
-            listOf("3", "+2").forEach {
-                composeTestRule.onNode(
-                    withinTag(NavigationBarSemantics.TAG).and(hasText(it)),
-                    useUnmergedTree = true,
-                ).assertDoesNotExist()
-            }
+        }
+        badge?.let {
+            // The button merges its icon and its badge.
+            composeTestRule.onNode(
+                hasContentDescription(Res.string.players_group_settings.get()).and(hasText(it)),
+            ).assertIsDisplayed()
         }
 
         val rootHeight = composeTestRule.onRoot().getUnclippedBoundsInRoot().height
