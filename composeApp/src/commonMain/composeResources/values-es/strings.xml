@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
+  <string name="accent_color_blue">Azul</string>
+  <string name="accent_color_default">Predeterminado</string>
+  <string name="accent_color_green">Verde</string>
+  <string name="accent_color_indigo">Índigo</string>
+  <string name="accent_color_orange">Naranja</string>
+  <string name="accent_color_pink">Rosa</string>
+  <string name="accent_color_purple">Morado</string>
+  <string name="accent_color_red">Rojo</string>
+  <string name="accent_color_teal">Verde azulado</string>
+  <string name="accent_color_wallpaper">Fondo de pantalla</string>
+  <string name="accent_color_yellow">Amarillo</string>
   <string name="action_add_all_to_queue">Añadir todo a la cola</string>
   <string name="action_add_to_library">Añadir a la biblioteca</string>
   <string name="action_add_to_playlist">Añadir a la lista de reproducción</string>
@@ -14,6 +25,7 @@
   <string name="action_go_to_artist">Ir al artista</string>
   <string name="action_go_to_episode">Ir al episodio</string>
   <string name="action_go_to_podcast">Ir al podcast</string>
+  <string name="action_go_to_radio">Ir a la radio</string>
   <string name="action_go_to_track">Ir a la canción</string>
   <string name="action_insert_next">Añadir a continuación</string>
   <string name="action_insert_next_and_play">Añadir a continuación y reproducir</string>
@@ -264,6 +276,7 @@
   <string name="item_section_biography">Biografía</string>
   <string name="item_section_description">Descripción</string>
   <string name="item_section_review">Reseña</string>
+  <string name="item_subtitle_ai_host">Servidor de IA</string>
   <string name="item_subtitle_audio_source">Entrada</string>
   <string name="item_subtitle_genre">Género</string>
   <string name="item_subtitle_playlist">Lista de reproducción</string>
@@ -271,6 +284,7 @@
   <string name="item_subtitle_podcast">Podcast</string>
   <string name="item_subtitle_radio">Radio</string>
   <string name="item_subtitle_series">Series</string>
+  <string name="item_subtitle_sound">Efecto de sonido</string>
   <string name="item_subtitle_sound_effect">Servidor de IA</string>
   <string name="item_subtitle_unknown">Desconocido</string>
   <string name="item_tab_other_episodes">Otros episodios</string>
@@ -325,11 +339,13 @@
   <string name="menu_default_label">Predeterminado</string>
   <string name="nav_browse">Explorar</string>
   <string name="nav_discover">Descubrir</string>
+  <string name="nav_explore">Explorar</string>
   <string name="nav_home">Inicio</string>
   <string name="nav_library">Biblioteca</string>
   <string name="nav_menu">Menú</string>
   <string name="nav_search">Buscar</string>
   <string name="nav_settings">Ajustes</string>
+  <string name="nav_system">Sistema</string>
   <string name="not_connected_retry">No conectado — inténtalo de nuevo cuando se restablezca la conexión</string>
   <string name="playback_speed_dialog_title">Velocidad de reproducción</string>
   <string name="player_autoplay">Reproducción automática</string>
@@ -419,6 +435,7 @@
   <string name="server_id_mismatch_error">El ID del servidor ha cambiado. Se requiere volver a autenticarse.</string>
   <string name="settings_about_description">Music Assistant es un servidor de música gratuito, de código abierto y autogestionado. Conéctate a tu servidor a continuación para explorar tu biblioteca y controlar la reproducción en toda tu casa.</string>
   <string name="settings_about_learn_more">Más información en music-assistant.io →</string>
+  <string name="settings_accent_color">Color de énfasis</string>
   <string name="settings_allow_landscape">Permitir la orientación horizontal en todos los dispositivos</string>
   <string name="settings_allow_landscape_hint">Experimental: algunas pantallas pueden mostrarse incorrectamente en orientación horizontal. Úsalo bajo tu propia responsabilidad.</string>
   <string name="settings_app_documentation">Documentación de la aplicación →</string>
