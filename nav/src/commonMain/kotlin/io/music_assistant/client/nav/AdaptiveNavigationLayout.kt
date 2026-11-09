@@ -77,11 +77,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
+import compose.icons.TablerIcons
+import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import io.music_assistant.client.ui.utils.VerticalBarArea
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.ui.utils.fadingEdges
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableColumn
 
 /**
  * Shows a navigation bar combined with a navigation drawer based on [sections] on
@@ -102,14 +105,17 @@ fun AdaptiveNavigationBarLayout(
     menuLabel: String,
     // The overflow button of the vertical bar, which the nav module has no string resources for.
     moreLabel: String,
-    onEdited: ((List<String>) -> Unit)? = null,
+    onEdited: ((SidebarEdit) -> Unit)? = null,
     content: @Composable BoxScope.(contentPadding: PaddingValues, drawerOpen: Boolean) -> Unit,
 ) {
+    // Keyed on the ids and the flags only: the items get new click lambdas on each recomposition, and a
+    // key on the items would end an edit in progress.
+    val items = sections.flatMap { it.items }
     val editState = onEdited?.let { onEditedCallback ->
-        remember(sections) {
+        remember(items.map { it.id to it.enabled }) {
             EditableListState(
-                enabledIds = sections.flatMap { it.items }.filter { it.enabled }.map { it.id }
-                    .toSet(),
+                enabledIds = items.filter { it.enabled }.map { it.id }.toSet(),
+                orderedIds = items.map { it.id },
                 onSubmit = onEditedCallback,
             )
         }
@@ -382,6 +388,8 @@ private fun SidebarSections(
     itemOnClick: (NavigationItem) -> Unit,
     editState: EditableListState?,
 ) {
+    // A checkbox of a fixed item lines up with the checkboxes of the reorderable items.
+    val reserveHandle = sections.any { it.reorderable }
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -394,40 +402,79 @@ private fun SidebarSections(
 
             SectionTitle(section.title)
 
-            section.items.forEach {
-                if (it.enabled || (editState?.isEditing == true)) {
-                    NavigationDrawerItem(
-                        label = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(it.label)
-                                if (it.editable && editState?.isEditing == true) {
-                                    Checkbox(
-                                        checked = editState.isItemEnabled(it.id),
-                                        onCheckedChange = { checked ->
-                                            editState.setItemEnabled(it.id, checked)
-                                        },
-                                    )
-                                }
+            val itemsById = section.items.associateBy { it.id }
+            val sectionIds = section.items.map { it.id }
+            val orderedIds = editState?.ordered(sectionIds) ?: sectionIds
+            if (section.reorderable && editState?.isEditing == true) {
+                // The list holds ids, which stay equal across recompositions, so a drag survives them.
+                ReorderableColumn(
+                    list = orderedIds,
+                    onSettle = { from, to -> editState.move(sectionIds, from, to) },
+                ) { _, id, _ ->
+                    ReorderableItem {
+                        itemsById[id]?.let { item ->
+                            SidebarItem(item, itemOnClick, editState) {
+                                Icon(
+                                    imageVector = TablerIcons.GripVertical,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.draggableHandle().size(DragHandleSize),
+                                )
                             }
-                        },
-                        icon = {
-                            Icon(
-                                it.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        },
-                        selected = it.selected,
-                        onClick = { itemOnClick(it) },
-                    )
+                        }
+                    }
+                }
+            } else {
+                orderedIds.mapNotNull { itemsById[it] }.forEach { item ->
+                    if (item.enabled || editState?.isEditing == true) {
+                        SidebarItem(item, itemOnClick, editState) {
+                            if (reserveHandle && item.editable && editState?.isEditing == true) {
+                                Spacer(Modifier.size(DragHandleSize))
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SidebarItem(
+    item: NavigationItem,
+    onClick: (NavigationItem) -> Unit,
+    editState: EditableListState?,
+    dragHandle: @Composable () -> Unit = {},
+) {
+    NavigationDrawerItem(
+        label = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(item.label, modifier = Modifier.weight(1f))
+                if (item.editable && editState?.isEditing == true) {
+                    Checkbox(
+                        checked = editState.isItemEnabled(item.id),
+                        onCheckedChange = { checked ->
+                            editState.setItemEnabled(item.id, checked)
+                        },
+                    )
+                }
+                dragHandle()
+            }
+        },
+        icon = {
+            Icon(
+                item.icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+        },
+        selected = item.selected,
+        onClick = { onClick(item) },
+    )
 }
 
 @Composable
@@ -572,6 +619,8 @@ private fun NavigationItem.toBarEntry() = VerticalBarEntry(
 
 private val VerticalBarWidth = 56.dp
 
+private val DragHandleSize = 20.dp
+
 @Composable
 private fun RowScope.NavigationBarItem(item: NavigationItem) {
     NavigationBarItem(
@@ -631,6 +680,8 @@ private fun BoxScope.StatusBadge(color: Color) {
 data class Section(
     val title: String,
     val items: List<NavigationItem>,
+    /** In edit mode, the items get drag handles and move within this section only. */
+    val reorderable: Boolean = false,
 )
 
 data class NavigationItem(

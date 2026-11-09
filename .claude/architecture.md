@@ -295,6 +295,11 @@ actual class PlatformFeature {
   colors. `ThemeSetting.isDark()` resolves the light or dark choice. The settings picker (`AccentColorSection`) shows one
   swatch for each accent that `accentColorScheme` can give on the platform. CarPlay tints its browse icons with
   `accentPrimary` through `KmpHelper.carPlayAccent`, read on each connect.
+- **Sidebar sections**: the sidebar has three sections: Explore (Discover, Search, Browse), Library and System.
+  `LibraryCategoriesViewModel` stores one config for all categories, which includes Browse. Browse can be hidden
+  but it does not move, like in the web frontend. In edit mode, a `Section` with `reorderable` gets drag handles,
+  and an item moves only inside its section. Only the Library section is reorderable. The editor sends a
+  `SidebarEdit`, and `applySidebarEdit` saves it. A category that the server hides (AI Radio) keeps its slot.
 - **Device chrome**: `DeviceChrome` (`ui-utils`) is the window geometry that the platform reports. It holds the area
   of the system vertical bar, the hinge of a book-style foldable and the fold. Read it from `LocalDeviceChrome`, which
   `App` provides. Only iOS gives a value, from iOS 27.1 (iPhone Duo). The probe in `ContentView.swift` reads it from

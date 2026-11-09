@@ -43,7 +43,7 @@ class AiRadioCategoryVisibilityTest {
         val reconciled = reconcileLibraryCategories(null)
         val visible = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
 
-        val saved = applyEnabledCategories(reconciled, visible.toSet(), visible.map { it.name })
+        val saved = applySidebarEdit(reconciled, visible.toSet(), visible.map { it.name }, visible.map { it.name })
 
         assertEquals(reconciled, saved)
     }
@@ -57,7 +57,7 @@ class AiRadioCategoryVisibilityTest {
         val reconciled = reconcileLibraryCategories(stored)
         val visible = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
 
-        val saved = applyEnabledCategories(reconciled, visible.toSet(), visible.map { it.name })
+        val saved = applySidebarEdit(reconciled, visible.toSet(), visible.map { it.name }, visible.map { it.name })
 
         assertEquals(reconciled, saved)
     }
@@ -96,10 +96,40 @@ class AiRadioCategoryVisibilityTest {
         val visible = visibleCategories(reconciled, aiRadioAvailable = true).map { it.first }.toSet()
         val enabled = visible.filterNot { it == LibraryCategory.ALBUMS }.map { it.name }
 
-        val saved = applyEnabledCategories(reconciled, visible, enabled)
+        val saved = applySidebarEdit(reconciled, visible, enabled, visible.map { it.name })
 
         assertEquals(reconciled.map { it.first }, saved.map { it.first })
         assertEquals(reconciled.map { it.first != LibraryCategory.ALBUMS }, saved.map { it.second })
+    }
+
+    @Test
+    fun `saving a new order keeps a hidden AI Radio in its slot`() {
+        val reconciled = reconcileLibraryCategories(null)
+        val visible = visibleCategories(reconciled, aiRadioAvailable = false).map { it.first }
+        val reversed = visible.reversed()
+
+        val saved = applySidebarEdit(reconciled, visible.toSet(), visible.map { it.name }, reversed.map { it.name })
+
+        val aiRadioSlot = reconciled.indexOfFirst { it.first == LibraryCategory.AI_RADIO }
+        assertEquals(LibraryCategory.AI_RADIO to true, saved[aiRadioSlot])
+        assertEquals(reversed, saved.map { it.first } - LibraryCategory.AI_RADIO)
+    }
+
+    @Test
+    fun `saving ignores unknown ids and appends the visible categories the editor did not name`() {
+        val reconciled = reconcileLibraryCategories(null)
+        val visible = visibleCategories(reconciled, aiRadioAvailable = true).map { it.first }
+        // The sidebar also sends the ids of Discover, Search and Settings, which are no categories.
+        val ordered = listOf("Discover", LibraryCategory.TRACKS.name, "Search", LibraryCategory.ARTISTS.name)
+
+        val saved = applySidebarEdit(reconciled, visible.toSet(), visible.map { it.name }, ordered)
+
+        assertEquals(
+            listOf(LibraryCategory.TRACKS, LibraryCategory.ARTISTS) +
+                (visible - LibraryCategory.TRACKS - LibraryCategory.ARTISTS),
+            saved.map { it.first },
+        )
+        assertTrue(saved.all { it.second })
     }
 
     @Test
