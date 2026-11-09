@@ -229,6 +229,8 @@ fun PlayersPager(
         // menu entry and the badge stay hidden entirely.
         val sleepTimerSupported by homeScreenViewModel.sleepTimerSupported
             .collectAsStateWithLifecycle()
+        val repeatLocksAutoplay by homeScreenViewModel.repeatLocksAutoplay
+            .collectAsStateWithLifecycle()
         val announcementAvailability by koinInject<AnnouncementRepository>().availability
             .collectAsStateWithLifecycle()
         // Null while the AI Radio DJ gate is closed, which hides the menu row.
@@ -472,6 +474,7 @@ fun PlayersPager(
                                     !player.player.isGroup && grantedScopes.canConfigurePlayers
                                 },
                                 onSleepTimerButton = onSleepTimerButton.takeIf { sleepTimerSupported },
+                                repeatLocksAutoplay = repeatLocksAutoplay,
                                 // Voice is never offered for the phone's own player, so it alone can't show the entry.
                                 onAnnounceButton = onAnnounceButton.takeIf {
                                     announcementAvailability.text || (announcementAvailability.voice && !player.isLocal)
@@ -595,6 +598,7 @@ private fun ExpandedPlayerPage(
     onGroup: () -> Unit,
     onDspButton: (() -> Unit)?,
     onSleepTimerButton: (() -> Unit)?,
+    repeatLocksAutoplay: Boolean,
     onAnnounceButton: (() -> Unit)?,
     onAmbientSoundButton: (() -> Unit)?,
     playerAction: (PlayerData, PlayerAction) -> Unit,
@@ -737,6 +741,7 @@ private fun ExpandedPlayerPage(
                 player = player,
                 tint = colors.controlTint,
                 onSleepTimerClick = onSleepTimerButton,
+                repeatLocksAutoplay = repeatLocksAutoplay,
                 onToggleAutoplay = { current ->
                     playerAction(player, PlayerAction.ToggleDontStopTheMusic(current = current))
                 },
@@ -1301,6 +1306,7 @@ fun ExpandedPlayerPagePreview() {
             onGroup = {},
             onDspButton = null,
             onSleepTimerButton = null,
+            repeatLocksAutoplay = false,
             onAnnounceButton = null,
             onAmbientSoundButton = null,
             playerAction = { _, _ -> },
@@ -1340,6 +1346,7 @@ fun ExpandedPlayerPageMediumScreenPreview() {
             onGroup = {},
             onDspButton = null,
             onSleepTimerButton = null,
+            repeatLocksAutoplay = false,
             onAnnounceButton = null,
             onAmbientSoundButton = null,
             playerAction = { _, _ -> },
@@ -1379,6 +1386,7 @@ fun ExpandedPlayerPageExpandedScreenPreview() {
             onGroup = {},
             onDspButton = null,
             onSleepTimerButton = null,
+            repeatLocksAutoplay = false,
             onAnnounceButton = null,
             onAmbientSoundButton = null,
             playerAction = { _, _ -> },
@@ -1422,6 +1430,7 @@ fun ExpandedPlayerPageExpandedScreenPlusPreview() {
             onGroup = {},
             onDspButton = null,
             onSleepTimerButton = null,
+            repeatLocksAutoplay = false,
             onAnnounceButton = null,
             onAmbientSoundButton = null,
             playerAction = { _, _ -> },
@@ -1462,6 +1471,7 @@ fun ExpandedPlayerPagePhoneLandscapePreview() {
             onGroup = {},
             onDspButton = null,
             onSleepTimerButton = null,
+            repeatLocksAutoplay = false,
             onAnnounceButton = null,
             onAmbientSoundButton = null,
             playerAction = { _, _ -> },
@@ -1501,6 +1511,7 @@ fun ExpandedPlayerPageLargeScreenPreview() {
             onGroup = {},
             onDspButton = null,
             onSleepTimerButton = null,
+            repeatLocksAutoplay = false,
             onAnnounceButton = null,
             onAmbientSoundButton = null,
             playerAction = { _, _ -> },

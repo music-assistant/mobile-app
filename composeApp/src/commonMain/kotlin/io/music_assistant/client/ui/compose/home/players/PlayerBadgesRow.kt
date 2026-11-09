@@ -29,12 +29,14 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.icons.CrossfadeIcon
 import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_off
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_on
+import musicassistantclient.composeapp.generated.resources.cd_autoplay_repeat_locked
 import musicassistantclient.composeapp.generated.resources.cd_crossfade_off
 import musicassistantclient.composeapp.generated.resources.cd_crossfade_on
 import musicassistantclient.composeapp.generated.resources.player_autoplay
@@ -68,6 +70,7 @@ fun PlayerBadgesRow(
     player: PlayerData,
     tint: Color,
     onSleepTimerClick: (() -> Unit)?,
+    repeatLocksAutoplay: Boolean,
     onToggleAutoplay: (current: Boolean) -> Unit,
     onToggleCrossfade: (current: Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -100,13 +103,19 @@ fun PlayerBadgesRow(
             // overflow menu gates on) is what tells an empty queue from a loaded one — the
             // list is NoData until the user opens the queue, which would leave the badge
             // stuck disabled.
+            // From server 2.11, repeat ONE or ALL masks autoplay: the server rejects enabling it
+            // and reports it off. An older server keeps the two independent.
             val isDynamic = queueInfo.isDynamicPlaylist
+            val repeatLocked = repeatLocksAutoplay &&
+                (queueInfo.repeatMode == RepeatMode.ONE || queueInfo.repeatMode == RepeatMode.ALL)
             val hasSomethingToPlay = queueInfo.currentItem != null
-            val on = autoplayEnabled || isDynamic
+            val on = isDynamic || (autoplayEnabled && !repeatLocked)
             AutoplayBadge(
                 tint = tint,
                 on = on,
-                onClick = { onToggleAutoplay(on) }.takeIf { !isDynamic && hasSomethingToPlay },
+                repeatLocked = repeatLocked && !isDynamic,
+                onClick = { onToggleAutoplay(on) }
+                    .takeIf { !isDynamic && !repeatLocked && hasSomethingToPlay },
             )
         }
 
@@ -150,10 +159,14 @@ private fun CrossfadeBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
 }
 
 @Composable
-private fun AutoplayBadge(tint: Color, on: Boolean, onClick: (() -> Unit)?) {
+private fun AutoplayBadge(tint: Color, on: Boolean, repeatLocked: Boolean, onClick: (() -> Unit)?) {
     BadgePill(
         contentDescription = stringResource(
-            if (on) Res.string.cd_autoplay_on else Res.string.cd_autoplay_off,
+            when {
+                repeatLocked -> Res.string.cd_autoplay_repeat_locked
+                on -> Res.string.cd_autoplay_on
+                else -> Res.string.cd_autoplay_off
+            },
         ),
         tint = tint,
         on = on,

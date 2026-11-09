@@ -42,11 +42,15 @@ import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
 import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import io.music_assistant.client.ui.compose.common.icons.SmartShuffleIcon
 import io.music_assistant.client.ui.compose.common.icons.StopIcon
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.action_stop
+import musicassistantclient.composeapp.generated.resources.cd_shuffle_off
+import musicassistantclient.composeapp.generated.resources.cd_shuffle_on
+import musicassistantclient.composeapp.generated.resources.cd_shuffle_smart
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -90,15 +94,24 @@ fun PlayerControls(
                         enabled = playerEnabled && buttonsEnabled,
                     ) { playerAction(playerData, PlayerAction.SeekBy(-LongFormSeekDefaults.BACK_SECONDS)) }
                 } else {
+                    // Like the web: smart shuffle shows only while shuffle is on.
+                    val smart = it.shuffleEnabled && it.smartShuffleActive
                     ActionButton(
-                        icon = if (it.shuffleEnabled) {
-                            ShuffleOnIcon
-                        } else {
-                            ShuffleOffIcon
+                        icon = when {
+                            smart -> SmartShuffleIcon
+                            it.shuffleEnabled -> ShuffleOnIcon
+                            else -> ShuffleOffIcon
                         },
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist && !isLiveInput,
+                        contentDescription = stringResource(
+                            when {
+                                smart -> Res.string.cd_shuffle_smart
+                                it.shuffleEnabled -> Res.string.cd_shuffle_on
+                                else -> Res.string.cd_shuffle_off
+                            },
+                        ),
                     ) {
                         playerAction(
                             playerData,

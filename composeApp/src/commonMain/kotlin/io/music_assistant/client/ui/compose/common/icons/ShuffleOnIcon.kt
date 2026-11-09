@@ -9,8 +9,17 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 val ShuffleOnIcon: ImageVector by lazy {
+    shuffleIcon(name = "ShuffleOn", smart = false)
+}
+
+/** [ShuffleOnIcon] with a sparkle in the free top-left area: the server runs smart shuffle. */
+val SmartShuffleIcon: ImageVector by lazy {
+    shuffleIcon(name = "SmartShuffle", smart = true)
+}
+
+private fun shuffleIcon(name: String, smart: Boolean): ImageVector =
     ImageVector.Builder(
-        name = "ShuffleOn",
+        name = name,
         defaultWidth = 20.dp,
         defaultHeight = 20.dp,
         viewportWidth = 24f,
@@ -48,5 +57,15 @@ val ShuffleOnIcon: ImageVector by lazy {
             arcTo(4f, 4f, 0f, false, true, 12.659f, 16.2f)
             lineToRelative(-0.359f, -0.45f)
         }
+        if (smart) {
+            // Four-point sparkle centred at (9.5, 2.5), radius 2.5.
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(9.5f, 0f)
+                quadTo(9.5f, 2.5f, 12f, 2.5f)
+                quadTo(9.5f, 2.5f, 9.5f, 5f)
+                quadTo(9.5f, 2.5f, 7f, 2.5f)
+                quadTo(9.5f, 2.5f, 9.5f, 0f)
+                close()
+            }
+        }
     }.build()
-}
