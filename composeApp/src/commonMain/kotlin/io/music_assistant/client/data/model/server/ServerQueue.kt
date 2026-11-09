@@ -17,6 +17,8 @@ data class ServerQueue(
     @SerialName("available") val available: Boolean = false,
     @SerialName("items") val items: Int? = null,
     @SerialName("shuffle_enabled") val shuffleEnabled: Boolean = false,
+    /** Server-derived (2.11): shuffle runs as smart shuffle, or the queue is dynamic. Absent before. */
+    @SerialName("smart_shuffle_active") val smartShuffleActive: Boolean = false,
     @SerialName("repeat_mode") val repeatMode: String? = null,
     /**
      * Autoplay, across the 2.10 rename. Servers from 2.10 on send [autoplayEnabled]; older

@@ -433,7 +433,14 @@ class LocalPlayerAdapter(
             // The server ends the stream on Stop; its idle update releases the hold.
             PlayerAction.Pause, PlayerAction.Stop -> optimisticPause()
 
-            is PlayerAction.ToggleShuffle -> updateOptimisticQueueInfo { it.copy(shuffleEnabled = !action.current) }
+            // Smart shuffle needs shuffle on, so turning it off clears the indicator at once; turning
+            // it on waits for the server, which alone knows the smart shuffle setting.
+            is PlayerAction.ToggleShuffle -> updateOptimisticQueueInfo {
+                it.copy(
+                    shuffleEnabled = !action.current,
+                    smartShuffleActive = it.smartShuffleActive && !action.current,
+                )
+            }
 
             is PlayerAction.ToggleRepeatMode -> {
                 val nextMode = when (action.current) {

@@ -7,6 +7,8 @@ data class QueueInfo(
     val available: Boolean,
     val currentIndex: Int?,
     val shuffleEnabled: Boolean,
+    /** The server orders the queue with smart shuffle. Display only; the shuffle toggle still applies. */
+    val smartShuffleActive: Boolean = false,
     val repeatMode: RepeatMode?,
     val autoPlayEnabled: Boolean?,
     val elapsedTime: Double?,
