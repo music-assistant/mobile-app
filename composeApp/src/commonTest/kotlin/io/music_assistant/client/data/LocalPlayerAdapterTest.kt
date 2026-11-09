@@ -13,6 +13,8 @@ import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.AudioStatus
+import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinPlayer
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
@@ -35,6 +38,7 @@ import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -225,6 +229,54 @@ class LocalPlayerAdapterTest {
         assertEquals(0.0, tracker.effectiveSec(QUEUE_ID))
     }
 
+    @Test
+    fun aPlayWhileThePlayerIsDisconnectedWaitsForTheConnection() = runBlocking<Unit> {
+        val local = playing()
+        adapter.onServerPlayerUpdate(local.copy(isPlaying = false))
+        player.state.value = PlayerState.Disabled
+
+        adapter.handleLocalCommand(requireNotNull(adapter.localPlayerData.value), PlayerAction.Play)
+
+        await { client.recoveries.value.takeIf { it > 0 } }
+        delay(SETTLE_MS)
+        assertTrue(client.sent.tryReceive().isFailure, "nothing before the player is connected")
+
+        player.connect()
+        assertEquals(PLAY, client.nextSent().command)
+    }
+
+    @Test
+    fun preparingAnOwnedQueueLiftsTheHoldAndWaitsForTheConnection() = runBlocking<Unit> {
+        val local = playing()
+        player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
+        client.nextSent()
+        assertTrue(player.held.value)
+
+        adapter.prepareQueue("someone-elses-queue")
+        assertTrue(player.held.value, "a foreign queue changes nothing")
+
+        player.state.value = PlayerState.Disabled
+        val prepared = launch { adapter.prepareQueue(local.id) }
+        await { player.held.value.takeUnless { it } }
+        delay(SETTLE_MS)
+        assertTrue(prepared.isActive, "waits for the player")
+        await { client.recoveries.value.takeIf { it > 0 } }
+
+        player.connect()
+        prepared.join()
+    }
+
+    @Test
+    fun theLocalPlayerOwnsItsIdItsQueueAndTheQueueItIsSyncedTo() = runBlocking<Unit> {
+        val local = playing()
+        adapter.onServerPlayerUpdate(local.copy(queueId = "leader-queue"))
+
+        assertTrue(adapter.ownsQueue(local.id))
+        assertTrue(adapter.ownsQueue("leader-queue"))
+        assertFalse(adapter.ownsQueue("office"))
+        assertNull(adapter.localPlayerData.value?.queueId, "no queue forwarded yet")
+    }
+
     /** The local player plays item [currentIndex] of [itemCount], paused in the tracker at a known position. */
     private suspend fun playingAt(currentIndex: Int, itemCount: Int) {
         playing()
@@ -246,8 +298,15 @@ class LocalPlayerAdapterTest {
         tracker.setAnchor(QUEUE_ID, elapsedSec = EPISODE_POSITION_SEC, isPlaying = false)
     }
 
-    /** Injects the synthetic local player and lets the server report it as playing. */
+    /**
+     * Injects the synthetic local player and lets the server report it as playing. The adapter
+     * mirrors the connected player id into the settings on its own scope, so the injection waits
+     * for it: a synthetic made before the mirror lands carries the old id, and the test would then
+     * push that id back through the server update.
+     */
     private suspend fun playing(): Player {
+        player.connect()
+        await { settings.sendspinEffectivePlayerId.value.takeIf { it == PLAYER_ID } }
         adapter.onInitialPlayersReceived(hasLocalPlayer = false)
         val synthetic = await { adapter.localPlayerData.value?.player }
         adapter.onServerPlayerUpdate(synthetic.copy(isPlaying = true))
@@ -272,6 +331,10 @@ class LocalPlayerAdapterTest {
 
         override fun hold(held: Boolean) {
             this.held.value = held
+        }
+
+        fun connect() {
+            state.value = PlayerState.Connected(PLAYER_ID, "server", ClockQuality.Good, AudioStatus.IDLE)
         }
 
         /** Waits for [subscribers] collectors first: the flow has no replay. */
@@ -307,6 +370,7 @@ class LocalPlayerAdapterTest {
         val NEXT = APICommands.playersCmd("next")
         val STOP = APICommands.playersCmd("stop")
         const val QUEUE_ID = "queue"
+        const val PLAYER_ID = "player"
         const val EPISODE_POSITION_SEC = 1800.0
         const val TIMEOUT_MS = 5_000L
         const val POLL_MS = 10L

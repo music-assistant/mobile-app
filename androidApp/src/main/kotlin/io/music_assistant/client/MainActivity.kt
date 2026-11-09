@@ -18,6 +18,7 @@ import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.services.MainMediaPlaybackService
+import io.music_assistant.client.services.isAnyQueueItemPlaying
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject
@@ -54,7 +55,7 @@ class MainActivity : ComponentActivity() {
         // Handle OAuth callback / page deep link if launched from one
         handleIncomingUri(intent)
 
-        dataSource.isAnythingPlaying.asLiveData()
+        dataSource.isAnyQueueItemPlaying.asLiveData()
             .observe(this) {
                 if (it) {
                     val serviceIntent = Intent(this, MainMediaPlaybackService::class.java)
