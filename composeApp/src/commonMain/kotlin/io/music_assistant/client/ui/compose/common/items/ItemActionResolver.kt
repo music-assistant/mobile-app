@@ -19,7 +19,7 @@ import io.music_assistant.client.data.model.server.PlayMediaSupport
 
 /** Item types accepted by playlist edits (server contract, not a UI choice). */
 val AppMediaItem.supportsAddToPlaylist: Boolean
-    get() = this is Track || this is Album || this is RadioStation ||
+    get() = this is Track || (this is Album && !isMusicBrainzRelease) || this is RadioStation ||
             this is PodcastEpisode || this is Audiobook
 
 /**

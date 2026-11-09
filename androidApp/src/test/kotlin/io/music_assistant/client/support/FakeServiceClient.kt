@@ -149,6 +149,25 @@ class FakeServiceClient : ServiceClient {
                 Result.success(answer(request = request, result = item))
             }
 
+            // A `musicbrainz` discography release resolves to an album on a music provider.
+            APICommands.MUSIC_ITEM -> {
+                val item = when (request.getArg("provider_instance_id_or_domain")) {
+                    ServerMediaItem.MUSICBRAINZ_PROVIDER ->
+                        mediaItemStore.resolveMusicBrainzRelease(request.getArg("item_id"))
+
+                    else -> findItem(request)
+                }
+                Result.success(answer(request = request, result = item.enrichLibraryItem()))
+            }
+
+            APICommands.MUSIC_ARTISTS_ARTIST_APPEARS_ON -> {
+                Result.success(answer(request, mediaItemStore.getAppearsOn(request.getArg("item_id"))))
+            }
+
+            APICommands.MUSIC_ARTISTS_DISCOGRAPHY -> {
+                Result.success(answer(request, mediaItemStore.getDiscography(request.getArg("item_id"))))
+            }
+
             APICommands.MUSIC_ITEM_BY_URI -> {
                 val item = mediaItemStore.getByUri(request.getArg("uri"))!!
                 Result.success(answer(request = request, result = item.enrichLibraryItem()))
@@ -938,6 +957,19 @@ class FakeServiceClient : ServiceClient {
 
     fun setPlaylist(playlist: ServerMediaItem, vararg tracks: ServerMediaItem) {
         mediaItemStore.setPlaylist(playlist, *tracks)
+    }
+
+    fun setAppearsOn(artist: ServerMediaItem, vararg albums: ServerMediaItem) {
+        mediaItemStore.setAppearsOn(artist, *albums)
+    }
+
+    /** [releases] holds library albums and `musicbrainz` albums, like the server listing. */
+    fun setDiscography(artist: ServerMediaItem, vararg releases: ServerMediaItem) {
+        mediaItemStore.setDiscography(artist, *releases)
+    }
+
+    fun setMusicBrainzRelease(releaseGroupId: String, album: ServerMediaItem) {
+        mediaItemStore.setMusicBrainzRelease(releaseGroupId, album)
     }
 
     fun setTopTracks(artist: ServerMediaItem, vararg tracks: ServerMediaItem) {

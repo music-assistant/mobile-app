@@ -33,6 +33,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.hasFiniteTracklist
 import io.music_assistant.client.data.model.client.items.ownerLine
 import io.music_assistant.client.data.model.client.items.refreshItemAction
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
@@ -276,7 +277,11 @@ class ItemDetailsViewModel(
     ): AppMediaItem? {
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.get(itemId, providerId)
-            MediaType.ALBUM -> Request.Album.get(itemId, providerId)
+            MediaType.ALBUM -> if (providerId == ServerMediaItem.MUSICBRAINZ_PROVIDER) {
+                Request.Library.item(mediaType, itemId, providerId)
+            } else {
+                Request.Album.get(itemId, providerId)
+            }
             MediaType.PLAYLIST -> Request.Playlist.get(itemId, providerId)
             MediaType.RADIO -> Request.RadioStation.get(itemId, providerId)
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)

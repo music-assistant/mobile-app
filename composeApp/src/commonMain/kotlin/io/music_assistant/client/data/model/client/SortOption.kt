@@ -101,6 +101,8 @@ object SortConfig {
         SubItemContext.ARTIST_TOP_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_APPEARS_ON,
+        SubItemContext.ARTIST_DISCOGRAPHY,
         -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.ARTIST_NAME, SortField.YEAR)
         SubItemContext.ARTIST_AUDIOBOOKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
     }
@@ -121,6 +123,8 @@ object SortConfig {
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_APPEARS_ON,
+        SubItemContext.ARTIST_DISCOGRAPHY,
         SubItemContext.ARTIST_AUDIOBOOKS,
         -> SortOption(SortField.ORIGINAL)
         else -> SortOption(SortField.NAME)
@@ -143,6 +147,10 @@ enum class SubItemContext {
     ARTIST_TOP_TRACKS,
     ARTIST_ALL_ALBUMS,
     ARTIST_LIBRARY_ALBUMS,
+
+    // Server 2.11, newest first by default.
+    ARTIST_APPEARS_ON,
+    ARTIST_DISCOGRAPHY,
 
     // The audiobooks of an author or a narrator, in the library and on a provider.
     ARTIST_AUDIOBOOKS,

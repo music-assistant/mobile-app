@@ -196,6 +196,18 @@ actual class PlatformFeature {
   type, so a stored choice does not narrow the podcast or audiobook genres. The episodes tab of a podcast has its own played filter
   (`PlayedFilter`, one setting for all podcasts). The app sends `fully_played=false` and filters the
   answer as well, because a 2.10 server ignores the argument.
+- **Artist rows**: `ArtistDetailsViewModel` gives a singer the rows Top tracks, Albums, Singles & EPs,
+  Appears on and Discography, like the web frontend. Albums and Singles & EPs list the same sources: the
+  library first, then each provider instance. `FetchArtistItemsUseCase` fetches each source once, and
+  `ArtistReleases` splits the answer on the client by `album_type`, so the split works on server 2.10.
+  An `ItemList` keeps its `releases`, and `ItemList.select` applies them to "View all" too. Appears on
+  (`music/artists/artist_appears_on`) and Discography (`music/artists/discography`) need server 2.11
+  (`supportsArtistAppearsOnAndDiscography`) and a library artist. The discography shows all release
+  types. A release that no music provider has is an `Album` with provider `musicbrainz`
+  (`isMusicBrainzRelease`). It is not playable, so the row dims it and its menu offers "Add to
+  library" only. A tap opens the item page, and `ItemDetailsViewModel` loads it with `music/item`,
+  which resolves it to the album on a music provider. An author or a narrator keeps the rows In
+  library and All audiobooks.
 - **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,

@@ -105,11 +105,15 @@
   <string name="announcement_title">Play announcement</string>
   <string name="announcement_volume">Volume: %1$d</string>
   <string name="app_name">Music Assistant</string>
-  <string name="artist_section_all">Discography</string>
+  <string name="artist_section_albums">Albums</string>
+  <string name="artist_section_appears_on">Appears on</string>
+  <string name="artist_section_discography">Discography</string>
   <string name="artist_section_all_audiobooks">All audiobooks</string>
   <string name="artist_section_in_library">In library</string>
+  <string name="artist_section_singles_eps">Singles &amp; EPs</string>
   <string name="artist_section_top">Top tracks</string>
   <string name="artist_source_all">All</string>
+  <string name="artist_source_library">Library</string>
   <string name="artist_type_authors">Authors</string>
   <string name="artist_type_narrators">Narrators</string>
   <string name="auth_authenticating">Authenticating…</string>

@@ -9,6 +9,7 @@ import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.ListSort
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.SortWire
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerialName
@@ -802,6 +803,23 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             providerInstanceIdOrDomain,
             limit = limit,
         )
+
+        /** The albums a library artist appears on without being an album artist (server 2.11). */
+        fun getAppearsOn(libraryItemId: String) = Library.subItems(
+            APICommands.MUSIC_ARTISTS_ARTIST_APPEARS_ON,
+            libraryItemId,
+            ServerMediaItem.LIBRARY_PROVIDER,
+        )
+
+        /**
+         * The discography of a library artist as MusicBrainz knows it (server 2.11): the library
+         * albums, and a `musicbrainz` album for each release outside the library.
+         */
+        fun getDiscography(libraryItemId: String) = Library.subItems(
+            APICommands.MUSIC_ARTISTS_DISCOGRAPHY,
+            libraryItemId,
+            ServerMediaItem.LIBRARY_PROVIDER,
+        )
     }
 
     data object Album {
@@ -1021,6 +1039,16 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("item", JsonPrimitive(itemUri))
                 put("favorite", JsonPrimitive(favorite))
+            },
+        )
+
+        /** Any item by type and provider. Resolves a `musicbrainz` release to an album (server 2.11). */
+        fun item(mediaType: MediaType, itemId: String, providerInstanceIdOrDomain: String) = Request(
+            command = APICommands.MUSIC_ITEM,
+            args = buildJsonObject {
+                put("media_type", JsonPrimitive(mediaType.serverValue))
+                put("item_id", JsonPrimitive(itemId))
+                put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
             },
         )
 

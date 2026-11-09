@@ -14,6 +14,13 @@ internal class FakeMediaItemStore {
     // The audiobooks an author or narrator is credited on, by the artist's global id.
     private val artistAudiobooks = mutableMapOf<Pair<String, String>, List<String>>()
 
+    // The server 2.11 `artist_appears_on` and `discography` listings, by the artist's global id.
+    private val appearsOn = mutableMapOf<Pair<String, String>, List<ServerMediaItem>>()
+    private val discographies = mutableMapOf<Pair<String, String>, List<ServerMediaItem>>()
+
+    // The album that a MusicBrainz release group resolves to, by the release group id.
+    private val musicBrainzReleases = mutableMapOf<String, ServerMediaItem>()
+
     // The server's `content_type` of a genre; a genre without an entry is in the music taxonomy.
     private val genreContentTypes = mutableMapOf<Pair<String, String>, String>()
 
@@ -52,6 +59,30 @@ internal class FakeMediaItemStore {
     fun setArtistAudiobooks(artist: ServerMediaItem, vararg audiobooks: ServerMediaItem) {
         artistAudiobooks[artist.globalId()] = audiobooks.map { it.itemId }
     }
+
+    fun setAppearsOn(artist: ServerMediaItem, vararg albums: ServerMediaItem) {
+        appearsOn[artist.globalId()] = albums.toList()
+    }
+
+    fun getAppearsOn(libraryId: String): List<ServerMediaItem> =
+        globalIdsOf(libraryId).flatMap { appearsOn[it].orEmpty() }
+
+    fun setDiscography(artist: ServerMediaItem, vararg albums: ServerMediaItem) {
+        discographies[artist.globalId()] = albums.toList()
+    }
+
+    fun getDiscography(libraryId: String): List<ServerMediaItem> =
+        globalIdsOf(libraryId).flatMap { discographies[it].orEmpty() }
+
+    fun setMusicBrainzRelease(releaseGroupId: String, album: ServerMediaItem) {
+        musicBrainzReleases[releaseGroupId] = album
+    }
+
+    fun resolveMusicBrainzRelease(releaseGroupId: String): ServerMediaItem =
+        musicBrainzReleases.getValue(releaseGroupId)
+
+    private fun globalIdsOf(libraryId: String): List<Pair<String, String>> =
+        libraryIds.entries.filter { it.value == libraryId }.map { it.key }
 
     fun getAudiobooksByArtist(artist: ServerMediaItem): List<ServerMediaItem> {
         return mediaItems
