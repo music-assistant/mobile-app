@@ -3,15 +3,22 @@ package io.music_assistant.client.ui.compose.home.players
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueue
+import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTrack
 import io.music_assistant.client.support.get
+import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.providers.MdiCodepoints
 import io.music_assistant.client.ui.compose.support.inScrollable
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.players_group_settings
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -108,6 +115,30 @@ class SelectPlayerDialogTest {
         composeTestRule.onNodeWithText(Res.string.players_group_settings.get()).assertIsDisplayed()
     }
 
+    @Test
+    fun `shows nothing playing and no transport button for an empty queue`() {
+        val idle = PlayerDataFixtures.playerData()
+
+        setDialog(idle, listOf(idle), hideUnavailable = false)
+
+        composeTestRule.onNodeWithText("Nothing playing").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Pause").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("Play").assertDoesNotExist()
+    }
+
+    @Test
+    fun `shows the current title and sends play pause for the row player`() {
+        val track = AppMediaItemFixtures.track()
+        val playing = PlayerDataFixtures.playerData(listOf(track.toQueueTrack()).toQueue())
+        val sent = mutableListOf<Pair<PlayerData, PlayerAction>>()
+
+        setDialog(playing, listOf(playing), hideUnavailable = false) { data, action -> sent += data to action }
+        composeTestRule.onNodeWithText(track.displayName).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Pause").performClick()
+
+        assertEquals(listOf(playing to PlayerAction.TogglePlayPause), sent)
+    }
+
     private fun playersWithOneUnavailable(): Triple<PlayerData, PlayerData, PlayerData> {
         val unavailable = PlayerDataFixtures.playerData().let {
             it.copy(player = it.player.copy(isAvailable = false))
@@ -115,7 +146,12 @@ class SelectPlayerDialogTest {
         return Triple(PlayerDataFixtures.playerData(), PlayerDataFixtures.playerData(), unavailable)
     }
 
-    private fun setDialog(selected: PlayerData, players: List<PlayerData>, hideUnavailable: Boolean) {
+    private fun setDialog(
+        selected: PlayerData,
+        players: List<PlayerData>,
+        hideUnavailable: Boolean,
+        onTransportAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
+    ) {
         composeTestRule.setContent {
             KoinApplication(
                 configuration = koinConfiguration(declaration = {
@@ -126,6 +162,7 @@ class SelectPlayerDialogTest {
                         selectedPlayer = selected,
                         players = players,
                         hideUnavailable = hideUnavailable,
+                        onTransportAction = onTransportAction,
                     )
                 },
             )
