@@ -121,6 +121,8 @@ object APICommands {
     const val PROVIDERS = "providers"
     const val PROVIDERS_ICON = "providers/icon"
     const val CONFIG_PROVIDERS_SHARE_CANDIDATES = "config/providers/share_candidates"
+    const val CONFIG_PROVIDERS_GET = "config/providers/get"
+    const val CONFIG_PROVIDERS_SAVE = "config/providers/save"
 
     // Items
     const val MUSIC_ITEM = "music/item"

@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -128,7 +127,6 @@ import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_explore
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_menu
-import musicassistantclient.composeapp.generated.resources.nav_party
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.nav_system
@@ -316,14 +314,16 @@ fun MainNavigationRoot(
 
     var partySheetOpen by remember { mutableStateOf(false) }
     if (partySheetOpen) {
-        val partyInvite by partyViewModel.invite.collectAsStateWithLifecycle()
-        LaunchedEffect(Unit) { partyViewModel.load() }
-        PartyInviteSheet(state = partyInvite, onDismiss = { partySheetOpen = false })
+        val partyState by partyViewModel.state.collectAsStateWithLifecycle()
+        DisposableEffect(partyViewModel) {
+            partyViewModel.open()
+            onDispose { partyViewModel.close() }
+        }
+        PartyInviteSheet(state = partyState, actions = partyViewModel, onDismiss = { partySheetOpen = false })
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         val libraryCategories by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
-        val partyAvailable by partyViewModel.available.collectAsStateWithLifecycle()
         // The player lies over the screens, so picking a destination has to close it first.
         val closePlayerFirst: (NavigationItem) -> NavigationItem = { item ->
             item.copy(onClick = {
@@ -340,6 +340,10 @@ fun MainNavigationRoot(
                 val toAdd = when (category) {
                     LibraryCategory.BROWSE -> MainNav.Browse(path = null, title = null)
                     LibraryCategory.AI_RADIO -> MainNav.AiRadio
+                    LibraryCategory.PARTY -> {
+                        partySheetOpen = true
+                        null
+                    }
                     else -> category.mediaType?.let { MainNav.LibraryList(it) }
                 }
 
@@ -348,7 +352,6 @@ fun MainNavigationRoot(
                 }
             },
             goToSettings = goToSettings,
-            openParty = { partySheetOpen = true }.takeIf { partyAvailable },
         ).map { section -> section.copy(items = section.items.map(closePlayerFirst)) }
 
         val playSelectionItem: NavigationItem? = playersState.let { state ->
@@ -506,7 +509,6 @@ private fun navigationItems(
     categories: List<LibraryCategoriesViewModel.CategoryState>,
     goToLibraryCategory: (LibraryCategory) -> Unit,
     goToSettings: () -> Unit,
-    openParty: (() -> Unit)?,
 ): List<Section> {
     val categoryItems = categories.map {
         NavigationItem(
@@ -520,7 +522,9 @@ private fun navigationItems(
         )
     }
     // Browse sits in Explore, like in the web frontend. It can be hidden, but it keeps its place.
-    val (browse, libraryItems) = categoryItems.partition { it.id == LibraryCategory.BROWSE.name }
+    // Party sits in System, because the app has no plugin section. It can be hidden too.
+    val (browse, others) = categoryItems.partition { it.id == LibraryCategory.BROWSE.name }
+    val (party, libraryItems) = others.partition { it.id == LibraryCategory.PARTY.name }
 
     val explore = Section(
         title = stringResource(Res.string.nav_explore),
@@ -546,26 +550,13 @@ private fun navigationItems(
         reorderable = true,
     )
 
-    // Only while the server has the Party plugin. The web frontend lists it with its plugins.
-    // The app has no plugin section, so it sits in System.
-    val party = openParty?.let {
-        NavigationItem(
-            selected = false,
-            onClick = it,
-            icon = Icons.Default.Celebration,
-            label = stringResource(Res.string.nav_party),
-        )
-    }
     val system = Section(
         title = stringResource(Res.string.nav_system),
-        items = listOfNotNull(
-            party,
-            NavigationItem(
-                selected = false,
-                onClick = goToSettings,
-                icon = Icons.Default.Settings,
-                label = stringResource(Res.string.nav_settings),
-            ),
+        items = party + NavigationItem(
+            selected = false,
+            onClick = goToSettings,
+            icon = Icons.Default.Settings,
+            label = stringResource(Res.string.nav_settings),
         ),
     )
 

@@ -233,6 +233,7 @@
   <string name="common_delete">Delete</string>
   <string name="common_dismiss">Dismiss</string>
   <string name="common_done">Done</string>
+  <string name="common_save">Save</string>
   <string name="connection_lost">Disconnected — reconnecting…</string>
   <string name="default_click_dialog_save">Save</string>
   <string name="default_click_dialog_title">Default click action</string>
@@ -362,9 +363,13 @@
   <string name="not_connected_retry">Not connected — try again when reconnected</string>
   <string name="party_copy_link">Copy link</string>
   <string name="party_guest_access_off">Guest access is off. Turn it on in the Party plugin settings on the server.</string>
+  <string name="party_guest_access_off_host">Set up the party, then turn on guest access to show the QR code.</string>
   <string name="party_invite_error">Could not load the party link.</string>
   <string name="party_link_copied">Link copied</string>
+  <string name="party_save_failed">Could not save the party settings.</string>
   <string name="party_scan_to_join">Scan the QR code to join the party!</string>
+  <string name="party_settings">Party settings</string>
+  <string name="party_settings_error">Could not load the party settings.</string>
   <string name="playback_speed_dialog_title">Playback speed</string>
   <string name="player_autoplay">Autoplay</string>
   <string name="player_crossfade">Crossfade</string>

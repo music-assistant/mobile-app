@@ -178,6 +178,7 @@ fun sharedModule(
             PartyRepository(
                 apiClient = get(),
                 providerRepository = get(),
+                grantedScopes = get<MainDataSource>().grantedScopes,
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
@@ -249,7 +250,7 @@ fun sharedModule(
                 sessionStateFlow = get<ServiceClient>().sessionState,
             )
         }
-        factory { LibraryCategoriesViewModel(get(), get()) }
+        factory { LibraryCategoriesViewModel(get(), get(), get()) }
         factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get(), get(), get(), get()) }
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->

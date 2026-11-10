@@ -49,8 +49,11 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.util.concurrent.atomic.AtomicBoolean
 
 class FakeServiceClient : ServiceClient {
@@ -71,9 +74,13 @@ class FakeServiceClient : ServiceClient {
         private set
     private val providers = mutableListOf<ServerProviderInstance>()
 
-    /** The Party plugin answers: the join link (null while guest access is off) and the party name. */
+    /** The Party plugin: the join link that guest access hands out, and the settings that a save changes. */
     var partyUrl: String? = null
     var partyName: String? = null
+    var partyGuestAccess = true
+
+    /** Scopes that the test user gets on top of the default role scopes. */
+    val extraScopes = mutableSetOf<String>()
 
     val username = "user"
     val password = "password"
@@ -142,7 +149,7 @@ class FakeServiceClient : ServiceClient {
                                 Scope.LIBRARY_WRITE,
                                 Scope.LIBRARY_MANAGE,
                                 Scope.QUEUES_CONTROL,
-                            ),
+                            ) + extraScopes,
                         ),
                     ),
                 )
@@ -635,7 +642,16 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
-            APICommands.PARTY_URL -> Result.success(answer(request, partyUrl))
+            APICommands.PARTY_URL -> Result.success(answer(request, partyUrl?.takeIf { partyGuestAccess }))
+
+            APICommands.CONFIG_PROVIDERS_GET -> Result.success(answer(request, partyProviderConfig()))
+
+            APICommands.CONFIG_PROVIDERS_SAVE -> {
+                val values = request.args!!["values"]!!.jsonObject
+                values["enable_guest_access"]?.jsonPrimitive?.boolean?.let { partyGuestAccess = it }
+                values["party_name"]?.jsonPrimitive?.content?.let { partyName = it }
+                Result.success(answer(request, partyProviderConfig()))
+            }
 
             APICommands.PARTY_CONFIG -> Result.success(answer(request, ServerPartyConfig(partyName = partyName)))
 
@@ -896,6 +912,22 @@ class FakeServiceClient : ServiceClient {
 
     fun setPreference(key: String, value: JsonElement) {
         preferences = JsonObject(preferences + (key to value))
+    }
+
+    private fun partyProviderConfig(): JsonObject = buildJsonObject {
+        put(
+            "values",
+            buildJsonObject {
+                put("enable_guest_access", configEntry("boolean", "Guest access", JsonPrimitive(partyGuestAccess)))
+                put("party_name", configEntry("string", "Party Name", JsonPrimitive(partyName.orEmpty())))
+            },
+        )
+    }
+
+    private fun configEntry(type: String, label: String, value: JsonPrimitive) = buildJsonObject {
+        put("type", JsonPrimitive(type))
+        put("label", JsonPrimitive(label))
+        put("value", value)
     }
 
     fun addProvider(provider: ServerProviderInstance) {

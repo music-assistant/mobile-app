@@ -50,6 +50,8 @@ fun reconcileCarTabs(
  * Drop the categories the server cannot serve right now. [LibraryCategory.AI_RADIO] exists only
  * while the optional `ai_radio` plugin is loaded and the user holds its scope, so it is hidden
  * from the grid, from the tab editor and from both car browse trees when it is not.
+ * [LibraryCategory.PARTY] exists only while the `party` plugin is loaded. The car tabs never
+ * hold it, so their callers leave [partyAvailable] false.
  *
  * Filtering for display only — the stored config keeps its entry, see [applySidebarEdit]
  * and [mergeHiddenCategories].
@@ -57,8 +59,15 @@ fun reconcileCarTabs(
 fun visibleCategories(
     reconciled: List<Pair<LibraryCategory, Boolean>>,
     aiRadioAvailable: Boolean,
+    partyAvailable: Boolean = false,
 ): List<Pair<LibraryCategory, Boolean>> =
-    reconciled.filter { (category, _) -> category != LibraryCategory.AI_RADIO || aiRadioAvailable }
+    reconciled.filter { (category, _) ->
+        when (category) {
+            LibraryCategory.AI_RADIO -> aiRadioAvailable
+            LibraryCategory.PARTY -> partyAvailable
+            else -> true
+        }
+    }
 
 /**
  * Re-append the categories [visibleCategories] hid, keeping their stored enabled flag. For the

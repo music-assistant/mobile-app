@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.Scope
 import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
@@ -22,6 +23,8 @@ import org.junit.runner.RunWith
 import org.koin.java.KoinJavaComponent.inject
 import org.robolectric.annotation.Config
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = Qualifiers.MEDIUM_PHONE)
@@ -70,5 +73,42 @@ class PartyTest {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickParty()
             .assertGuestAccessOff()
+            .assertNoSettings()
+    }
+
+    @Test
+    fun `the host renames the party and ends it from the sheet`() {
+        serviceClient.extraScopes += listOf(Scope.CONFIG_PROVIDERS_READ, Scope.CONFIG_PROVIDERS_WRITE)
+        serviceClient.partyUrl = link
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickParty()
+            .assertInvite(title = Res.string.nav_party.get(), link = link)
+            .expandSettings()
+            .type(label = "Party Name", text = "Summer party")
+            .save()
+            .assertInvite(title = "Summer party", link = link)
+            .toggleGuestAccess(label = "Guest access")
+            .assertHostGuestAccessOff()
+
+        assertEquals("Summer party", serviceClient.partyName)
+        assertFalse(serviceClient.partyGuestAccess)
+    }
+
+    @Test
+    fun `the host sets up the party and starts it with the switch`() {
+        serviceClient.extraScopes += listOf(Scope.CONFIG_PROVIDERS_READ, Scope.CONFIG_PROVIDERS_WRITE)
+        serviceClient.partyUrl = link
+        serviceClient.partyGuestAccess = false
+
+        launchLoggedInApp(composeTestRule, serviceClient)
+            .clickParty()
+            .assertHostGuestAccessOff()
+            .type(label = "Party Name", text = "Summer party")
+            .toggleGuestAccess(label = "Guest access")
+            .assertInvite(title = "Summer party", link = link)
+
+        assertEquals("Summer party", serviceClient.partyName)
+        assertTrue(serviceClient.partyGuestAccess)
     }
 }
