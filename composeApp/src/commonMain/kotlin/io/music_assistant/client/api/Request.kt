@@ -549,6 +549,25 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         /** The users a playlist can be shared with, the caller included. Server 2.11. */
         fun shareCandidates() = Request(command = APICommands.CONFIG_PROVIDERS_SHARE_CANDIDATES)
 
+        /** The config of a loaded instance, with its entries. Needs `config.providers.read`. */
+        fun config(instanceId: String) = Request(
+            command = APICommands.CONFIG_PROVIDERS_GET,
+            args = buildJsonObject { put("instance_id", JsonPrimitive(instanceId)) },
+        )
+
+        /**
+         * Stores [values] (only the given keys) and answers with the full config. The server then
+         * reloads the provider. Needs `config.providers.write` for a provider the user does not own.
+         */
+        fun saveConfig(domain: String, instanceId: String, values: Map<String, JsonPrimitive>) = Request(
+            command = APICommands.CONFIG_PROVIDERS_SAVE,
+            args = buildJsonObject {
+                put("provider_domain", JsonPrimitive(domain))
+                put("instance_id", JsonPrimitive(instanceId))
+                put("values", JsonObject(values))
+            },
+        )
+
         fun icon(providerDomain: String, variant: String? = null) = Request(
             command = APICommands.PROVIDERS_ICON,
             args = buildJsonObject {
@@ -1257,5 +1276,16 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                 put("host_id", hostId?.let(::JsonPrimitive) ?: JsonNull)
             },
         )
+    }
+
+    /**
+     * The optional `party` plugin provider (checked on server 2.10.9 and 2.11). Gate the call sites on
+     * `PartyRepository.available`. Both need `providers.read`.
+     */
+    data object Party {
+        /** The guest join URL, or null while guest access is off. */
+        fun url() = Request(command = APICommands.PARTY_URL)
+
+        fun config() = Request(command = APICommands.PARTY_CONFIG)
     }
 }

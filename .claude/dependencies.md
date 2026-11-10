@@ -28,6 +28,7 @@
 
 ## Utilities
 - **Kermit** - Multiplatform logging
+- **QRose encoder** (`qrose-encoder-matrix` 1.3.1) - Makes the QR bit matrix of the party invite. It has no Compose dependency. `QrCode` draws the matrix.
 - **Reorderable** - Drag-drop list reordering
 - **mDNS** - Sendspin service discovery/advertising
 

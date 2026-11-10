@@ -4,6 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
@@ -41,17 +42,30 @@ data class ServerPlayerConfig(
     }
 }
 
-/** One entry of a player config. A null [value] means that [defaultValue] applies. */
+/**
+ * One entry of a player or provider config. A null [value] means that [defaultValue] applies.
+ * The server translates [label], [description] and the option titles for the connection.
+ */
 @Serializable
 data class ServerConfigEntry(
     val value: JsonElement? = null,
     @SerialName("default_value") val defaultValue: JsonElement? = null,
     val range: List<Int>? = null,
+    val type: String? = null,
+    val label: String? = null,
+    val description: String? = null,
+    val options: List<ServerConfigValueOption> = emptyList(),
+    @SerialName("depends_on") val dependsOn: String? = null,
+    @SerialName("depends_on_value") val dependsOnValue: JsonElement? = null,
 ) {
-    private val effective: JsonPrimitive? get() = (value ?: defaultValue) as? JsonPrimitive
+    /** The effective value: [value], or [defaultValue] when the entry has no stored value. */
+    val effective: JsonPrimitive? get() = (value ?: defaultValue) as? JsonPrimitive
 
     /** The effective integer value, or null for an entry of another type. */
     val intValue: Int? get() = effective?.intOrNull
+
+    /** The effective boolean value, or null for an entry of another type. */
+    val booleanValue: Boolean? get() = effective?.booleanOrNull
 
     /** The effective string value, or null for an entry of another type. */
     val stringValue: String? get() = effective?.takeIf { it.isString }?.content
@@ -59,3 +73,16 @@ data class ServerConfigEntry(
     /** The `(min, max)` range as a Kotlin range, or null if the entry has none. */
     val intRange: IntRange? get() = range?.takeIf { it.size == 2 }?.let { it[0]..it[1] }
 }
+
+/** A choice of a config entry. A null [title] means that the server has no name for it. */
+@Serializable
+data class ServerConfigValueOption(
+    val value: JsonElement,
+    val title: String? = null,
+)
+
+/** The `config/providers/get` answer, cut to the entries, keyed like [ServerPlayerConfig]. */
+@Serializable
+data class ServerProviderConfig(
+    val values: Map<String, ServerConfigEntry> = emptyMap(),
+)

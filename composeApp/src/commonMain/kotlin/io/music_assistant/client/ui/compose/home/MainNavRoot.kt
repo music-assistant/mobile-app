@@ -107,6 +107,8 @@ import io.music_assistant.client.ui.compose.library.LibraryListViewModel
 import io.music_assistant.client.ui.compose.library.icon
 import io.music_assistant.client.ui.compose.library.stringResource
 import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
+import io.music_assistant.client.ui.compose.party.PartyInviteSheet
+import io.music_assistant.client.ui.compose.party.PartyViewModel
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
@@ -146,6 +148,7 @@ fun MainNavigationRoot(
     providerViewModel: ProviderViewModel = koinViewModel(),
     queueDjViewModel: QueueDjViewModel = koinViewModel(),
     libraryCategoriesViewModel: LibraryCategoriesViewModel = koinViewModel(),
+    partyViewModel: PartyViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
     val toastState = rememberToastState()
@@ -309,6 +312,16 @@ fun MainNavigationRoot(
         }
     }
 
+    var partySheetOpen by remember { mutableStateOf(false) }
+    if (partySheetOpen) {
+        val partyState by partyViewModel.state.collectAsStateWithLifecycle()
+        DisposableEffect(partyViewModel) {
+            partyViewModel.open()
+            onDispose { partyViewModel.close() }
+        }
+        PartyInviteSheet(state = partyState, actions = partyViewModel, onDismiss = { partySheetOpen = false })
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         val libraryCategories by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
         // The player lies over the screens, so picking a destination has to close it first.
@@ -327,6 +340,10 @@ fun MainNavigationRoot(
                 val toAdd = when (category) {
                     LibraryCategory.BROWSE -> MainNav.Browse(path = null, title = null)
                     LibraryCategory.AI_RADIO -> MainNav.AiRadio
+                    LibraryCategory.PARTY -> {
+                        partySheetOpen = true
+                        null
+                    }
                     else -> category.mediaType?.let { MainNav.LibraryList(it) }
                 }
 
@@ -505,7 +522,9 @@ private fun navigationItems(
         )
     }
     // Browse sits in Explore, like in the web frontend. It can be hidden, but it keeps its place.
-    val (browse, libraryItems) = categoryItems.partition { it.id == LibraryCategory.BROWSE.name }
+    // Party sits in System, because the app has no plugin section. It can be hidden too.
+    val (browse, others) = categoryItems.partition { it.id == LibraryCategory.BROWSE.name }
+    val (party, libraryItems) = others.partition { it.id == LibraryCategory.PARTY.name }
 
     val explore = Section(
         title = stringResource(Res.string.nav_explore),
@@ -533,13 +552,11 @@ private fun navigationItems(
 
     val system = Section(
         title = stringResource(Res.string.nav_system),
-        items = listOf(
-            NavigationItem(
-                selected = false,
-                onClick = goToSettings,
-                icon = Icons.Default.Settings,
-                label = stringResource(Res.string.nav_settings),
-            ),
+        items = party + NavigationItem(
+            selected = false,
+            onClick = goToSettings,
+            icon = Icons.Default.Settings,
+            label = stringResource(Res.string.nav_settings),
         ),
     )
 

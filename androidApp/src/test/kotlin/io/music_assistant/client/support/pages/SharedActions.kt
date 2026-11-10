@@ -47,6 +47,7 @@ import musicassistantclient.composeapp.generated.resources.media_type_radio
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_menu
+import musicassistantclient.composeapp.generated.resources.nav_party
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_nothing
@@ -177,6 +178,12 @@ fun <T : ComposePage> T.assertNavDrawerItemDisplayed(item: String): T {
     }
     composeTestRule.onNode(matcher).performScrollTo().assertIsDisplayed()
     return this
+}
+
+fun ComposePage.clickParty(): PartyPage {
+    assertNavDrawerItemDisplayed(Res.string.nav_party.get())
+    clickNavDrawerItem(Res.string.nav_party.get())
+    return PartyPage(composeTestRule)
 }
 
 fun ComposePage.clickSettings(): SettingsPage {

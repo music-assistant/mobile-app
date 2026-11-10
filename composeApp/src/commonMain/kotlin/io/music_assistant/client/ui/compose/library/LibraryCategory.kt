@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.library
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material.icons.filled.SmartToy
@@ -19,15 +20,17 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.ai_radio_title
 import musicassistantclient.composeapp.generated.resources.nav_browse
 import musicassistantclient.composeapp.generated.resources.nav_discover
+import musicassistantclient.composeapp.generated.resources.nav_party
 import org.jetbrains.compose.resources.StringResource
 
 enum class LibraryCategory {
-    ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES, BROWSE, AI_RADIO, HOME;
+    ARTISTS, ALBUMS, TRACKS, PLAYLISTS, AUDIOBOOKS, PODCASTS, RADIOS, GENRES, BROWSE, AI_RADIO, PARTY, HOME;
 
     /**
      * Null for the categories that are not server media types: path-based [BROWSE],
-     * [AI_RADIO], whose stations are plugin records rather than library items, and the
-     * car-only [HOME], whose rows are server recommendations.
+     * [AI_RADIO], whose stations are plugin records rather than library items, [PARTY], which
+     * opens the party sheet of the plugin, and the car-only [HOME], whose rows are server
+     * recommendations.
      */
     val mediaType: MediaType?
         get() = when (this) {
@@ -41,13 +44,15 @@ enum class LibraryCategory {
             GENRES -> MediaType.GENRE
             BROWSE -> null
             AI_RADIO -> null
+            PARTY -> null
             HOME -> null
         }
 }
 
 /**
- * Categories the phone sidebar shows: [LibraryCategory.BROWSE] in Explore, the others in Library.
- * [LibraryCategory.HOME] is car-only: the phone has its own home page.
+ * Categories the phone sidebar shows: [LibraryCategory.BROWSE] in Explore, [LibraryCategory.PARTY]
+ * in System, the others in Library. [LibraryCategory.HOME] is car-only: the phone has its own home
+ * page.
  */
 val libraryCategories: List<LibraryCategory> = LibraryCategory.entries - LibraryCategory.HOME
 
@@ -66,6 +71,7 @@ val carTabCategories: List<LibraryCategory> = listOf(
 fun LibraryCategory.stringResource(): StringResource = when (this) {
     LibraryCategory.BROWSE -> Res.string.nav_browse
     LibraryCategory.AI_RADIO -> Res.string.ai_radio_title
+    LibraryCategory.PARTY -> Res.string.nav_party
     LibraryCategory.HOME -> Res.string.nav_discover
     // Every remaining category is server-media-type backed, so its label comes from there.
     else -> checkNotNull(mediaType).stringResource()
@@ -82,5 +88,6 @@ fun LibraryCategory.icon(): ImageVector = when (this) {
     LibraryCategory.GENRES -> GenreIcon
     LibraryCategory.BROWSE -> Icons.Outlined.Folder
     LibraryCategory.AI_RADIO -> Icons.Default.SmartToy
+    LibraryCategory.PARTY -> Icons.Default.Celebration
     LibraryCategory.HOME -> Icons.Default.Explore
 }

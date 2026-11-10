@@ -121,6 +121,8 @@ object APICommands {
     const val PROVIDERS = "providers"
     const val PROVIDERS_ICON = "providers/icon"
     const val CONFIG_PROVIDERS_SHARE_CANDIDATES = "config/providers/share_candidates"
+    const val CONFIG_PROVIDERS_GET = "config/providers/get"
+    const val CONFIG_PROVIDERS_SAVE = "config/providers/save"
 
     // Items
     const val MUSIC_ITEM = "music/item"
@@ -149,6 +151,10 @@ object APICommands {
     const val AI_RADIO_HOSTS_LIST = "ai_radio/hosts/list"
     const val AI_RADIO_QUEUE_DJ_STATUS = "ai_radio/queue_dj/status"
     const val AI_RADIO_QUEUE_DJ_SET = "ai_radio/queue_dj/set"
+
+    // Party plugin (optional provider, domain "party"): the host side of guest access.
+    const val PARTY_URL = "party/url"
+    const val PARTY_CONFIG = "party/config"
 
     // DSP commands
     const val CONFIG_PLAYERS_DSP_GET = "config/players/dsp/get"

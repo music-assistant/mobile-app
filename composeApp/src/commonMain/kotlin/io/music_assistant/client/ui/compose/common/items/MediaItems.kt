@@ -552,7 +552,7 @@ private fun RowBadges(
 fun BoxScope.ProgressBadge(
     fullyPlayed: Boolean?,
     resumePositionMs: Long?,
-    badgeSize: Dp = 18.dp,
+    badgeSize: Dp = GRID_BADGE_SIZE,
     badgePadding: Dp = GRID_BADGE_PADDING,
 ) {
     ProgressBadge(

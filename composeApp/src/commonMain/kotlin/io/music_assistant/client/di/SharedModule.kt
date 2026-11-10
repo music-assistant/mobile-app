@@ -26,6 +26,7 @@ import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.PartyRepository
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
@@ -62,6 +63,7 @@ import io.music_assistant.client.ui.compose.library.AiRadioViewModel
 import io.music_assistant.client.ui.compose.library.BrowseViewModel
 import io.music_assistant.client.ui.compose.library.LibraryCategoriesViewModel
 import io.music_assistant.client.ui.compose.library.LibraryListViewModel
+import io.music_assistant.client.ui.compose.party.PartyViewModel
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.ui.compose.settings.CarActionsViewModel
@@ -172,6 +174,14 @@ fun sharedModule(
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
+        single {                            // Optional party plugin: the host's guest invite
+            PartyRepository(
+                apiClient = get(),
+                providerRepository = get(),
+                grantedScopes = get<MainDataSource>().grantedScopes,
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
         single {                            // Queue ambient sound overlay; Apply outlives the dialog
             QueueOverlayRepository(
                 apiClient = get(),
@@ -233,13 +243,14 @@ fun sharedModule(
         factory { CarActionsViewModel(get(), get()) }
         factory { CarDspViewModel(get(), get()) }
         factory { AiRadioViewModel(get(), get(), get()) }
+        factory { PartyViewModel(get()) }
         factory {
             AuthenticationViewModel(
                 auth = get(),
                 sessionStateFlow = get<ServiceClient>().sessionState,
             )
         }
-        factory { LibraryCategoriesViewModel(get(), get()) }
+        factory { LibraryCategoriesViewModel(get(), get(), get()) }
         factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get(), get(), get(), get()) }
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->

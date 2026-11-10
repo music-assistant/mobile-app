@@ -224,6 +224,26 @@ actual class PlatformFeature {
   target for each streaming service (its domain), and one target for each other provider instance.
   An empty choice searches everything. A genre-only search sends `library` only. The choice is saved
   before the search starts, and the search reads the sources when it starts, not from the screen state.
+- **Party**: the Party plugin (`party`, checked on server 2.10.9 and 2.11) lets guests add songs to one queue from
+  the web frontend. The app has the host side only. The sidebar category `LibraryCategory.PARTY` sits in
+  System while an available `party` provider is in the `providers` list (`PartyRepository.available`). It
+  opens `PartyInviteSheet`, which loads `party/url` and `party/config`. A null URL means that guest access
+  is off. `QrCode` (`ui/compose/common/`) draws the join URL.
+
+  A user with `config.providers.write` also gets the host settings. The plugin is not a music source that
+  a member owns, so `config.providers.own` is not enough. The guest access switch is the party on/off
+  switch, and it saves at once. The core fields are mode, player, party name, QR text, link duration and
+  karaoke. While the party is off, the host sets it up, and turning the switch on saves the edits in the same
+  save. An invalid edit blocks the switch. While the party is on, the QR comes first and the fields fold away
+  with their own Save button, because turning the party off revokes every guest token and join code. `PartyRepository` reads them with `config/providers/get` and saves only the changed keys
+  with `config/providers/save`. The server sends the labels in the language of the connection. A field
+  follows the `depends_on` of its entry, so the player shows in venue mode only.
+
+  A save reloads the plugin. The server sends `providers_updated` when the plugin unloads, and again
+  when it is loaded and has its commands. So the open sheet loads again on each `providers_updated`, and
+  a failed load keeps the last answer. The plugin reads the new config before the reload, so the sheet
+  loads the invite again right after a save. The guest side stays in the web frontend, because the server
+  lets a guest control every player. See `.claude/party-guest-investigation.md`.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its
   rows again 1.5 s after the last event, like the web app.
@@ -311,7 +331,8 @@ actual class PlatformFeature {
   `LibraryCategoriesViewModel` stores one config for all categories, which includes Browse. Browse can be hidden
   but it does not move, like in the web frontend. In edit mode, a `Section` with `reorderable` gets drag handles,
   and an item moves only inside its section. Only the Library section is reorderable. The editor sends a
-  `SidebarEdit`, and `applySidebarEdit` saves it. A category that the server hides (AI Radio) keeps its slot.
+  `SidebarEdit`, and `applySidebarEdit` saves it. A category that the server hides (AI Radio, Party) keeps its slot.
+  Party sits in System and can be hidden like Browse. The car tabs never hold it.
 - **Device chrome**: `DeviceChrome` (`ui-utils`) is the window geometry that the platform reports. It holds the area
   of the system vertical bar, the hinge of a book-style foldable and the fold. Read it from `LocalDeviceChrome`, which
   `App` provides. Only iOS gives a value, from iOS 27.1 (iPhone Duo). The probe in `ContentView.swift` reads it from

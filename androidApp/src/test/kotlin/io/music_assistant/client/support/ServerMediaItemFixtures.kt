@@ -2,6 +2,7 @@ package io.music_assistant.client.support
 
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
+import io.music_assistant.client.data.model.server.PARTY_DOMAIN
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerProviderInstance
@@ -258,6 +259,14 @@ object ServerMediaItemFixtures {
         domain = AI_RADIO_DOMAIN,
         instanceId = AI_RADIO_DOMAIN,
         name = "AI Radio",
+        type = "plugin",
+    )
+
+    /** The loaded `party` plugin, as the `providers` command lists it. */
+    fun partyPlugin(): ServerProviderInstance = ServerProviderInstance(
+        domain = PARTY_DOMAIN,
+        instanceId = PARTY_DOMAIN,
+        name = "Party",
         type = "plugin",
     )
 
