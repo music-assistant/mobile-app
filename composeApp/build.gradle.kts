@@ -145,6 +145,8 @@ kotlin {
             implementation(libs.ktor.client.webrtc)
 
             implementation(libs.easyqrscan)
+            // QR encoder only (a bit matrix); the party invite draws it with a Canvas.
+            implementation(libs.qrose.encoder.matrix)
 
             // Crypto primitives for the Sendspin Noise (encrypted) protocol.
             implementation(libs.cryptography.core)

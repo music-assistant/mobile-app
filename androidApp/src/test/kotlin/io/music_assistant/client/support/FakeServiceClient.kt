@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.server.Scope
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerPartyConfig
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerProviderInstance
@@ -69,6 +70,10 @@ class FakeServiceClient : ServiceClient {
     var preferences = JsonObject(emptyMap())
         private set
     private val providers = mutableListOf<ServerProviderInstance>()
+
+    /** The Party plugin answers: the join link (null while guest access is off) and the party name. */
+    var partyUrl: String? = null
+    var partyName: String? = null
 
     val username = "user"
     val password = "password"
@@ -629,6 +634,10 @@ class FakeServiceClient : ServiceClient {
                     ),
                 )
             }
+
+            APICommands.PARTY_URL -> Result.success(answer(request, partyUrl))
+
+            APICommands.PARTY_CONFIG -> Result.success(answer(request, ServerPartyConfig(partyName = partyName)))
 
             APICommands.METADATA_GET_TRACK_LYRICS -> {
                 Result.success(

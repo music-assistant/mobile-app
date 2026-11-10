@@ -62,8 +62,9 @@ private fun inlineIntoTag(tag: String, rules: List<ClassRule>): String {
     } ?: tag.replaceFirst(TAG_NAME, "$0 style=\"$declarations\"")
 }
 
-private val STYLE_BLOCK = Regex("<style\\b[^>]*>(.*?)</style>", RegexOption.DOT_MATCHES_ALL)
-private val CSS_COMMENT = Regex("/\\*.*?\\*/", RegexOption.DOT_MATCHES_ALL)
+// `(?s)` lets `.` match a line break. The common stdlib has no RegexOption.DOT_MATCHES_ALL.
+private val STYLE_BLOCK = Regex("(?s)<style\\b[^>]*>(.*?)</style>")
+private val CSS_COMMENT = Regex("(?s)/\\*.*?\\*/")
 private val CLASS_SELECTOR = Regex("\\.[A-Za-z_][\\w-]*")
 private val START_TAG = Regex("<[A-Za-z][^>]*>")
 private val TAG_NAME = Regex("^<[A-Za-z][\\w:.-]*")

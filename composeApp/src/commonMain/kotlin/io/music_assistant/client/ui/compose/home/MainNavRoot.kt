@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -107,6 +108,8 @@ import io.music_assistant.client.ui.compose.library.LibraryListViewModel
 import io.music_assistant.client.ui.compose.library.icon
 import io.music_assistant.client.ui.compose.library.stringResource
 import io.music_assistant.client.ui.compose.nav.ConditionalBackNavDisplay
+import io.music_assistant.client.ui.compose.party.PartyInviteSheet
+import io.music_assistant.client.ui.compose.party.PartyViewModel
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
@@ -125,6 +128,7 @@ import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_explore
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.nav_menu
+import musicassistantclient.composeapp.generated.resources.nav_party
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.nav_system
@@ -146,6 +150,7 @@ fun MainNavigationRoot(
     providerViewModel: ProviderViewModel = koinViewModel(),
     queueDjViewModel: QueueDjViewModel = koinViewModel(),
     libraryCategoriesViewModel: LibraryCategoriesViewModel = koinViewModel(),
+    partyViewModel: PartyViewModel = koinViewModel(),
     goToSettings: () -> Unit,
 ) {
     val toastState = rememberToastState()
@@ -309,8 +314,16 @@ fun MainNavigationRoot(
         }
     }
 
+    var partySheetOpen by remember { mutableStateOf(false) }
+    if (partySheetOpen) {
+        val partyInvite by partyViewModel.invite.collectAsStateWithLifecycle()
+        LaunchedEffect(Unit) { partyViewModel.load() }
+        PartyInviteSheet(state = partyInvite, onDismiss = { partySheetOpen = false })
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         val libraryCategories by libraryCategoriesViewModel.state.collectAsStateWithLifecycle()
+        val partyAvailable by partyViewModel.available.collectAsStateWithLifecycle()
         // The player lies over the screens, so picking a destination has to close it first.
         val closePlayerFirst: (NavigationItem) -> NavigationItem = { item ->
             item.copy(onClick = {
@@ -335,6 +348,7 @@ fun MainNavigationRoot(
                 }
             },
             goToSettings = goToSettings,
+            openParty = { partySheetOpen = true }.takeIf { partyAvailable },
         ).map { section -> section.copy(items = section.items.map(closePlayerFirst)) }
 
         val playSelectionItem: NavigationItem? = playersState.let { state ->
@@ -492,6 +506,7 @@ private fun navigationItems(
     categories: List<LibraryCategoriesViewModel.CategoryState>,
     goToLibraryCategory: (LibraryCategory) -> Unit,
     goToSettings: () -> Unit,
+    openParty: (() -> Unit)?,
 ): List<Section> {
     val categoryItems = categories.map {
         NavigationItem(
@@ -531,9 +546,20 @@ private fun navigationItems(
         reorderable = true,
     )
 
+    // Only while the server has the Party plugin. The web frontend lists it with its plugins.
+    // The app has no plugin section, so it sits in System.
+    val party = openParty?.let {
+        NavigationItem(
+            selected = false,
+            onClick = it,
+            icon = Icons.Default.Celebration,
+            label = stringResource(Res.string.nav_party),
+        )
+    }
     val system = Section(
         title = stringResource(Res.string.nav_system),
-        items = listOf(
+        items = listOfNotNull(
+            party,
             NavigationItem(
                 selected = false,
                 onClick = goToSettings,

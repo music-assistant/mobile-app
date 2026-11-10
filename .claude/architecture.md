@@ -224,6 +224,13 @@ actual class PlatformFeature {
   target for each streaming service (its domain), and one target for each other provider instance.
   An empty choice searches everything. A genre-only search sends `library` only. The choice is saved
   before the search starts, and the search reads the sources when it starts, not from the screen state.
+- **Party**: the Party plugin (`party`, checked on server 2.10.9 and 2.11) lets guests add songs to one queue from
+  the web frontend. The app has the host side only. `PartyRepository` (`data/repository/`) shows the
+  System item "Party" while an available `party` provider is in the `providers` list. The item opens
+  `PartyInviteSheet`, which loads `party/url` and `party/config` each time that it opens. A null URL
+  means that guest access is off. `QrCode` (`ui/compose/common/`) draws the join URL. The guest side
+  stays in the web frontend, because the server lets a guest control every player. See
+  `.claude/party-guest-investigation.md`.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its
   rows again 1.5 s after the last event, like the web app.

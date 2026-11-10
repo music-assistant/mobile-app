@@ -1258,4 +1258,15 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
     }
+
+    /**
+     * The optional `party` plugin provider (checked on server 2.10.9 and 2.11). Gate the call sites on
+     * `PartyRepository.available`. Both need `providers.read`.
+     */
+    data object Party {
+        /** The guest join URL, or null while guest access is off. */
+        fun url() = Request(command = APICommands.PARTY_URL)
+
+        fun config() = Request(command = APICommands.PARTY_CONFIG)
+    }
 }

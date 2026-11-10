@@ -31,6 +31,14 @@ class SvgClassStyleInlinerTest {
     }
 
     @Test
+    fun `a style block and a comment over several lines are read`() {
+        val svg = "<svg><style>\n.a{fill:red}\n/* .b{\nfill:green} */\n</style><path class=\"a\"/><path class=\"b\"/></svg>"
+        val result = inlineSvgClassStyles(svg)
+        assertContains(result, """<path style="fill:red" class="a"/>""")
+        assertContains(result, """<path class="b"/>""")
+    }
+
+    @Test
     fun `at rules and non class selectors are skipped`() {
         val svg = """<svg><style>path{stroke:#0628b9}@media (prefers-color-scheme:dark){.a{stroke:#f7a5d8}}""" +
             """.a.b{fill:red} g .a{fill:red} #x{fill:red}</style><path class="a b" id="x"/></svg>"""
