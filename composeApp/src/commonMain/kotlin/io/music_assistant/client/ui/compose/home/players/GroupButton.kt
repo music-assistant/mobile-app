@@ -8,8 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.sharedicons.SharedIcons
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.group
 import musicassistantclient.composeapp.generated.resources.players_group_settings
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -36,7 +36,7 @@ fun GroupIconWithCount(
 ) {
     BadgedBox(badge = { player.groupBadge()?.let { GroupCountBadge(it) } }) {
         Icon(
-            vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
+            vectorResource(Res.drawable.group),
             contentDescription = stringResource(Res.string.players_group_settings),
             modifier = modifier,
             tint = tint,
