@@ -14,7 +14,7 @@ import org.koin.compose.koinInject
 
 /**
  * Canonical "Show buffer indicator" toggle for the local player's overflow menu. Reads and
- * writes the single persisted preference directly (mirrors [dynamicColorsMenuOption]), so the
+ * writes the single persisted preference directly, so the
  * on-screen buffered-segment reacts immediately. A trailing check marks the on-state. The caller
  * decides visibility (local player only) — this just encapsulates the read/write.
  */

@@ -6,6 +6,7 @@ import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.logging.LogSharer
+import io.music_assistant.client.settings.BadgeVisibility
 import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
@@ -168,7 +169,15 @@ class SettingsViewModel(
         }
     }
 
-    // Misc settings
+    // Interface settings
+    val dynamicColors = settings.dynamicColors
+
+    fun setDynamicColors(enabled: Boolean) = settings.setDynamicColors(enabled)
+
+    val badgeVisibility = settings.badgeVisibility
+
+    fun setBadgeVisibility(visibility: BadgeVisibility) = settings.setBadgeVisibility(visibility)
+
     val allowLandscapeOnAllDevices = settings.allowLandscapeOnAllDevices
 
     fun setAllowLandscapeOnAllDevices(enabled: Boolean) =

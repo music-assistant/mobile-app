@@ -35,6 +35,7 @@ import io.music_assistant.client.ui.compose.common.ProvideDislikeSupport
 import io.music_assistant.client.ui.compose.common.ProvideGrantedScopes
 import io.music_assistant.client.ui.compose.common.ProvidePlayMediaSupport
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
+import io.music_assistant.client.ui.compose.common.items.ProvideBadgeVisibility
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.compose.nav.exitApp
 import io.music_assistant.client.ui.theme.AccentColor
@@ -106,7 +107,9 @@ fun App(deviceChrome: DeviceChrome = DeviceChrome.None) {
                         ProvideDislikeSupport {
                             ProvidePlayMediaSupport {
                                 ProvideClickActionPrefs {
-                                    TopLevelNavRoot()
+                                    ProvideBadgeVisibility {
+                                        TopLevelNavRoot()
+                                    }
                                 }
                             }
                         }
