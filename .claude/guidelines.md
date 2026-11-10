@@ -169,3 +169,12 @@ Music Assistant server required. Configure:
 1. Enable developer mode in Android Auto app
 2. Enable "Unknown sources"
 3. VPN config: exclude Android Auto from VPN
+## Pull Requests
+
+- Always write the PR description with `.github/PULL_REQUEST_TEMPLATE.md`. Keep its headings, its
+  comment and its checklist, and fill in `Closes #` with the issue (remove the line if there is none).
+- Put the summary of the change under `Closes #`, and answer each template question under its
+  heading. Write "No." if there is nothing to add.
+- Tick a checklist item only if it is true. Tick the checks item only after
+  `./gradlew detektAll testAndroidHostTest :androidApp:testDebug` passed for this branch.
+- When you edit an open PR, keep the template in the new description.
