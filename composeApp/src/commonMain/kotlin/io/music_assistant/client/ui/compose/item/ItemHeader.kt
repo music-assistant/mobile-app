@@ -80,7 +80,6 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
-import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.Badges
 import io.music_assistant.client.ui.compose.common.items.ItemAction
@@ -401,7 +400,7 @@ private fun ItemOverflow(
     }
     OverflowMenuButton(
         options = canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
-            lyrics + refresh + dynamicColorsMenuOption(),
+            lyrics + refresh,
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(

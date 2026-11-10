@@ -411,6 +411,24 @@ class SettingsRepository(
         _dynamicColors.update { enabled }
     }
 
+    private val _badgeVisibility = MutableStateFlow(
+        BadgeVisibility(
+            progress = settings.getBoolean("badge_progress", true),
+            type = settings.getBoolean("badge_type", true),
+            source = settings.getBoolean("badge_source", true),
+            explicit = settings.getBoolean("badge_explicit", true),
+        ),
+    )
+    val badgeVisibility = _badgeVisibility.asStateFlow()
+
+    fun setBadgeVisibility(visibility: BadgeVisibility) {
+        settings.putBoolean("badge_progress", visibility.progress)
+        settings.putBoolean("badge_type", visibility.type)
+        settings.putBoolean("badge_source", visibility.source)
+        settings.putBoolean("badge_explicit", visibility.explicit)
+        _badgeVisibility.update { visibility }
+    }
+
     // Opt-in escape hatch from the compact-device portrait lock: when set, the
     // platform layer stops constraining orientation on any device.
     private val _allowLandscapeOnAllDevices = MutableStateFlow(

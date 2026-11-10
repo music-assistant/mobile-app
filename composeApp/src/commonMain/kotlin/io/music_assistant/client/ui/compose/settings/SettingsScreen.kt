@@ -82,7 +82,6 @@ import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSe
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
-import io.music_assistant.client.ui.theme.isDark
 import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
@@ -103,8 +102,6 @@ import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.settings_about_description
 import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
-import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
-import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
 import musicassistantclient.composeapp.generated.resources.settings_app_documentation
 import musicassistantclient.composeapp.generated.resources.settings_app_version_info
 import musicassistantclient.composeapp.generated.resources.settings_connect
@@ -186,14 +183,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(Res.string.nav_settings)) },
-                actions = {
-                    ThemeChooser(
-                        modifier = Modifier.padding(end = 16.dp),
-                        currentTheme = theme.value,
-                    ) { changedTheme ->
-                        themeViewModel.switchTheme(changedTheme)
-                    }
-                },
                 navigationIcon = {
                     if (isAuthenticated) {
                         IconButton(onClick = goHome) {
@@ -296,6 +285,26 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 val connectAttemptInFlight by viewModel.connectAttemptInFlight
                     .collectAsStateWithLifecycle()
 
+                val dynamicColors by viewModel.dynamicColors.collectAsStateWithLifecycle()
+                val badges by viewModel.badgeVisibility.collectAsStateWithLifecycle()
+                val allowLandscape by viewModel.allowLandscapeOnAllDevices
+                    .collectAsStateWithLifecycle()
+                // Always visible: above the local player section when signed in, else above Misc.
+                val interfaceSection: @Composable () -> Unit = {
+                    InterfaceSection(
+                        theme = theme.value,
+                        onThemeChange = themeViewModel::switchTheme,
+                        accent = accent.value,
+                        onAccentChange = themeViewModel::setAccentColor,
+                        dynamicColors = dynamicColors,
+                        onDynamicColorsChange = viewModel::setDynamicColors,
+                        badges = badges,
+                        onBadgesChange = viewModel::setBadgeVisibility,
+                        allowLandscape = allowLandscape,
+                        onAllowLandscapeChange = viewModel::setAllowLandscapeOnAllDevices,
+                    )
+                }
+
                 when (sessionState) {
                     is SessionState.Disconnected -> {
                         AboutSection()
@@ -368,27 +377,30 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         when (dataConnection) {
                             is DataConnectionState.Authenticated -> {
                                 // State 4: Connected and authenticated
+                                val localPlayerSections: @Composable () -> Unit = {
+                                    SendspinSettingsSection(
+                                        enabled = sendspinEnabled,
+                                        settings = sendspinDraft,
+                                        isSavable = isSendspinSavable,
+                                        isResettable = isSendspinResettable,
+                                        isConfirmationPending = isSendspinConfirmationPending,
+                                        onEnabledChange = sendspinViewModel::setEnabled,
+                                        onSettingsChange = sendspinViewModel::update,
+                                        onSave = sendspinViewModel::save,
+                                        onReset = sendspinViewModel::reset,
+                                        onConfirm = sendspinViewModel::confirm,
+                                        onDismiss = sendspinViewModel::dismiss,
+                                    )
 
-                                // Local Player Section
-                                SendspinSettingsSection(
-                                    enabled = sendspinEnabled,
-                                    settings = sendspinDraft,
-                                    isSavable = isSendspinSavable,
-                                    isResettable = isSendspinResettable,
-                                    isConfirmationPending = isSendspinConfirmationPending,
-                                    onEnabledChange = sendspinViewModel::setEnabled,
-                                    onSettingsChange = sendspinViewModel::update,
-                                    onSave = sendspinViewModel::save,
-                                    onReset = sendspinViewModel::reset,
-                                    onConfirm = sendspinViewModel::confirm,
-                                    onDismiss = sendspinViewModel::dismiss,
-                                )
-
-                                // Car options route to the local player — only meaningful when
-                                // it's reachable (authenticated) and enabled.
-                                if (sendspinEnabled) {
-                                    CarSection()
+                                    // Car options route to the local player — only meaningful when
+                                    // it's reachable (authenticated) and enabled.
+                                    if (sendspinEnabled) {
+                                        CarSection()
+                                    }
                                 }
+
+                                interfaceSection()
+                                localPlayerSections()
                             }
 
                             else -> Unit
@@ -396,20 +408,15 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
-                AccentColorSection(
-                    current = accent.value,
-                    darkTheme = theme.value.isDark(),
-                    onChange = themeViewModel::setAccentColor,
-                )
+                // Without the local player section, the interface card sits above Misc.
+                if (!isAuthenticated) {
+                    interfaceSection()
+                }
 
                 // Misc settings - always visible
                 val shareLogsTitle = stringResource(Res.string.settings_share_logs)
                 val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
-                val allowLandscape by viewModel.allowLandscapeOnAllDevices
-                    .collectAsStateWithLifecycle()
                 MiscSection(
-                    allowLandscape = allowLandscape,
-                    onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,
@@ -427,8 +434,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
 @Composable
 private fun MiscSection(
-    allowLandscape: Boolean,
-    onAllowLandscapeChange: (Boolean) -> Unit,
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
     isPreparingShare: Boolean,
@@ -437,26 +442,6 @@ private fun MiscSection(
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(
-                checked = allowLandscape,
-                onCheckedChange = onAllowLandscapeChange,
-            )
-            Text(
-                text = stringResource(Res.string.settings_allow_landscape),
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-        }
-        Text(
-            // Aligned under the label: the checkbox occupies a 48.dp touch target.
-            modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
-            text = stringResource(Res.string.settings_allow_landscape_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
             enabled = !isPreparingShare,

@@ -416,10 +416,10 @@ private fun GridPlayableItemLabels(item: PlayableItem) {
 }
 
 /** The size of a badge on a grid tile. */
-private val GRID_BADGE_SIZE = 16.dp
+internal val GRID_BADGE_SIZE = 16.dp
 
 /** The distance of a grid badge from the artwork edge. */
-private val GRID_BADGE_PADDING = 2.dp
+internal val GRID_BADGE_PADDING = 2.dp
 
 /** The size of a badge in the badge line of a row. */
 internal val ROW_BADGE_SIZE = 14.dp
@@ -452,27 +452,31 @@ internal fun TypeBadge(
     )
 }
 
-/** The favorite heart, or else the provider icon. */
+/**
+ * The favorite heart, or else the provider icon. The heart always shows, and the provider icon
+ * only while the user shows the source badge ([LocalBadgeVisibility]).
+ */
 @Composable
 private fun FavoriteOrProviderBadge(
     item: AppMediaItem,
     providerIconFetcher: ProviderIconFetcher?,
     modifier: Modifier,
 ) {
-    if (item.favorite == true) {
-        Icon(
+    when {
+        item.favorite == true -> Icon(
             modifier = modifier,
             imageVector = Icons.Filled.Favorite,
             contentDescription = stringResource(Res.string.cd_favorite),
             tint = favoriteTint,
         )
-    } else {
-        providerIconFetcher?.invoke(modifier.background(Color.Gray, CircleShape), item.provider, "dark")
+
+        LocalBadgeVisibility.current.source ->
+            providerIconFetcher?.invoke(modifier.background(Color.Gray, CircleShape), item.provider, "dark")
     }
 }
 
 @Composable
-private fun ExplicitBadge(modifier: Modifier) {
+internal fun ExplicitBadge(modifier: Modifier) {
     Icon(
         modifier = modifier.background(Color.White, RoundedCornerShape(2.dp)),
         imageVector = Icons.Filled.Explicit,
@@ -483,7 +487,7 @@ private fun ExplicitBadge(modifier: Modifier) {
 
 /**
  * The corner badges of an artwork: the favorite heart or the provider icon at the bottom end, and
- * the explicit mark at the top end. A grid tile adds [GridTypeBadge] and [ProgressBadge], so the
+ * the explicit mark at the top end, while the user shows it ([LocalBadgeVisibility]). A grid tile adds [GridTypeBadge] and [ProgressBadge], so the
  * four corners never share a badge.
  */
 @Composable
@@ -495,14 +499,15 @@ fun BoxScope.Badges(
 ) {
     val modifier = Modifier.padding(badgePadding).size(badgeSize)
     FavoriteOrProviderBadge(item, providerIconFetcher, modifier.align(Alignment.BottomEnd))
-    if (item.isExplicit) {
+    if (item.isExplicit && LocalBadgeVisibility.current.explicit) {
         ExplicitBadge(modifier.align(Alignment.TopEnd))
     }
 }
 
-/** The type badge of a grid tile, at the top start. */
+/** The type badge of a grid tile, at the top start, while the user shows the type badge. */
 @Composable
 private fun BoxScope.GridTypeBadge(item: AppMediaItem) {
+    if (!LocalBadgeVisibility.current.type) return
     TypeBadge(
         icon = item.defaultIcon,
         size = GRID_BADGE_SIZE,
@@ -538,9 +543,11 @@ private fun RowBadges(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        typeIcon?.let { TypeBadge(it, ROW_BADGE_SIZE, playsOnTap = item.playsOnTap) }
+        typeIcon
+            ?.takeIf { LocalBadgeVisibility.current.type }
+            ?.let { TypeBadge(it, ROW_BADGE_SIZE, playsOnTap = item.playsOnTap) }
         FavoriteOrProviderBadge(item, providerIconFetcher, badge)
-        if (item.isExplicit) {
+        if (item.isExplicit && LocalBadgeVisibility.current.explicit) {
             ExplicitBadge(badge)
         }
         ProgressBadge(fullyPlayed, resumePositionMs, badge)
@@ -562,9 +569,13 @@ fun BoxScope.ProgressBadge(
     )
 }
 
-/** A check for a fully played item, a clock for an item with a resume point, nothing otherwise. */
+/**
+ * A check for a fully played item, a clock for an item with a resume point, nothing otherwise.
+ * Nothing either while the user hides the progress badge ([LocalBadgeVisibility]).
+ */
 @Composable
 private fun ProgressBadge(fullyPlayed: Boolean?, resumePositionMs: Long?, modifier: Modifier) {
+    if (!LocalBadgeVisibility.current.progress) return
     when {
         fullyPlayed == true -> {
             Icon(

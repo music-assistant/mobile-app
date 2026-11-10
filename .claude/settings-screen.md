@@ -77,12 +77,14 @@ The Settings screen adapts its UI based on connection and authentication state:
 - MainDataSource automatically manages Sendspin lifecycle based on `sendspinEnabled` setting
 - Configuration changes only allowed when player is stopped
 
-### AccentColorSection
-- Always visible, above the Misc section
-- One round swatch for each `AccentColor` that the platform can give, in the primary color that the accent gives in the current light or dark theme
-- The line under the swatches names the current choice
-- `ThemeViewModel.accentColor` and `setAccentColor` read and write the setting (`SettingsRepository`, key `accent_color`)
-- The light, system and dark toggle stays in the top bar (`ThemeChooser`)
+### InterfaceSection
+- Always visible. When signed in, it sits above the local player section; otherwise above the Misc section. The "Interface" heading sits above the card, like the local player heading
+- **Theme**: `ThemeChooser`, a segmented button (System, Light, Dark). The selected segment shows a check. It replaced the top bar toggle
+- **Accent color** (`AccentColorSection`, no card of its own): one row that scrolls sideways, with one round swatch for each `AccentColor` that the platform can give, in the primary color that the accent gives in the current light or dark theme. The line under the swatches names the current choice. `ThemeViewModel.accentColor` and `setAccentColor` read and write the setting (key `accent_color`)
+- **Use dynamic colors**: the same `SettingsRepository.dynamicColors` flag that the player and item pages read. Settings is the only place to change it; the overflow menus have no entry for it
+- **Badges**: switches for Progress, Type, Source and Explicit (`BadgeVisibility`, keys `badge_progress`, `badge_type`, `badge_source`, `badge_explicit`), next to a sample album tile that shows the result
+- **Allow landscape on all devices**: moved here from Misc, same setting (`allow_landscape_all_devices`)
+- Each switch row is `toggleable` with `Role.Switch`, so the whole row toggles
 
 ## Authentication Flow
 

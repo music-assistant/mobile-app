@@ -113,7 +113,6 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
-import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.ignoreDragsFromBottomGestureZone
@@ -1207,7 +1206,6 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
-        add(dynamicColorsMenuOption())
         // Buffer indicator toggle — local player only (the segment it controls is local-only).
         if (currentPlayer.isLocal) {
             add(bufferIndicatorMenuOption())
