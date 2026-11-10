@@ -82,6 +82,7 @@ import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSe
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
@@ -399,8 +400,28 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                     }
                                 }
 
-                                interfaceSection()
-                                localPlayerSections()
+                                // A tablet has room for the interface card next to the local
+                                // player settings; a phone stacks them.
+                                if (WindowClass.isAtLeastMedium()) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                        verticalAlignment = Alignment.Top,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            interfaceSection()
+                                        }
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                                        ) {
+                                            localPlayerSections()
+                                        }
+                                    }
+                                } else {
+                                    interfaceSection()
+                                    localPlayerSections()
+                                }
                             }
 
                             else -> Unit

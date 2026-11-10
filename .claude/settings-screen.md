@@ -78,7 +78,7 @@ The Settings screen adapts its UI based on connection and authentication state:
 - Configuration changes only allowed when player is stopped
 
 ### InterfaceSection
-- Always visible. When signed in, it sits above the local player section; otherwise above the Misc section. The "Interface" heading sits above the card, like the local player heading
+- Always visible. When signed in, it sits above the local player section (next to it on a window of 600 dp or wider, `WindowClass.isAtLeastMedium`); otherwise above the Misc section. The "Interface" heading sits above the card, like the local player heading
 - **Theme**: `ThemeChooser`, a segmented button (System, Light, Dark). The selected segment shows a check. It replaced the top bar toggle
 - **Accent color** (`AccentColorSection`, no card of its own): one row that scrolls sideways, with one round swatch for each `AccentColor` that the platform can give, in the primary color that the accent gives in the current light or dark theme. The line under the swatches names the current choice. `ThemeViewModel.accentColor` and `setAccentColor` read and write the setting (key `accent_color`)
 - **Use dynamic colors**: the same `SettingsRepository.dynamicColors` flag that the player and item pages read. Settings is the only place to change it; the overflow menus have no entry for it
