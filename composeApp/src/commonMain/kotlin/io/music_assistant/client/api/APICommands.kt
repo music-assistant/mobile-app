@@ -76,6 +76,8 @@ object APICommands {
     const val MUSIC_ARTISTS_SIMILAR_ARTISTS = "music/artists/similar_artists"
     const val MUSIC_ARTISTS_LIBRARY_ARTIST_TYPES = "music/artists/library_artist_types"
     const val MUSIC_ARTISTS_ARTIST_AUDIOBOOKS = "music/artists/artist_audiobooks"
+    const val MUSIC_ARTISTS_ARTIST_APPEARS_ON = "music/artists/artist_appears_on"
+    const val MUSIC_ARTISTS_DISCOGRAPHY = "music/artists/discography"
 
     // Album commands
     const val MUSIC_ALBUMS_LIBRARY_ITEMS = "music/albums/library_items"
@@ -121,6 +123,7 @@ object APICommands {
     const val CONFIG_PROVIDERS_SHARE_CANDIDATES = "config/providers/share_candidates"
 
     // Items
+    const val MUSIC_ITEM = "music/item"
     const val MUSIC_ITEM_BY_URI = "music/item_by_uri"
     const val MUSIC_REFRESH_ITEM = "music/refresh_item"
 

@@ -82,6 +82,9 @@ data class ServerMediaItem(
 ) {
     companion object {
         const val LIBRARY_PROVIDER = "library"
+
+        /** The provider of a discography release that is on no music provider (server 2.11). */
+        const val MUSICBRAINZ_PROVIDER = "musicbrainz"
     }
 }
 

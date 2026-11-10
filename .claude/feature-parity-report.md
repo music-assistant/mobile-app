@@ -158,8 +158,8 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
-| Artist page | yes | yes | yes | drill | drill | Parity | App: top tracks with source picker, library albums, all albums, similar artists |
-| Artist appears on, singles, discography | no | yes | no | no | no | Missing | `artist_appears_on`, `discography`. Discography items are provider `musicbrainz`, addable but not playable |
+| Artist page | yes | yes | yes | drill | drill | Parity | App: top tracks, albums, and singles and EPs, each with a source picker, and similar artists |
+| Artist appears on, singles, discography | no | yes | yes | no | no | Adjusted | Issue #1205. Singles and EPs on every server. Appears on and discography from 2.11, library artists only. One discography row with all release types, no type picker |
 | Artist audiobooks row | yes | yes | yes | no | no | Parity | Issue #1201. An author or narrator page shows "In library" and "All audiobooks" rows instead of albums and top tracks |
 | Album page | yes | yes | yes | drill | drill | Parity | Year shown in the header |
 | Album versions, review, more from artist | yes | yes | no | no | no | Missing | `album_versions` |
@@ -622,7 +622,7 @@ the app:
 | Track detail screen | `tracks/get_track`, `track_albums`, `track_versions`, `similar_tracks`, `metadata/get_track_lyrics` | Easy | Done (issue #1189). A `Track` case in `ItemDetailsScreen` with tabs for albums, versions and similar tracks |
 | Radio detail screen | `radios/get_radio`, `radio_versions`, `radio_tracks` (2.11) | Easy | Same pattern. Show the tracklist for finite stations on 2.11 |
 | Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Done (issue 1204). A `PodcastEpisode` case in `ItemDetailsScreen`; the cues feed `LyricsSheet` as `Lyrics.Synced`. No steppers and no hide-fully-played filter |
-| Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Two more artist sections. Discography items carry provider `musicbrainz`. Show them dimmed and offer "Add to library" only |
+| Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Done (issue #1205). A `musicbrainz` release is dimmed. Its menu offers "Add to library" only, and a tap opens the album that `music/item` resolves |
 | Artist audiobooks row | `artist_audiobooks` | Easy | Done (issue #1201). The author page rows with the existing provider filter |
 | Album versions, review, more from artist | `album_versions`, `artist_albums` | Easy | Two sections on the album screen |
 | Server-driven sort options | `music/sort_options` (2.11) | Easy | Replace the static table on 2.11. Map `label_key` to local strings |

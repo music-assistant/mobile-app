@@ -19,12 +19,14 @@ object ServerMediaItemFixtures {
             DEFAULT_PROVIDER_DOMAIN,
             DEFAULT_PROVIDER_INSTANCE,
         ),
+        albumType: String? = null,
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
             provider = provider.domain,
             name = name,
             mediaType = MediaType.ALBUM.serverValue,
+            albumType = albumType,
             artists = listOf(artist),
             uri = "http://example.com/album/$itemId",
             isPlayable = true,
@@ -38,6 +40,23 @@ object ServerMediaItemFixtures {
             ),
         )
     }
+
+    /** A server 2.11 discography release that is on no music provider. */
+    fun musicBrainzRelease(
+        releaseGroupId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Release $releaseGroupId",
+        artist: ServerMediaItem = artist(),
+    ): ServerMediaItem = ServerMediaItem(
+        itemId = releaseGroupId,
+        provider = ServerMediaItem.MUSICBRAINZ_PROVIDER,
+        name = name,
+        mediaType = MediaType.ALBUM.serverValue,
+        albumType = "album",
+        artists = listOf(artist),
+        uri = "musicbrainz://album/$releaseGroupId",
+        isPlayable = false,
+        providerMappings = emptyList(),
+    )
 
     fun artist(
         itemId: String = uniqueIdGenerator.nextInt().toString(),

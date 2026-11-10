@@ -120,13 +120,18 @@ import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.ui.theme.AppTheme
+import kotlinx.coroutines.flow.StateFlow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.album_disc_header
-import musicassistantclient.composeapp.generated.resources.artist_section_all
+import musicassistantclient.composeapp.generated.resources.artist_section_albums
 import musicassistantclient.composeapp.generated.resources.artist_section_all_audiobooks
+import musicassistantclient.composeapp.generated.resources.artist_section_appears_on
+import musicassistantclient.composeapp.generated.resources.artist_section_discography
 import musicassistantclient.composeapp.generated.resources.artist_section_in_library
+import musicassistantclient.composeapp.generated.resources.artist_section_singles_eps
 import musicassistantclient.composeapp.generated.resources.artist_section_top
 import musicassistantclient.composeapp.generated.resources.artist_source_all
+import musicassistantclient.composeapp.generated.resources.artist_source_library
 import musicassistantclient.composeapp.generated.resources.cd_in_progress
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
 import musicassistantclient.composeapp.generated.resources.item_error
@@ -593,6 +598,8 @@ private fun TabsBar(
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_APPEARS_ON,
+        SubItemContext.ARTIST_DISCOGRAPHY,
         SubItemContext.ARTIST_AUDIOBOOKS,
             -> playableItemsSortOption
 
@@ -1105,9 +1112,40 @@ private fun ArtistContent(
     controlTint: Color,
 ) {
     val artistDetailsViewModel = koinViewModel<ArtistDetailsViewModel> { parametersOf(artist) }
-    val librarySection by artistDetailsViewModel.library.collectAsStateWithLifecycle()
-    val allSection by artistDetailsViewModel.all.collectAsStateWithLifecycle()
-    val topTracksSection by artistDetailsViewModel.topTracks.collectAsStateWithLifecycle()
+    val rows = if (artist.isAudiobookArtist) {
+        listOf(
+            ArtistRow("library", Res.string.artist_section_in_library, artistDetailsViewModel.library),
+            ArtistRow(
+                "all",
+                Res.string.artist_section_all_audiobooks,
+                artistDetailsViewModel.all.section,
+                artistDetailsViewModel.all::select,
+            ),
+        )
+    } else {
+        listOf(
+            ArtistRow(
+                "topTracks",
+                Res.string.artist_section_top,
+                artistDetailsViewModel.topTracks.section,
+                artistDetailsViewModel.topTracks::select,
+            ),
+            ArtistRow(
+                "albums",
+                Res.string.artist_section_albums,
+                artistDetailsViewModel.albums.section,
+                artistDetailsViewModel.albums::select,
+            ),
+            ArtistRow(
+                "singles",
+                Res.string.artist_section_singles_eps,
+                artistDetailsViewModel.singles.section,
+                artistDetailsViewModel.singles::select,
+            ),
+            ArtistRow("appearsOn", Res.string.artist_section_appears_on, artistDetailsViewModel.appearsOn),
+            ArtistRow("discography", Res.string.artist_section_discography, artistDetailsViewModel.discography),
+        )
+    }
 
     NoOverscroll {
         LazyColumn(
@@ -1115,65 +1153,37 @@ private fun ArtistContent(
             contentPadding = contentPadding,
         ) {
             item { heroSlot() }
-            item {
-                SectionRow(
-                    artist = artist,
-                    sectionData = librarySection,
-                    id = "library",
-                    title = Res.string.artist_section_in_library.toDisplayString(),
-                    onNavigateClick = onNavigateClick,
-                    onNavigateToList = onNavigateToList,
-                    onPlayChildClick = onPlayChildClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    providerDetails = providerDetails,
-                    viewAllColor = controlTint,
-                )
-            }
-
-            item {
-                SectionRow(
-                    artist = artist,
-                    sectionData = allSection,
-                    id = "all",
-                    title = if (artist.isAudiobookArtist) {
-                        Res.string.artist_section_all_audiobooks.toDisplayString()
-                    } else {
-                        Res.string.artist_section_all.toDisplayString()
-                    },
-                    onNavigateClick = onNavigateClick,
-                    onNavigateToList = onNavigateToList,
-                    onFilterSelected = artistDetailsViewModel::loadAll,
-                    onPlayChildClick = onPlayChildClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    providerDetails = providerDetails,
-                    viewAllColor = controlTint,
-                )
-            }
-
-            item {
-                SectionRow(
-                    artist = artist,
-                    sectionData = topTracksSection,
-                    id = "topTracks",
-                    title = stringResource(Res.string.artist_section_top).toDisplayString(),
-                    onNavigateClick = onNavigateClick,
-                    onNavigateToList = onNavigateToList,
-                    onFilterSelected = artistDetailsViewModel::loadTopTracks,
-                    onPlayChildClick = onPlayChildClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    providerDetails = providerDetails,
-                    viewAllColor = controlTint,
-                )
+            rows.forEach { row ->
+                item(key = row.id) {
+                    val sectionData by row.section.collectAsStateWithLifecycle()
+                    SectionRow(
+                        artist = artist,
+                        sectionData = sectionData,
+                        id = row.id,
+                        title = row.title.toDisplayString(),
+                        onNavigateClick = onNavigateClick,
+                        onNavigateToList = onNavigateToList,
+                        onFilterSelected = row.onSourceSelected,
+                        onPlayChildClick = onPlayChildClick,
+                        playlistActions = playlistActions,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher,
+                        providerDetails = providerDetails,
+                        viewAllColor = controlTint,
+                    )
+                }
             }
         }
     }
 }
+
+/** One row of an artist page. A row without [onSourceSelected] has no source picker. */
+private class ArtistRow(
+    val id: String,
+    val title: StringResource,
+    val section: StateFlow<DataState<Section<AppMediaItem>>>,
+    val onSourceSelected: (ItemList) -> Unit = {},
+)
 
 @Composable
 private fun <T : AppMediaItem> SectionRow(
@@ -1191,10 +1201,13 @@ private fun <T : AppMediaItem> SectionRow(
     providerDetails: (String) -> ProviderDetails?,
     viewAllColor: Color,
 ) {
-    val providerNameDisplayString: (String) -> DisplayString = { domain ->
-        when (domain) {
-            ServerMediaItem.LIBRARY_PROVIDER -> Res.string.artist_source_all.toDisplayString()
-            else -> (providerDetails(domain)?.name ?: domain).toDisplayString()
+    // The library albums are one source among the providers. A library listing of another
+    // type merges every provider.
+    val sourceName: (ItemList) -> DisplayString = { itemList ->
+        when {
+            itemList is ItemList.ArtistLibrary -> Res.string.artist_source_library.toDisplayString()
+            itemList.providerDomain == ServerMediaItem.LIBRARY_PROVIDER -> Res.string.artist_source_all.toDisplayString()
+            else -> (providerDetails(itemList.providerDomain)?.name ?: itemList.providerDomain).toDisplayString()
         }
     }
 
@@ -1209,9 +1222,9 @@ private fun <T : AppMediaItem> SectionRow(
                 list = section.itemList,
                 filter = if (section.providerFilter != null) {
                     ItemCategory.Filter(
-                        label = providerNameDisplayString(section.providerFilter.current.providerDomain),
+                        label = sourceName(section.providerFilter.current),
                         options = section.providerFilter.options,
-                        labelTransform = { providerNameDisplayString(it.providerDomain) },
+                        labelTransform = sourceName,
                         contentDescription = Res.string.cd_provider_filter,
                     )
                 } else {

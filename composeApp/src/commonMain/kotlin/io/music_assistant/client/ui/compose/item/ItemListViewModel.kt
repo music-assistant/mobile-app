@@ -39,7 +39,9 @@ class ItemListViewModel(
 
     val state = combine(items.asFlow(), sortOption, _query) { items, sortOption, query ->
         State(
-            items = items.map { it.clientFiltered(query.orEmpty()).clientSorted(sortOption, itemList.sortContext) },
+            items = items.map {
+                itemList.select(it).clientFiltered(query.orEmpty()).clientSorted(sortOption, itemList.sortContext)
+            },
             sortOption = sortOption,
         )
     }.flowOn(Dispatchers.Default) // filter + sort per keystroke and per list change

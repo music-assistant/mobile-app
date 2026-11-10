@@ -19,6 +19,8 @@ fun SubItemContext.toClickContext(): ClickContext? = when (this) {
     SubItemContext.ARTIST_TOP_TRACKS,
     SubItemContext.ARTIST_ALL_ALBUMS,
     SubItemContext.ARTIST_LIBRARY_ALBUMS,
+    SubItemContext.ARTIST_APPEARS_ON,
+    SubItemContext.ARTIST_DISCOGRAPHY,
     SubItemContext.ARTIST_AUDIOBOOKS,
     -> null
 }

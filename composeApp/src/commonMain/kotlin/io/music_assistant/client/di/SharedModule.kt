@@ -70,6 +70,7 @@ import io.music_assistant.client.ui.compose.settings.DefaultClickActionsViewMode
 import io.music_assistant.client.ui.compose.settings.SendspinSettingsViewModel
 import io.music_assistant.client.ui.compose.settings.SettingsViewModel
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.appVersion
@@ -257,7 +258,10 @@ fun sharedModule(
             )
         }
         factory { params ->
-            ArtistDetailsViewModel(params[0], get(), get())
+            val serviceClient = get<ServiceClient>()
+            ArtistDetailsViewModel(params[0], get(), get()) {
+                (serviceClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion
+            }
         }
         factory { ViewModeViewModel(get()) }
         factory { params -> ItemListViewModel(params[0], get(), get()) }
