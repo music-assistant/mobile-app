@@ -416,6 +416,7 @@ class SettingsRepository(
             progress = settings.getBoolean("badge_progress", true),
             type = settings.getBoolean("badge_type", true),
             source = settings.getBoolean("badge_source", true),
+            explicit = settings.getBoolean("badge_explicit", true),
         ),
     )
     val badgeVisibility = _badgeVisibility.asStateFlow()
@@ -424,6 +425,7 @@ class SettingsRepository(
         settings.putBoolean("badge_progress", visibility.progress)
         settings.putBoolean("badge_type", visibility.type)
         settings.putBoolean("badge_source", visibility.source)
+        settings.putBoolean("badge_explicit", visibility.explicit)
         _badgeVisibility.update { visibility }
     }
 

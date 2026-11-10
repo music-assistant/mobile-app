@@ -476,7 +476,7 @@ private fun FavoriteOrProviderBadge(
 }
 
 @Composable
-private fun ExplicitBadge(modifier: Modifier) {
+internal fun ExplicitBadge(modifier: Modifier) {
     Icon(
         modifier = modifier.background(Color.White, RoundedCornerShape(2.dp)),
         imageVector = Icons.Filled.Explicit,
@@ -487,7 +487,7 @@ private fun ExplicitBadge(modifier: Modifier) {
 
 /**
  * The corner badges of an artwork: the favorite heart or the provider icon at the bottom end, and
- * the explicit mark at the top end. A grid tile adds [GridTypeBadge] and [ProgressBadge], so the
+ * the explicit mark at the top end, while the user shows it ([LocalBadgeVisibility]). A grid tile adds [GridTypeBadge] and [ProgressBadge], so the
  * four corners never share a badge.
  */
 @Composable
@@ -499,7 +499,7 @@ fun BoxScope.Badges(
 ) {
     val modifier = Modifier.padding(badgePadding).size(badgeSize)
     FavoriteOrProviderBadge(item, providerIconFetcher, modifier.align(Alignment.BottomEnd))
-    if (item.isExplicit) {
+    if (item.isExplicit && LocalBadgeVisibility.current.explicit) {
         ExplicitBadge(modifier.align(Alignment.TopEnd))
     }
 }
@@ -547,7 +547,7 @@ private fun RowBadges(
             ?.takeIf { LocalBadgeVisibility.current.type }
             ?.let { TypeBadge(it, ROW_BADGE_SIZE, playsOnTap = item.playsOnTap) }
         FavoriteOrProviderBadge(item, providerIconFetcher, badge)
-        if (item.isExplicit) {
+        if (item.isExplicit && LocalBadgeVisibility.current.explicit) {
             ExplicitBadge(badge)
         }
         ProgressBadge(fullyPlayed, resumePositionMs, badge)

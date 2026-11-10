@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import io.music_assistant.client.settings.BadgeVisibility
 import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 import io.music_assistant.client.ui.compose.common.icons.BookshelfIcon
+import io.music_assistant.client.ui.compose.common.items.ExplicitBadge
 import io.music_assistant.client.ui.compose.common.items.GRID_BADGE_PADDING
 import io.music_assistant.client.ui.compose.common.items.GRID_BADGE_SIZE
 import io.music_assistant.client.ui.compose.common.items.MediaArtwork
@@ -44,6 +45,7 @@ import io.music_assistant.client.ui.theme.isDark
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
+import musicassistantclient.composeapp.generated.resources.settings_badge_explicit
 import musicassistantclient.composeapp.generated.resources.settings_badge_preview_subtitle
 import musicassistantclient.composeapp.generated.resources.settings_badge_preview_title
 import musicassistantclient.composeapp.generated.resources.settings_badge_progress
@@ -154,6 +156,11 @@ private fun BadgeSettings(
                 checked = badges.source,
                 onCheckedChange = { onChange(badges.copy(source = it)) },
             )
+            SettingSwitch(
+                title = stringResource(Res.string.settings_badge_explicit),
+                checked = badges.explicit,
+                onCheckedChange = { onChange(badges.copy(explicit = it)) },
+            )
         }
         // As wide as the smallest grid tile on this screen, so it does not grow on a tablet.
         BadgePreview(
@@ -164,8 +171,9 @@ private fun BadgeSettings(
 }
 
 /**
- * A sample album tile with the chosen badges: the type, the played state, and the library as the
- * source. It is a picture of the switches next to it, so screen readers skip it.
+ * A sample album tile with the chosen badges: the type, the played state, the library as the
+ * source, and the explicit mark. It is a picture of the switches next to it, so screen readers
+ * skip it.
  */
 @Composable
 private fun BadgePreview(
@@ -181,6 +189,14 @@ private fun BadgePreview(
                     icon = AlbumIcon,
                     size = GRID_BADGE_SIZE,
                     modifier = Modifier.align(Alignment.TopStart).padding(GRID_BADGE_PADDING),
+                )
+            }
+            if (badges.explicit) {
+                ExplicitBadge(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(GRID_BADGE_PADDING)
+                        .size(GRID_BADGE_SIZE),
                 )
             }
             // Gated by LocalBadgeVisibility, which follows the same setting.

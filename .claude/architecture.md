@@ -340,11 +340,11 @@ actual class PlatformFeature {
   heart sits at the bottom center of the circle, in the grid and in the item page header.
   The type chip of an item that plays on tap (`AppMediaItem.playsOnTap`) is filled, and the chip of an item
   that opens its page is translucent.
-  The user can hide three badges in Settings → Interface → Badges: progress (the played state), type, and
-  source (the provider icon). `BadgeVisibility` (`settings/`) holds the choice, and `App` provides it as
+  The user can hide four badges in Settings → Interface → Badges: progress (the played state), type, source
+  (the provider icon) and explicit. `BadgeVisibility` (`settings/`) holds the choice, and `App` provides it as
   `LocalBadgeVisibility`. `MediaItems.kt` reads it in the badge composables, so a new tile or row gets it
-  for free. The favorite heart and the explicit mark always show. The settings card shows a sample tile
-  that follows the switches.
+  for free. The favorite heart always shows. The settings card shows a sample tile that follows the
+  switches.
 - **Stacked rows**: `CategoryRow` (`ui/compose/common/items/`) shows a row of tap-to-play items as list items, two
   in each column. The other rows show one row of grid tiles. A tap-to-play item is a track, a podcast episode or a
   radio station (`playsOnTap`). An audiobook is not a tap-to-play item, because its tile opens the item page. The

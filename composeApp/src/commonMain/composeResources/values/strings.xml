@@ -462,6 +462,7 @@
   <string name="settings_badge_progress">Progress</string>
   <string name="settings_badge_type">Type</string>
   <string name="settings_badge_source">Source</string>
+  <string name="settings_badge_explicit">Explicit</string>
   <string name="settings_badge_preview_title">Album title</string>
   <string name="settings_badge_preview_subtitle">Artist</string>
   <string name="settings_app_documentation">App documentation →</string>
