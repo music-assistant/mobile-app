@@ -50,8 +50,8 @@ jobs:
 
       # WebRTC.xcframework is gitignored (~32 MB extracted, dSYMs shipped
       # separately) and downloaded per IOS-BUILD-INSTRUCTIONS.md. If the
-      # version/patch ever bumps, update both places — it's only referenced
-      # here and in that doc.
+      # version/patch ever bumps, update all places — it's only referenced
+      # here, in that doc and in iosApp/ci_scripts/ci_post_clone.sh (Xcode Cloud).
       - name: Cache WebRTC.xcframework
         id: cache-webrtc
         uses: actions/cache@v6

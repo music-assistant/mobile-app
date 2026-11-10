@@ -10,6 +10,19 @@ set -eu
 REPO="${CI_PRIMARY_REPOSITORY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
 LOCAL_XCCONFIG="$REPO/iosApp/Configuration/Local.xcconfig"
 
+# WebRTC.xcframework is git-ignored. Keep the release in step with
+# .github/workflows/ios-release.yml and IOS-BUILD-INSTRUCTIONS.md.
+WEBRTC_RELEASE=m125-cow-bloat-fix.1
+FRAMEWORKS="$REPO/iosApp/Frameworks"
+if [ ! -d "$FRAMEWORKS/WebRTC.xcframework/ios-arm64/WebRTC.framework" ]; then
+  mkdir -p "$FRAMEWORKS"
+  curl -fsSL "https://github.com/teancom/webrtc/releases/download/$WEBRTC_RELEASE/WebRTC.xcframework.$WEBRTC_RELEASE.zip" \
+    -o "${TMPDIR:-/tmp}/WebRTC.xcframework.zip"
+  unzip -q "${TMPDIR:-/tmp}/WebRTC.xcframework.zip" -d "$FRAMEWORKS"
+  rm "${TMPDIR:-/tmp}/WebRTC.xcframework.zip"
+  test -d "$FRAMEWORKS/WebRTC.xcframework/ios-arm64/WebRTC.framework"
+fi
+
 # The Kotlin build phase runs Gradle, which needs JDK 21. Xcode Cloud has no JDK.
 JDK_DIR="$HOME/ma-jdk-21"
 if [ ! -x "$JDK_DIR/Contents/Home/bin/java" ]; then
