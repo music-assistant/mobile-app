@@ -177,4 +177,5 @@ Music Assistant server required. Configure:
   heading. Write "No." if there is nothing to add.
 - Tick a checklist item only if it is true. Tick the checks item only after
   `./gradlew detektAll testAndroidHostTest :androidApp:testDebug` passed for this branch.
-- When you edit an open PR, keep the template in the new description.
+- When you edit an open PR, read its current description first (`gh pr view --json body`). Keep the
+  template and everything that someone else added, such as screenshots, and change only your own text.
