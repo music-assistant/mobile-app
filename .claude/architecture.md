@@ -268,8 +268,10 @@ actual class PlatformFeature {
   or null if the server has no analysis. The command needs schema 36 (`supportsWaveform`). The request
   uses the stream ids (`StreamDetails.item_id` and `provider`), because the server stores the analysis
   under them. `QueueTrack.waveformKey` gives the key, and it is null for an item that is not a track,
-  like in the web frontend. `WaveformRepository` (`data/repository/`) loads each waveform once in an app
-  scope and keeps the last 8 answers. The expanded player loads it only while the local setting
+  like in the web frontend. `WaveformRepository` (`data/repository/`) keeps one waveform for each queue: the
+  waveform of its current track. A load for a different track replaces it, and the repository drops an
+  answer that comes after the queue changed its track. So the waveform of a playing track always stays.
+  The load runs in an app scope. The expanded player loads it only while the local setting
   `SettingsRepository.showWaveform` is on. The setting is off by default and the player menu has the
   toggle. The setting is not the `show_waveform` preference of the web, because a user can want the
   waveform on one surface only. `WaveformTrack` draws the bars in the slider track. A disabled timeline

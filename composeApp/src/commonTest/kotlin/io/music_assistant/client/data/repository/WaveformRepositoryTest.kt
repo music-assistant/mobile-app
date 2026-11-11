@@ -37,11 +37,11 @@ class WaveformRepositoryTest {
         val client = GatedClient(WAVEFORM_MIN_SCHEMA - 1)
         val waveforms = WaveformRepository(client, backgroundScope)
 
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
 
         assertTrue(client.asked.isEmpty())
-        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(key).value)
+        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(QUEUE, key).value)
     }
 
     @Test
@@ -49,14 +49,14 @@ class WaveformRepositoryTest {
         val client = GatedClient()
         val waveforms = WaveformRepository(client, backgroundScope)
 
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
-        assertIs<DataState.Loading<List<Float>>>(waveforms.waveform(key).value)
-        waveforms.load(key)
+        assertIs<DataState.Loading<List<Float>>>(waveforms.waveform(QUEUE, key).value)
+        waveforms.load(QUEUE, key)
         runCurrent()
         client.answer(Result.success(bins))
         runCurrent()
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
 
         assertEquals(1, client.asked.size)
@@ -64,7 +64,7 @@ class WaveformRepositoryTest {
         assertEquals(APICommands.AUDIO_ANALYSIS_WAVE_FORM, request.command)
         assertEquals(JsonPrimitive(key.itemId), request.args?.get("item_id"))
         assertEquals(JsonPrimitive(key.provider), request.args?.get("provider_instance_id_or_domain"))
-        assertEquals(DataState.Data(listOf(0f, 0.5f, 1f)), waveforms.waveform(key).value)
+        assertEquals(DataState.Data(listOf(0f, 0.5f, 1f)), waveforms.waveform(QUEUE, key).value)
     }
 
     @Test
@@ -72,13 +72,13 @@ class WaveformRepositoryTest {
         val client = GatedClient()
         val waveforms = WaveformRepository(client, backgroundScope)
 
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
         client.answer(Result.success(JsonNull))
         runCurrent()
 
-        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(key).value)
-        waveforms.load(key)
+        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(QUEUE, key).value)
+        waveforms.load(QUEUE, key)
         runCurrent()
         assertEquals(1, client.asked.size)
     }
@@ -88,12 +88,12 @@ class WaveformRepositoryTest {
         val client = GatedClient()
         val waveforms = WaveformRepository(client, backgroundScope)
 
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
         client.answer(Result.success(JsonArray(emptyList())))
         runCurrent()
 
-        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(key).value)
+        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(QUEUE, key).value)
     }
 
     @Test
@@ -101,37 +101,77 @@ class WaveformRepositoryTest {
         val client = GatedClient()
         val waveforms = WaveformRepository(client, backgroundScope)
 
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
         client.answer(Result.failure(IllegalStateException("connection lost")))
         runCurrent()
-        assertIs<DataState.Error<List<Float>>>(waveforms.waveform(key).value)
+        assertIs<DataState.Error<List<Float>>>(waveforms.waveform(QUEUE, key).value)
 
-        waveforms.load(key)
+        waveforms.load(QUEUE, key)
         runCurrent()
         client.answer(Result.success(bins))
         runCurrent()
 
         assertEquals(2, client.asked.size)
-        assertIs<DataState.Data<List<Float>>>(waveforms.waveform(key).value)
+        assertIs<DataState.Data<List<Float>>>(waveforms.waveform(QUEUE, key).value)
     }
 
     @Test
-    fun `the oldest settled waveform goes when the cache is full`() = runTest {
+    fun `a new track of the queue replaces its waveform`() = runTest {
         val client = GatedClient()
         val waveforms = WaveformRepository(client, backgroundScope)
-        val keys = List(9) { WaveformKey(itemId = "track-$it", provider = "spotify--abc") }
+        val next = WaveformKey(itemId = "track-2", provider = "spotify--abc")
 
-        keys.forEach { key ->
-            waveforms.load(key)
+        waveforms.load(QUEUE, key)
+        runCurrent()
+        client.answer(Result.success(bins))
+        runCurrent()
+        waveforms.load(QUEUE, next)
+        runCurrent()
+        client.answer(Result.success(bins))
+        runCurrent()
+
+        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(QUEUE, key).value)
+        assertIs<DataState.Data<List<Float>>>(waveforms.waveform(QUEUE, next).value)
+    }
+
+    @Test
+    fun `an answer that comes after the queue changed its track is dropped`() = runTest {
+        val client = GatedClient()
+        val waveforms = WaveformRepository(client, backgroundScope)
+        val next = WaveformKey(itemId = "track-2", provider = "spotify--abc")
+
+        waveforms.load(QUEUE, key)
+        runCurrent()
+        waveforms.load(QUEUE, next)
+        runCurrent()
+        client.answer(Result.success(bins))
+        runCurrent()
+
+        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(QUEUE, key).value)
+        assertIs<DataState.Loading<List<Float>>>(waveforms.waveform(QUEUE, next).value)
+        client.answer(Result.success(bins))
+        runCurrent()
+        assertIs<DataState.Data<List<Float>>>(waveforms.waveform(QUEUE, next).value)
+    }
+
+    @Test
+    fun `each queue keeps its own waveform`() = runTest {
+        val client = GatedClient()
+        val waveforms = WaveformRepository(client, backgroundScope)
+        val queueKeys = List(10) { "queue-$it" to WaveformKey(itemId = "track-$it", provider = "spotify--abc") }
+
+        queueKeys.forEach { (queueId, key) ->
+            waveforms.load(queueId, key)
             runCurrent()
             client.answer(Result.success(bins))
             runCurrent()
         }
 
-        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform(keys[0]).value)
-        assertIs<DataState.Data<List<Float>>>(waveforms.waveform(keys[1]).value)
-        assertIs<DataState.Data<List<Float>>>(waveforms.waveform(keys[8]).value)
+        queueKeys.forEach { (queueId, key) ->
+            assertIs<DataState.Data<List<Float>>>(waveforms.waveform(queueId, key).value)
+        }
+        assertIs<DataState.NoData<List<Float>>>(waveforms.waveform("queue-1", queueKeys[0].second).value)
     }
 
     /** Answers each request with the `result` that the test gives, in request order. */
@@ -156,5 +196,9 @@ class WaveformRepositoryTest {
         fun answer(result: Result<JsonElement>) {
             pending.removeFirst().complete(result.map { Answer(JsonObject(mapOf("result" to it))) })
         }
+    }
+
+    private companion object {
+        const val QUEUE = "queue-1"
     }
 }

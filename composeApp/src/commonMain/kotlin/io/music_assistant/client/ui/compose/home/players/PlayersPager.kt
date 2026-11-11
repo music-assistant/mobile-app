@@ -352,10 +352,12 @@ fun PlayersPager(
                 }
                 val lyrics = currentTrack?.lyrics ?: transcript
                 // The waveform of a track loads once its page is expanded and the user turned it on.
-                val waveform = currentQueueItem?.waveformKey?.takeIf { expanded && showWaveform }?.let { key ->
-                    LaunchedEffect(key) { homeScreenViewModel.loadWaveform(key) }
-                    remember(key) { homeScreenViewModel.waveform(key) }
-                        .collectAsStateWithLifecycle().value.dataOrNull
+                val waveform = player.queueId?.takeIf { expanded && showWaveform }?.let { queueId ->
+                    currentQueueItem?.waveformKey?.let { key ->
+                        LaunchedEffect(queueId, key) { homeScreenViewModel.loadWaveform(queueId, key) }
+                        remember(queueId, key) { homeScreenViewModel.waveform(queueId, key) }
+                            .collectAsStateWithLifecycle().value.dataOrNull
+                    }
                 }
                 val trackId = currentTrack?.itemId
                 val lyricsItemId = currentQueueItem?.track?.itemId

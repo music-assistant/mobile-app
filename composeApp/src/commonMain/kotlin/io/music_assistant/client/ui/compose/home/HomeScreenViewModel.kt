@@ -148,11 +148,12 @@ class HomeScreenViewModel(
             .map { supportsWaveform((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
-    /** Loads the waveform of [key] once, for the seek bar. See [WaveformRepository]. */
-    fun loadWaveform(key: WaveformKey) = waveformRepository.load(key)
+    /** Loads the waveform of [key], the current track of [queueId], for the seek bar. See [WaveformRepository]. */
+    fun loadWaveform(queueId: String, key: WaveformKey) = waveformRepository.load(queueId, key)
 
-    /** The waveform of [key], as [loadWaveform] loads it. */
-    fun waveform(key: WaveformKey): StateFlow<DataState<List<Float>>> = waveformRepository.waveform(key)
+    /** The waveform of [key] on [queueId], as [loadWaveform] loads it. */
+    fun waveform(queueId: String, key: WaveformKey): StateFlow<DataState<List<Float>>> =
+        waveformRepository.waveform(queueId, key)
 
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization
