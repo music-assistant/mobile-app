@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Lyrics
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -101,6 +102,7 @@ import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.ui.utils.fadingEdges
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_export_playlist
 import musicassistantclient.composeapp.generated.resources.action_find_on_music_services
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_go_to_podcast
@@ -232,6 +234,7 @@ internal fun ItemTopBar(
     refreshAction: RefreshItemAction? = null,
     refreshingItem: Boolean = false,
     onRefreshItem: () -> Unit = {},
+    onExportPlaylist: ((chooserTitle: String) -> Unit)? = null,
     query: String?,
     onQueryChanged: ((String?) -> Unit)?,
 ) {
@@ -314,6 +317,7 @@ internal fun ItemTopBar(
                         refreshAction = refreshAction,
                         refreshingItem = refreshingItem,
                         onRefreshItem = onRefreshItem,
+                        onExportPlaylist = onExportPlaylist,
                         onRemovedFromLibrary = onBack,
                     )
                 }
@@ -333,6 +337,7 @@ private fun ItemOverflow(
     refreshAction: RefreshItemAction?,
     refreshingItem: Boolean,
     onRefreshItem: () -> Unit,
+    onExportPlaylist: ((chooserTitle: String) -> Unit)?,
     // The page shows the removed item, so it closes with the removal, like the web app.
     onRemovedFromLibrary: () -> Unit,
 ) {
@@ -379,6 +384,16 @@ private fun ItemOverflow(
             )
         },
     )
+    val exportTitle = stringResource(Res.string.action_export_playlist)
+    val export = listOfNotNull(
+        onExportPlaylist?.let { exportPlaylist ->
+            OverflowMenuOption(
+                title = exportTitle,
+                icon = Icons.Default.Share,
+                onClick = { exportPlaylist(exportTitle) },
+            )
+        },
+    )
 
     val canonical = resolveDetailOverflowActions(
         item = item,
@@ -401,7 +416,7 @@ private fun ItemOverflow(
     }
     OverflowMenuButton(
         options = canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
-            lyrics + refresh + dynamicColorsMenuOption(),
+            lyrics + refresh + export + dynamicColorsMenuOption(),
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(

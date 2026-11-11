@@ -13,8 +13,10 @@ import io.music_assistant.client.player.local.AudioQueueSink
 import io.music_assistant.client.player.local.IosDecoderFactory
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.BackgroundUsageGuard
+import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.IosBackgroundUsageGuard
+import io.music_assistant.client.utils.IosFileSharer
 import io.music_assistant.client.utils.IosHttpClientFactory
 import io.music_assistant.client.utils.KeychainClientIdentity
 import io.music_assistant.sendspin.api.AudioSink
@@ -29,6 +31,7 @@ fun iosModule() = module {
     }
     single<DecoderFactory> { IosDecoderFactory() }
     single<MicrophoneCapture> { AudioEngineCapture() }
+    single<FileSharer> { IosFileSharer() }
     single<BackgroundUsageGuard> { IosBackgroundUsageGuard() }
     single { KeychainClientIdentity() }
     single<HttpClientFactory> {

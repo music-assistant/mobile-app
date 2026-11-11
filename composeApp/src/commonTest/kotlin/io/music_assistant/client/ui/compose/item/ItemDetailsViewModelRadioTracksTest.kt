@@ -11,9 +11,11 @@ import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.testRadio
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.ItemRefresher
+import io.music_assistant.client.data.repository.PlaylistTransfer
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.utils.RecordingFileSharer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -51,6 +53,7 @@ class ItemDetailsViewModelRadioTracksTest {
             itemRefresher = ItemRefresher(repository, backgroundScope),
             authCoordinator = FakeItemDetailsAuthCoordinator(),
             transcriptRepository = TranscriptRepository(repository, apiClient, backgroundScope),
+            playlistTransfer = PlaylistTransfer(apiClient, RecordingFileSharer()),
             itemId = station.itemId,
             mediaType = MediaType.RADIO,
             providerId = station.provider,

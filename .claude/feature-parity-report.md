@@ -128,7 +128,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Retry after a load failure | no | yes | part | n/a | n/a | Adjust-partial | App shows an error state. Check that it offers retry |
 | Add a radio or a track by URL | yes | yes | no | n/a | n/a | Missing | `builtin/add_radio`, `builtin/add_track` |
 | Create playlist | yes | yes | yes | n/a | n/a | Parity | |
-| Import and export playlist | yes | yes | no | n/a | n/a | Missing | M3U file; 2.11 adds `match_policy` |
+| Import and export playlist | yes | yes | yes | n/a | n/a | Parity | Issue #1208. M3U file. The 2.11 `match_policy` is gated on `SERVER_2_11_SCHEMA` |
 | Smart playlist create | yes | yes | no | n/a | n/a | Missing | `smart_playlists/*` |
 | Track table with BPM and key columns | no | yes | no | n/a | n/a | Missing | Low value on a phone |
 | Recent and New sub-lists in the car | n/a | n/a | n/a | yes | no | Parity | App feature for AA |
@@ -631,7 +631,7 @@ the app:
 | Playlist rename, image, delete | `playlists/update`, `library/remove_item` | Easy | Needs `library.write`. Hide if the scope is absent |
 | Playlist sharing and collaboration | `playlists/set_access`, `config/providers/share_candidates` (2.11) | Medium | A dialog with a user picker. Needs the `Playlist.access` DTO |
 | Playlist migration | `migrate_playlist` (2.11) | Medium | The command returns a background task. The app has no task progress UI. Show a toast and let the server finish |
-| Playlist import and export | `import_playlist`, `export_playlist` | Medium | Needs a platform file picker and a share sheet. M3U text only |
+| Playlist import and export | `import_playlist`, `export_playlist` | Medium | Done (issue #1208). Export through the share sheet, import through the platform file picker |
 | Smart playlists | `smart_playlists/*` | Hard | A rule editor is heavy on a phone. Low value. Defer |
 | Refresh item, find on music services | `music/refresh_item` | Easy | Long-press action. Scope `library.write` on 2.11, `library.manage` on 2.10 |
 | Add radio or track by URL | `builtin/add_radio`, `builtin/add_track` | Easy | A text dialog in the Radio and Tracks lists |
