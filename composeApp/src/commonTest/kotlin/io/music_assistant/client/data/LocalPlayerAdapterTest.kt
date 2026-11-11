@@ -101,6 +101,15 @@ class LocalPlayerAdapterTest {
     }
 
     @Test
+    fun anAppForegroundAsksThePlayerForAConnectionCheck() = runBlocking<Unit> {
+        withTimeoutOrNull(TIMEOUT_MS) { client.foreground.subscriptionCount.first { it > 0 } }
+            ?: fail("the adapter does not collect the foreground events")
+        client.foreground.emit(Unit)
+
+        assertEquals(1, await { player.connectionChecks.takeIf { it > 0 } })
+    }
+
+    @Test
     fun starvationPausesLikeTheUserAndKeepsTheSessionWanted() = runBlocking<Unit> {
         playing()
         player.emit(PlayerEvent.PlaybackStopped(StopCause.Starved))
@@ -333,6 +342,12 @@ class LocalPlayerAdapterTest {
             this.held.value = held
         }
 
+        var connectionChecks = 0
+
+        override fun checkConnection() {
+            connectionChecks++
+        }
+
         fun connect() {
             state.value = PlayerState.Connected(PLAYER_ID, "server", ClockQuality.Good, AudioStatus.IDLE)
         }
@@ -350,6 +365,8 @@ class LocalPlayerAdapterTest {
         override val isReadyForCommands = MutableStateFlow(true)
         val sent = Channel<Request>(Channel.UNLIMITED)
         val recoveries = MutableStateFlow(0)
+        val foreground = MutableSharedFlow<Unit>()
+        override val foregroundEvents: Flow<Unit> = foreground
 
         override suspend fun sendRequest(request: Request): Result<Answer> {
             sent.send(request)

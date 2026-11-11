@@ -194,6 +194,8 @@ class LocalPlayerAdapter(
 
     init {
         launch { player.events.collect(::onPlayerEvent) }
+        // A long background leaves the link in a long backoff or silently dead; check it at once.
+        launch { apiClient.foregroundEvents.collect { player.checkConnection() } }
         val formatAtStart = settings.sendspinPlayerSettings.value.streamFormat()
         launch { restartStreamOnFormatChange(formatAtStart) }
         launch {

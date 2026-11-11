@@ -24,7 +24,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -48,6 +47,8 @@ internal class ConnectionSupervisor(
     private val online: StateFlow<Boolean>,
     private val clock: MonotonicClock,
     private val approvePairing: suspend (pairingToken: String) -> Unit,
+    /** Each increment asks for a connection check: a waiting retry starts at once, from attempt 0. */
+    private val connectionChecks: StateFlow<Int> = MutableStateFlow(0),
     private val random: Random = Random.Default,
 ) {
     private val logger = Logger.withTag("ConnectionSupervisor")
@@ -73,6 +74,8 @@ internal class ConnectionSupervisor(
         var attempt = 0
         var consecutiveRejections = 0
         var lastReason: DropReason = DropReason.ServerClosed
+        // A check while the attempt is active belongs to the liveness probe; one before that ends the next backoff.
+        var seenChecks = connectionChecks.value
         try {
             if (endpoint is Endpoint.Unsupported) {
                 logger.e { "Sendspin connection stopped: ${endpoint.reason}" }
@@ -88,6 +91,7 @@ internal class ConnectionSupervisor(
                 var activeSinceMicros: Long? = null
                 val reason = runAttempt(endpoint, sessionConfig, companion, handler, silentPairing, goodbyeOnCancel) {
                     activeSinceMicros = activeSinceMicros ?: clock.nowMicros()
+                    seenChecks = connectionChecks.value
                 }
                 logger.i { "Attempt $attempt ended: $reason" }
                 lastReason = reason
@@ -110,8 +114,12 @@ internal class ConnectionSupervisor(
                             reason,
                             retryAtMicros = clock.nowMicros() + decision.delayMillis * 1_000,
                         )
-                        delay(decision.delayMillis)
-                        attempt++
+                        val checked = withTimeoutOrNull(decision.delayMillis) {
+                            connectionChecks.first { it != seenChecks }
+                        } != null
+                        seenChecks = connectionChecks.value
+                        if (checked) logger.i { "Connection check: retrying now" }
+                        attempt = if (checked) 0 else attempt + 1
                     }
 
                     ReconnectPolicy.Decision.WaitForNetwork -> attempt++

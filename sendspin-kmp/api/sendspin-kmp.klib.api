@@ -132,6 +132,7 @@ abstract interface io.music_assistant.sendspin.api/SendspinPlayer { // io.music_
     abstract val state // io.music_assistant.sendspin.api/SendspinPlayer.state|{}state[0]
         abstract fun <get-state>(): kotlinx.coroutines.flow/StateFlow<io.music_assistant.sendspin.api/PlayerState> // io.music_assistant.sendspin.api/SendspinPlayer.state.<get-state>|<get-state>(){}[0]
 
+    abstract fun checkConnection() // io.music_assistant.sendspin.api/SendspinPlayer.checkConnection|checkConnection(){}[0]
     abstract fun hold(kotlin/Boolean) // io.music_assistant.sendspin.api/SendspinPlayer.hold|hold(kotlin.Boolean){}[0]
 }
 
