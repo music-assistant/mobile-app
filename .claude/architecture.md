@@ -384,8 +384,9 @@ actual class PlatformFeature {
   load, and the rows below it move up. This is a known limit.
 
 - **Track multi-select**: a screen that gives a `TrackSelection` through `LocalTrackSelection` gets
-  "Select multiple" at the top of the track menu (`TrackWithMenu`). Only the album page, the artist page
-  and the artist "View all" list of tracks give one. While the mode is on, a tap selects or deselects a
+  "Select multiple" at the top of the track menu (`TrackWithMenu`). Only the album page, the artist page,
+  the playlist page and the artist "View all" list of tracks give one. Other rows of a playlist (an
+  episode, a radio station) are not selectable. While the mode is on, a tap selects or deselects a
   track and a long press does nothing. `TrackSelectionBar` replaces the top bar of the screen. It shows
   the count, "Select all", the actions menu and a cancel button, and Back ends the mode. "Select all"
   selects the tracks that the screen shows, in list order. Each screen gives them once with
@@ -395,6 +396,12 @@ actual class PlatformFeature {
   all tracks in one `play_media` request, and "Add to playlist" sends one `add_playlist_tracks` request.
   Both keep the order of selection. An action ends the mode. The mode also ends when the last track is
   deselected. A track without a uri or that does not play cannot be selected.
+
+  `SelectionKey` says which rows are the same track. A playlist can hold one track more than once, so
+  its selection keys on the server `position`, and the other lists key on the uri. On an editable
+  playlist, the menu also has "Remove from playlist". It asks for a confirmation, then it sends all
+  positions in one `remove_playlist_tracks` request. The server removes them from the highest position
+  down, so each position stays correct. Spotify removes by uri, so it removes every copy of a track.
 
 ## State Management
 
