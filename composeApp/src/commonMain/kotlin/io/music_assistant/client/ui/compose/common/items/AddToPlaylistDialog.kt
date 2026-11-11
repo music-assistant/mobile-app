@@ -45,6 +45,15 @@ fun AddToPlaylistDialog(
     item: AppMediaItem,
     playlistActions: PlaylistActions,
     onDismiss: () -> Unit,
+) = AddToPlaylistDialog(listOf(item), playlistActions, onDismiss)
+
+/** Adds all [items] to the chosen playlist in one request. [onAdded] runs after the choice. */
+@Composable
+fun AddToPlaylistDialog(
+    items: List<AppMediaItem>,
+    playlistActions: PlaylistActions,
+    onDismiss: () -> Unit,
+    onAdded: () -> Unit = {},
 ) {
     var playlists by remember { mutableStateOf<List<Playlist>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -54,10 +63,13 @@ fun AddToPlaylistDialog(
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Hide playlists whose provider would silently drop this item's type.
-    suspend fun loadPlaylists() = playlistActions.getEditablePlaylists().filter { it.accepts(item) }
+    // Hide playlists whose provider would silently drop the type of an item.
+    suspend fun loadPlaylists() = playlistActions.getEditablePlaylists().filter { playlist ->
+        items.all { playlist.accepts(it) }
+    }
 
-    LaunchedEffect(item.itemId) {
+    val itemKeys = items.map { it.uri }
+    LaunchedEffect(itemKeys) {
         isLoading = true
         playlists = loadPlaylists()
         isLoading = false
@@ -121,7 +133,8 @@ fun AddToPlaylistDialog(
                             val isHighlighted = playlist.lazyListKey() == highlighted?.lazyListKey()
                             TextButton(
                                 onClick = {
-                                    playlistActions.addToPlaylist(item.uri, playlist)
+                                    playlistActions.addToPlaylist(items.mapNotNull { it.uri }, playlist)
+                                    onAdded()
                                     onDismiss()
                                 },
                                 modifier = Modifier

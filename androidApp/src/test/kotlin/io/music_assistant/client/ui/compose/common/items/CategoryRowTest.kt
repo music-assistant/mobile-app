@@ -72,7 +72,7 @@ private class StubPlaylistActions : PlaylistActions {
         TODO("Not yet implemented")
     }
 
-    override fun addToPlaylist(itemUri: String?, playlist: Playlist) {
+    override fun addToPlaylist(itemUris: List<String>, playlist: Playlist) {
         TODO("Not yet implemented")
     }
 

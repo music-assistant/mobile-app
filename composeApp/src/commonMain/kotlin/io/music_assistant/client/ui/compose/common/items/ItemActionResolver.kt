@@ -84,6 +84,22 @@ fun resolveLongClickActions(
 }
 
 /**
+ * The actions menu of a track selection: the five queue options, which send all tracks in one
+ * `play_media` request, then Add to playlist and Remove from playlist. [canEditLibrary]
+ * (`library.write`) gates both playlist entries, and [canRemoveFromPlaylist] is true on an
+ * editable playlist only.
+ */
+fun resolveSelectionActions(
+    canEditLibrary: Boolean,
+    canRemoveFromPlaylist: Boolean = false,
+): List<ItemAction> = buildList {
+    addAll(QUEUE_ACTIONS)
+    if (!canEditLibrary) return@buildList
+    add(ItemAction.AddToPlaylist)
+    if (canRemoveFromPlaylist) add(ItemAction.RemoveFromPlaylist)
+}
+
+/**
  * Item detail screen play-button split-button overflow — every applicable play action
  * except [default] (which the leading button performs).
  */
@@ -98,6 +114,15 @@ fun resolvePlayButtonActions(
         if (customizationAllowed) add(ItemAction.Customize)
     }.filterNot { it == default }
 
+/** The five queue options of `play_media`, in menu order. */
+private val QUEUE_ACTIONS = listOf(
+    QueueOption.REPLACE,
+    QueueOption.PLAY,
+    QueueOption.NEXT,
+    QueueOption.ADD,
+    QueueOption.REPLACE_NEXT,
+).map { ItemAction.Play(it) }
+
 /** The contexts whose list is a container that plays on from the long-pressed item. */
 private val FROM_HERE_CONTEXTS = setOf(ClickContext.ALBUM, ClickContext.PLAYLIST, ClickContext.PODCAST)
 
@@ -110,11 +135,7 @@ private fun MutableList<ItemAction>.addPlaybackActions(
     context: ClickContext? = null,
     support: PlayMediaSupport,
 ) {
-    add(ItemAction.Play(QueueOption.REPLACE))
-    add(ItemAction.Play(QueueOption.PLAY))
-    add(ItemAction.Play(QueueOption.NEXT))
-    add(ItemAction.Play(QueueOption.ADD))
-    add(ItemAction.Play(QueueOption.REPLACE_NEXT))
+    addAll(QUEUE_ACTIONS)
 
     if (context in FROM_HERE_CONTEXTS) add(ItemAction.PlayFromHere)
     if (support.shuffle && item.canPlayShuffled) add(ItemAction.PlayShuffled)

@@ -400,10 +400,13 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
         // Browsable items stay navigable even when non-playable; dim + drop playback actions.
         val contentModifier = Modifier.align(Alignment.Center)
             .then(if (item.isPlayable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))
+        // A browsable row is never selectable, so it ignores taps and long presses while a
+        // selection of the screen is active.
+        val selecting = LocalItemSelection.current?.isActive == true
         itemComposable(
             contentModifier,
-            onNavigateClick,
-        ) { expandedItemId = item.itemId }
+            onNavigateClick.takeUnless { selecting } ?: { _: T -> },
+        ) { if (!selecting) expandedItemId = item.itemId }
 
         DropdownMenu(
             expanded = expandedItemId == item.itemId,
