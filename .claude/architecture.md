@@ -383,21 +383,27 @@ actual class PlatformFeature {
   The placeholders that show while a row loads are always grid tiles. So a stacked row gets shorter when its items
   load, and the rows below it move up. This is a known limit.
 
-- **Track multi-select**: a screen that gives a `TrackSelection` through `LocalTrackSelection` gets
-  "Select multiple" at the top of the track menu (`TrackWithMenu`). Only the album page, the artist page,
-  the playlist page and the artist "View all" list of tracks give one. Other rows of a playlist (an
-  episode, a radio station) are not selectable. While the mode is on, a tap selects or deselects a
-  track and a long press does nothing. `TrackSelectionBar` replaces the top bar of the screen. It shows
-  the count, "Select all", the actions menu and a cancel button, and Back ends the mode. "Select all"
-  selects the tracks that the screen shows, in list order. Each screen gives them once with
-  `SelectableTracks`, at a level that stays in the composition when the list scrolls. The button shows
-  only while a shown track is not selected. The menu has the five queue
-  options and "Add to playlist" (`resolveTrackSelectionActions`, `library.write`). A queue option sends
-  all tracks in one `play_media` request, and "Add to playlist" sends one `add_playlist_tracks` request.
-  Both keep the order of selection. An action ends the mode. The mode also ends when the last track is
-  deselected. A track without a uri or that does not play cannot be selected.
+- **Multi-select**: a screen that gives an `ItemSelection` through `LocalItemSelection` gets
+  "Select multiple" at the top of the menu of a track row and of a podcast episode row
+  (`PlayableItemWithMenu`). These screens give one: the album, artist, playlist, podcast and episode
+  pages, and the artist "View all" list of tracks. A track and an episode can be in one selection,
+  because the bulk actions apply to both in the same way. Other rows (a radio station, an audiobook)
+  are not selectable. While the mode is on, a tap selects or deselects an item, and a long press does
+  nothing. A row that is not selectable ignores taps and long presses. An item without a uri, or that
+  does not play, cannot be selected.
 
-  `SelectionKey` says which rows are the same track. A playlist can hold one track more than once, so
+  `SelectionBar` replaces the top bar of the screen. It shows the count, "Select all", the actions
+  menu and a cancel button. Back ends the mode. "Select all" selects the items that the screen shows,
+  in list order. Each screen gives them once with `SelectableItems`, at a level that stays in the
+  composition when the list scrolls. The button shows only while a shown item is not selected.
+
+  The menu has the five queue options and "Add to playlist" (`resolveSelectionActions`,
+  `library.write`). A queue option sends all items in one `play_media` request, and "Add to playlist"
+  sends one `add_playlist_tracks` request. Both keep the order of selection. There is no bulk "Mark
+  played", because the server has no bulk command for it. An action ends the mode. The mode also ends
+  when the last item is deselected.
+
+  `SelectionKey` says which rows are the same item. A playlist can hold one item more than once, so
   its selection keys on the server `position`, and the other lists key on the uri. On an editable
   playlist, the menu also has "Remove from playlist". It asks for a confirmation, then it sends all
   positions in one `remove_playlist_tracks` request. The server removes them from the highest position

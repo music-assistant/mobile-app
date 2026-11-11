@@ -19,7 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.nav.BackHandler
 import io.music_assistant.client.ui.compose.common.ConfirmationDialog
@@ -27,7 +27,7 @@ import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_remove
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_title
-import musicassistantclient.composeapp.generated.resources.dialog_remove_tracks_from_playlist_message
+import musicassistantclient.composeapp.generated.resources.dialog_remove_items_from_playlist_message
 import musicassistantclient.composeapp.generated.resources.selection_actions
 import musicassistantclient.composeapp.generated.resources.selection_cancel
 import musicassistantclient.composeapp.generated.resources.selection_count
@@ -37,26 +37,26 @@ import org.jetbrains.compose.resources.stringResource
 
 /**
  * The top bar of a screen while [selection] is active: cancel, the count, "Select all" (while a
- * shown track is not selected) and the actions menu.
+ * shown item is not selected) and the actions menu.
  * An action ends the mode. Back also ends it. [onRemoveFromPlaylist] adds "Remove from playlist",
  * which asks for a confirmation first.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TrackSelectionBar(
-    selection: TrackSelection,
-    onPlay: (List<Track>, PlayMode) -> Unit,
+fun SelectionBar(
+    selection: ItemSelection,
+    onPlay: (List<AppMediaItem>, PlayMode) -> Unit,
     playlistActions: PlaylistActions?,
-    onRemoveFromPlaylist: ((List<Track>) -> Unit)? = null,
+    onRemoveFromPlaylist: ((List<AppMediaItem>) -> Unit)? = null,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     var showPlaylistDialog by remember { mutableStateOf(false) }
     var showRemoveConfirmation by remember { mutableStateOf(false) }
-    val actions = resolveTrackSelectionActions(
+    val actions = resolveSelectionActions(
         canEditLibrary = playlistActions != null && LocalGrantedScopes.current.canEditLibrary,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
     )
-    val count = selection.tracks.size
+    val count = selection.items.size
 
     BackHandler(enabled = true) { selection.clear() }
 
@@ -84,7 +84,7 @@ fun TrackSelectionBar(
                             ItemAction.AddToPlaylist -> showPlaylistDialog = true
                             ItemAction.RemoveFromPlaylist -> showRemoveConfirmation = true
                             else -> action.toPlayMode()?.let { mode ->
-                                onPlay(selection.tracks.toList(), mode)
+                                onPlay(selection.items.toList(), mode)
                                 selection.clear()
                             }
                         }
@@ -96,7 +96,7 @@ fun TrackSelectionBar(
 
     playlistActions?.takeIf { showPlaylistDialog }?.let {
         AddToPlaylistDialog(
-            items = selection.tracks.toList(),
+            items = selection.items.toList(),
             playlistActions = it,
             onDismiss = { showPlaylistDialog = false },
             onAdded = selection::clear,
@@ -106,10 +106,10 @@ fun TrackSelectionBar(
     onRemoveFromPlaylist?.takeIf { showRemoveConfirmation }?.let { remove ->
         ConfirmationDialog(
             title = stringResource(Res.string.dialog_remove_from_playlist_title),
-            message = pluralStringResource(Res.plurals.dialog_remove_tracks_from_playlist_message, count, count),
+            message = pluralStringResource(Res.plurals.dialog_remove_items_from_playlist_message, count, count),
             confirmLabel = stringResource(Res.string.action_remove),
             onConfirm = {
-                remove(selection.tracks.toList())
+                remove(selection.items.toList())
                 selection.clear()
             },
             onDismiss = { showRemoveConfirmation = false },
@@ -123,7 +123,7 @@ fun TrackSelectionBar(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun rememberSelectionTopAppBarState(selection: TrackSelection?): TopAppBarState {
+fun rememberSelectionTopAppBarState(selection: ItemSelection?): TopAppBarState {
     val state = rememberTopAppBarState()
     val active = selection?.isActive == true
     LaunchedEffect(active) {

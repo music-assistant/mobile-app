@@ -89,7 +89,7 @@ fun resolveLongClickActions(
  * (`library.write`) gates both playlist entries, and [canRemoveFromPlaylist] is true on an
  * editable playlist only.
  */
-fun resolveTrackSelectionActions(
+fun resolveSelectionActions(
     canEditLibrary: Boolean,
     canRemoveFromPlaylist: Boolean = false,
 ): List<ItemAction> = buildList {

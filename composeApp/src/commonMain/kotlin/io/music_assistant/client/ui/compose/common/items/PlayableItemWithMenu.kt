@@ -63,7 +63,6 @@ fun TrackWithMenu(
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
 ) {
-    val selection = LocalTrackSelection.current
     PlayableItemWithMenu(
         modifier = when (viewMode) {
             ViewMode.GRID -> Modifier
@@ -76,10 +75,6 @@ fun TrackWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
-        onSelectMultiple = selection?.takeIf { it.canSelect(item) }?.let { { it.start(item) } },
-        selectionMark = selection?.takeIf { it.isActive }?.let {
-            SelectionMark(selected = it.isSelected(item), onToggle = { it.toggle(item) })
-        },
         itemComposable = { mod, onClick, onLongClick ->
             when (viewMode) {
                 ViewMode.LIST -> TrackRowItem(
@@ -243,8 +238,9 @@ private class SelectionMark(val selected: Boolean, val onToggle: () -> Unit)
 
 /**
  * Playable item with a long-press dropdown menu. Default click plays the item now.
- * [onSelectMultiple] adds "Select multiple" at the top of the menu. While [selectionMark] is set,
- * a tap toggles the selection and a long press does nothing.
+ * Where the screen provides an [ItemSelection] that can select the item, the menu starts with
+ * "Select multiple". While the selection is active, a tap toggles the item and a long press does
+ * nothing.
  */
 @Composable
 private fun <T> PlayableItemWithMenu(
@@ -257,8 +253,6 @@ private fun <T> PlayableItemWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
-    onSelectMultiple: (() -> Unit)? = null,
-    selectionMark: SelectionMark? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -275,6 +269,13 @@ private fun <T> PlayableItemWithMenu(
     // screens). Null when the item isn't playable — then a tap opens the menu instead.
     val clickActionConfig = LocalClickActionConfig.current
     val effectiveDefault = clickActionConfig.effectiveActionFor(item)
+
+    // While a selection is active, a row that it cannot select ignores taps and long presses too.
+    val selection = LocalItemSelection.current
+    val onSelectMultiple = selection?.takeIf { it.canSelect(item) }?.let { { it.start(item) } }
+    val selectionMark = selection?.takeIf { it.isActive }?.let {
+        SelectionMark(selected = it.isSelected(item), onToggle = { it.toggle(item) })
+    }
 
     val actions = resolveLongClickActions(
         item = item,

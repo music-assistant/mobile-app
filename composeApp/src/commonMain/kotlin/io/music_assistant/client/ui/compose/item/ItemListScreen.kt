@@ -18,11 +18,11 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.ui.compose.common.items.AlbumSubtitle
+import io.music_assistant.client.ui.compose.common.items.ItemSelection
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
-import io.music_assistant.client.ui.compose.common.items.LocalTrackSelection
-import io.music_assistant.client.ui.compose.common.items.SelectableTracks
-import io.music_assistant.client.ui.compose.common.items.TrackSelection
-import io.music_assistant.client.ui.compose.common.items.TrackSelectionBar
+import io.music_assistant.client.ui.compose.common.items.LocalItemSelection
+import io.music_assistant.client.ui.compose.common.items.SelectableItems
+import io.music_assistant.client.ui.compose.common.items.SelectionBar
 import io.music_assistant.client.ui.compose.common.items.rememberSelectionTopAppBarState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListContent
@@ -53,13 +53,13 @@ fun ItemListScreen(
     val query by itemListViewModel.query.collectAsStateWithLifecycle()
     val viewMode by viewModeViewModel.viewModeFor(mediaType).collectAsStateWithLifecycle()
     // Every ItemList is an artist's list, and multi-select covers its tracks.
-    val trackSelection = remember { TrackSelection() }.takeIf { mediaType == MediaType.TRACK }
+    val itemSelection = remember { ItemSelection() }.takeIf { mediaType == MediaType.TRACK }
 
     TopBarLayout(
-        topAppBarState = rememberSelectionTopAppBarState(trackSelection),
+        topAppBarState = rememberSelectionTopAppBarState(itemSelection),
         topBar = {
-            trackSelection?.takeIf { it.isActive }?.let {
-                TrackSelectionBar(
+            itemSelection?.takeIf { it.isActive }?.let {
+                SelectionBar(
                     selection = it,
                     onPlay = actionsViewModel::onPlayItemsClick,
                     playlistActions = actionsViewModel,
@@ -106,8 +106,8 @@ fun ItemListScreen(
             )
         },
     ) {
-        CompositionLocalProvider(LocalTrackSelection provides trackSelection) {
-            SelectableTracks(state.items.dataOrNull.orEmpty())
+        CompositionLocalProvider(LocalItemSelection provides itemSelection) {
+            SelectableItems(state.items.dataOrNull.orEmpty())
             ItemListContent(
                 data = state.items,
                 onNavigateClick = onNavigateClick,

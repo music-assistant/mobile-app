@@ -244,9 +244,9 @@
   <string name="dialog_remove_from_library_message">Remove "%1$s" from your library?</string>
   <string name="dialog_remove_from_library_title">Remove from library?</string>
   <string name="dialog_remove_from_playlist_message">Remove "%1$s" from this playlist?</string>
-  <plurals name="dialog_remove_tracks_from_playlist_message">
-    <item quantity="one">Remove %1$d track from this playlist?</item>
-    <item quantity="other">Remove %1$d tracks from this playlist?</item>
+  <plurals name="dialog_remove_items_from_playlist_message">
+    <item quantity="one">Remove %1$d item from this playlist?</item>
+    <item quantity="other">Remove %1$d items from this playlist?</item>
   </plurals>
   <string name="dialog_remove_from_playlist_title">Remove from playlist?</string>
   <string name="discover_edit_rows">Edit rows</string>
@@ -464,7 +464,7 @@
   </plurals>
   <string name="selection_cancel">Cancel selection</string>
   <string name="selection_select_all">Select all</string>
-  <string name="selection_actions">Actions for selected tracks</string>
+  <string name="selection_actions">Actions for selected items</string>
   <string name="sendspin_encryption_required_unavailable">Encrypted connection required, but this server does not support it. Update Music Assistant or disable the requirement.</string>
   <string name="sendspin_failed_incompatible_protocol">The server uses a Sendspin protocol version this app does not support. Check for app and server updates, then restart the local player. Share app logs if the problem persists.</string>
   <string name="sendspin_failed_server_rejected">The server refused this device as a player. Check the Music Assistant server log.</string>

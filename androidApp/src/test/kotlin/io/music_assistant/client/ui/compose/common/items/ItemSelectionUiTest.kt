@@ -16,7 +16,7 @@ import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Playlist
-import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.server.GrantedScopes
 import io.music_assistant.client.data.model.server.Scope
 import io.music_assistant.client.data.play.PlayMode
@@ -29,15 +29,15 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
-class TrackSelectionUiTest {
+class ItemSelectionUiTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
     private val first = AppMediaItemFixtures.track(name = "First").copy(uri = "library://track/1")
     private val second = AppMediaItemFixtures.track(name = "Second").copy(uri = "library://track/2")
-    private val selection = TrackSelection()
-    private val played = mutableListOf<Pair<List<Track>, PlayMode>>()
-    private val removed = mutableListOf<List<Track>>()
+    private val selection = ItemSelection()
+    private val played = mutableListOf<Pair<List<AppMediaItem>, PlayMode>>()
+    private val removed = mutableListOf<List<AppMediaItem>>()
 
     @Test
     fun `select multiple starts the mode and a tap adds a track`() {
@@ -50,7 +50,7 @@ class TrackSelectionUiTest {
         composeTestRule.onNodeWithText("Second", useUnmergedTree = true).performClick()
 
         composeTestRule.onNodeWithText("2 selected").assertExists()
-        assertEquals(listOf(first, second), selection.tracks)
+        assertEquals(listOf(first, second), selection.items)
     }
 
     @Test
@@ -86,7 +86,7 @@ class TrackSelectionUiTest {
         composeTestRule.onNodeWithContentDescription("Select all").performClick()
 
         composeTestRule.onNodeWithText("2 selected").assertExists()
-        assertEquals(listOf(first, second), selection.tracks)
+        assertEquals(listOf(first, second), selection.items)
         composeTestRule.onNodeWithContentDescription("Select all").assertDoesNotExist()
     }
 
@@ -97,7 +97,7 @@ class TrackSelectionUiTest {
         selection.toggle(first)
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithContentDescription("Actions for selected tracks").performClick()
+        composeTestRule.onNodeWithContentDescription("Actions for selected items").performClick()
         composeTestRule.onNodeWithText("Add to playlist").assertExists()
         composeTestRule.onNodeWithText("Play now").performClick()
 
@@ -116,6 +116,22 @@ class TrackSelectionUiTest {
         composeTestRule.onNodeWithText("Select multiple").assertDoesNotExist()
     }
 
+    @Test
+    fun `an episode row offers select multiple and joins the selection`() {
+        val episode = PodcastEpisode(
+            itemId = "e1", provider = "test", name = "Episode", providerMappings = null, metadata = null,
+            favorite = null, uri = "library://podcast_episode/e1", images = emptyMap(), duration = null,
+            isPlayable = true, podcast = null, fullyPlayed = null, resumePositionMs = null, version = null,
+        )
+        setTracks(selection, extra = episode)
+
+        longClick("Episode")
+        composeTestRule.onNodeWithText("Select multiple").performClick()
+        composeTestRule.onNodeWithText("First", useUnmergedTree = true).performClick()
+
+        assertEquals(listOf(episode, first), selection.items)
+    }
+
     private fun longClick(text: String) {
         composeTestRule.onNodeWithText(text, useUnmergedTree = true).performTouchInput { longClick() }
         composeTestRule.waitForIdle()
@@ -128,10 +144,10 @@ class TrackSelectionUiTest {
         selection.toggle(second)
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithContentDescription("Actions for selected tracks").performClick()
+        composeTestRule.onNodeWithContentDescription("Actions for selected items").performClick()
         composeTestRule.onNodeWithText("Remove from playlist").performClick()
-        composeTestRule.onNodeWithText("Remove 2 tracks from this playlist?").assertExists()
-        assertEquals(emptyList<List<Track>>(), removed)
+        composeTestRule.onNodeWithText("Remove 2 items from this playlist?").assertExists()
+        assertEquals(emptyList<List<AppMediaItem>>(), removed)
 
         composeTestRule.onNodeWithText("Remove").performClick()
 
@@ -145,27 +161,36 @@ class TrackSelectionUiTest {
         selection.start(first)
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithContentDescription("Actions for selected tracks").performClick()
+        composeTestRule.onNodeWithContentDescription("Actions for selected items").performClick()
 
         composeTestRule.onNodeWithText("Remove from playlist").assertDoesNotExist()
     }
 
-    private fun setTracks(selection: TrackSelection?, canRemove: Boolean = false) {
+    private fun setTracks(selection: ItemSelection?, canRemove: Boolean = false, extra: PodcastEpisode? = null) {
         composeTestRule.setContent {
             // Inspection mode short-circuits the Koin-backed seams of the rows.
             CompositionLocalProvider(
                 LocalInspectionMode provides true,
                 LocalGrantedScopes provides GrantedScopes(setOf(Scope.LIBRARY_WRITE)),
-                LocalTrackSelection provides selection,
+                LocalItemSelection provides selection,
             ) {
                 Column {
-                    SelectableTracks(listOf(first, second))
+                    SelectableItems(listOf(first, second))
                     selection?.takeIf { it.isActive }?.let {
-                        TrackSelectionBar(
+                        SelectionBar(
                             selection = it,
                             onPlay = { tracks, mode -> played += tracks to mode },
                             playlistActions = NoPlaylistActions,
-                            onRemoveFromPlaylist = { tracks: List<Track> -> removed += tracks }.takeIf { canRemove },
+                            onRemoveFromPlaylist = { items: List<AppMediaItem> -> removed += items }.takeIf { canRemove },
+                        )
+                    }
+                    extra?.let {
+                        PodcastEpisodeWithMenu(
+                            item = it,
+                            viewMode = ViewMode.LIST,
+                            onPlayOption = { _, _ -> },
+                            libraryActions = NoLibraryActions,
+                            providerIconFetcher = null,
                         )
                     }
                     listOf(first, second).forEach { track ->

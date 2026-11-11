@@ -276,16 +276,16 @@ class ItemActionResolverTest {
             QueueOption.REPLACE_NEXT,
         ).map { ItemAction.Play(it) }
 
-        assertEquals(queueOptions + ItemAction.AddToPlaylist, resolveTrackSelectionActions(canEditLibrary = true))
-        assertEquals(queueOptions, resolveTrackSelectionActions(canEditLibrary = false))
+        assertEquals(queueOptions + ItemAction.AddToPlaylist, resolveSelectionActions(canEditLibrary = true))
+        assertEquals(queueOptions, resolveSelectionActions(canEditLibrary = false))
     }
 
     @Test
     fun `track selection on an editable playlist offers remove with library write`() {
-        val withRemove = resolveTrackSelectionActions(canEditLibrary = true, canRemoveFromPlaylist = true)
+        val withRemove = resolveSelectionActions(canEditLibrary = true, canRemoveFromPlaylist = true)
         assertEquals(listOf(ItemAction.AddToPlaylist, ItemAction.RemoveFromPlaylist), withRemove.takeLast(2))
 
-        val readOnly = resolveTrackSelectionActions(canEditLibrary = false, canRemoveFromPlaylist = true)
+        val readOnly = resolveSelectionActions(canEditLibrary = false, canRemoveFromPlaylist = true)
         assertFalse(ItemAction.RemoveFromPlaylist in readOnly)
     }
 }
