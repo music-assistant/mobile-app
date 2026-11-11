@@ -28,6 +28,7 @@ import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.PartyRepository
+import io.music_assistant.client.data.repository.PlaylistTransfer
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
@@ -133,6 +134,7 @@ fun sharedModule(
         }
         singleOf(serviceClientConstructor) { bind<ServiceClient>() }
         singleOf(::LogSharer)
+        singleOf(::PlaylistTransfer)
         single(createdAtStart = true) {
             ConnectionManager(
                 get(),
@@ -240,7 +242,7 @@ fun sharedModule(
         factory { BackgroundRestrictionViewModel(get(), get(), get()) }
         factory { SchemaVersionWarningViewModel(get()) }
         factory { ActionsViewModel(get(), get(), get(), get()) }
-        factory { SettingsViewModel(get(), get(), get(), get(), get()) }
+        factory { SettingsViewModel(get(), get(), get(), get(), get(), get()) }
         factory {
             val mainDataSource = get<MainDataSource>()
             SendspinSettingsViewModel(
@@ -260,10 +262,11 @@ fun sharedModule(
             )
         }
         factory { LibraryCategoriesViewModel(get(), get(), get()) }
-        factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get(), get(), get(), get()) }
+        factory { params -> LibraryListViewModel(params[0], get(), get(), get(), get(), get(), get(), get(), get()) }
         factory { params -> BrowseViewModel(params.getOrNull<String>(), get(), get(), get()) }
         factory { params ->
             ItemDetailsViewModel(
+                get(),
                 get(),
                 get(),
                 get(),

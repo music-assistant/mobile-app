@@ -19,6 +19,7 @@
   <string name="action_choose_artist">Choose artist</string>
   <string name="action_customize">Customize…</string>
   <string name="action_dislike">Dislike</string>
+  <string name="action_export_playlist">Export playlist</string>
   <string name="action_favorite">Favorite</string>
   <string name="action_find_on_music_services">Find on your music services</string>
   <string name="action_go_to_album">Go to album</string>
@@ -408,6 +409,17 @@
   <string name="playlist_add_new">Add new</string>
   <string name="playlist_add_to_title">Add to playlist</string>
   <string name="playlist_create_title">Create new playlist</string>
+  <string name="playlist_import">Import</string>
+  <string name="playlist_import_match_best_effort">Best effort</string>
+  <string name="playlist_import_match_best_effort_description">Prefer an exact match, then the same recording. Otherwise accept the closest available match.</string>
+  <string name="playlist_import_match_exact">Exact release</string>
+  <string name="playlist_import_match_exact_description">Match tracks against the same release only.</string>
+  <string name="playlist_import_match_same_recording">Same recording (recommended)</string>
+  <string name="playlist_import_match_same_recording_description">Prefer an exact match. Otherwise accept the same recording from a different release.</string>
+  <string name="playlist_import_matching">Track matching</string>
+  <string name="playlist_import_sources">Search for tracks on</string>
+  <string name="playlist_import_sources_description">Selected music sources are used as a fallback when the original source of a track is not available.</string>
+  <string name="playlist_import_title">Import playlist</string>
   <string name="playlist_name_label">Playlist name</string>
   <string name="playlist_no_editable">No editable playlists available</string>
   <string name="playlist_sharing_everyone">Everyone, including guests</string>
@@ -479,6 +491,11 @@
   <string name="settings_allow_landscape_hint">Experimental: some screens can look wrong in landscape. Use at your own risk.</string>
   <string name="settings_volume_keys_control_player">Volume buttons control the selected player</string>
   <string name="settings_volume_keys_control_player_hint">While the app is open and a player other than this device is selected, the volume buttons change the volume of that player instead of the phone.</string>
+  <string name="toast_error_import_playlist">Error importing playlist</string>
+  <string name="toast_playlist_file_invalid">This file is not an M3U playlist</string>
+  <string name="toast_playlist_file_too_large">The playlist file is too large</string>
+  <string name="toast_playlist_file_unreadable">Could not read the file</string>
+  <string name="toast_playlist_imported">Imported %1$s</string>
   <string name="volume_keys_player_off">%1$s is off</string>
   <string name="volume_keys_no_volume_control">The volume of %1$s cannot be changed</string>
   <string name="settings_app_documentation">App documentation →</string>

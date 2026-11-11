@@ -9,6 +9,7 @@ import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.MarkableItem
 import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.ListSort
+import io.music_assistant.client.data.model.server.PlaylistMatchPolicy
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.SortWire
 import io.music_assistant.client.utils.myJson
@@ -475,6 +476,33 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
                     "positions_to_remove",
                     myJson.decodeFromString<JsonArray>(myJson.encodeToString(positions)),
                 )
+            },
+        )
+
+        /** The M3U8 text of a library playlist. */
+        fun export(dbPlaylistId: String) = Request(
+            command = APICommands.MUSIC_PLAYLISTS_EXPORT_PLAYLIST,
+            args = buildJsonObject {
+                put("db_playlist_id", JsonPrimitive(dbPlaylistId))
+            },
+        )
+
+        /**
+         * Creates a library playlist from [m3uData] and matches its tracks, like the web frontend.
+         * A null [matchProviders] searches every music source. Send [matchPolicy] only to a server
+         * that has it ([supportsPlaylistMatchPolicy]).
+         */
+        fun import(
+            m3uData: String,
+            matchProviders: List<String>?,
+            matchPolicy: PlaylistMatchPolicy?,
+        ) = Request(
+            command = APICommands.MUSIC_PLAYLISTS_IMPORT_PLAYLIST,
+            args = buildJsonObject {
+                put("m3u_data", JsonPrimitive(m3uData))
+                put("library_matching", JsonPrimitive(true))
+                matchProviders?.let { put("match_providers", JsonArray(it.map(::JsonPrimitive))) }
+                matchPolicy?.let { put("match_policy", JsonPrimitive(it.serverValue)) }
             },
         )
     }

@@ -204,6 +204,7 @@ fun ItemDetailsScreen(
         onRefreshPlaylist = itemDetailsViewModel::refreshPlaylistTracks,
         refreshAction = refreshAction,
         onRefreshItem = itemDetailsViewModel::refreshItem,
+        onExportPlaylist = itemDetailsViewModel::exportPlaylist,
         providerDetails = providerViewModel::getProviderDetails,
     )
 }
@@ -239,6 +240,7 @@ fun ItemDetails(
     onRefreshPlaylist: () -> Unit = {},
     refreshAction: RefreshItemAction? = null,
     onRefreshItem: () -> Unit = {},
+    onExportPlaylist: (chooserTitle: String) -> Unit = {},
     providerDetails: (String) -> ProviderDetails? = { null },
 ) {
     val playlistActions = object : PlaylistActions {
@@ -345,6 +347,7 @@ fun ItemDetails(
                         onRefreshPlaylist = onRefreshPlaylist,
                         refreshAction = refreshAction,
                         onRefreshItem = onRefreshItem,
+                        onExportPlaylist = onExportPlaylist,
                         providerDetails = providerDetails,
                     )
                 }
@@ -396,6 +399,7 @@ private fun ItemContent(
     onRefreshPlaylist: () -> Unit,
     refreshAction: RefreshItemAction?,
     onRefreshItem: () -> Unit,
+    onExportPlaylist: (chooserTitle: String) -> Unit,
     providerDetails: (String) -> ProviderDetails?,
 ) {
     // Tabs, the loading gate, and the selected tab are all derived in ItemDetailsViewModel.State.
@@ -490,6 +494,8 @@ private fun ItemContent(
                 refreshAction = refreshAction,
                 refreshingItem = state.refreshingItem,
                 onRefreshItem = onRefreshItem,
+                // The server exports a library playlist only.
+                onExportPlaylist = onExportPlaylist.takeIf { item is Playlist && item.isInLibrary },
                 query = state.playableItemsQuery,
                 onQueryChanged = onPlayableItemsQueryChanged.takeIf {
                     item is Album || item is Playlist || item is Podcast

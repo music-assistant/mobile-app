@@ -158,6 +158,19 @@ actual class PlatformFeature {
   because a refresh does not change the favorite. Then it emits `refreshed`. The page replaces its item
   from `refreshed` by uri, because a substitute has no mapping in common with the unavailable item.
   The command changes the listings of the item, so the sub-items load again.
+- **Playlist import and export**: `PlaylistTransfer` (`data/repository/`) sends `music/playlists/export_playlist`
+  and `music/playlists/import_playlist`, like the web frontend. The server parses and writes the M3U text.
+  "Export playlist" is in the menu of a library playlist page, because the server exports a library playlist
+  only. The app writes the text to a `.m3u8` cache file and gives it to the share sheet (`FileSharer`, one
+  implementation for each platform). The Import button in the Playlists list needs `library.write`. It opens the
+  platform file picker (`rememberPlaylistFilePicker`). On iOS the picker offers the `.m3u` and `.m3u8` types.
+  Android filters by MIME type only, so its picker also offers text and binary files, because some providers
+  report an M3U file with these types. The app checks for the `#EXTM3U` header. The buttons show in every list
+  state, also when the list is empty. The app reads 3 MiB at most, because the server reads a WebSocket message of 4 MiB at
+  most. `ImportPlaylistDialog` offers the searchable music sources and, from server 2.11
+  (`supportsPlaylistMatchPolicy`), the match policy. If the user keeps all sources, the request sends no
+  source list, so the server searches all sources. The server matches the tracks in a background task after
+  the answer, and the list gets the new playlist from the `media_item_added` event.
 - **Item metadata**: the item details page shows the long text of the item under the header, like the
   web frontend: the biography of an artist (`metadata.description`), the review of an album
   (`metadata.review`, or its description), and the description of a playlist, a podcast or an

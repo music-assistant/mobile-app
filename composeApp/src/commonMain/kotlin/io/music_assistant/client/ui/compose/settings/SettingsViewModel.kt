@@ -10,6 +10,7 @@ import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AppVersion
+import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import kotlinx.coroutines.Dispatchers
@@ -23,11 +24,13 @@ import org.jetbrains.compose.resources.StringResource
 // Grants/denials resolve immediately; users reading the prompt and mDNS-blocked
 // networks are the contenders to actually hit this
 private const val CONNECT_PROBE_TIMEOUT_MS = 15_000L
+private const val LOG_MIME_TYPE = "text/plain"
 
 class SettingsViewModel(
     private val apiClient: ServiceClient,
     private val settings: SettingsRepository,
     private val logSharer: LogSharer,
+    private val fileSharer: FileSharer,
     private val localNetworkPermissionGate: LocalNetworkPermissionGate,
     val appVersion: AppVersion,
 ) : ViewModel() {
@@ -64,7 +67,7 @@ class SettingsViewModel(
                 val path = withContext(Dispatchers.Default) {
                     logSharer.prepareLogShareFile(InMemoryLogWriter.getLogText())
                 }
-                logSharer.presentShareFile(path, chooserTitle)
+                fileSharer.share(path, LOG_MIME_TYPE, chooserTitle)
             } finally {
                 _isPreparingShare.value = false
             }
@@ -79,7 +82,7 @@ class SettingsViewModel(
                 val path = withContext(Dispatchers.Default) {
                     logSharer.prepareCrashLogShareFile()
                 }
-                if (path != null) logSharer.presentShareFile(path, chooserTitle)
+                if (path != null) fileSharer.share(path, LOG_MIME_TYPE, chooserTitle)
             } finally {
                 _isPreparingShare.value = false
             }

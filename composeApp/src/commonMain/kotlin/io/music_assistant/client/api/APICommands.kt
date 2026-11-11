@@ -46,6 +46,8 @@ object APICommands {
     const val MUSIC_PLAYLISTS_PLAYLIST_TRACKS = "music/playlists/playlist_tracks"
     const val MUSIC_PLAYLISTS_ADD_PLAYLIST_TRACKS = "music/playlists/add_playlist_tracks"
     const val MUSIC_PLAYLISTS_REMOVE_PLAYLIST_TRACKS = "music/playlists/remove_playlist_tracks"
+    const val MUSIC_PLAYLISTS_EXPORT_PLAYLIST = "music/playlists/export_playlist"
+    const val MUSIC_PLAYLISTS_IMPORT_PLAYLIST = "music/playlists/import_playlist"
 
     // Podcast commands
     const val MUSIC_PODCASTS_LIBRARY_ITEMS = "music/podcasts/library_items"
