@@ -165,7 +165,6 @@ class KtorServiceClient(
     private var isInBackground = false
     private var hasActiveExternalConsumer = false
     private var hasActivePlayback = false
-    private var backgroundedAt = 0L
 
     // A command is trying to reach the server: the reconnect it asked for must not
     // be torn down under it. Bounded by the same budget the request gate waits on.
@@ -183,12 +182,61 @@ class KtorServiceClient(
         ),
     )
 
-    private sealed class BackgroundedConnectionInfo {
-        data class Direct(val connectionInfo: ConnectionInfo) : BackgroundedConnectionInfo()
-        data class WebRTC(val remoteId: RemoteId) : BackgroundedConnectionInfo()
+    /** What the session connects to. Everything that differs between the two transports is here. */
+    private sealed class SessionTarget {
+        /** The value of `SettingsRepository.setLastConnectionMode`, also the log label. */
+        abstract val mode: String
+        abstract val historyEntry: ConnectionHistoryEntry
+
+        /**
+         * WebRTC clears `serverInfo` on a reconnect, because the gateway proxies the data channel onto a
+         * fresh local WebSocket and races the two legs: if `client/auth` is sent before the gateway has
+         * forwarded the new `server/hello` back through the (not-yet-`open`) channel, auth is silently
+         * lost. Clearing `serverInfo` forces `AwaitingServerInfo`, holding `authorize` until the fresh
+         * `server/hello` arrives. Direct WebSocket has no such ordering gate: the new `server/hello`
+         * refreshes the cached value over the same FIFO channel that carries `client/auth` next.
+         */
+        abstract val clearsServerInfoOnReconnect: Boolean
+
+        abstract fun connected(data: ConnectionData): SessionState.Connected
+        abstract fun reconnecting(attempt: Int, data: ConnectionData, isOnline: Boolean): SessionState.Reconnecting
+
+        data class Direct(val connectionInfo: ConnectionInfo) : SessionTarget() {
+            override val mode = "direct"
+
+            // Provisional: the server has not named itself yet, so this row has no id.
+            // It keeps JIT reconnect able to recover a login that did not finish, and
+            // AuthenticationManager absorbs it once the server identifies itself.
+            override val historyEntry
+                get() = ConnectionHistoryEntry(
+                    type = ConnectionType.DIRECT,
+                    host = connectionInfo.host,
+                    port = connectionInfo.port,
+                    isTls = connectionInfo.isTls,
+                    basePath = connectionInfo.basePath,
+                )
+            override val clearsServerInfoOnReconnect = false
+
+            override fun connected(data: ConnectionData) = SessionState.Connected.Direct(connectionInfo, data)
+            override fun reconnecting(attempt: Int, data: ConnectionData, isOnline: Boolean) =
+                SessionState.Reconnecting.Direct(attempt, connectionInfo, data, isOnline)
+        }
+
+        data class WebRTC(val remoteId: RemoteId) : SessionTarget() {
+            override val mode = "webrtc"
+
+            // Provisional, like the Direct entry.
+            override val historyEntry
+                get() = ConnectionHistoryEntry(type = ConnectionType.WEBRTC, remoteId = remoteId.rawId)
+            override val clearsServerInfoOnReconnect = true
+
+            override fun connected(data: ConnectionData) = SessionState.Connected.WebRTC(remoteId, data)
+            override fun reconnecting(attempt: Int, data: ConnectionData, isOnline: Boolean) =
+                SessionState.Reconnecting.WebRTC(attempt, remoteId, data, isOnline)
+        }
     }
 
-    private var backgroundedConnectionInfo: BackgroundedConnectionInfo? = null
+    private var backgroundedTarget: SessionTarget? = null
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -361,7 +409,6 @@ class KtorServiceClient(
      */
     override fun onAppBackground() {
         isInBackground = true
-        backgroundedAt = currentTimeMillis()
         logger.i { "App backgrounded (state=${stateLabel(_sessionState.value)})" }
     }
 
@@ -384,28 +431,26 @@ class KtorServiceClient(
 
     /**
      * Tears down the current transport and reconnects using either the saved
-     * [backgroundedConnectionInfo] or, failing that, the connection identity of
+     * [backgroundedTarget] or, failing that, the connection identity of
      * the current [SessionState.Connected]. Returns false when neither source
      * can supply a target — caller decides what (if anything) to log.
      */
     private fun reconnectFromCurrent(reason: String): Boolean {
-        val info = backgroundedConnectionInfo
+        val target = backgroundedTarget
             ?: when (val s = _sessionState.value) {
-                is SessionState.Connected.Direct -> BackgroundedConnectionInfo.Direct(s.connectionInfo)
-                is SessionState.Connected.WebRTC -> BackgroundedConnectionInfo.WebRTC(s.remoteId)
+                is SessionState.Connected.Direct -> SessionTarget.Direct(s.connectionInfo)
+                is SessionState.Connected.WebRTC -> SessionTarget.WebRTC(s.remoteId)
                 else -> null
             } ?: return false
         logger.i { "Force reconnect: $reason" }
 
-        // forceConnect / forceConnectWebRTC bypass the public guard and handle
-        // their own teardown — no transient state sentinel needed here.
-        when (info) {
-            is BackgroundedConnectionInfo.Direct -> {
-                val connInfo = settings.connectionInfo.value ?: info.connectionInfo
-                forceConnect(connInfo, resume = true)
-            }
-            is BackgroundedConnectionInfo.WebRTC -> forceConnectWebRTC(info.remoteId, resume = true)
+        // `start` bypasses the public guard and handles its own teardown — no transient
+        // state sentinel needed here. A direct session follows the saved connection info.
+        val resumed = when (target) {
+            is SessionTarget.Direct -> SessionTarget.Direct(settings.connectionInfo.value ?: target.connectionInfo)
+            is SessionTarget.WebRTC -> target
         }
+        start(resumed, resume = true)
         return true
     }
 
@@ -469,7 +514,7 @@ class KtorServiceClient(
 
         if (wasInBackground) _foregroundEvents.tryEmit(Unit)
 
-        if (backgroundedConnectionInfo != null) {
+        if (backgroundedTarget != null) {
             reconnectFromCurrent("was Backgrounded")
             return
         }
@@ -522,16 +567,7 @@ class KtorServiceClient(
 
     // --- Transport state observation ---
 
-    private fun observeTransport(
-        transport: Transport,
-        createConnected: (ConnectionData) -> SessionState.Connected,
-        createReconnecting: (Int, ConnectionData) -> SessionState.Reconnecting,
-        backgroundInfo: () -> BackgroundedConnectionInfo,
-        onFreshConnect: () -> Unit,
-        onReconnected: suspend () -> Unit,
-        needsReauthOnReconnect: Boolean = false,
-        clearsServerInfoOnReconnect: Boolean = false,
-    ) {
+    private fun observeTransport(transport: Transport, target: SessionTarget) {
         transportObserverJob?.cancel()
         transportObserverJob = launch {
             // State collector. `drop(1)` skips the StateFlow's initial-value replay
@@ -562,49 +598,41 @@ class KtorServiceClient(
                             // so MainDataSource's stale-data path holds the line until the
                             // user retries login or the transport bounces again.
                             //
-                            // `serverInfo` handling differs by transport. WebRTC clears
-                            // it because the gateway proxies the data channel onto a
-                            // fresh local WebSocket and races the two legs: if
-                            // `client/auth` is sent before the gateway has forwarded the
-                            // new `server/hello` back through the (not-yet-`open`)
-                            // channel, auth is silently lost. Clearing `serverInfo`
-                            // forces `AwaitingServerInfo`, holding `authorize` until the
-                            // fresh `server/hello` arrives. Direct WebSocket has no such
-                            // ordering gate — the new `server/hello` will refresh the
-                            // cached value over the same FIFO channel that carries
-                            // `client/auth` next, so we leave `serverInfo` populated and
-                            // let `AwaitingAuth` trigger immediately.
+                            // `serverInfo` handling differs by transport, see
+                            // `SessionTarget.clearsServerInfoOnReconnect`.
                             //
                             // `authProcessState` resets to `NotStarted` so AuthMgr's
                             // collector actually fires; a stale `InProgress` from a
                             // mid-flight auth at disconnect time would otherwise park
                             // the collector. `user` is preserved so the UI keeps
                             // showing the user as logged in throughout the reconnect.
-                            val emitData = if (wasReconnecting && needsReauthOnReconnect) {
+                            val emitData = if (wasReconnecting) {
                                 preserved.copy(
-                                    serverInfo = if (clearsServerInfoOnReconnect) null else preserved.serverInfo,
+                                    serverInfo = if (target.clearsServerInfoOnReconnect) null else preserved.serverInfo,
                                     needsServerReauth = true,
                                     authProcessState = AuthProcessState.NotStarted,
                                 )
                             } else {
                                 preserved
                             }
-                            _sessionState.update { createConnected(emitData) }
+                            _sessionState.update { target.connected(emitData) }
                             logger.i {
                                 "Transport→Connected (wasReconnecting=$wasReconnecting, " +
-                                    "needsReauthOnReconnect=$needsReauthOnReconnect, " +
                                     "dcs=${dcsLabel(emitData.dataConnectionState)})"
                             }
                             if (wasReconnecting) {
-                                onReconnected()
+                                // Re-auth is owned by AuthenticationManager (driven by the
+                                // `needsServerReauth` flag above); nothing to do here.
+                                logger.i { "${target.mode} reconnection successful — awaiting AuthenticationManager re-auth" }
                             } else {
-                                onFreshConnect()
+                                settings.setLastConnectionMode(target.mode)
+                                settings.addOrUpdateHistoryEntry(target.historyEntry)
                             }
                         }
 
                         is TransportState.Reconnecting -> {
                             if (isInBackground && canTearDownInBackground) {
-                                backgroundedConnectionInfo = backgroundInfo()
+                                backgroundedTarget = target
                                 transport.disconnect()
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
                                 logger.i { "Transport→Reconnecting while backgrounded → Disconnected.Backgrounded" }
@@ -613,10 +641,7 @@ class KtorServiceClient(
                                     (_sessionState.value as? HasConnectionData)?.connectionData
                                         ?: ConnectionData()
                                 _sessionState.update {
-                                    createReconnecting(
-                                        transportState.attempt,
-                                        preserved,
-                                    )
+                                    target.reconnecting(transportState.attempt, preserved, networkMonitor.isAvailable.value)
                                 }
                                 logger.i { "Transport→Reconnecting (attempt=${transportState.attempt})" }
                             }
@@ -632,7 +657,7 @@ class KtorServiceClient(
                             // the next foreground without leaving the screen. The error state, and
                             // the Settings screen it leads to, is for a failure the user can watch.
                             if (isInBackground) {
-                                backgroundedConnectionInfo = backgroundInfo()
+                                backgroundedTarget = target
                                 _sessionState.update { SessionState.Disconnected.Backgrounded }
                                 logger.i {
                                     "Transport→Failed while backgrounded → Disconnected.Backgrounded: " +
@@ -670,7 +695,12 @@ class KtorServiceClient(
 
     override fun connect(connection: ConnectionInfo) {
         if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
-        forceConnect(connection)
+        start(SessionTarget.Direct(connection))
+    }
+
+    override fun connectWebRTC(remoteId: RemoteId) {
+        if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
+        start(SessionTarget.WebRTC(remoteId))
     }
 
     /**
@@ -701,7 +731,7 @@ class KtorServiceClient(
     }
 
     /**
-     * Bypass of [connect]'s Connecting/Connected guard for callers that
+     * Bypass of the [connect] / [connectWebRTC] guard for callers that
      * intentionally tear down a live transport before rebuilding (e.g. JIT
      * reconnect from a stuck `AwaitingAuth(Failed)` session). Public callers
      * should keep using [connect] so accidental double-connects are still cheap.
@@ -710,114 +740,36 @@ class KtorServiceClient(
      * a failed first attempt then retries as `Reconnecting`, which keeps the current
      * screen, instead of `Disconnected.Error`, which sends the user to Settings.
      */
-    private fun forceConnect(connection: ConnectionInfo, resume: Boolean = false) {
+    private fun start(target: SessionTarget, resume: Boolean = false) {
         // New connection episode: the silent-failure budget is per-server-session, so
         // a prior server's failures must not pre-charge this one's escape hatch.
         silentReauth.reset()
         // A JIT reconnect also consumes the backgrounded session: a stale copy would make the
         // next foreground tear down this live transport and connect again over it.
-        backgroundedConnectionInfo = null
+        backgroundedTarget = null
         tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
         startConnectWatchdog()
 
-        val directTransport = DirectTransport(
-            clientProvider = { currentClient },
-            connectionInfoProvider = { connection },
-            parentScope = this,
-            networkAvailable = networkMonitor.isAvailable,
-            retryInitialFailure = resume,
-        )
-        transport = directTransport
+        val newTransport = when (target) {
+            is SessionTarget.Direct -> DirectTransport(
+                clientProvider = { currentClient },
+                connectionInfoProvider = { target.connectionInfo },
+                parentScope = this,
+                networkAvailable = networkMonitor.isAvailable,
+                retryInitialFailure = resume,
+            )
 
-        observeTransport(
-            transport = directTransport,
-            createConnected = { data ->
-                SessionState.Connected.Direct(connection, data)
-            },
-            createReconnecting = { attempt, data ->
-                SessionState.Reconnecting.Direct(attempt, connection, data, isOnline = networkMonitor.isAvailable.value)
-            },
-            backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
-            onFreshConnect = {
-                settings.setLastConnectionMode("direct")
-                // Provisional: the server has not named itself yet, so this row has no id.
-                // It keeps JIT reconnect able to recover a login that did not finish, and
-                // AuthenticationManager absorbs it once the server identifies itself.
-                settings.addOrUpdateHistoryEntry(
-                    ConnectionHistoryEntry(
-                        type = ConnectionType.DIRECT,
-                        host = connection.host,
-                        port = connection.port,
-                        isTls = connection.isTls,
-                        basePath = connection.basePath,
-                    ),
-                )
-            },
-            onReconnected = {
-                // Re-auth is owned by AuthenticationManager (driven by the
-                // `needsReauthOnReconnect = true` gate above); nothing to do here.
-                logger.i { "Direct reconnection successful — awaiting AuthenticationManager re-auth" }
-            },
-            needsReauthOnReconnect = true,
-            // serverInfo stays populated: Direct WS has no `server/hello`-before-`client/auth`
-            // ordering gate (unlike the WebRTC gateway), and the next `server/hello` will
-            // overwrite any stale cached value over the same FIFO channel that carries auth.
-            clearsServerInfoOnReconnect = false,
-        )
-        directTransport.connect()
-    }
-
-    override fun connectWebRTC(remoteId: RemoteId) {
-        if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
-        forceConnectWebRTC(remoteId)
-    }
-
-    /** WebRTC twin of [forceConnect]. */
-    private fun forceConnectWebRTC(remoteId: RemoteId, resume: Boolean = false) {
-        silentReauth.reset()
-        backgroundedConnectionInfo = null
-        tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
-        startConnectWatchdog()
-
-        val webrtcTransport = WebRTCTransport(
-            httpClient = webrtcHttpClient,
-            remoteId = remoteId,
-            parentScope = this,
-            networkAvailable = networkMonitor.isAvailable,
-            retryInitialFailure = resume,
-        )
-        transport = webrtcTransport
-
-        observeTransport(
-            transport = webrtcTransport,
-            createConnected = { data -> SessionState.Connected.WebRTC(remoteId, data) },
-            createReconnecting = { attempt, data ->
-                SessionState.Reconnecting.WebRTC(attempt, remoteId, data, isOnline = networkMonitor.isAvailable.value)
-            },
-            backgroundInfo = { BackgroundedConnectionInfo.WebRTC(remoteId) },
-            onFreshConnect = {
-                settings.setLastConnectionMode("webrtc")
-                // Provisional — see the Direct path above.
-                settings.addOrUpdateHistoryEntry(
-                    ConnectionHistoryEntry(
-                        type = ConnectionType.WEBRTC,
-                        remoteId = remoteId.rawId,
-                    ),
-                )
-            },
-            onReconnected = {
-                // Re-auth is owned by AuthenticationManager (driven by the
-                // `needsReauthOnReconnect = true` gate above); nothing to do here.
-                // ArtworkRepository owns reusable bytes and retries failed fetches after reconnect.
-                logger.i { "WebRTC reconnection successful — awaiting AuthenticationManager re-auth" }
-            },
-            needsReauthOnReconnect = true,
-            // serverInfo cleared: WebRTC gateway races data channel `on_message`
-            // for `client/auth` against forwarding the new `server/hello`. Forcing
-            // `AwaitingServerInfo` until the fresh hello arrives sidesteps the race.
-            clearsServerInfoOnReconnect = true,
-        )
-        webrtcTransport.connect()
+            is SessionTarget.WebRTC -> WebRTCTransport(
+                httpClient = webrtcHttpClient,
+                remoteId = target.remoteId,
+                parentScope = this,
+                networkAvailable = networkMonitor.isAvailable,
+                retryInitialFailure = resume,
+            )
+        }
+        transport = newTransport
+        observeTransport(newTransport, target)
+        newTransport.connect()
     }
 
     override fun disconnectByUser() {
@@ -826,16 +778,7 @@ class KtorServiceClient(
     }
 
     private fun disconnect(newState: SessionState.Disconnected) {
-        launch {
-            if (newState is SessionState.Disconnected.Backgrounded &&
-                (!isInBackground || !canTearDownInBackground)
-            ) {
-                logger.i { "Backgrounded disconnect aborted — the session is still needed" }
-                return@launch
-            }
-
-            tearDownTransport(newState, "Disconnected (${stateLabel(newState)})")
-        }
+        launch { tearDownTransport(newState, "Disconnected (${stateLabel(newState)})") }
     }
 
     /**
@@ -1137,10 +1080,11 @@ class KtorServiceClient(
             return
         }
         logger.i { "JIT reconnect via ${entry.type} ($reason)" }
-        when (entry.type) {
-            ConnectionType.DIRECT -> entry.connectionInfo?.let { forceConnect(it, resume) }
-            ConnectionType.WEBRTC -> entry.remoteId?.let { forceConnectWebRTC(RemoteId(it), resume) }
-        }
+        val target = when (entry.type) {
+            ConnectionType.DIRECT -> entry.connectionInfo?.let { SessionTarget.Direct(it) }
+            ConnectionType.WEBRTC -> entry.remoteId?.let { SessionTarget.WebRTC(RemoteId(it)) }
+        } ?: return
+        start(target, resume)
     }
 
     private fun savedTokenForState(state: SessionState.Connected): String? {

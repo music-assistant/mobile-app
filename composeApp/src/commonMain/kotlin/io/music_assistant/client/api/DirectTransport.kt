@@ -62,9 +62,6 @@ class DirectTransport(
     private var session: DefaultClientWebSocketSession? = null
     private var wasConnected = false
 
-    @Volatile
-    private var messageCounter = 0L
-
     override fun connect() {
         connectionJob?.cancel()
         wasConnected = false
@@ -99,7 +96,6 @@ class DirectTransport(
             try {
                 while (true) {
                     val message: JsonObject = receiveDeserialized()
-                    messageCounter++
                     _messages.emit(message)
                 }
             } catch (@Suppress("SwallowedException") e: ClosedReceiveChannelException) {
