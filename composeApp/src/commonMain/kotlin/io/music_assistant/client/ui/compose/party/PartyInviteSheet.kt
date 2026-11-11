@@ -104,6 +104,10 @@ fun PartyInviteSheet(state: PartyViewModel.State, actions: PartySheetActions, on
         ),
     ) {
         val invite = state.invite.dataOrNull
+        // One cast for the title and the branch. On iOS, an `as?` on `invite` followed by an
+        // `is` check on it made the `is` check true for null in this composable (Kotlin 2.4.10,
+        // Compose 1.12.0), and OpenInvite crashed.
+        val open = invite as? PartyInvite.Open
         val settings = state.settings.dataOrNull
         Column(
             // Full height from the start: the content grows as the invite and the settings load,
@@ -116,7 +120,7 @@ fun PartyInviteSheet(state: PartyViewModel.State, actions: PartySheetActions, on
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
-                text = (invite as? PartyInvite.Open)?.partyName ?: stringResource(Res.string.nav_party),
+                text = open?.partyName ?: stringResource(Res.string.nav_party),
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
             )
@@ -130,7 +134,7 @@ fun PartyInviteSheet(state: PartyViewModel.State, actions: PartySheetActions, on
                 )
             }
             when {
-                invite is PartyInvite.Open -> OpenInvite(invite)
+                open != null -> OpenInvite(open)
 
                 invite is PartyInvite.GuestAccessOff -> Text(
                     text = stringResource(
