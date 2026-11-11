@@ -635,7 +635,7 @@ the app:
 | Smart playlists | `smart_playlists/*` | Hard | A rule editor is heavy on a phone. Low value. Defer |
 | Refresh item, find on music services | `music/refresh_item` | Easy | Long-press action. Scope `library.write` on 2.11, `library.manage` on 2.10 |
 | Add radio or track by URL | `builtin/add_radio`, `builtin/add_track` | Easy | A text dialog in the Radio and Tracks lists |
-| Multi-select and bulk actions | existing commands | Medium | Compose selection mode on the list screens. Needed for bulk mark played and bulk add to playlist |
+| Multi-select and bulk actions | existing commands | Medium | Partly done (issue #1209). Tracks on the album and artist pages: the queue options and add to playlist. Not done: the library lists, other item types and bulk mark played |
 | Search source picker and recent searches | `music/search` with `providers`, preferences `search.sources` and `search.recent` | Easy | Chips above the result list. Keep limits at 40 or lower |
 | Per-row provider filter on home | preference `discover.hiddenProviders.<row>` | Easy | Edit mode already exists |
 | Shortcut add and remove | `auth/user/update` with `sidebar.shortcuts` | Easy | Long-press action. The app already reads the list |

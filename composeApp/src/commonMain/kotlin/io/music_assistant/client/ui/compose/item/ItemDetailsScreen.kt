@@ -34,6 +34,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -94,15 +95,21 @@ import io.music_assistant.client.ui.compose.common.items.CategoryRow
 import io.music_assistant.client.ui.compose.common.items.ItemCategory
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
 import io.music_assistant.client.ui.compose.common.items.LibraryActions
+import io.music_assistant.client.ui.compose.common.items.LocalTrackSelection
 import io.music_assistant.client.ui.compose.common.items.PlayHandler
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.common.items.PodcastEpisodeWithMenu
 import io.music_assistant.client.ui.compose.common.items.ProgressActions
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActions
 import io.music_assistant.client.ui.compose.common.items.RadioWithMenu
+import io.music_assistant.client.ui.compose.common.items.SelectableTracks
+import io.music_assistant.client.ui.compose.common.items.SelectionKey
+import io.music_assistant.client.ui.compose.common.items.TrackSelection
+import io.music_assistant.client.ui.compose.common.items.TrackSelectionBar
 import io.music_assistant.client.ui.compose.common.items.TrackWithMenu
 import io.music_assistant.client.ui.compose.common.items.lazyListOccurrenceKeys
 import io.music_assistant.client.ui.compose.common.items.playableLazyListOccurrenceKeys
+import io.music_assistant.client.ui.compose.common.items.rememberSelectionTopAppBarState
 import io.music_assistant.client.ui.compose.common.items.supportsAddToPlaylist
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.providers.providerIconFetcher
@@ -181,13 +188,14 @@ fun ItemDetailsScreen(
         onFavoriteChange = actionsViewModel::onFavoriteChange,
         onMarkPlayed = actionsViewModel::onMarkPlayed,
         onMarkUnplayed = actionsViewModel::onMarkUnplayed,
-        onRemoveFromPlaylist = { id, position ->
-            actionsViewModel.removeFromPlaylist(id, position, itemDetailsViewModel::reload)
+        onRemoveFromPlaylist = { id, positions ->
+            actionsViewModel.removeFromPlaylist(id, positions, itemDetailsViewModel::reload)
         },
         providerIconFetcher = providerViewModel.providerIconFetcher(),
         onPlayClick = itemDetailsViewModel::onPlayClick,
         onChapterClick = itemDetailsViewModel::onChapterClick,
         onChildPlayClick = itemDetailsViewModel::onPlayClick,
+        onPlayTracks = actionsViewModel::onPlayItemsClick,
         onPlayableItemsSortChanged = itemDetailsViewModel::onPlayableItemsSortChanged,
         onPlayableItemsQueryChanged = itemDetailsViewModel::onPlayableItemsQueryChanged,
         onEpisodesPlayedFilterToggled = itemDetailsViewModel::onEpisodesPlayedFilterToggled,
@@ -212,16 +220,17 @@ fun ItemDetails(
     geEditablePlaylists: suspend () -> List<Playlist> = suspend { emptyList() },
     fetchColors: ExtractedColorsSource? = null,
     createPlaylist: suspend (String) -> Playlist? = { null },
-    addToPlaylist: (String?, Playlist) -> Unit = { _, _ -> },
+    addToPlaylist: (List<String>, Playlist) -> Unit = { _, _ -> },
     onLibraryClick: (AppMediaItem) -> Unit = {},
     onFavoriteChange: (AppMediaItem, Boolean?) -> Unit = { _, _ -> },
     onMarkPlayed: (AppMediaItem) -> Unit = {},
     onMarkUnplayed: (AppMediaItem) -> Unit = {},
-    onRemoveFromPlaylist: (String, Int) -> Unit = { _, _ -> },
+    onRemoveFromPlaylist: (String, List<Int>) -> Unit = { _, _ -> },
     providerIconFetcher: ProviderIconFetcher = { _, _, _ -> },
     onPlayClick: (PlayMode) -> Unit = {},
     onChapterClick: (Int) -> Unit = {},
     onChildPlayClick: PlayHandler<AppMediaItem> = { _, _ -> },
+    onPlayTracks: (List<Track>, PlayMode) -> Unit = { _, _ -> },
     onPlayableItemsSortChanged: (SubItemContext, SortOption) -> Unit = { _, _ -> },
     onPlayableItemsQueryChanged: (String?) -> Unit = {},
     onEpisodesPlayedFilterToggled: () -> Unit = {},
@@ -238,10 +247,10 @@ fun ItemDetails(
         }
 
         override fun addToPlaylist(
-            itemUri: String?,
+            itemUris: List<String>,
             playlist: Playlist,
         ) {
-            addToPlaylist(itemUri, playlist)
+            addToPlaylist(itemUris, playlist)
         }
 
         override suspend fun createPlaylist(name: String): Playlist? =
@@ -284,52 +293,59 @@ fun ItemDetails(
                     is DataState.Data -> itemState.data
                     is DataState.Stale -> itemState.data
                 }
-                ItemContent(
-                    item = item,
-                    state = state,
-                    onNavigateClick = { item: AppMediaItem ->
-                        when (item) {
-                            is Artist,
-                            is Album,
-                            is Playlist,
-                            is Podcast,
-                            is Audiobook,
-                            is MediaCollection,
-                            is Genre,
-                            is Track,
-                            is RadioStation,
-                            is PodcastEpisode,
-                                -> {
-                                onNavigateToItem(item.itemId, item.mediaType, item.provider)
-                            }
+                // Multi-select covers the track lists of an album, an artist and a playlist only.
+                val trackSelection = remember(item.itemId) {
+                    TrackSelection(if (item is Playlist) SelectionKey.POSITION else SelectionKey.URI)
+                }.takeIf { item is Album || item is Artist || item is Playlist }
+                CompositionLocalProvider(LocalTrackSelection provides trackSelection) {
+                    ItemContent(
+                        item = item,
+                        state = state,
+                        onNavigateClick = { item: AppMediaItem ->
+                            when (item) {
+                                is Artist,
+                                is Album,
+                                is Playlist,
+                                is Podcast,
+                                is Audiobook,
+                                is MediaCollection,
+                                is Genre,
+                                is Track,
+                                is RadioStation,
+                                is PodcastEpisode,
+                                    -> {
+                                    onNavigateToItem(item.itemId, item.mediaType, item.provider)
+                                }
 
-                            else -> Unit
-                        }
-                    },
-                    onNavigateToList = onNavigateToList,
-                    onPlayItemClick = onPlayClick,
-                    onPlayChildClick = onChildPlayClick,
-                    onChapterClick = onChapterClick,
-                    playlistActions = playlistActions,
-                    progressActions = progressActions,
-                    onRemoveFromPlaylist = onRemoveFromPlaylist,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    fetchColors = fetchColors,
-                    onBack = onBack,
-                    viewModeProvider = viewModeProvider,
-                    onToggleViewMode = onToggleViewMode,
-                    onPlayableItemsSortChanged = onPlayableItemsSortChanged,
-                    onPlayableItemsQueryChanged = onPlayableItemsQueryChanged,
-                    onEpisodesPlayedFilterToggled = onEpisodesPlayedFilterToggled,
-                    contentPadding = contentPadding,
-                    onTabSelected = onTabSelected,
-                    onLoadSimilarArtists = onLoadSimilarArtists,
-                    onRefreshPlaylist = onRefreshPlaylist,
-                    refreshAction = refreshAction,
-                    onRefreshItem = onRefreshItem,
-                    providerDetails = providerDetails,
-                )
+                                else -> Unit
+                            }
+                        },
+                        onNavigateToList = onNavigateToList,
+                        onPlayItemClick = onPlayClick,
+                        onPlayChildClick = onChildPlayClick,
+                        onPlayTracks = onPlayTracks,
+                        onChapterClick = onChapterClick,
+                        playlistActions = playlistActions,
+                        progressActions = progressActions,
+                        onRemoveFromPlaylist = onRemoveFromPlaylist,
+                        libraryActions = libraryActions,
+                        providerIconFetcher = providerIconFetcher,
+                        fetchColors = fetchColors,
+                        onBack = onBack,
+                        viewModeProvider = viewModeProvider,
+                        onToggleViewMode = onToggleViewMode,
+                        onPlayableItemsSortChanged = onPlayableItemsSortChanged,
+                        onPlayableItemsQueryChanged = onPlayableItemsQueryChanged,
+                        onEpisodesPlayedFilterToggled = onEpisodesPlayedFilterToggled,
+                        contentPadding = contentPadding,
+                        onTabSelected = onTabSelected,
+                        onLoadSimilarArtists = onLoadSimilarArtists,
+                        onRefreshPlaylist = onRefreshPlaylist,
+                        refreshAction = refreshAction,
+                        onRefreshItem = onRefreshItem,
+                        providerDetails = providerDetails,
+                    )
+                }
             }
 
             is DataState.NoData -> CenteredText(stringResource(Res.string.item_no_data))
@@ -358,10 +374,11 @@ private fun ItemContent(
     onNavigateToList: (String, ItemList, ClickContext) -> Unit,
     onPlayItemClick: (PlayMode) -> Unit,
     onPlayChildClick: PlayHandler<AppMediaItem>,
+    onPlayTracks: (List<Track>, PlayMode) -> Unit,
     onChapterClick: (Int) -> Unit,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions?,
-    onRemoveFromPlaylist: (String, Int) -> Unit,
+    onRemoveFromPlaylist: (String, List<Int>) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher,
     fetchColors: ExtractedColorsSource?,
@@ -392,6 +409,7 @@ private fun ItemContent(
     var showLyrics by rememberSaveable { mutableStateOf(false) }
     var showDescription by rememberSaveable { mutableStateOf(false) }
     val description = remember(item) { item.itemDescription() }
+    val trackSelection = LocalTrackSelection.current
 
     // Artwork-driven header colors. Library items carry no server palette, so colors are
     // extracted locally from the thumbnail (cached by DominantColorViewModel) — same path
@@ -437,9 +455,23 @@ private fun ItemContent(
         }
     }
 
+    // A playlist selection is keyed by position, which is what the server removes by.
+    val editablePlaylistId = (item as? Playlist)?.takeIf { it.isEditable }?.itemId
+    val removeSelectedTracks: (List<Track>) -> Unit = { tracks ->
+        editablePlaylistId?.let { onRemoveFromPlaylist(it, tracks.mapNotNull { track -> track.position }) }
+    }
+
     TopBarLayout(
+        topAppBarState = rememberSelectionTopAppBarState(trackSelection),
         topBar = {
-            ItemTopBar(
+            trackSelection?.takeIf { it.isActive }?.let {
+                TrackSelectionBar(
+                    selection = it,
+                    onPlay = onPlayTracks,
+                    playlistActions = playlistActions,
+                    onRemoveFromPlaylist = removeSelectedTracks.takeIf { editablePlaylistId != null },
+                )
+            } ?: ItemTopBar(
                 item = item,
                 colors = colors,
                 onBack = onBack,
@@ -683,7 +715,7 @@ private fun TabContent(
     onChapterClick: (Int) -> Unit,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions?,
-    onRemoveFromPlaylist: (String, Int) -> Unit,
+    onRemoveFromPlaylist: (String, List<Int>) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher,
     contentPadding: PaddingValues,
@@ -974,7 +1006,7 @@ private fun PlayablesTabContent(
     onPlayChildClick: PlayHandler<AppMediaItem>,
     playlistActions: PlaylistActions,
     progressActions: ProgressActions?,
-    onRemoveFromPlaylist: (String, Int) -> Unit,
+    onRemoveFromPlaylist: (String, List<Int>) -> Unit,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher,
     contentPadding: PaddingValues,
@@ -991,7 +1023,7 @@ private fun PlayablesTabContent(
         // list can never target the wrong item.
         val onRemove = track.position
             ?.takeIf { canEditPlaylist }
-            ?.let { position -> { onRemoveFromPlaylist(parentItem.itemId, position) } }
+            ?.let { position -> { onRemoveFromPlaylist(parentItem.itemId, listOf(position)) } }
         when (track) {
             is Track -> TrackWithMenu(
                 item = track,
@@ -1051,6 +1083,7 @@ private fun PlayablesTabContent(
         Res.string.search_no_results
     }
     val trackRows = playableItemsState.tabRows()
+    SelectableTracks(trackRows.filterIsInstance<Track>())
     val trackKeys = remember(trackRows) { trackRows.playableLazyListOccurrenceKeys() }
     // Section a multi-disc album by disc, but only in its natural ("Original") order —
     // any other sort intentionally mixes discs, so headers would lie. Requiring every
@@ -1112,6 +1145,9 @@ private fun ArtistContent(
     controlTint: Color,
 ) {
     val artistDetailsViewModel = koinViewModel<ArtistDetailsViewModel> { parametersOf(artist) }
+    // The rows leave the composition when the list scrolls, so the screen offers the top tracks here.
+    val topTracks by artistDetailsViewModel.topTracks.section.collectAsStateWithLifecycle()
+    SelectableTracks(topTracks.dataOrNull?.items.orEmpty())
     val rows = if (artist.isAudiobookArtist) {
         listOf(
             ArtistRow("library", Res.string.artist_section_in_library, artistDetailsViewModel.library),

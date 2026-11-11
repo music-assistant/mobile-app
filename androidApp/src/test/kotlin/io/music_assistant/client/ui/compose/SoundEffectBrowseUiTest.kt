@@ -57,7 +57,7 @@ class SoundEffectBrowseUiTest {
                         },
                         playlistActions = object : PlaylistActions {
                             override suspend fun getEditablePlaylists(): List<Playlist> = emptyList()
-                            override fun addToPlaylist(itemUri: String?, playlist: Playlist) = Unit
+                            override fun addToPlaylist(itemUris: List<String>, playlist: Playlist) = Unit
                             override suspend fun createPlaylist(name: String): Playlist? = null
                         },
                         libraryActions = object : LibraryActions {

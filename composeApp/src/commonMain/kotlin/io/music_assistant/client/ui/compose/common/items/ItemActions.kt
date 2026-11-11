@@ -5,8 +5,10 @@ import io.music_assistant.client.data.model.client.items.Playlist
 
 interface PlaylistActions {
     suspend fun getEditablePlaylists(): List<Playlist>
+
+    /** Adds [itemUris] to [playlist] in one request, in the given order. */
     fun addToPlaylist(
-        itemUri: String?,
+        itemUris: List<String>,
         playlist: Playlist,
     )
 

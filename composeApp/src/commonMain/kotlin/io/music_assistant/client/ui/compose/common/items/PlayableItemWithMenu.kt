@@ -1,8 +1,17 @@
 package io.music_assistant.client.ui.compose.common.items
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
@@ -31,6 +42,7 @@ import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmation
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_remove
+import musicassistantclient.composeapp.generated.resources.action_select_multiple
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_message
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_title
 import org.jetbrains.compose.resources.stringResource
@@ -51,6 +63,7 @@ fun TrackWithMenu(
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
 ) {
+    val selection = LocalTrackSelection.current
     PlayableItemWithMenu(
         modifier = when (viewMode) {
             ViewMode.GRID -> Modifier
@@ -63,6 +76,10 @@ fun TrackWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
+        onSelectMultiple = selection?.takeIf { it.canSelect(item) }?.let { { it.start(item) } },
+        selectionMark = selection?.takeIf { it.isActive }?.let {
+            SelectionMark(selected = it.isSelected(item), onToggle = { it.toggle(item) })
+        },
         itemComposable = { mod, onClick, onLongClick ->
             when (viewMode) {
                 ViewMode.LIST -> TrackRowItem(
@@ -221,8 +238,13 @@ fun <T> LiveStreamWithMenu(
     )
 }
 
+/** The state of a row while its screen is in multi-select mode. */
+private class SelectionMark(val selected: Boolean, val onToggle: () -> Unit)
+
 /**
  * Playable item with a long-press dropdown menu. Default click plays the item now.
+ * [onSelectMultiple] adds "Select multiple" at the top of the menu. While [selectionMark] is set,
+ * a tap toggles the selection and a long press does nothing.
  */
 @Composable
 private fun <T> PlayableItemWithMenu(
@@ -235,6 +257,8 @@ private fun <T> PlayableItemWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
+    onSelectMultiple: (() -> Unit)? = null,
+    selectionMark: SelectionMark? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -278,12 +302,28 @@ private fun <T> PlayableItemWithMenu(
     // Non-playable items keep the long-press menu (favorite, library, …) but can't be played:
     // dim them and route a tap to the menu instead of starting playback.
     val playable = item.isPlayable
-    Box(modifier = modifier) {
+    val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
+    Box(
+        modifier = modifier.then(
+            selectionMark?.let { mark ->
+                Modifier
+                    .semantics { selected = mark.selected }
+                    .then(
+                        if (mark.selected) {
+                            Modifier.background(selectedBackground, RoundedCornerShape(SELECTED_CORNER))
+                        } else {
+                            Modifier
+                        },
+                    )
+            } ?: Modifier,
+        ),
+    ) {
         itemComposable(
             Modifier.align(Alignment.Center)
                 .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA)),
-            { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
-            { expandedItemId = item.itemId },
+            selectionMark?.let { mark -> { _: T -> mark.onToggle() } }
+                ?: { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
+            selectionMark?.let { { _: T -> } } ?: { expandedItemId = item.itemId },
         )
         DropdownMenu(
             modifier = Modifier.semantics {
@@ -292,6 +332,18 @@ private fun <T> PlayableItemWithMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
+            onSelectMultiple?.let { select ->
+                val title = stringResource(Res.string.action_select_multiple)
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    onClick = {
+                        expandedItemId = null
+                        select()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Checklist, contentDescription = title) },
+                )
+                HorizontalDivider()
+            }
             ItemActionMenuItems(clickActionConfig.context, actions, defaultAction = effectiveDefault) { action ->
                 expandedItemId = null
                 when (action) {
@@ -352,3 +404,5 @@ private fun <T> PlayableItemWithMenu(
         }
     }
 }
+
+private val SELECTED_CORNER = 8.dp

@@ -265,4 +265,27 @@ class ItemActionResolverTest {
         assertEquals(null, ItemAction.Unfavorite.favorite)
         assertEquals(null, ItemAction.RemoveDislike.favorite)
     }
+
+    @Test
+    fun `track selection offers the queue options and add to playlist with library write`() {
+        val queueOptions = listOf(
+            QueueOption.REPLACE,
+            QueueOption.PLAY,
+            QueueOption.NEXT,
+            QueueOption.ADD,
+            QueueOption.REPLACE_NEXT,
+        ).map { ItemAction.Play(it) }
+
+        assertEquals(queueOptions + ItemAction.AddToPlaylist, resolveTrackSelectionActions(canEditLibrary = true))
+        assertEquals(queueOptions, resolveTrackSelectionActions(canEditLibrary = false))
+    }
+
+    @Test
+    fun `track selection on an editable playlist offers remove with library write`() {
+        val withRemove = resolveTrackSelectionActions(canEditLibrary = true, canRemoveFromPlaylist = true)
+        assertEquals(listOf(ItemAction.AddToPlaylist, ItemAction.RemoveFromPlaylist), withRemove.takeLast(2))
+
+        val readOnly = resolveTrackSelectionActions(canEditLibrary = false, canRemoveFromPlaylist = true)
+        assertFalse(ItemAction.RemoveFromPlaylist in readOnly)
+    }
 }
