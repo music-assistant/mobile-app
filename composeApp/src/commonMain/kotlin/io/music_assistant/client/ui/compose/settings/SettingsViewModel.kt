@@ -174,6 +174,11 @@ class SettingsViewModel(
     fun setAllowLandscapeOnAllDevices(enabled: Boolean) =
         settings.setAllowLandscapeOnAllDevices(enabled)
 
+    val volumeKeysControlSelectedPlayer = settings.volumeKeysControlSelectedPlayer
+
+    fun setVolumeKeysControlSelectedPlayer(enabled: Boolean) =
+        settings.setVolumeKeysControlSelectedPlayer(enabled)
+
     // Connection method preference
     val preferredConnectionMethod = settings.preferredConnectionMethod
 

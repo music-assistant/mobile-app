@@ -893,7 +893,7 @@ private fun ExpandedPlayerPage(
                                 activeTrackColor = controlTint,
                                 inactiveTrackColor = controlTint.inactive(),
                             )
-                            val isGroupBound = player.childrenBinds.any { it.isBound }
+                            val isGroupBound = player.usesGroupVolume
                             val isGroupForGesture by rememberUpdatedState(isGroupBound)
                             Row(
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
@@ -907,7 +907,7 @@ private fun ExpandedPlayerPage(
                                         .clickable(enabled = player.player.canMute) {
                                             playerAction(
                                                 player,
-                                                if (player.childrenBinds.none { it.isBound }) {
+                                                if (!player.usesGroupVolume) {
                                                     PlayerAction.ToggleMute(player.player.currentMuteState)
                                                 } else {
                                                     PlayerAction.GroupToggleMute(player.player.currentMuteState)
@@ -964,7 +964,7 @@ private fun ExpandedPlayerPage(
                                         onValueChangeFinished = {
                                             playerAction(
                                                 player,
-                                                if (player.childrenBinds.none { it.isBound }) {
+                                                if (!player.usesGroupVolume) {
                                                     PlayerAction.VolumeSet(currentVolume.toDouble())
                                                 } else {
                                                     PlayerAction.GroupVolumeSet(currentVolume.toDouble())

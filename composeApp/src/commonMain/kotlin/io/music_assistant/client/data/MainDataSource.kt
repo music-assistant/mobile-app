@@ -160,7 +160,7 @@ class MainDataSource(
     private val queueFactory: QueueFactory,
     private val playDispatcher: PlayDispatcher,
     providerRepository: ProviderRepository,
-) : ItemDetailsMainDataSource, CoroutineScope {
+) : ItemDetailsMainDataSource, RemoteVolumeTarget, CoroutineScope {
     private val log = Logger.withTag("MainDataSource")
 
     /** Combined inputs for a [MainDataSource] player-data rebuild. */
@@ -1164,14 +1164,22 @@ class MainDataSource(
             return
         }
         val resolved = playerRequestFactory.resolve(data, action)
-        launch {
-            val request = playerRequestFactory.buildRequest(data, resolved) ?: return@launch
-            val result = apiClient.sendRequest(request)
-            if (result.isFailure) {
-                log.e(
-                    result.exceptionOrNull(),
-                ) { "Failed to send player action request for ${data.player.name}: $action" }
-            }
+        launch { sendResolved(data, resolved) }
+    }
+
+    override val isReadyForCommands: StateFlow<Boolean>
+        get() = apiClient.isReadyForCommands
+
+    override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction) =
+        sendResolved(data, playerRequestFactory.resolve(data, action))
+
+    private suspend fun sendResolved(data: PlayerData, action: PlayerAction) {
+        val request = playerRequestFactory.buildRequest(data, action) ?: return
+        val result = apiClient.sendRequest(request)
+        if (result.isFailure) {
+            log.e(
+                result.exceptionOrNull(),
+            ) { "Failed to send player action request for ${data.player.name}: $action" }
         }
     }
 

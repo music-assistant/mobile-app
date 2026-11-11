@@ -423,6 +423,18 @@ class SettingsRepository(
         _allowLandscapeOnAllDevices.update { enabled }
     }
 
+    // Opt-in, Android only: while the app has window focus, the hardware volume keys change the
+    // volume of the selected remote player instead of the phone volume.
+    private val _volumeKeysControlSelectedPlayer = MutableStateFlow(
+        settings.getBoolean("volume_keys_control_selected_player", false),
+    )
+    val volumeKeysControlSelectedPlayer = _volumeKeysControlSelectedPlayer.asStateFlow()
+
+    fun setVolumeKeysControlSelectedPlayer(enabled: Boolean) {
+        settings.putBoolean("volume_keys_control_selected_player", enabled)
+        _volumeKeysControlSelectedPlayer.update { enabled }
+    }
+
     // One-time Local Network onboarding; dismissed, not "first run", so a user who
     // clears it without connecting is not re-prompted on every launch.
     private val _localNetworkOnboardingShown = MutableStateFlow(

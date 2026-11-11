@@ -477,6 +477,10 @@
   <string name="settings_accent_color">Accent color</string>
   <string name="settings_allow_landscape">Allow landscape on all devices</string>
   <string name="settings_allow_landscape_hint">Experimental: some screens can look wrong in landscape. Use at your own risk.</string>
+  <string name="settings_volume_keys_control_player">Volume buttons control the selected player</string>
+  <string name="settings_volume_keys_control_player_hint">While the app is open and a player other than this device is selected, the volume buttons change the volume of that player instead of the phone.</string>
+  <string name="volume_keys_player_off">%1$s is off</string>
+  <string name="volume_keys_no_volume_control">The volume of %1$s cannot be changed</string>
   <string name="settings_app_documentation">App documentation →</string>
   <string name="settings_app_version_info">Version %1$s, Build %2$s</string>
   <string name="settings_buffer_seconds_value">%1$d s</string>

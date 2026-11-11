@@ -62,6 +62,7 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.input.VolumeButtonService
+import io.music_assistant.client.input.VolumeKeyRefusal
 import io.music_assistant.client.nav.AdaptiveNavigationBarLayout
 import io.music_assistant.client.nav.BackHandler
 import io.music_assistant.client.nav.MultiBackStack
@@ -82,6 +83,7 @@ import io.music_assistant.client.ui.compose.home.players.DspSettingsViewModel
 import io.music_assistant.client.ui.compose.home.players.PlayerSheetStart
 import io.music_assistant.client.ui.compose.home.players.PlayersPager
 import io.music_assistant.client.ui.compose.home.players.QueueDjViewModel
+import io.music_assistant.client.ui.compose.home.players.RemoteVolumeOverlay
 import io.music_assistant.client.ui.compose.home.players.SelectPlayerSheet
 import io.music_assistant.client.ui.compose.home.players.contentDescription
 import io.music_assistant.client.ui.compose.home.players.iconRes
@@ -116,6 +118,8 @@ import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -130,7 +134,11 @@ import musicassistantclient.composeapp.generated.resources.nav_menu
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.nav_system
+import musicassistantclient.composeapp.generated.resources.not_connected_retry
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
+import musicassistantclient.composeapp.generated.resources.volume_keys_no_volume_control
+import musicassistantclient.composeapp.generated.resources.volume_keys_player_off
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 import org.koin.compose.koinInject
@@ -270,6 +278,30 @@ fun MainNavigationRoot(
                     toastState.showToast(currentHint, ToastDuration.SHORT)
                 }
             }
+        }
+    }
+
+    LaunchedEffect(volumeButtonService) {
+        volumeButtonService.refusals.collect { refusal ->
+            val text = when (refusal.reason) {
+                VolumeKeyRefusal.Reason.NOT_CONNECTED -> getString(Res.string.not_connected_retry)
+                VolumeKeyRefusal.Reason.POWERED_OFF ->
+                    getString(Res.string.volume_keys_player_off, refusal.playerName)
+                VolumeKeyRefusal.Reason.NO_VOLUME_CONTROL ->
+                    getString(Res.string.volume_keys_no_volume_control, refusal.playerName)
+            }
+            toastState.showToast(text, ToastDuration.SHORT)
+        }
+    }
+
+    // The player whose volume the hardware keys change, while the overlay shows. Each press
+    // restarts the timer, so the overlay hides after the last press.
+    var volumeOverlayPlayerId by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(volumeButtonService) {
+        volumeButtonService.remoteAdjust.collectLatest { playerId ->
+            volumeOverlayPlayerId = playerId
+            delay(REMOTE_VOLUME_OVERLAY_MS)
+            volumeOverlayPlayerId = null
         }
     }
 
@@ -497,9 +529,17 @@ fun MainNavigationRoot(
                 }
             },
         )
+        // The expanded player shows the name and the volume itself.
+        RemoteVolumeOverlay(
+            player = volumeOverlayPlayerId?.takeUnless { playerExpanded }?.let { id ->
+                data?.allPlayerData?.firstOrNull { it.playerId == id }?.player
+            },
+        )
         ToastHost(toastState = toastState)
     }
 }
+
+private const val REMOTE_VOLUME_OVERLAY_MS = 1500L
 
 @Composable
 private fun navigationItems(

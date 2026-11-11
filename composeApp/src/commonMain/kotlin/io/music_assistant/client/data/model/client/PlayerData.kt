@@ -19,6 +19,10 @@ data class PlayerData(
     val queueId = queueInfo?.id
     val queueOrPlayerId = queueId ?: player.id
 
+    /** A bound child makes this a group for volume: the slider and the volume keys send group commands. */
+    val usesGroupVolume: Boolean
+        get() = childrenBinds.any { it.isBound }
+
     /**
      * False for a live input without pause support and for a radio stream, like the web app:
      * the player then offers Stop instead of Pause.
