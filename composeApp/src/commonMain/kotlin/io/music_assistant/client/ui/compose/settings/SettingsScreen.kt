@@ -90,6 +90,7 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
+import io.music_assistant.client.utils.supportsVolumeKeyRouting
 import io.music_assistant.client.webrtc.model.RemoteId
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_title
@@ -139,6 +140,8 @@ import musicassistantclient.composeapp.generated.resources.settings_share_crash_
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
 import musicassistantclient.composeapp.generated.resources.settings_use_tls
 import musicassistantclient.composeapp.generated.resources.settings_version_info
+import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player
+import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player_hint
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_description
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_disclaimer
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_info
@@ -407,9 +410,13 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                 val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
                 val allowLandscape by viewModel.allowLandscapeOnAllDevices
                     .collectAsStateWithLifecycle()
+                val volumeKeysControlPlayer by viewModel.volumeKeysControlSelectedPlayer
+                    .collectAsStateWithLifecycle()
                 MiscSection(
                     allowLandscape = allowLandscape,
                     onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
+                    volumeKeysControlPlayer = volumeKeysControlPlayer,
+                    onVolumeKeysControlPlayerChange = { viewModel.setVolumeKeysControlSelectedPlayer(it) },
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,
@@ -429,6 +436,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 private fun MiscSection(
     allowLandscape: Boolean,
     onAllowLandscapeChange: (Boolean) -> Unit,
+    volumeKeysControlPlayer: Boolean,
+    onVolumeKeysControlPlayerChange: (Boolean) -> Unit,
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
     isPreparingShare: Boolean,
@@ -437,26 +446,20 @@ private fun MiscSection(
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(
-                checked = allowLandscape,
-                onCheckedChange = onAllowLandscapeChange,
-            )
-            Text(
-                text = stringResource(Res.string.settings_allow_landscape),
-                color = MaterialTheme.colorScheme.onBackground,
+        CheckboxSetting(
+            checked = allowLandscape,
+            onCheckedChange = onAllowLandscapeChange,
+            label = stringResource(Res.string.settings_allow_landscape),
+            hint = stringResource(Res.string.settings_allow_landscape_hint),
+        )
+        if (supportsVolumeKeyRouting) {
+            CheckboxSetting(
+                checked = volumeKeysControlPlayer,
+                onCheckedChange = onVolumeKeysControlPlayerChange,
+                label = stringResource(Res.string.settings_volume_keys_control_player),
+                hint = stringResource(Res.string.settings_volume_keys_control_player_hint),
             )
         }
-        Text(
-            // Aligned under the label: the checkbox occupies a 48.dp touch target.
-            modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
-            text = stringResource(Res.string.settings_allow_landscape_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         OutlinedButton(
             modifier = Modifier.fillMaxWidth(),
             enabled = !isPreparingShare,
@@ -496,6 +499,35 @@ private fun MiscSection(
             }
         }
     }
+}
+
+@Composable
+private fun CheckboxSetting(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    hint: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+    Text(
+        // Aligned under the label: the checkbox occupies a 48.dp touch target.
+        modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
+        text = hint,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

@@ -15,6 +15,7 @@ import io.music_assistant.client.data.LocalPlayerFactory
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.PlayerPositionTracker
 import io.music_assistant.client.data.PlayerRequestFactory
+import io.music_assistant.client.data.RemoteVolumeTarget
 import io.music_assistant.client.data.SendspinLocalPlayerFactory
 import io.music_assistant.client.data.UserPreferences
 import io.music_assistant.client.data.announcement.AnnouncementRepository
@@ -110,7 +111,7 @@ fun sharedModule(
         singleOf(::LocalNetworkPermissionGate)
         singleOf(::ErrorMessageBus)
         singleOf(::DeepLinkBus)
-        singleOf(::VolumeButtonService)
+        single { VolumeButtonService(get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
         single<ArtworkDiskStore> {
             ArtworkDiskStore(
                 cache = buildArtworkDiskCache(toArtworkLoaderPlatformContext(get<PlatformContext>())),
@@ -229,6 +230,7 @@ fun sharedModule(
         singleOf(::LibrarySortRepository)   // Library sort choices; caches the 2.11 sort_options
         singleOf(::MainDataSource)          // Singleton - held by foreground service
         single<ItemDetailsMainDataSource> { get<MainDataSource>() }
+        single<RemoteVolumeTarget> { get<MainDataSource>() }
         single(createdAtStart = true) {     // Eager - must observe car edges from launch
             CarDspApplier(get(), get(), get(), get())
         }
