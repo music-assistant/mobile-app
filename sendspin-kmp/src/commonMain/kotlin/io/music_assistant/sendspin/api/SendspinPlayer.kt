@@ -20,6 +20,14 @@ public interface SendspinPlayer {
      * reconnects and enable cycles; only the app releases it.
      */
     public fun hold(held: Boolean)
+
+    /**
+     * Asks for a connection check now, for example when the app returns to the
+     * foreground after a long sleep. A waiting reconnect starts at once with the
+     * shortest backoff. A connected player probes the server at once, and a link
+     * that stays silent for a few probe timeouts reconnects. Otherwise no effect.
+     */
+    public fun checkConnection()
 }
 
 /**

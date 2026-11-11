@@ -42,6 +42,7 @@ import kotlin.test.assertTrue
 class ConnectionSupervisorTest {
     private val crypto = CryptographyKotlinNoiseCrypto()
     private val online = MutableStateFlow(true)
+    private val connectionChecks = MutableStateFlow(0)
     private val sessionConfig = SessionConfig(WireVersion.LEGACY_9, "Device", playerSupport = null, deviceInfo = null)
     private var pairCalls = 0
     private val noopHandler = object : SessionHandler {
@@ -82,6 +83,7 @@ class ConnectionSupervisorTest {
             online,
             clock,
             approvePairing = { pairCalls++ },
+            connectionChecks = connectionChecks,
             random = Random(42),
         )
         val states = mutableListOf<Pair<ConnectionState, Long>>()
@@ -152,6 +154,26 @@ class ConnectionSupervisorTest {
         assertTrue(backoffs.drop(6).all { (it.reason is DropReason.ConnectFailed) })
         val lateDelay = (backoffs[7].retryAtMicros / 1_000) - h.states.first { it.first == backoffs[7] }.second
         assertTrue(lateDelay in 24_000L..36_000L, "capped: $lateDelay")
+    }
+
+    @Test
+    fun aConnectionCheckEndsALongBackoffAndResetsTheAttempts() = runTest {
+        var attempts = 0
+        val h = harness(connect = {
+            attempts++
+            error("refused")
+        })
+        advanceTimeBy(200_000)
+        val capped = assertIs<ConnectionState.Backoff>(h.supervisor.state.value)
+        assertTrue(capped.attempt >= 6, "the backoff is capped, attempt ${capped.attempt}")
+        val before = attempts
+
+        connectionChecks.value++
+        runCurrent()
+
+        assertEquals(before + 1, attempts, "the check retries at once")
+        assertEquals(0, assertIs<ConnectionState.Backoff>(h.supervisor.state.value).attempt)
+        h.job.cancel()
     }
 
     @Test

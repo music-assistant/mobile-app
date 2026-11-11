@@ -402,9 +402,9 @@ class KtorServiceClient(
         when (info) {
             is BackgroundedConnectionInfo.Direct -> {
                 val connInfo = settings.connectionInfo.value ?: info.connectionInfo
-                forceConnect(connInfo)
+                forceConnect(connInfo, resume = true)
             }
-            is BackgroundedConnectionInfo.WebRTC -> forceConnectWebRTC(info.remoteId)
+            is BackgroundedConnectionInfo.WebRTC -> forceConnectWebRTC(info.remoteId, resume = true)
         }
         return true
     }
@@ -705,8 +705,12 @@ class KtorServiceClient(
      * intentionally tear down a live transport before rebuilding (e.g. JIT
      * reconnect from a stuck `AwaitingAuth(Failed)` session). Public callers
      * should keep using [connect] so accidental double-connects are still cheap.
+     *
+     * [resume] continues a session that worked before (a foreground return, a car host):
+     * a failed first attempt then retries as `Reconnecting`, which keeps the current
+     * screen, instead of `Disconnected.Error`, which sends the user to Settings.
      */
-    private fun forceConnect(connection: ConnectionInfo) {
+    private fun forceConnect(connection: ConnectionInfo, resume: Boolean = false) {
         // New connection episode: the silent-failure budget is per-server-session, so
         // a prior server's failures must not pre-charge this one's escape hatch.
         silentReauth.reset()
@@ -721,6 +725,7 @@ class KtorServiceClient(
             connectionInfoProvider = { connection },
             parentScope = this,
             networkAvailable = networkMonitor.isAvailable,
+            retryInitialFailure = resume,
         )
         transport = directTransport
 
@@ -768,7 +773,7 @@ class KtorServiceClient(
     }
 
     /** WebRTC twin of [forceConnect]. */
-    private fun forceConnectWebRTC(remoteId: RemoteId) {
+    private fun forceConnectWebRTC(remoteId: RemoteId, resume: Boolean = false) {
         silentReauth.reset()
         backgroundedConnectionInfo = null
         tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
@@ -779,6 +784,7 @@ class KtorServiceClient(
             remoteId = remoteId,
             parentScope = this,
             networkAvailable = networkMonitor.isAvailable,
+            retryInitialFailure = resume,
         )
         transport = webrtcTransport
 
@@ -1093,9 +1099,10 @@ class KtorServiceClient(
         val state = _sessionState.value
         when (state) {
             is SessionState.Disconnected.Initial,
-            is SessionState.Disconnected.Backgrounded,
             is SessionState.Disconnected.Error,
                 -> reconnectFromHistory(reason = "JIT: state=${stateLabel(state)}")
+            is SessionState.Disconnected.Backgrounded ->
+                reconnectFromHistory(reason = "JIT: state=${stateLabel(state)}", resume = true)
             SessionState.Disconnected.ByUser,
             SessionState.Disconnected.NoServerData,
                 -> logger.i { "JIT: honoring user-intent state=${stateLabel(state)}" }
@@ -1124,15 +1131,15 @@ class KtorServiceClient(
         }
     }
 
-    private fun reconnectFromHistory(reason: String) {
+    private fun reconnectFromHistory(reason: String, resume: Boolean = false) {
         val entry = settings.connectionHistory.value.firstOrNull() ?: run {
             logger.i { "JIT: no history entry — cannot reconnect ($reason)" }
             return
         }
         logger.i { "JIT reconnect via ${entry.type} ($reason)" }
         when (entry.type) {
-            ConnectionType.DIRECT -> entry.connectionInfo?.let { forceConnect(it) }
-            ConnectionType.WEBRTC -> entry.remoteId?.let { forceConnectWebRTC(RemoteId(it)) }
+            ConnectionType.DIRECT -> entry.connectionInfo?.let { forceConnect(it, resume) }
+            ConnectionType.WEBRTC -> entry.remoteId?.let { forceConnectWebRTC(RemoteId(it), resume) }
         }
     }
 

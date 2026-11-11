@@ -7,7 +7,9 @@ import io.music_assistant.sendspin.wire.ServerTimePayload
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
@@ -102,7 +104,42 @@ class ClockProbeTest {
         run.cancel()
     }
 
+    @Test
+    fun aConnectionCheckEndsASilentLinkInThreeProbeTimeouts() = runTest {
+        val silentAfterCheck = silentLink(check = true)
+        val silentWithoutCheck = silentLink(check = false)
+
+        assertTrue(silentAfterCheck <= CHECKED_SILENCE_MILLIS, "ended ${silentAfterCheck}ms after the check")
+        assertTrue(silentWithoutCheck > CHECKED_SILENCE_MILLIS, "no check keeps the tolerance: ${silentWithoutCheck}ms")
+    }
+
+    /** Milliseconds from the moment the server stops answering to the [ServerSilentException]. */
+    private suspend fun TestScope.silentLink(check: Boolean): Long {
+        val clock = MonotonicClock { currentTime * 1_000 }
+        val sync = ClockSync(clock)
+        val checks = MutableStateFlow(0)
+        var answering = true
+        val probe = ClockProbe(sync, clock, checks) { json ->
+            if (answering) {
+                val t1 = clientTransmitted(json)
+                backgroundScope.launch {
+                    delay(REPLY_MILLIS)
+                    sync.onReply(ServerTimePayload(t1, t1 + 2_500, t1 + 2_500))
+                }
+            }
+        }
+        val run = async { runCatching { probe.run() } }
+        advanceTimeBy(40_000) // past the warm-up, mid-way through a 9 s wait
+        answering = false
+        val silentAt = currentTime
+        if (check) checks.value++
+        while (run.isActive) advanceTimeBy(100)
+        assertIs<ServerSilentException>(run.await().exceptionOrNull())
+        return currentTime - silentAt
+    }
+
     private companion object {
+        const val CHECKED_SILENCE_MILLIS = ClockProbe.SILENT_BURSTS_LIMIT * ClockProbe.PROBE_TIMEOUT_MILLIS + 200
         const val REPLY_MILLIS = 5L
     }
 }
