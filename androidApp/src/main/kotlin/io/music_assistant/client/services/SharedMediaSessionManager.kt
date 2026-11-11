@@ -75,10 +75,11 @@ import kotlin.time.DurationUnit
  * "play X" and a voice retry both arrive when nothing is playing.
  *
  * Every bit here MUST have a matching override in [SharedMediaSessionManager.createCallback].
- * Deliberately absent: ACTION_STOP, ACTION_SET_SHUFFLE_MODE and ACTION_SET_REPEAT_MODE have no
- * override (shuffle and repeat are custom actions here), and advertising them gives hosts dead
- * buttons. PREPARE_FROM_* are absent because there is no prepare pipeline — see the "no
- * onPrepareFromSearch" note in docs/ANDROID-AUTO.md.
+ * Deliberately absent: ACTION_STOP has no override, and advertising it gives hosts a dead
+ * button. ACTION_SET_SHUFFLE_MODE and ACTION_SET_REPEAT_MODE are added per state by
+ * [sessionTransportActions], only while the queue accepts them. PREPARE_FROM_* are absent
+ * because there is no prepare pipeline — see the "no onPrepareFromSearch" note in
+ * docs/ANDROID-AUTO.md.
  */
 private val SESSION_TRANSPORT_ACTIONS: Long =
     PlaybackStateCompat.ACTION_PLAY or
@@ -93,13 +94,17 @@ private val SESSION_TRANSPORT_ACTIONS: Long =
         PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or
         PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
 
-/** [SESSION_TRANSPORT_ACTIONS] for [data]: no seek bar to drag where it cannot seek. */
-internal fun sessionTransportActions(data: MediaNotificationData): Long =
-    if (data.isSeekable) {
-        SESSION_TRANSPORT_ACTIONS
-    } else {
-        SESSION_TRANSPORT_ACTIONS and PlaybackStateCompat.ACTION_SEEK_TO.inv()
-    }
+/**
+ * [SESSION_TRANSPORT_ACTIONS] for [data]: no seek bar to drag where it cannot seek, and the
+ * shuffle and repeat setters only where the queue accepts them.
+ */
+internal fun sessionTransportActions(data: MediaNotificationData): Long {
+    var actions = SESSION_TRANSPORT_ACTIONS
+    if (!data.isSeekable) actions = actions and PlaybackStateCompat.ACTION_SEEK_TO.inv()
+    if (data.shuffleEnabled != null) actions = actions or PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
+    if (data.repeatMode != null) actions = actions or PlaybackStateCompat.ACTION_SET_REPEAT_MODE
+    return actions
+}
 
 // The API 33+ media card shows the first two custom actions; the pre-33 notification mirrors it.
 private const val NOTIFICATION_CUSTOM_ACTION_SLOTS = 2
@@ -496,6 +501,19 @@ class SharedMediaSessionManager(
                 act(PlayerAction.SeekTo(chapter.toAbsoluteSeekSeconds(targetSec.toDouble())))
             }
 
+            // Bluetooth AVRCP sends the car's shuffle and repeat buttons here.
+            override fun onSetShuffleMode(shuffleMode: Int) {
+                currentPlayer()?.let { pd ->
+                    shuffleCommandFor(shuffleMode, pd.queueInfo)?.let { dataSource.playerAction(pd, it) }
+                }
+            }
+
+            override fun onSetRepeatMode(repeatMode: Int) {
+                currentPlayer()?.let { pd ->
+                    repeatCommandFor(repeatMode, pd.queueInfo)?.let { dataSource.playerAction(pd, it) }
+                }
+            }
+
             override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
                 autoPlayHandler?.onPlayFromMediaId(mediaId, extras)
             }
@@ -669,6 +687,9 @@ class SharedMediaSessionManager(
             }
             .build()
         session.setPlaybackState(playbackState)
+        // Bluetooth AVRCP shows these in the car; the session notifies only on a change.
+        session.setShuffleMode(sessionShuffleMode(data.shuffleEnabled))
+        session.setRepeatMode(sessionRepeatMode(data.repeatMode))
 
         session.setMetadata(
             buildMediaSessionMetadata(
