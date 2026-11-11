@@ -84,7 +84,7 @@ fun SelectionBar(
                             ItemAction.AddToPlaylist -> showPlaylistDialog = true
                             ItemAction.RemoveFromPlaylist -> showRemoveConfirmation = true
                             else -> action.toPlayMode()?.let { mode ->
-                                onPlay(selection.items.toList(), mode)
+                                onPlay(selection.items, mode)
                                 selection.clear()
                             }
                         }
@@ -96,7 +96,7 @@ fun SelectionBar(
 
     playlistActions?.takeIf { showPlaylistDialog }?.let {
         AddToPlaylistDialog(
-            items = selection.items.toList(),
+            items = selection.items,
             playlistActions = it,
             onDismiss = { showPlaylistDialog = false },
             onAdded = selection::clear,
@@ -109,7 +109,7 @@ fun SelectionBar(
             message = pluralStringResource(Res.plurals.dialog_remove_items_from_playlist_message, count, count),
             confirmLabel = stringResource(Res.string.action_remove),
             onConfirm = {
-                remove(selection.items.toList())
+                remove(selection.items)
                 selection.clear()
             },
             onDismiss = { showRemoveConfirmation = false },

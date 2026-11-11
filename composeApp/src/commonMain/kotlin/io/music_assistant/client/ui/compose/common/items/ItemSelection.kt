@@ -26,7 +26,8 @@ import io.music_assistant.client.data.model.client.items.Track
 class ItemSelection(private val key: SelectionKey = SelectionKey.URI) {
     private val selected = mutableStateListOf<AppMediaItem>()
 
-    val items: List<AppMediaItem> get() = selected
+    /** A copy, so a caller keeps the items of the moment it read them. */
+    val items: List<AppMediaItem> get() = selected.toList()
 
     val isActive: Boolean get() = selected.isNotEmpty()
 
