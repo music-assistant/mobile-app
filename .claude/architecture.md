@@ -245,7 +245,7 @@ actual class PlatformFeature {
   loads the invite again right after a save. The guest side stays in the web frontend, because the server
   lets a guest control every player. See `.claude/party-guest-investigation.md`.
 - **Volume keys**: on Android, an opt-in setting gives the hardware volume keys to the selected remote player
-  while the app is on screen. `MainActivity.dispatchKeyEvent` asks `VolumeButtonService.onVolumeKey`, which
+  while the app is on screen. `MainActivity.onKeyDown` asks `VolumeButtonService.onVolumeKey`, which
   sends the slider step commands through `RemoteVolumeTarget` (`MainDataSource`). The media session does not
   change. See `.claude/volume-control.md`.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the

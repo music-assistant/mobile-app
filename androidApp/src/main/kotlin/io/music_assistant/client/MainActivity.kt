@@ -101,35 +101,35 @@ class MainActivity : ComponentActivity() {
      * ACTION_DOWN keeps its repeats and its ACTION_UP, so the system never sees half a press.
      * During a call or VoIP (mode not normal) the keys stay with the system.
      */
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        val up = when (event.keyCode) {
-            KeyEvent.KEYCODE_VOLUME_UP -> true
-            KeyEvent.KEYCODE_VOLUME_DOWN -> false
-            else -> return super.dispatchKeyEvent(event)
-        }
-        return when (event.action) {
-            KeyEvent.ACTION_DOWN -> when {
-                event.repeatCount > 0 && event.keyCode in routedVolumeKeys -> {
-                    volumeButtonService.onVolumeKey(up, isRepeat = true)
-                    true
-                }
-
-                audioManager.mode == AudioManager.MODE_NORMAL &&
-                    volumeButtonService.onVolumeKey(up, isRepeat = event.repeatCount > 0) -> {
-                    routedVolumeKeys += event.keyCode
-                    true
-                }
-
-                else -> {
-                    routedVolumeKeys -= event.keyCode
-                    if (event.repeatCount == 0) volumeButtonService.onPlatformVolumeButtonPressed()
-                    super.dispatchKeyEvent(event)
-                }
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val up = volumeKeyDirection(keyCode) ?: return super.onKeyDown(keyCode, event)
+        val repeat = (event?.repeatCount ?: 0) > 0
+        return when {
+            repeat && keyCode in routedVolumeKeys -> {
+                volumeButtonService.onVolumeKey(up, isRepeat = true)
+                true
             }
 
-            KeyEvent.ACTION_UP -> routedVolumeKeys.remove(event.keyCode) || super.dispatchKeyEvent(event)
-            else -> super.dispatchKeyEvent(event)
+            audioManager.mode == AudioManager.MODE_NORMAL && volumeButtonService.onVolumeKey(up, repeat) -> {
+                routedVolumeKeys += keyCode
+                true
+            }
+
+            else -> {
+                routedVolumeKeys -= keyCode
+                if (!repeat) volumeButtonService.onPlatformVolumeButtonPressed()
+                super.onKeyDown(keyCode, event)
+            }
         }
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean =
+        routedVolumeKeys.remove(keyCode) || super.onKeyUp(keyCode, event)
+
+    private fun volumeKeyDirection(keyCode: Int): Boolean? = when (keyCode) {
+        KeyEvent.KEYCODE_VOLUME_UP -> true
+        KeyEvent.KEYCODE_VOLUME_DOWN -> false
+        else -> null
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

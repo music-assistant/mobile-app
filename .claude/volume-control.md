@@ -40,7 +40,7 @@ The setting "Volume buttons control the selected player" (`SettingsRepository.vo
 
 Rule: with the setting on and a remote player selected, the volume keys change the volume of that player while the app is on screen. They never change the device volume in this case. All other cases keep the device volume.
 
-- `MainActivity.dispatchKeyEvent` gets the volume keys only while the activity has window focus. So the home screen, the lock screen, a switched-off screen and other apps keep the device volume. The app does not track the lifecycle for this.
+- `MainActivity.onKeyDown` and `onKeyUp` get the volume keys only while the activity has window focus. So the home screen, the lock screen, a switched-off screen and other apps keep the device volume. The app does not track the lifecycle for this.
 - `VolumeButtonService.onVolumeKey` takes a key if the setting is on and the selected player is not the local player. If the player cannot act on the key, the service sends no step and emits a `VolumeKeyRefusal`, once for each press and not for its repeats. `MainNavRoot` shows the reason as a toast: no connection to the server, the player is off, or the player has no volume control.
 - While the setting is off, the device volume changes, and the "Volume buttons only work for the local player" toast shows for a remote player.
 - If the activity takes the `ACTION_DOWN` of a key, it also takes the repeats and the `ACTION_UP` of that key. The activity does not take the keys during a call or VoIP (`AudioManager.mode` is not `MODE_NORMAL`).
