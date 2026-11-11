@@ -67,6 +67,7 @@ class QueueFactory(
                     isPlayable = appMediaItem.isPlayable,
                     format = streamDetails?.audioFormat,
                     provider = streamDetails?.provider,
+                    streamItemId = streamDetails?.itemId,
                     audioProcessingChain = streamDetails?.audioProcessingChain,
                     origin = origin?.container?.let(mediaItemFactory::create),
                 )

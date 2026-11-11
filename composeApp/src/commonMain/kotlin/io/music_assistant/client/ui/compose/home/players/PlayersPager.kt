@@ -97,6 +97,7 @@ import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.waveformKey
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.alphaOn
@@ -122,6 +123,7 @@ import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
+import io.music_assistant.client.ui.compose.common.waveformMenuOption
 import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
@@ -231,6 +233,8 @@ fun PlayersPager(
             .collectAsStateWithLifecycle()
         val repeatLocksAutoplay by homeScreenViewModel.repeatLocksAutoplay
             .collectAsStateWithLifecycle()
+        val showWaveform by homeScreenViewModel.showWaveform.collectAsStateWithLifecycle()
+        val waveformSupported by homeScreenViewModel.waveformSupported.collectAsStateWithLifecycle()
         val announcementAvailability by koinInject<AnnouncementRepository>().availability
             .collectAsStateWithLifecycle()
         // Null while the AI Radio DJ gate is closed, which hides the menu row.
@@ -347,6 +351,12 @@ fun PlayersPager(
                         .collectAsStateWithLifecycle().value.dataOrNull
                 }
                 val lyrics = currentTrack?.lyrics ?: transcript
+                // The waveform of a track loads once its page is expanded and the user turned it on.
+                val waveform = currentQueueItem?.waveformKey?.takeIf { expanded && showWaveform }?.let { key ->
+                    LaunchedEffect(key) { homeScreenViewModel.loadWaveform(key) }
+                    remember(key) { homeScreenViewModel.waveform(key) }
+                        .collectAsStateWithLifecycle().value.dataOrNull
+                }
                 val trackId = currentTrack?.itemId
                 val lyricsItemId = currentQueueItem?.track?.itemId
                 val queueItemId = currentQueueItem?.id
@@ -527,6 +537,8 @@ fun PlayersPager(
                                 onPlaybackSpeedClick = onPlaybackSpeedClick,
                                 onChooseArtist = onChooseArtist,
                                 chapterProgressEnabled = chapterProgressEnabled,
+                                waveform = waveform,
+                                waveformToggleAvailable = waveformSupported && currentTrack != null,
                                 queueDjMenu = player.queueId?.let { queueDjState?.menuFor(it) },
                                 onQueueDjSelected = queueDjViewModel::select,
                             )
@@ -627,6 +639,9 @@ private fun ExpandedPlayerPage(
     onAudioChainClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
     chapterProgressEnabled: Boolean = true,
+    waveform: List<Float>? = null,
+    // Whether the overflow menu offers the waveform toggle: a track on a server with waveforms.
+    waveformToggleAvailable: Boolean = false,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
     // The left edge of the pager in the window. See [pageSplitOrNull].
@@ -728,6 +743,7 @@ private fun ExpandedPlayerPage(
                         onAnnounce = onAnnounceButton,
                         onAmbientSound = onAmbientSoundButton,
                         onAddToPlaylist = onAddToPlaylist,
+                        showWaveformToggle = waveformToggleAvailable,
                         queueDjMenu = queueDjMenu,
                         onQueueDjSelected = onQueueDjSelected,
                     )
@@ -855,6 +871,7 @@ private fun ExpandedPlayerPage(
                                 livePositionFlow = livePositionFlow,
                                 bufferedAheadSecFlow = bufferedAheadSecFlow,
                                 chapterProgressEnabled = chapterProgressEnabled,
+                                waveform = waveform,
                                 navigateToItem = navigateAndClose,
                                 onChooseArtist = onChooseArtist,
                             )
@@ -1049,6 +1066,7 @@ private fun PlayerOverflowMenu(
     onAnnounce: (() -> Unit)?,
     onAmbientSound: (() -> Unit)?,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
+    showWaveformToggle: Boolean = false,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
 ) {
@@ -1211,6 +1229,9 @@ private fun PlayerOverflowMenu(
         // Buffer indicator toggle — local player only (the segment it controls is local-only).
         if (currentPlayer.isLocal) {
             add(bufferIndicatorMenuOption())
+        }
+        if (showWaveformToggle) {
+            add(waveformMenuOption())
         }
     }
     val playerActions = powerOption + queueOptions + queueDjOptions + displayOptions

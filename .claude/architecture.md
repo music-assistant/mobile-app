@@ -264,6 +264,16 @@ actual class PlatformFeature {
   in `State.lyrics` and offers "Transcript" in the menu once it is loaded. The expanded player loads the
   transcript of the current episode and shows it behind the lyrics button. An episode whose provider reports
   `has_transcript` false is not asked. The page has no steppers and no hide-fully-played filter.
+- **Seek bar waveform**: `audio_analysis/wave_form` gives 1800 RMS bins (0.0 to 1.0) for the whole track,
+  or null if the server has no analysis. The command needs schema 36 (`supportsWaveform`). The request
+  uses the stream ids (`StreamDetails.item_id` and `provider`), because the server stores the analysis
+  under them. `QueueTrack.waveformKey` gives the key, and it is null for an item that is not a track,
+  like in the web frontend. `WaveformRepository` (`data/repository/`) loads each waveform once in an app
+  scope and keeps the last 8 answers. The expanded player loads it only while the local setting
+  `SettingsRepository.showWaveform` is on. The setting is off by default and the player menu has the
+  toggle. The setting is not the `show_waveform` preference of the web, because a user can want the
+  waveform on one surface only. `WaveformTrack` draws the bars in the slider track. A disabled timeline
+  keeps the plain track.
 - **Queue origin**: `QueueTrack.origin` is the container that the item was played from, from server
   2.11. It is null on an older server, for a single track and for a live stream. The stream details
   dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to

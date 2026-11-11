@@ -43,7 +43,7 @@ class TranscriptRepository(
         states.update { current ->
             val state = current[key]
             started = state == null || state is DataState.Error
-            if (started) current.appended(key, DataState.Loading()) else current
+            if (started) current.appended(key, DataState.Loading(), CACHE_SIZE) else current
         }
         if (!started) return
         scope.launch {
@@ -57,14 +57,6 @@ class TranscriptRepository(
             states.update { it + (key to state) }
         }
     }
-
-    /** [this] with [key] as the newest entry; the oldest settled entries go when the map is full. */
-    private fun Map<String, DataState<Lyrics>>.appended(key: String, state: DataState<Lyrics>) =
-        (this - key).let { rest ->
-            val settled = rest.keys.filter { rest[it] !is DataState.Loading }
-            val overflow = (rest.size + 1 - CACHE_SIZE).coerceAtLeast(0)
-            rest - settled.take(overflow).toSet() + (key to state)
-        }
 
     private fun schemaVersion(): Int? =
         (apiClient.sessionState.value as? HasConnectionData)?.serverInfo?.schemaVersion

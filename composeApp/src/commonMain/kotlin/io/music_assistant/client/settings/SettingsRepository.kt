@@ -554,6 +554,18 @@ class SettingsRepository(
         _showBufferVisualization.update { show }
     }
 
+    // Whether the expanded player draws the track waveform on the seek bar. Off by default, and
+    // apart from the `show_waveform` preference of the web frontend: a user can want it in one only.
+    private val _showWaveform = MutableStateFlow(
+        settings.getBoolean("show_waveform", false),
+    )
+    val showWaveform = _showWaveform.asStateFlow()
+
+    fun setShowWaveform(show: Boolean) {
+        settings.putBoolean("show_waveform", show)
+        _showWaveform.update { show }
+    }
+
     // User-tuned client-side playback delay (ms). LocalPlayerAdapter negates it
     // into LocalPlayerConfig.userDelayMs, so each chunk's local target time is
     //   target = serverTimeToLocal(ts) - userDelay*1000
