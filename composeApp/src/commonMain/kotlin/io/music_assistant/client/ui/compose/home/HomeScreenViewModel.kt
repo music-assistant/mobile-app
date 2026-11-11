@@ -12,6 +12,7 @@ import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDelay
 import io.music_assistant.client.data.model.client.Shortcut
+import io.music_assistant.client.data.model.client.WaveformKey
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
@@ -22,6 +23,7 @@ import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
 import io.music_assistant.client.data.model.server.supportsAutoplayRepeatLock
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
+import io.music_assistant.client.data.model.server.supportsWaveform
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
@@ -29,6 +31,7 @@ import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.TranscriptRepository
+import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.data.repository.fetchRecommendationRowItems
 import io.music_assistant.client.data.repository.fetchRecommendationRows
@@ -96,6 +99,7 @@ class HomeScreenViewModel(
     private val playDispatcher: PlayDispatcher,
     private val transcriptRepository: TranscriptRepository,
     private val sendspinDelays: SendspinDelayRepository,
+    private val waveformRepository: WaveformRepository,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
@@ -134,6 +138,22 @@ class HomeScreenViewModel(
      * segment on the slider tracks the position tick without spamming recomposition.
      */
     fun observeLocalBufferedSeconds() = dataSource.localBufferedSeconds.sample(BUFFER_REAL_INTERVAL)
+
+    /** User toggle: whether the expanded player draws the track waveform on the seek bar. */
+    val showWaveform = settings.showWaveform
+
+    /** Whether the server has `audio_analysis/wave_form`; the toggle stays hidden without it. */
+    val waveformSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsWaveform((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /** Loads the waveform of [key], the current track of [queueId], for the seek bar. See [WaveformRepository]. */
+    fun loadWaveform(queueId: String, key: WaveformKey) = waveformRepository.load(queueId, key)
+
+    /** The waveform of [key] on [queueId], as [loadWaveform] loads it. */
+    fun waveform(queueId: String, key: WaveformKey): StateFlow<DataState<List<Float>>> =
+        waveformRepository.waveform(queueId, key)
 
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization

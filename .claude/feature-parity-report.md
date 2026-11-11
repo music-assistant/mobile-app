@@ -213,7 +213,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Sleep timer | yes | yes | yes | no | no | Parity | Schema 35 and newer |
 | Lyrics with offset | yes | yes | yes | no | no | Parity | |
 | Podcast transcript in the lyrics panel | no | yes | no | no | no | Missing | Timed cues |
-| Waveform on the seek bar | yes | yes | no | no | no | Missing | `audio_analysis/wave_form` |
+| Waveform on the seek bar | yes | yes | yes | no | no | Parity | `audio_analysis/wave_form`, schema 36. Tracks only. A local setting, off by default |
 | Visualizer | yes | yes | no | n/a | n/a | Not viable | WebGL and Web Audio in the browser |
 | Stream and quality details | yes | yes | yes | no | no | Parity | |
 | "Played from" container | no | yes | yes | no | no | Parity | `QueueItem.origin` |
@@ -648,7 +648,7 @@ the app:
 | Join code login | `auth/join_code/exchange` | Easy | One more login tab |
 | PKCE OAuth return to the app | `auth/authorization_url`, `auth/exchange` (2.11) | Medium | Needs Remote Access on the server. Fixes the iOS OAuth return. Keep the current flow for 2.10 |
 | Scope-gated UI | `auth/scopes` | Medium | Cross-cutting. One `Scopes` value object in `MainDataSource` and a check in each action resolver |
-| Waveform on the seek bar | `audio_analysis/wave_form` | Medium | Draw with Compose `Canvas`. Check the payload size first |
+| Waveform on the seek bar | `audio_analysis/wave_form` | Medium | Done (issue 1210). 1800 bins, about 30 kB. `WaveformTrack` in the slider track. The toggle is in the player menu |
 | Cast to dashboard | `dashboard/dashboards`, `sessions`, `show`, `hide`, `get_url` | Easy | A dialog in the player overflow. Scope `users.invite` |
 | Unsupported install banner | `server_info.unsupported_install` (2.11) | Easy | Dismissible card on the home screen |
 | "Played from" container | `QueueItem.origin` (2.11) | Easy | Link in the stream details dialog |

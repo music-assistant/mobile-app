@@ -964,6 +964,17 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
     }
 
+    data object AudioAnalysis {
+        /** The RMS waveform of a track: 1800 bins of 0.0 to 1.0, or null without analysis. `supportsWaveform`. */
+        fun waveForm(itemId: String, providerInstanceIdOrDomain: String) = Request(
+            command = APICommands.AUDIO_ANALYSIS_WAVE_FORM,
+            args = buildJsonObject {
+                put("item_id", JsonPrimitive(itemId))
+                put("provider_instance_id_or_domain", JsonPrimitive(providerInstanceIdOrDomain))
+            },
+        )
+    }
+
     data object Metadata {
         fun getTrackLyrics(track: TrackItem) = Request(
             command = APICommands.METADATA_GET_TRACK_LYRICS,

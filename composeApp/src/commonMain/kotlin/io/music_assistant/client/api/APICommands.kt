@@ -103,6 +103,9 @@ object APICommands {
     const val MUSIC_MARK_PLAYED = "music/mark_played"
     const val MUSIC_MARK_UNPLAYED = "music/mark_unplayed"
 
+    // Audio analysis commands
+    const val AUDIO_ANALYSIS_WAVE_FORM = "audio_analysis/wave_form"
+
     // Metadata commands
     const val METADATA_GET_TRACK_LYRICS = "metadata/get_track_lyrics"
 

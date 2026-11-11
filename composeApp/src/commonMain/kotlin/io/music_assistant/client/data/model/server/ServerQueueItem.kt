@@ -30,7 +30,8 @@ data class ServerQueueItemOrigin(
 @Serializable
 data class StreamDetails(
     @SerialName("provider") val provider: String? = null,
-//    @SerialName("item_id") val itemId: String,
+    // Provider-native id of the item that streams; `audio_analysis` data is stored under it.
+    @SerialName("item_id") val itemId: String? = null,
     @SerialName("audio_format") val audioFormat: AudioFormat,
 //    @SerialName("media_type") val mediaType: String,
 //    @SerialName("stream_type") val streamType: String,

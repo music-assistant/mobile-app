@@ -32,6 +32,7 @@ import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
 import io.music_assistant.client.data.repository.TranscriptRepository
+import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.imageloader.ArtworkDiskStore
 import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.imageloader.ArtworkTransport
@@ -211,6 +212,12 @@ fun sharedModule(
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
+        single {                            // Waveforms load once for the pager pages
+            WaveformRepository(
+                apiClient = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            )
+        }
         single {                            // Sendspin player delays; a save outlives the group sheet
             SendspinDelayRepository(
                 apiClient = get(),
@@ -278,7 +285,7 @@ fun sharedModule(
         factory { params -> ItemListViewModel(params[0], get(), get()) }
         factory { DspSettingsViewModel(get()) }
         factory { QueueDjViewModel(get(), get<MainDataSource>().aiRadioQueueDjAvailable) }
-        factory { HomeScreenViewModel(get(), get(), get(), get(), get(), get(), get()) }
+        factory { HomeScreenViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
         factory { SearchViewModel(get(), get(), get(), get(), get()) }
         factory { ProviderViewModel(get(), get()) }
     }

@@ -379,6 +379,7 @@
   <string name="player_power_on">Power on</string>
   <string name="player_powered_off">Powered off</string>
   <string name="player_show_buffer_indicator">Show buffer indicator</string>
+  <string name="player_show_waveform">Show waveform</string>
   <string name="player_sleep_timer">Sleep timer</string>
   <string name="player_standby">Player is in stand-by mode. Tap to wake.</string>
   <string name="player_unavailable">Unavailable</string>

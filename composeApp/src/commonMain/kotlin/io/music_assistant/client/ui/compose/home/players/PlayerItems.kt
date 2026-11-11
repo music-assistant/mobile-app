@@ -337,6 +337,8 @@ fun FullPlayerItem(
     onAmbientSoundClick: (() -> Unit)? = null,
     // Server preference gate for the chapter-relative timeline.
     chapterProgressEnabled: Boolean = true,
+    // The waveform bins of the current track; null draws the plain track.
+    waveform: List<Float>? = null,
     navigateToItem: (AppMediaItem) -> Unit = {},
     // The chooser for a multi-artist track lives in the dialog host, outside the pager.
     onChooseArtist: () -> Unit = {},
@@ -569,6 +571,9 @@ fun FullPlayerItem(
                 ?: timelinePosition
         }
 
+        val trackEnabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff
+        // A disabled timeline keeps the plain track and its disabled colors.
+        val shownWaveform = waveform?.takeIf { trackEnabled }
         val progressSliderColors = SliderDefaults.colors().copy(
             thumbColor = controlTint,
             activeTrackColor = controlTint,
@@ -600,12 +605,37 @@ fun FullPlayerItem(
                     sliderPosition.takeIf { seekable }?.let {
                         SliderDefaults.Thumb(
                             interactionSource = remember { MutableInteractionSource() },
-                            thumbSize = DpSize(16.dp, 16.dp),
+                            // Over a waveform the thumb is a playhead line that covers no bar.
+                            thumbSize = if (shownWaveform != null) {
+                                DpSize(4.dp, WAVEFORM_HEIGHT + 8.dp)
+                            } else {
+                                DpSize(16.dp, 16.dp)
+                            },
                             colors = progressSliderColors,
                         )
                     }
                 },
-                track = { sliderState ->
+                track = track@{ sliderState ->
+                    // A waveform is shown for a track only, so it has no chapter ticks.
+                    shownWaveform?.let { bins ->
+                        val bufferedFraction = timelineDuration
+                            ?.takeIf { item.isLocal && it > 0f && bufferedAheadSec > 0f }
+                            ?.let { (timelinePosition + bufferedAheadSec) / it }
+                            ?: 0f
+                        WaveformTrack(
+                            bins = bins,
+                            playedFraction = {
+                                val range = sliderState.valueRange
+                                val span = range.endInclusive - range.start
+                                if (span > 0f) (sliderState.value - range.start) / span else 0f
+                            },
+                            bufferedFraction = bufferedFraction,
+                            playedColor = controlTint,
+                            bufferedColor = controlTint.copy(alpha = BUFFER_TRACK_ALPHA),
+                            restColor = controlTint.inactive(),
+                        )
+                        return@track
+                    }
                     val audiobook = item.queueInfo?.currentItem?.track as? Audiobook
                     val chapters = audiobook?.chapters
                     // Square inside corners leave a full or empty track, and the buffered band,
@@ -617,7 +647,7 @@ fun FullPlayerItem(
                             thumbTrackGapSize = 0.dp,
                             trackInsideCornerSize = 0.dp,
                             drawStopIndicator = null,
-                            enabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff,
+                            enabled = trackEnabled,
                             modifier = Modifier.height(8.dp),
                         )
                         // Buffered-ahead highlight — the region between the real playhead and
