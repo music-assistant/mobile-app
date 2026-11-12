@@ -19,6 +19,7 @@
   <string name="action_choose_artist">Elegir artista</string>
   <string name="action_customize">Personalizar…</string>
   <string name="action_dislike">Marcar como «No me gusta»</string>
+  <string name="action_export_playlist">Exportar lista de reproducción</string>
   <string name="action_favorite">Favorito</string>
   <string name="action_find_on_music_services">Buscar en tus servicios de música</string>
   <string name="action_go_to_album">Ir al álbum</string>
@@ -51,6 +52,7 @@
   <string name="action_remove_from_library">Quitar de la biblioteca</string>
   <string name="action_remove_from_playlist">Quitar de la lista de reproducción</string>
   <string name="action_replace_next">Añadir la siguiente y reemplazar el resto</string>
+  <string name="action_select_multiple">Seleccionar varios</string>
   <string name="action_similar_artists">Artistas similares</string>
   <string name="action_start_endless_mix">Iniciar mezcla continua</string>
   <string name="action_start_radio">Iniciar radio</string>
@@ -105,11 +107,16 @@
   <string name="announcement_title">Reproducir anuncio</string>
   <string name="announcement_volume">Volumen: %1$d</string>
   <string name="app_name">Music Assistant</string>
+  <string name="artist_section_albums">Álbumes</string>
   <string name="artist_section_all">Discografía</string>
   <string name="artist_section_all_audiobooks">Todos los audiolibros</string>
+  <string name="artist_section_appears_on">Aparece en</string>
+  <string name="artist_section_discography">Discografía</string>
   <string name="artist_section_in_library">En la biblioteca</string>
+  <string name="artist_section_singles_eps">Sencillos y EP</string>
   <string name="artist_section_top">Canciones más populares</string>
   <string name="artist_source_all">Todo</string>
+  <string name="artist_source_library">Biblioteca</string>
   <string name="artist_type_authors">Autores</string>
   <string name="artist_type_narrators">Narradores</string>
   <string name="auth_authenticating">Autenticando…</string>
@@ -148,6 +155,7 @@
   <string name="cd_applied">Aplicado</string>
   <string name="cd_autoplay_off">Reproducción automática desactivada</string>
   <string name="cd_autoplay_on">Reproducción automática activada</string>
+  <string name="cd_autoplay_repeat_locked">Reproducción automática desactivada mientras la repetición esté activada</string>
   <string name="cd_close">Cerrar</string>
   <string name="cd_collapse_sendspin_advanced">Ocultar configuración avanzada</string>
   <string name="cd_connection_history">Historial de conexiones</string>
@@ -158,6 +166,7 @@
   <string name="cd_delete_crash_logs">Eliminar registros de errores</string>
   <string name="cd_disliked">No me gusta</string>
   <string name="cd_expand_sendspin_advanced">Mostrar configuración avanzada</string>
+  <string name="cd_explicit">Contenido explícito</string>
   <string name="cd_favorite">Favorito</string>
   <string name="cd_filter">Filtros</string>
   <string name="cd_find_in_list">Buscar en la lista</string>
@@ -174,8 +183,11 @@
   <string name="cd_lyrics_offset_increase">Mostrar la letra antes</string>
   <string name="cd_more">Más</string>
   <string name="cd_mute">Silenciar</string>
+  <string name="cd_party_qr">Código QR para unirse a Party</string>
   <string name="cd_play_now">Reproducir ahora</string>
   <string name="cd_play_options">Opciones de reproducción</string>
+  <string name="cd_player_delay">Retardo de reproducción de %1$s</string>
+  <string name="cd_player_volume">Volumen de %1$s</string>
   <string name="cd_playing">Reproduciendo %1$s</string>
   <string name="cd_provider_filter">Filtrando %1$s por proveedor %2$s</string>
   <string name="cd_provider_icon">Proveedor de iconos</string>
@@ -183,6 +195,9 @@
   <string name="cd_remove_from_group">Eliminar del grupo</string>
   <string name="cd_scan_qr_code">Escanear código QR</string>
   <string name="cd_select_codec">Seleccionar códec</string>
+  <string name="cd_shuffle_off">Mezcla aleatoria desactivada</string>
+  <string name="cd_shuffle_on">Mezcla aleatoria activada</string>
+  <string name="cd_shuffle_smart">Mezcla aleatoria inteligente activada</string>
   <string name="cd_sleep_timer">Temporizador de apagado activo</string>
   <string name="cd_sleep_timer_off">Temporizador de apagado desactivado</string>
   <string name="cd_sort_direction">Dirección de ordenación</string>
@@ -221,6 +236,7 @@
   <string name="common_delete">Eliminar</string>
   <string name="common_dismiss">Descartar</string>
   <string name="common_done">Hecho</string>
+  <string name="common_save">Guardar</string>
   <string name="connection_lost">Desconectado — reconectando…</string>
   <string name="default_click_dialog_save">Guardar</string>
   <string name="default_click_dialog_title">Acción predeterminada al hacer clic</string>
@@ -231,6 +247,10 @@
   <string name="dialog_remove_from_library_title">¿Eliminar de la biblioteca?</string>
   <string name="dialog_remove_from_playlist_message">¿Eliminar "%1$s" de la lista de reproducción?</string>
   <string name="dialog_remove_from_playlist_title">¿Eliminar de la lista de reproducción?</string>
+  <plurals name="dialog_remove_items_from_playlist_message">
+    <item quantity="one">¿Quitar %1$d elemento de esta lista de reproducción?</item>
+    <item quantity="other">¿Quitar %1$d elementos de esta lista de reproducción?</item>
+  </plurals>
   <string name="discover_edit_rows">Editar filas</string>
   <string name="discover_save_rows">Guardar filas</string>
   <string name="discover_shortcuts">Accesos directos</string>
@@ -343,10 +363,20 @@
   <string name="nav_home">Inicio</string>
   <string name="nav_library">Biblioteca</string>
   <string name="nav_menu">Menú</string>
+  <string name="nav_party">Party</string>
   <string name="nav_search">Buscar</string>
   <string name="nav_settings">Ajustes</string>
   <string name="nav_system">Sistema</string>
   <string name="not_connected_retry">No conectado — inténtalo de nuevo cuando se restablezca la conexión</string>
+  <string name="party_copy_link">Copiar enlace</string>
+  <string name="party_guest_access_off">El acceso de invitados está desactivado. Actívalo en los ajustes del complemento Party del servidor.</string>
+  <string name="party_guest_access_off_host">Configura Party y, después, activa el acceso de invitados para mostrar el código QR.</string>
+  <string name="party_invite_error">No se ha podido cargar el enlace de Party.</string>
+  <string name="party_link_copied">Enlace copiado</string>
+  <string name="party_save_failed">No se han podido guardar los ajustes de Party</string>
+  <string name="party_scan_to_join">¡Escanea el código QR para unirte al Party!</string>
+  <string name="party_settings">Ajustes de Party</string>
+  <string name="party_settings_error">No se han podido cargar los ajustes de la fiesta.</string>
   <string name="playback_speed_dialog_title">Velocidad de reproducción</string>
   <string name="player_autoplay">Reproducción automática</string>
   <string name="player_crossfade">Transición entre canciones</string>
@@ -356,9 +386,13 @@
   <string name="player_power_on">Encender</string>
   <string name="player_powered_off">Apagado</string>
   <string name="player_show_buffer_indicator">Mostrar indicador de búfer</string>
+  <string name="player_show_waveform">Mostrar forma de onda</string>
   <string name="player_sleep_timer">Temporizador de apagado</string>
   <string name="player_standby">El reproductor está en modo de espera. Toca para activarlo.</string>
   <string name="player_unavailable">No disponible</string>
+  <string name="players_delay_slow_down">Ralentizar</string>
+  <string name="players_delay_speed_up">Acelerar</string>
+  <string name="players_delay_step">%1$d ms</string>
   <string name="players_dsp_settings">Ajustes de DSP</string>
   <string name="players_group_settings">Ajustes del grupo</string>
   <string name="players_group_volume">Volumen del grupo %1$s</string>
@@ -376,6 +410,17 @@
   <string name="playlist_add_new">Añadir nuevo</string>
   <string name="playlist_add_to_title">Añadir a la lista de reproducción</string>
   <string name="playlist_create_title">Crear una nueva lista de reproducción</string>
+  <string name="playlist_import">Importar</string>
+  <string name="playlist_import_match_best_effort">Mejor coincidencia posible</string>
+  <string name="playlist_import_match_best_effort_description">Priorizar una coincidencia exacta y, después, la misma grabación. De lo contrario, aceptar la coincidencia más aproximada disponible.</string>
+  <string name="playlist_import_match_exact">Publicación exacta</string>
+  <string name="playlist_import_match_exact_description">Buscar canciones únicamente en la misma publicación.</string>
+  <string name="playlist_import_match_same_recording">La misma grabación (recomendado)</string>
+  <string name="playlist_import_match_same_recording_description">Priorizar una coincidencia exacta. De lo contrario, aceptar la misma grabación de otra publicación.</string>
+  <string name="playlist_import_matching">Coincidencia de canciones</string>
+  <string name="playlist_import_sources">Buscar canciones en</string>
+  <string name="playlist_import_sources_description">Los orígenes de música seleccionados se utilizan como alternativa cuando el origen original de una canción no está disponible.</string>
+  <string name="playlist_import_title">Importar lista de reproducción</string>
   <string name="playlist_name_label">Nombre de la lista de reproducción</string>
   <string name="playlist_no_editable">No hay listas de reproducción editables disponibles</string>
   <string name="playlist_sharing_everyone">Todos, incluidos los invitados</string>
@@ -426,6 +471,13 @@
   <string name="search_source_library">Biblioteca</string>
   <string name="search_start">Empezar a buscar…</string>
   <string name="search_title">Búsqueda global</string>
+  <string name="selection_actions">Acciones para los elementos seleccionados</string>
+  <string name="selection_cancel">Cancelar selección</string>
+  <plurals name="selection_count">
+    <item quantity="one">%1$d seleccionado</item>
+    <item quantity="other">%1$d seleccionados</item>
+  </plurals>
+  <string name="selection_select_all">Seleccionar todo</string>
   <string name="sendspin_encryption_required_unavailable">Se requiere una conexión cifrada, pero este servidor no la admite. Actualiza Music Assistant o desactiva este requisito.</string>
   <string name="sendspin_failed_incompatible_protocol">El servidor utiliza una versión del protocolo Sendspin que esta aplicación no admite. Comprueba si hay actualizaciones de la aplicación y del servidor y, después, reinicia el reproductor local. Si el problema persiste, comparte los registros de la aplicación.</string>
   <string name="sendspin_failed_server_rejected">El servidor ha rechazado este dispositivo como reproductor. Comprueba el registro del servidor de Music Assistant.</string>
@@ -525,6 +577,8 @@
   <string name="settings_use_tls">Usar TLS (wss://)</string>
   <string name="settings_use_tls_wss">Usar conexión segura (WSS/TLS)</string>
   <string name="settings_version_info">Versión %1$s, esquema %2$s</string>
+  <string name="settings_volume_keys_control_player">Los botones de volumen controlan el reproductor seleccionado</string>
+  <string name="settings_volume_keys_control_player_hint">Mientras la aplicación esté abierta y haya seleccionado un reproductor distinto de este dispositivo, los botones de volumen cambiarán el volumen de ese reproductor en lugar del teléfono.</string>
   <string name="settings_webrtc_description">Conéctate desde cualquier lugar sin necesidad de redirigir puertos</string>
   <string name="settings_webrtc_disclaimer">La conexión WebRTC puede ser más lenta y menos fiable que una conexión directa o mediante proxy a tu servidor.</string>
   <string name="settings_webrtc_info">WebRTC utiliza señalización en la nube con cifrado de extremo a extremo. Funciona a través de la mayoría de los cortafuegos y NAT.</string>
@@ -550,13 +604,20 @@
   <string name="toast_error_add_playlist">Error al añadir a la lista de reproducción</string>
   <string name="toast_error_create_playlist">Error al crear la lista de reproducción</string>
   <string name="toast_error_favorite_stream_track">No se ha podido añadir a favoritos la canción que está sonando. Puede que el servidor no consiga resolver su título.</string>
+  <string name="toast_error_import_playlist">Error al importar la lista de reproducción</string>
   <string name="toast_error_mark_played">Error al marcar como reproducido</string>
   <string name="toast_error_mark_unplayed">Error al marcar como no reproducido</string>
   <string name="toast_favorited_stream_track">Se ha añadido a favoritos la canción que está sonando</string>
   <string name="toast_marked_played">Marcar como reproducido</string>
   <string name="toast_marked_unplayed">Marcado como no reproducido</string>
   <string name="toast_no_uri">El elemento multimedia no tiene URI</string>
+  <string name="toast_playlist_file_invalid">Este archivo no es una lista de reproducción M3U</string>
+  <string name="toast_playlist_file_too_large">El archivo de la lista de reproducción es demasiado grande</string>
+  <string name="toast_playlist_file_unreadable">No se ha podido leer el archivo</string>
+  <string name="toast_playlist_imported">Importado %1$s</string>
   <string name="unsupported_install_description">Este servidor no se ha instalado mediante uno de los métodos de instalación compatibles. Es posible que algunas funciones no funcionen como se espera y que los problemas notificados se cierren sin ofrecer asistencia.</string>
   <string name="unsupported_install_link">Métodos de instalación</string>
   <string name="unsupported_install_title">Instalación no compatible</string>
+  <string name="volume_keys_no_volume_control">No se puede cambiar el volumen de %1$s</string>
+  <string name="volume_keys_player_off">%1$s está apagado</string>
 </resources>

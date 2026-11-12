@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <resources>
+  <string name="accent_color_blue">Blau</string>
+  <string name="accent_color_default">Standard</string>
+  <string name="accent_color_green">Grün</string>
+  <string name="accent_color_indigo">Indigo</string>
+  <string name="accent_color_orange">Orange</string>
+  <string name="accent_color_pink">Rosa</string>
+  <string name="accent_color_purple">Lila</string>
+  <string name="accent_color_red">Rot</string>
+  <string name="accent_color_teal">Aquamarin</string>
+  <string name="accent_color_yellow">Gelb</string>
   <string name="action_add_all_to_queue">Alle zur Warteschlange hinzufügen</string>
   <string name="action_add_to_library">Zu Bibliothek hinzufügen</string>
   <string name="action_add_to_playlist">Zu Wiedergabeliste hinzufügen</string>
@@ -296,11 +306,13 @@
   <string name="menu_default_label">Standard</string>
   <string name="nav_browse">Durchsuchen</string>
   <string name="nav_discover">Entdecken</string>
+  <string name="nav_explore">Erkunden</string>
   <string name="nav_home">Home</string>
   <string name="nav_library">Bibliothek</string>
   <string name="nav_menu">Menü</string>
   <string name="nav_search">Suchen</string>
   <string name="nav_settings">Einstellungen</string>
+  <string name="nav_system">System</string>
   <string name="not_connected_retry">Nicht verbunden — erneut versuchen, wenn Verbindung hergestellt wurde</string>
   <string name="playback_speed_dialog_title">Wiedergabegeschwindigkeit</string>
   <string name="player_autoplay">Automatische Wiedergabe</string>
@@ -314,6 +326,9 @@
   <string name="player_sleep_timer">Timer</string>
   <string name="player_standby">Player ist im Standby-Modus. Zum Aufwecken tippen.</string>
   <string name="player_unavailable">Nicht verfügbar</string>
+  <string name="players_delay_slow_down">Langsamer</string>
+  <string name="players_delay_speed_up">Schneller</string>
+  <string name="players_delay_step">%1$d ms</string>
   <string name="players_dsp_settings">DSP-Einstellungen</string>
   <string name="players_group_settings">Gruppeneinstellungen</string>
   <string name="players_group_volume">%1$s Lautstärke der Gruppe</string>
@@ -388,6 +403,7 @@
   <string name="server_id_mismatch_error">Server ID hat sich geändert. Reauthentifizierung nötig.</string>
   <string name="settings_about_description">Music Assistant ist ein kostenloser und selbst gehosteter open-source Musik Server. Verbinde Dich mit Deinem Server, um Deine Bibliothek zu durchsuchen und die Wiedergabe aller Player im Haus zu steuern.</string>
   <string name="settings_about_learn_more">Mehr Informationen auf music-assistant.io →</string>
+  <string name="settings_accent_color">Akzentfarbe</string>
   <string name="settings_allow_landscape">Querformat auf allen Geräten erlauben</string>
   <string name="settings_allow_landscape_hint">Experimentell: Im Querformat können Darstellungsfehler auftreten. Nutzung auf eigene Gefahr.</string>
   <string name="settings_app_documentation">App Dokumentation</string>
@@ -410,7 +426,10 @@
   <string name="settings_car_item_actions">Aktionen</string>
   <string name="settings_car_tabs">Tabs</string>
   <string name="settings_client_certificate">Client Zertifikat (mTLS)</string>
+  <string name="settings_client_certificate_choose">Auswählen</string>
+  <string name="settings_client_certificate_clear">Leeren</string>
   <string name="settings_client_certificate_import_failed">Konnte Zertifikat nicht importieren</string>
+  <string name="settings_client_certificate_none">Keins</string>
   <string name="settings_client_certificate_password">Passwort</string>
   <string name="settings_client_certificate_password_title">Passwort des Zertifikats</string>
   <string name="settings_client_certificate_wrong_password">Falsches Passwort</string>
