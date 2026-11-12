@@ -1,4 +1,4 @@
-# CarPlay
+# Apple CarPlay
 
 The app works with Apple CarPlay. In the car, you can browse your library, play recommendations, control playback, see the queue, and use Siri.
 
@@ -27,7 +27,7 @@ Tap an artwork in a recommendation row to play that item immediately. This tap a
 
 The recommendation rows come from your server. The app [Home tab](home.md) settings do not change these rows.
 
-![Library screen](screenshots/carplay/car-library.png)
+![Library screen](screenshots/apple-carplay/car-library.png)
 
 If the app loses the connection to the server, the screen shows **Disconnected — reconnecting…**. When the app connects again, the screen loads the rows again automatically.
 
@@ -53,7 +53,7 @@ To hide a category or to change the order, refer to [Tabs](#tabs). The **Home** 
 
 The icon color follows the accent color of the app. If you change the accent color, the car shows the new color the next time the iPhone connects to the car.
 
-![Browse categories](screenshots/carplay/car-browse.png)
+![Browse categories](screenshots/apple-carplay/car-browse.png)
 
 ### Lists
 
@@ -76,7 +76,7 @@ Action rows show at the top of the list. By default, the rows are **Play all** a
 
 After an action that starts playback, the car opens the Now Playing screen. After **Add next** or **Add all to queue**, the car stays on the list, so you can add more items.
 
-![Album with action rows](screenshots/carplay/car-album-actions.png)
+![Album with action rows](screenshots/apple-carplay/car-album-actions.png)
 
 ### Searching
 
@@ -117,8 +117,8 @@ The **Like** button (♥) works like this:
 
 The **Like** button shows only if your user can edit the library. The button does not show for audiobooks and podcast episodes.
 
-![Now Playing, music](screenshots/carplay/car-now-playing-music.png)
-![Now Playing, audiobook](screenshots/carplay/car-now-playing-audiobook.png)
+![Now Playing, music](screenshots/apple-carplay/car-now-playing-music.png)
+![Now Playing, audiobook](screenshots/apple-carplay/car-now-playing-audiobook.png)
 
 ### Queue
 
@@ -129,13 +129,13 @@ Tap **Queue** on the Now Playing screen to see the queue. The list starts at the
 
 The **Queue** button shows only if an item comes after the current item. CarPlay cannot move or remove items in the queue. Use the app on the iPhone to do this.
 
-![Queue](screenshots/carplay/car-queue.png)
+![Queue](screenshots/apple-carplay/car-queue.png)
 
 ### Connection Problems
 
 If you tap an item while the app is not connected to the server, the car shows **Not connected — try again when reconnected**. Tap **OK**, wait, and then try again.
 
-![Not connected alert](screenshots/carplay/car-offline-alert.png)
+![Not connected alert](screenshots/apple-carplay/car-offline-alert.png)
 
 If a list cannot load, it shows **Disconnected — reconnecting…**. The app tries to connect again automatically. The Library screen loads again when the connection is back. For other lists, go back and open the list again.
 
@@ -161,7 +161,7 @@ Siri learns from what you play in CarPlay. After you play items from CarPlay, Si
 
 On the iPhone, open **Settings** and find the **Car (Android Auto / CarPlay)** section. The section shows only if the Local Player is enabled. The same settings apply to Android Auto and to CarPlay.
 
-![Car settings](screenshots/carplay/settings-car.png)
+![Car settings](screenshots/apple-carplay/settings-car.png)
 
 ### Tabs
 
