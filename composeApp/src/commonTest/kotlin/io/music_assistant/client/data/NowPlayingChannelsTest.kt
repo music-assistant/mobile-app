@@ -736,3 +736,68 @@ private fun playerData(
     childrenBinds = emptyList(),
     isLocal = true,
 )
+
+class NowPlayingLikeTest {
+    private val uri = "library://track/1"
+
+    private fun trackData(favorite: Boolean?): PlayerData =
+        playerData(testTrack().copy(uri = uri, favorite = favorite), queueInfo(queueId = "queue-1"))
+
+    private fun like(data: PlayerData?, canEditLibrary: Boolean = true, canFavoriteOnAir: Boolean = false) =
+        buildNowPlayingLike(data, canEditLibrary = canEditLibrary, canFavoriteOnAir = canFavoriteOnAir)
+
+    @Test
+    fun aLikedTrackIsLiked() {
+        assertEquals(NowPlayingLike.LIKED, like(trackData(favorite = true)))
+    }
+
+    @Test
+    fun aTrackWithNoChoiceOrADislikeIsNotLiked() {
+        assertEquals(NowPlayingLike.NOT_LIKED, like(trackData(favorite = null)))
+        assertEquals(NowPlayingLike.NOT_LIKED, like(trackData(favorite = false)))
+    }
+
+    @Test
+    fun withoutLibraryWriteThereIsNoButton() {
+        assertEquals(NowPlayingLike.UNAVAILABLE, like(trackData(favorite = true), canEditLibrary = false))
+        assertEquals(
+            NowPlayingLike.UNAVAILABLE,
+            like(
+                playerData(testRadio(), queueInfo(queueId = "queue-1")),
+                canEditLibrary = false,
+                canFavoriteOnAir = true,
+            ),
+        )
+    }
+
+    @Test
+    fun aTrackWithoutAUriCannotBeLiked() {
+        assertEquals(
+            NowPlayingLike.UNAVAILABLE,
+            like(playerData(testTrack(), queueInfo(queueId = "queue-1"))),
+        )
+    }
+
+    @Test
+    fun longFormContentHasNoButton() {
+        for (item in listOf(testAudiobook(), testPodcastEpisode())) {
+            assertEquals(NowPlayingLike.UNAVAILABLE, like(playerData(item, queueInfo(queueId = "queue-1"))))
+        }
+    }
+
+    @Test
+    fun aRadioStationOffersTheSongOnAirOnly() {
+        val station = playerData(
+            testRadio().copy(uri = "library://radio/1", favorite = true),
+            queueInfo(queueId = "queue-1"),
+        )
+
+        assertEquals(NowPlayingLike.UNAVAILABLE, like(station))
+        assertEquals(NowPlayingLike.ON_AIR, like(station, canFavoriteOnAir = true))
+    }
+
+    @Test
+    fun noCurrentItemHasNoButton() {
+        assertEquals(NowPlayingLike.UNAVAILABLE, like(null))
+    }
+}

@@ -313,6 +313,37 @@ class MainDataSource(
             .distinctUntilChanged()
             .stateIn(this, SharingStarted.Eagerly, null)
 
+    /** The like button of the local current item for the system media UI (CarPlay). */
+    val nowPlayingLike: StateFlow<NowPlayingLike> =
+        combine(localPlayer, grantedScopes, ::nowPlayingLikeOf)
+            .distinctUntilChanged()
+            .stateIn(this, SharingStarted.Eagerly, NowPlayingLike.UNAVAILABLE)
+
+    private fun nowPlayingLikeOf(data: PlayerData?, scopes: GrantedScopes): NowPlayingLike =
+        buildNowPlayingLike(
+            playerData = data,
+            canEditLibrary = scopes.canEditLibrary,
+            canFavoriteOnAir = data?.let(::canFavoriteCurrentlyPlaying) == true,
+        )
+
+    /**
+     * A tap on the like button of [nowPlayingLike]. Reads the state again from the
+     * current local player, so the action always matches the item that plays now.
+     */
+    fun toggleNowPlayingLike() {
+        val data = localPlayer.value ?: return
+        when (nowPlayingLikeOf(data, grantedScopes.value)) {
+            NowPlayingLike.LIKED, NowPlayingLike.NOT_LIKED ->
+                (data.queueInfo?.currentItem?.track as? AppMediaItem)?.let(::toggleFavorite)
+
+            NowPlayingLike.ON_AIR -> launch {
+                favoriteCurrentlyPlaying(data).onFailure { log.w(it) { "On-air favorite failed" } }
+            }
+
+            NowPlayingLike.UNAVAILABLE -> Unit
+        }
+    }
+
     /**
      * The players the pager shows. An unreachable player is only listed dimmed: its stale queue
      * or "playing" state must not keep the media service, the notification or the Wi-Fi lock.

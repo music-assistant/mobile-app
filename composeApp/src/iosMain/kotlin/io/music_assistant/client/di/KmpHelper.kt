@@ -13,6 +13,7 @@ import io.music_assistant.client.auth.OAuthCallback
 import io.music_assistant.client.carplay.CarPlayAccent
 import io.music_assistant.client.carplay.CarPlayStrings
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.NowPlayingLike
 import io.music_assistant.client.data.NowPlayingModes
 import io.music_assistant.client.data.NowPlayingTrack
 import io.music_assistant.client.data.NowPlayingTransport
@@ -284,6 +285,17 @@ object KmpHelper : KoinComponent {
         }
         return Cancellable { job.cancel() }
     }
+
+    /** Subscribe to the like button state of the current item. Replays on subscribe. */
+    fun observeNowPlayingLike(onChanged: (NowPlayingLike) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingLike.collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /** A tap on the CarPlay like button. See [NowPlayingLike] for what it does. */
+    fun toggleNowPlayingLike() = mainDataSource.toggleNowPlayingLike()
 
     // MARK: - Swift Helpers for Data Fetching
     //
