@@ -24,7 +24,7 @@ internal class PairingHandler(
     private val crypto: NoiseCrypto,
     private val trustStore: SendspinTrustStore,
 ) {
-    private val logger = Logger.withTag("PairingHandler")
+    private val logger = Logger.withTag("Sendspin.PairingHandler")
 
     class PendingAttempt internal constructor(
         internal val longTermPsk: ByteArray,

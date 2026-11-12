@@ -12,7 +12,7 @@ private const val MAX_SAFE_DETAIL_LENGTH = 120
 class WebRTCDiagnostics {
     private val attempt = Random.nextLong().toULong().toString(16)
     private val started = TimeSource.Monotonic.markNow()
-    private val logger = Logger.withTag("WebRTCLifecycle")
+    private val logger = Logger.withTag("Session.WebRTCLifecycle")
 
     fun event(message: String) {
         logger.i { "attempt=$attempt elapsedMs=${started.elapsedNow().inWholeMilliseconds} $message" }

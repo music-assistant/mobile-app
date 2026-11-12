@@ -321,6 +321,22 @@ actual class PlatformFeature {
   again the hints that the client lost. The queue DJ menu (`QueueDjViewModel`) and the stations
   screen show their cache and use only these changes. A show on a queue does not lock the queue DJ.
 
+## Session Lifecycle
+
+- `api/SessionMachine.kt` holds the connection lifecycle of the MA session. `transition` is a pure
+  function: it takes the `Lifecycle`, the `SessionState` and one `SessionEvent`, and it gives the next
+  `Lifecycle` and a list of `Effect`. Add or change a lifecycle rule there, and add a test to
+  `SessionMachineTest`.
+- `KtorServiceClient.dispatch` runs the transition and the effects under one lock, on the thread of
+  the caller. So a caller sees the new state before it continues. Many callers need this, for example
+  Android Auto, CarPlay, the local player queue and `LocalPlayerEndpoints`. Do not move the lifecycle
+  to a separate coroutine. An effect must not suspend or block.
+- `Publish` comes before `FailAll` in each transition. A request that fails must find the session
+  not ready, or the command queue sends the request again on the dead socket.
+- Each transport has a generation number (`Lifecycle.gen`). The machine ignores a transport event
+  or a watchdog event with an old number.
+- The auth fields of `ConnectionData` are not part of the machine. The client changes them in place.
+
 ## HTTP Clients
 
 - Get every `HttpClient` from the Koin `HttpClientFactory`. Do not call `HttpClient(engine)` directly.

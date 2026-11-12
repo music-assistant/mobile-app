@@ -42,7 +42,7 @@ class PeerConnectionWrapper(
     // attempt correlation onto a fresh WebRTCDiagnostics.
     private val diagnostics: WebRTCDiagnostics,
 ) : KoinComponent {
-    private val logger = Logger.withTag("PeerConnectionWrapper")
+    private val logger = Logger.withTag("Session.PeerConnectionWrapper")
     private val webRtcClient: WebRtcClient by inject()
 
     private var peerConnection: WebRtcPeerConnection? = null

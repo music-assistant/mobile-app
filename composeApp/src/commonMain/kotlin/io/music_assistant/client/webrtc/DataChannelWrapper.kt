@@ -54,7 +54,7 @@ class DataChannelWrapper internal constructor(
     )
 
     private val logChannel = "${safeChannelLabel(label)}#${hashCode().toUInt().toString(16)}"
-    private val logger = Logger.withTag("DataChannelWrapper")
+    private val logger = Logger.withTag("Session.DataChannelWrapper")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // close() is called exactly once per channel from WebRTCConnectionManager's

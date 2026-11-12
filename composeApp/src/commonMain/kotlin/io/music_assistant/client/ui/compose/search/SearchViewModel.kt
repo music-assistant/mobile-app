@@ -214,7 +214,7 @@ class SearchViewModel(
         onResultOpened()
         mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
             track.mediaUri?.let { mediaUri ->
-                Logger.withTag("PlayDispatch")
+                Logger.withTag("Session.PlayDispatch")
                     .i { "SearchViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
                 playDispatcher.play(
                     PlayRequest(

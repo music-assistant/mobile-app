@@ -507,7 +507,7 @@ class LibraryListViewModel(
         val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return
 
         item.mediaUri?.let { mediaUri ->
-            Logger.withTag("PlayDispatch")
+            Logger.withTag("Session.PlayDispatch")
                 .i { "ItemListViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
             playDispatcher.play(
                 PlayRequest(

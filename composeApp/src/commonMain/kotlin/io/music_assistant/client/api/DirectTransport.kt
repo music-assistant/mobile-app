@@ -30,7 +30,7 @@ class DirectTransport(
     /** A resumed session retries a failed first attempt, like a dropped connection. */
     private val retryInitialFailure: Boolean = false,
 ) : Transport {
-    private val logger = Logger.withTag("DirectTransport")
+    private val logger = Logger.withTag("Session.DirectTransport")
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         logger.e(throwable) { "Uncaught exception in DirectTransport scope" }
@@ -61,9 +61,6 @@ class DirectTransport(
     @Volatile
     private var session: DefaultClientWebSocketSession? = null
     private var wasConnected = false
-
-    @Volatile
-    private var messageCounter = 0L
 
     override fun connect() {
         connectionJob?.cancel()
@@ -99,7 +96,6 @@ class DirectTransport(
             try {
                 while (true) {
                     val message: JsonObject = receiveDeserialized()
-                    messageCounter++
                     _messages.emit(message)
                 }
             } catch (@Suppress("SwallowedException") e: ClosedReceiveChannelException) {

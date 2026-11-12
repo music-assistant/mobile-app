@@ -99,7 +99,7 @@ class LocalPlayerAdapter(
     private val endpoints: LocalPlayerEndpoints,
     playerFactory: LocalPlayerFactory,
 ) : CoroutineScope {
-    private val log = Logger.withTag("LocalPlayerAdapter")
+    private val log = Logger.withTag("Sendspin.LocalPlayerAdapter")
     private val supervisorJob = SupervisorJob()
     override val coroutineContext: CoroutineContext = supervisorJob + Dispatchers.IO
 

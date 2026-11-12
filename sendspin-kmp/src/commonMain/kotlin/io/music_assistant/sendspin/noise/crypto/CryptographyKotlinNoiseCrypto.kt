@@ -25,7 +25,7 @@ internal class CryptographyKotlinNoiseCrypto(
     private val provider: CryptographyProvider = CryptographyProvider.Default,
     private val x25519: X25519Backend = defaultX25519Backend(provider),
 ) : NoiseCrypto {
-    private val logger = Logger.withTag("NoiseCrypto")
+    private val logger = Logger.withTag("Sendspin.NoiseCrypto")
 
     // Resolved once — hashing hits these on the hot path. The AEAD
     // algorithm is deliberately NOT cached: the JDK provider pools Cipher

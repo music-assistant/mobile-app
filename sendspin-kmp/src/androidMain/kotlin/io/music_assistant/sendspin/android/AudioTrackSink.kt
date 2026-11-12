@@ -45,7 +45,7 @@ public class AudioTrackSink(
     context: Context,
     private val clock: MonotonicClock,
 ) : AudioSink {
-    private val logger = Logger.withTag("AudioTrackSink")
+    private val logger = Logger.withTag("Sendspin.AudioTrackSink")
     private val context = context.applicationContext
     private val audioManager = this.context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 

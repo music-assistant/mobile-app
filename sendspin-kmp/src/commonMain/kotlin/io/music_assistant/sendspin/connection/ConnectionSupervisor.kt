@@ -51,7 +51,7 @@ internal class ConnectionSupervisor(
     private val connectionChecks: StateFlow<Int> = MutableStateFlow(0),
     private val random: Random = Random.Default,
 ) {
-    private val logger = Logger.withTag("ConnectionSupervisor")
+    private val logger = Logger.withTag("Sendspin.ConnectionSupervisor")
 
     private companion object {
         const val GOODBYE_TIMEOUT_MILLIS = 1_000L

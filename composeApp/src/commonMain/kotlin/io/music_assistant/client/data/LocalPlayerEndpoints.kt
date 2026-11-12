@@ -53,7 +53,7 @@ class LocalPlayerEndpoints(
     private val settings: SettingsRepository,
     scope: CoroutineScope,
 ) {
-    private val log = Logger.withTag("LocalPlayerEndpoints")
+    private val log = Logger.withTag("Sendspin.LocalPlayerEndpoints")
 
     val endpoint: StateFlow<Endpoint?> = combine(
         apiClient.sessionState,

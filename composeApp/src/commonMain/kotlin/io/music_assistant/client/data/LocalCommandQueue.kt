@@ -44,7 +44,7 @@ internal class LocalCommandQueue(
     scope: CoroutineScope,
     private val requestRecovery: () -> Unit,
 ) {
-    private val log = Logger.withTag("LocalCommandQueue")
+    private val log = Logger.withTag("Sendspin.LocalCommandQueue")
     private val mutex = Mutex()
     private val queue = mutableListOf<Entry>()
     private val wake = Channel<Unit>(Channel.CONFLATED)

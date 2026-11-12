@@ -447,7 +447,7 @@ class HomeScreenViewModel(
     /** Plays [item] on the queue that the caller names, for a surface that shows several players. */
     fun playOnQueue(queueOrPlayerId: String, item: AppMediaItem, mode: PlayMode) {
         val mediaUri = item.mediaUri ?: return
-        Logger.withTag("PlayDispatch")
+        Logger.withTag("Session.PlayDispatch")
             .i { "HomeScreenViewModel: uri=$mediaUri mode=$mode queue=$queueOrPlayerId" }
         playDispatcher.play(
             PlayRequest(

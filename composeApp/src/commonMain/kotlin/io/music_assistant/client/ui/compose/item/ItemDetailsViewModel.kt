@@ -731,7 +731,7 @@ class ItemDetailsViewModel(
 
         val mediaUri = itemToPlay.mediaUri ?: return
         mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-            Logger.withTag("PlayDispatch").i {
+            Logger.withTag("Session.PlayDispatch").i {
                 "ItemDetailsViewModel.onPlayClick: uri=$mediaUri mode=$mode " +
                         "startItem=${startItem?.itemId} queue=$queueId"
             }
@@ -753,7 +753,7 @@ class ItemDetailsViewModel(
         (_state.value.itemState as? DataState.Data)?.data?.let { item ->
             item.uri?.let { uri ->
                 mainDataSource.selectedPlayer?.queueOrPlayerId?.let { queueId ->
-                    Logger.withTag("PlayDispatch").i {
+                    Logger.withTag("Session.PlayDispatch").i {
                         "ItemDetailsViewModel.onChapterClick: uri=$uri " +
                                 "chapter=$chapterPosition queue=$queueId"
                     }

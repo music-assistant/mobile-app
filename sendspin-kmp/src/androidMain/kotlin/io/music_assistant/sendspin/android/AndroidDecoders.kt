@@ -57,7 +57,7 @@ internal class PcmDecoder : AudioDecoder {
  * samples exactly.
  */
 internal class FlacDecoder : AudioDecoder {
-    private val logger = Logger.withTag("FlacDecoder")
+    private val logger = Logger.withTag("Sendspin.FlacDecoder")
     private var codec: MediaCodec? = null
     private val bufferInfo = MediaCodec.BufferInfo()
 
@@ -231,7 +231,7 @@ internal fun floatToPcm24(floatPcm: ByteArray): ByteArray {
 
 /** Opus through Concentus (pure Kotlin/Java libopus port); always 16-bit output. */
 internal class OpusDecoder : AudioDecoder {
-    private val logger = Logger.withTag("OpusDecoder")
+    private val logger = Logger.withTag("Sendspin.OpusDecoder")
     private var decoder: ConcentusOpusDecoder? = null
     private var channels = 0
     private var pcm = ShortArray(0)

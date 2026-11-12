@@ -96,7 +96,7 @@ internal class SendspinPlayerImpl(
     /** One connector per enabled lifetime; injectable so tests can watch its close. */
     private val connectorFactory: (HttpClient) -> TransportConnector = TransportConnector::ktor,
 ) : SendspinPlayer {
-    private val logger = Logger.withTag("SendspinPlayer")
+    private val logger = Logger.withTag("Sendspin.Player")
     private val _state = MutableStateFlow<PlayerState>(PlayerState.Disabled)
     private val _events = MutableSharedFlow<PlayerEvent>(
         extraBufferCapacity = 16,

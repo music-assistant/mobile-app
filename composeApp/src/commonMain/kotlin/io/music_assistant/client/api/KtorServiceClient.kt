@@ -15,11 +15,8 @@ import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.events.CoreStateUpdatedEvent
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.imageloader.ARTWORK_DECODE_SIZE
-import io.music_assistant.client.settings.ConnectionHistoryEntry
-import io.music_assistant.client.settings.ConnectionType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
-import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.HttpClientFactory
@@ -32,6 +29,8 @@ import io.music_assistant.client.utils.serverLocalizationLocale
 import io.music_assistant.client.utils.update
 import io.music_assistant.client.utils.withRefreshedServerInfo
 import io.music_assistant.client.webrtc.model.RemoteId
+import kotlinx.atomicfu.locks.SynchronizedObject
+import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
@@ -73,7 +72,7 @@ class KtorServiceClient(
     private val settings: SettingsRepository,
     private val errorBus: ErrorMessageBus,
 ) : ServiceClient, CoroutineScope, KoinComponent {
-    private val logger = Logger.withTag("ServiceClient")
+    private val logger = Logger.withTag("Session.ServiceClient")
     private val supervisorJob = SupervisorJob()
 
     private val scopeExceptionHandler = CoroutineExceptionHandler { _, throwable ->
@@ -151,7 +150,8 @@ class KtorServiceClient(
 
     private val networkMonitor: NetworkMonitor by inject()
 
-    // --- Transport ---
+    // --- Transport (written only by the lifecycle effects, under lifecycleLock) ---
+    @kotlin.concurrent.Volatile
     private var transport: Transport? = null
     private var transportObserverJob: Job? = null
 
@@ -161,19 +161,13 @@ class KtorServiceClient(
     // treats `Connecting` as in-progress, and only a manual disconnect breaks out.
     private var connectWatchdogJob: Job? = null
 
-    // --- Lifecycle / background state ---
-    private var isInBackground = false
-    private var hasActiveExternalConsumer = false
-    private var hasActivePlayback = false
-    private var backgroundedAt = 0L
+    // --- Lifecycle: the state machine in SessionMachine.kt ---
+    private val lifecycleLock = SynchronizedObject()
+    private var lifecycle = Lifecycle()
 
     // A command is trying to reach the server: the reconnect it asked for must not
     // be torn down under it. Bounded by the same budget the request gate waits on.
     private val sessionHold = SessionHold(ENSURE_READY_TIMEOUT_MS.milliseconds)
-
-    /** Background teardown is only safe while nothing needs the session. */
-    private val canTearDownInBackground: Boolean
-        get() = !hasActiveExternalConsumer && !hasActivePlayback && !sessionHold.isHeld
 
     private val silentReauth = SilentReauth(
         ReauthPolicy(
@@ -182,13 +176,6 @@ class KtorServiceClient(
             retryDelayMs = SILENT_REAUTH_RETRY_DELAY_MS,
         ),
     )
-
-    private sealed class BackgroundedConnectionInfo {
-        data class Direct(val connectionInfo: ConnectionInfo) : BackgroundedConnectionInfo()
-        data class WebRTC(val remoteId: RemoteId) : BackgroundedConnectionInfo()
-    }
-
-    private var backgroundedConnectionInfo: BackgroundedConnectionInfo? = null
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -335,87 +322,24 @@ class KtorServiceClient(
     /**
      * Force a full WebRTC reconnection to get fresh SDP-negotiated data channels.
      */
-    override fun forceWebRTCReconnect() {
-        val currentState = _sessionState.value as? SessionState.Connected.WebRTC ?: return
-        logger.i { "Forcing WebRTC reconnect for fresh sendspin channel" }
+    override fun forceWebRTCReconnect() = dispatch(SessionEvent.ForceWebRTCReconnect)
 
-        // `connectionData` is carried verbatim so `Reconnecting.WebRTC` keeps the
-        // current `user` for UI display during the reconnect window. The reauth-
-        // sensitive fields (`serverInfo`, `needsServerReauth`, `authProcessState`)
-        // get rebuilt by `observeTransport` when the new peer connection lands and
-        // emits Connected; until then they're irrelevant because no collector acts
-        // on Reconnecting state.
-        _sessionState.update {
-            SessionState.Reconnecting.WebRTC(
-                attempt = 0,
-                remoteId = currentState.remoteId,
-                connectionData = currentState.connectionData,
-            )
-        }
+    override fun onAppBackground() = dispatch(SessionEvent.Background)
 
-        (transport as? WebRTCTransport)?.forceReconnect()
-    }
+    override fun onAppForeground() = dispatch(SessionEvent.Foreground)
 
     /**
-     * Called when the app moves to the background.
-     */
-    override fun onAppBackground() {
-        isInBackground = true
-        backgroundedAt = currentTimeMillis()
-        logger.i { "App backgrounded (state=${stateLabel(_sessionState.value)})" }
-    }
-
-    /**
-     * Called when an external consumer (Android Auto / CarPlay) becomes active.
+     * Called when an external consumer (Android Auto / CarPlay) becomes active or inactive.
+     * The flow is written first, as before; the flag in [Lifecycle] prevents background teardown.
      */
     override fun onExternalConsumerActive() {
-        hasActiveExternalConsumer = true
         _externalConsumerActive.value = true
-        val state = _sessionState.value
-        logger.i { "External consumer active (state=${stateLabel(state)})" }
-
-        if (state is SessionState.Disconnected.Backgrounded) {
-            if (!reconnectFromCurrent("external consumer active (was Backgrounded)")) {
-                logger.i { "External consumer active: state=Backgrounded but no savedInfo, no reconnect" }
-            }
-            return
-        }
+        dispatch(SessionEvent.ExternalConsumerActive)
     }
 
-    /**
-     * Tears down the current transport and reconnects using either the saved
-     * [backgroundedConnectionInfo] or, failing that, the connection identity of
-     * the current [SessionState.Connected]. Returns false when neither source
-     * can supply a target — caller decides what (if anything) to log.
-     */
-    private fun reconnectFromCurrent(reason: String): Boolean {
-        val info = backgroundedConnectionInfo
-            ?: when (val s = _sessionState.value) {
-                is SessionState.Connected.Direct -> BackgroundedConnectionInfo.Direct(s.connectionInfo)
-                is SessionState.Connected.WebRTC -> BackgroundedConnectionInfo.WebRTC(s.remoteId)
-                else -> null
-            } ?: return false
-        logger.i { "Force reconnect: $reason" }
-
-        // forceConnect / forceConnectWebRTC bypass the public guard and handle
-        // their own teardown — no transient state sentinel needed here.
-        when (info) {
-            is BackgroundedConnectionInfo.Direct -> {
-                val connInfo = settings.connectionInfo.value ?: info.connectionInfo
-                forceConnect(connInfo, resume = true)
-            }
-            is BackgroundedConnectionInfo.WebRTC -> forceConnectWebRTC(info.remoteId, resume = true)
-        }
-        return true
-    }
-
-    /**
-     * Called when an external consumer (Android Auto / CarPlay) becomes inactive.
-     */
     override fun onExternalConsumerInactive() {
-        hasActiveExternalConsumer = false
         _externalConsumerActive.value = false
-        logger.i { "External consumer inactive (state=${stateLabel(_sessionState.value)})" }
+        dispatch(SessionEvent.ExternalConsumerInactive)
     }
 
     override fun requestCommandRecovery() {
@@ -432,70 +356,20 @@ class KtorServiceClient(
      * server starts on the local player while the session is torn down in the background
      * brings it back, like a car host does: the app must show what the phone plays.
      */
-    override fun onPlaybackActive() {
-        hasActivePlayback = true
-        val state = _sessionState.value
-        logger.i { "Playback active (state=${stateLabel(state)})" }
-        if (state is SessionState.Disconnected.Backgrounded) {
-            reconnectFromCurrent("playback active (was Backgrounded)")
-        }
-    }
+    override fun onPlaybackActive() = dispatch(SessionEvent.PlaybackActive)
 
     /**
      * Called when neither holds any more.
      */
-    override fun onPlaybackInactive() {
-        hasActivePlayback = false
-        logger.i { "Playback inactive (state=${stateLabel(_sessionState.value)})" }
-    }
+    override fun onPlaybackInactive() = dispatch(SessionEvent.PlaybackInactive)
 
     override fun forceDisconnect(reason: Exception) {
-        disconnect(SessionState.Disconnected.Error(reason))
+        launch { dispatch(SessionEvent.Disconnect(SessionState.Disconnected.Error(reason))) }
     }
 
     override fun noServer() {
         sessionHold.clear()
-        _sessionState.update { SessionState.Disconnected.NoServerData }
-    }
-
-    /**
-     * Called when the app returns to the foreground.
-     */
-    override fun onAppForeground() {
-        val wasInBackground = isInBackground
-        isInBackground = false
-        val state = _sessionState.value
-        logger.i { "App foregrounded (state=${stateLabel(state)})" }
-
-        if (wasInBackground) _foregroundEvents.tryEmit(Unit)
-
-        if (backgroundedConnectionInfo != null) {
-            reconnectFromCurrent("was Backgrounded")
-            return
-        }
-    }
-
-    /** Compact one-token label for a [SessionState], stable for log greps. */
-    private fun stateLabel(state: SessionState): String = when (state) {
-        is SessionState.Connected.Direct -> "Connected.Direct(${dcsLabel(state.dataConnectionState)})"
-        is SessionState.Connected.WebRTC -> "Connected.WebRTC(${dcsLabel(state.dataConnectionState)})"
-        is SessionState.Reconnecting.Direct -> "Reconnecting.Direct(attempt=${state.attempt})"
-        is SessionState.Reconnecting.WebRTC -> "Reconnecting.WebRTC(attempt=${state.attempt})"
-        SessionState.Disconnected.Initial -> "Disconnected.Initial"
-        SessionState.Disconnected.NoServerData -> "Disconnected.NoServerData"
-        SessionState.Disconnected.Backgrounded -> "Disconnected.Backgrounded"
-        SessionState.Disconnected.ByUser -> "Disconnected.ByUser"
-        is SessionState.Disconnected.Error -> {
-            "Disconnected.Error(${state.reason?.message ?: state.reason?.toString()})"
-        }
-        SessionState.Connecting -> "Connecting"
-    }
-
-    /** Compact one-token label for a [DataConnectionState]. */
-    private fun dcsLabel(dcs: DataConnectionState): String = when (dcs) {
-        DataConnectionState.AwaitingServerInfo -> "AwaitingServerInfo"
-        is DataConnectionState.AwaitingAuth -> "AwaitingAuth"
-        is DataConnectionState.Authenticated -> "Authenticated"
+        dispatch(SessionEvent.NoServer)
     }
 
     private val rpcEngine = RpcEngine(
@@ -520,336 +394,123 @@ class KtorServiceClient(
         }
     }
 
-    // --- Transport state observation ---
+    // --- Lifecycle dispatch ---
 
-    private fun observeTransport(
-        transport: Transport,
-        createConnected: (ConnectionData) -> SessionState.Connected,
-        createReconnecting: (Int, ConnectionData) -> SessionState.Reconnecting,
-        backgroundInfo: () -> BackgroundedConnectionInfo,
-        onFreshConnect: () -> Unit,
-        onReconnected: suspend () -> Unit,
-        needsReauthOnReconnect: Boolean = false,
-        clearsServerInfoOnReconnect: Boolean = false,
-    ) {
+    /**
+     * Runs one lifecycle event: [transition], then its effects in order, under one lock, on the
+     * caller's thread. The lock is reentrant: an effect that fails pending requests can resume a
+     * caller that dispatches again, and that caller already sees the published state.
+     */
+    private fun dispatch(event: SessionEvent) = synchronized(lifecycleLock) {
+        val step = transition(lifecycle, _sessionState.value, event, env())
+        lifecycle = step.lifecycle
+        step.effects.forEach(::perform)
+    }
+
+    private fun env() = Env(
+        isOnline = networkMonitor.isAvailable.value,
+        isHeld = sessionHold.isHeld,
+        transportState = transport?.state?.value,
+        savedConnectionInfo = settings.connectionInfo.value,
+        lastHistory = settings.connectionHistory.value.firstOrNull(),
+    )
+
+    /** Carries out one effect. An effect never suspends or blocks: the lifecycle lock is held. */
+    private fun perform(effect: Effect) {
+        when (effect) {
+            is Effect.Publish -> _sessionState.value = effect.state
+            is Effect.FailAll -> rpcEngine.failAll(ConnectionLostException(effect.cause))
+            Effect.ResetSilentReauth -> silentReauth.reset()
+            Effect.DropTransport -> {
+                // Cancelling the observer first keeps the dropped transport's own `Disconnected`
+                // from being read as user intent.
+                transportObserverJob?.cancel()
+                transportObserverJob = null
+                transport?.disconnect()
+                transport?.close()
+                transport = null
+            }
+            Effect.DisconnectTransport -> transport?.disconnect()
+            is Effect.OpenTransport -> openTransport(effect)
+            Effect.CancelWatchdog -> connectWatchdogJob?.cancel()
+            is Effect.RecordConnection -> {
+                settings.setLastConnectionMode(effect.target.mode)
+                settings.addOrUpdateHistoryEntry(effect.target.historyEntry)
+            }
+            Effect.EmitForeground -> _foregroundEvents.tryEmit(Unit)
+            Effect.ForceTransportReconnect -> (transport as? WebRTCTransport)?.forceReconnect()
+            is Effect.Defer -> launch { dispatch(effect.event) }
+            is Effect.Log -> logger.log(effect.severity, logger.tag, null, effect.message)
+        }
+    }
+
+    /**
+     * [OpenTransport.resume][Effect.OpenTransport.resume] continues a session that worked before: a
+     * failed first attempt then retries as `Reconnecting` instead of failing to `Disconnected.Error`.
+     */
+    private fun openTransport(open: Effect.OpenTransport) {
+        startConnectWatchdog(open.gen)
+        val newTransport = when (val target = open.target) {
+            is SessionTarget.Direct -> DirectTransport(
+                clientProvider = { currentClient },
+                connectionInfoProvider = { target.connectionInfo },
+                parentScope = this,
+                networkAvailable = networkMonitor.isAvailable,
+                retryInitialFailure = open.resume,
+            )
+
+            is SessionTarget.WebRTC -> WebRTCTransport(
+                httpClient = webrtcHttpClient,
+                remoteId = target.remoteId,
+                parentScope = this,
+                networkAvailable = networkMonitor.isAvailable,
+                retryInitialFailure = open.resume,
+            )
+        }
+        transport = newTransport
+        observeTransport(newTransport, open.target, open.gen)
+        newTransport.connect()
+    }
+
+    private fun observeTransport(transport: Transport, target: SessionTarget, gen: Int) {
         transportObserverJob?.cancel()
         transportObserverJob = launch {
             // State collector. `drop(1)` skips the StateFlow's initial-value replay
             // (`TransportState.Disconnected`, the default), which would otherwise overwrite
-            // the `SessionState.Connecting` we just set in `connect()` / `connectWebRTC()`
-            // before the transport's own coroutine has had a chance to flip to `Connecting`.
-            // For Direct the resulting form-flicker is ~100 ms and invisible; for WebRTC the
-            // form stays put for the entire signaling + ICE window.
+            // the `SessionState.Connecting` we just set before the transport's own coroutine
+            // has had a chance to flip to `Connecting`.
             launch {
-                transport.state.drop(1).collect { transportState ->
-                    when (transportState) {
-                        TransportState.Connected -> {
-                            connectWatchdogJob?.cancel()
-                            val preserved =
-                                (_sessionState.value as? HasConnectionData)?.connectionData
-                                    ?: ConnectionData()
-                            val wasReconnecting = _sessionState.value is SessionState.Reconnecting
-                            // Both transports use per-connection auth state on the server,
-                            // so every reconnect needs a fresh `client/auth`. Rather than
-                            // call `authorize` from `onReconnected` (which races with the
-                            // session-state emit — MainDataSource can see Authenticated
-                            // and fire RPCs before the auth round-trip lands), flag
-                            // `needsServerReauth` and let AuthenticationManager drive
-                            // re-auth from the resulting `AwaitingAuth(NotStarted)` state.
-                            // While the flag is set, `dataConnectionState` keeps gating
-                            // RPCs even if `authorize` later fails — a `Failed` state with
-                            // `needsServerReauth=true` still reports `AwaitingAuth(Failed)`,
-                            // so MainDataSource's stale-data path holds the line until the
-                            // user retries login or the transport bounces again.
-                            //
-                            // `serverInfo` handling differs by transport. WebRTC clears
-                            // it because the gateway proxies the data channel onto a
-                            // fresh local WebSocket and races the two legs: if
-                            // `client/auth` is sent before the gateway has forwarded the
-                            // new `server/hello` back through the (not-yet-`open`)
-                            // channel, auth is silently lost. Clearing `serverInfo`
-                            // forces `AwaitingServerInfo`, holding `authorize` until the
-                            // fresh `server/hello` arrives. Direct WebSocket has no such
-                            // ordering gate — the new `server/hello` will refresh the
-                            // cached value over the same FIFO channel that carries
-                            // `client/auth` next, so we leave `serverInfo` populated and
-                            // let `AwaitingAuth` trigger immediately.
-                            //
-                            // `authProcessState` resets to `NotStarted` so AuthMgr's
-                            // collector actually fires; a stale `InProgress` from a
-                            // mid-flight auth at disconnect time would otherwise park
-                            // the collector. `user` is preserved so the UI keeps
-                            // showing the user as logged in throughout the reconnect.
-                            val emitData = if (wasReconnecting && needsReauthOnReconnect) {
-                                preserved.copy(
-                                    serverInfo = if (clearsServerInfoOnReconnect) null else preserved.serverInfo,
-                                    needsServerReauth = true,
-                                    authProcessState = AuthProcessState.NotStarted,
-                                )
-                            } else {
-                                preserved
-                            }
-                            _sessionState.update { createConnected(emitData) }
-                            logger.i {
-                                "Transport→Connected (wasReconnecting=$wasReconnecting, " +
-                                    "needsReauthOnReconnect=$needsReauthOnReconnect, " +
-                                    "dcs=${dcsLabel(emitData.dataConnectionState)})"
-                            }
-                            if (wasReconnecting) {
-                                onReconnected()
-                            } else {
-                                onFreshConnect()
-                            }
-                        }
-
-                        is TransportState.Reconnecting -> {
-                            if (isInBackground && canTearDownInBackground) {
-                                backgroundedConnectionInfo = backgroundInfo()
-                                transport.disconnect()
-                                _sessionState.update { SessionState.Disconnected.Backgrounded }
-                                logger.i { "Transport→Reconnecting while backgrounded → Disconnected.Backgrounded" }
-                            } else {
-                                val preserved =
-                                    (_sessionState.value as? HasConnectionData)?.connectionData
-                                        ?: ConnectionData()
-                                _sessionState.update {
-                                    createReconnecting(
-                                        transportState.attempt,
-                                        preserved,
-                                    )
-                                }
-                                logger.i { "Transport→Reconnecting (attempt=${transportState.attempt})" }
-                            }
-                            // After the state update: a command re-queued by this failure must
-                            // see "not ready", not replay onto the dying socket.
-                            rpcEngine.failAll(
-                                ConnectionLostException("Transport reconnecting (attempt=${transportState.attempt})"),
-                            )
-                        }
-
-                        is TransportState.Failed -> {
-                            // In the background nobody sees an error, and Backgrounded reconnects on
-                            // the next foreground without leaving the screen. The error state, and
-                            // the Settings screen it leads to, is for a failure the user can watch.
-                            if (isInBackground) {
-                                backgroundedConnectionInfo = backgroundInfo()
-                                _sessionState.update { SessionState.Disconnected.Backgrounded }
-                                logger.i {
-                                    "Transport→Failed while backgrounded → Disconnected.Backgrounded: " +
-                                        transportState.error.message
-                                }
-                            } else {
-                                _sessionState.update { SessionState.Disconnected.Error(transportState.error) }
-                                logger.i { "Transport→Failed → Disconnected.Error: ${transportState.error.message}" }
-                            }
-                            rpcEngine.failAll(
-                                ConnectionLostException("Transport failed: ${transportState.error.message}"),
-                            )
-                        }
-
-                        TransportState.Disconnected -> {
-                            if (_sessionState.value !is SessionState.Disconnected) {
-                                _sessionState.update { SessionState.Disconnected.ByUser }
-                                logger.i { "Transport→Disconnected → Disconnected.ByUser" }
-                            }
-                            rpcEngine.failAll(ConnectionLostException("Transport disconnected"))
-                        }
-
-                        TransportState.Connecting -> {} // already handled
-                    }
-                }
+                transport.state.drop(1).collect { dispatch(SessionEvent.Transport(gen, target, it)) }
             }
-            // Message collector
             launch {
                 transport.messages.collect { handleIncomingMessage(it) }
             }
         }
     }
 
-    // --- Connect / Disconnect ---
-
-    override fun connect(connection: ConnectionInfo) {
-        if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
-        forceConnect(connection)
-    }
-
     /**
      * Arms a one-shot timeout that forces a wedged `Connecting` session into
      * [SessionState.Disconnected.Error], from which request-driven recovery
      * ([kickRecovery]) can reconnect. Re-armed on every connect attempt and cancelled
-     * once the transport leaves `Connecting`. No-op if the session has already
-     * progressed by the time it fires.
+     * once the transport connects. A no-op if the session has progressed by then.
      */
-    private fun startConnectWatchdog() {
+    private fun startConnectWatchdog(gen: Int) {
         connectWatchdogJob?.cancel()
         connectWatchdogJob = launch {
             delay(CONNECT_TIMEOUT_MS)
-            if (_sessionState.value is SessionState.Connecting) {
-                logger.w { "Connect watchdog: stuck in Connecting after ${CONNECT_TIMEOUT_MS}ms — failing out" }
-                // Error first, then tear down: the observer's `Disconnected` handler only
-                // writes `ByUser` when the state isn't already `Disconnected`, so seeding
-                // `Error` keeps the transport's teardown from masking it as user intent
-                // (which `kickRecovery` would refuse to recover from).
-                _sessionState.update {
-                    SessionState.Disconnected.Error(
-                        Exception("Connect timed out after ${CONNECT_TIMEOUT_MS}ms"),
-                    )
-                }
-                transport?.disconnect()
-            }
+            dispatch(SessionEvent.WatchdogFired(gen))
         }
     }
 
-    /**
-     * Bypass of [connect]'s Connecting/Connected guard for callers that
-     * intentionally tear down a live transport before rebuilding (e.g. JIT
-     * reconnect from a stuck `AwaitingAuth(Failed)` session). Public callers
-     * should keep using [connect] so accidental double-connects are still cheap.
-     *
-     * [resume] continues a session that worked before (a foreground return, a car host):
-     * a failed first attempt then retries as `Reconnecting`, which keeps the current
-     * screen, instead of `Disconnected.Error`, which sends the user to Settings.
-     */
-    private fun forceConnect(connection: ConnectionInfo, resume: Boolean = false) {
-        // New connection episode: the silent-failure budget is per-server-session, so
-        // a prior server's failures must not pre-charge this one's escape hatch.
-        silentReauth.reset()
-        // A JIT reconnect also consumes the backgrounded session: a stale copy would make the
-        // next foreground tear down this live transport and connect again over it.
-        backgroundedConnectionInfo = null
-        tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
-        startConnectWatchdog()
+    // --- Connect / Disconnect ---
 
-        val directTransport = DirectTransport(
-            clientProvider = { currentClient },
-            connectionInfoProvider = { connection },
-            parentScope = this,
-            networkAvailable = networkMonitor.isAvailable,
-            retryInitialFailure = resume,
-        )
-        transport = directTransport
+    override fun connect(connection: ConnectionInfo) = dispatch(SessionEvent.Connect(SessionTarget.Direct(connection)))
 
-        observeTransport(
-            transport = directTransport,
-            createConnected = { data ->
-                SessionState.Connected.Direct(connection, data)
-            },
-            createReconnecting = { attempt, data ->
-                SessionState.Reconnecting.Direct(attempt, connection, data, isOnline = networkMonitor.isAvailable.value)
-            },
-            backgroundInfo = { BackgroundedConnectionInfo.Direct(connection) },
-            onFreshConnect = {
-                settings.setLastConnectionMode("direct")
-                // Provisional: the server has not named itself yet, so this row has no id.
-                // It keeps JIT reconnect able to recover a login that did not finish, and
-                // AuthenticationManager absorbs it once the server identifies itself.
-                settings.addOrUpdateHistoryEntry(
-                    ConnectionHistoryEntry(
-                        type = ConnectionType.DIRECT,
-                        host = connection.host,
-                        port = connection.port,
-                        isTls = connection.isTls,
-                        basePath = connection.basePath,
-                    ),
-                )
-            },
-            onReconnected = {
-                // Re-auth is owned by AuthenticationManager (driven by the
-                // `needsReauthOnReconnect = true` gate above); nothing to do here.
-                logger.i { "Direct reconnection successful — awaiting AuthenticationManager re-auth" }
-            },
-            needsReauthOnReconnect = true,
-            // serverInfo stays populated: Direct WS has no `server/hello`-before-`client/auth`
-            // ordering gate (unlike the WebRTC gateway), and the next `server/hello` will
-            // overwrite any stale cached value over the same FIFO channel that carries auth.
-            clearsServerInfoOnReconnect = false,
-        )
-        directTransport.connect()
-    }
-
-    override fun connectWebRTC(remoteId: RemoteId) {
-        if (_sessionState.value is SessionState.Connecting || _sessionState.value is SessionState.Connected) return
-        forceConnectWebRTC(remoteId)
-    }
-
-    /** WebRTC twin of [forceConnect]. */
-    private fun forceConnectWebRTC(remoteId: RemoteId, resume: Boolean = false) {
-        silentReauth.reset()
-        backgroundedConnectionInfo = null
-        tearDownTransport(SessionState.Connecting, "Transport replaced by a new connection")
-        startConnectWatchdog()
-
-        val webrtcTransport = WebRTCTransport(
-            httpClient = webrtcHttpClient,
-            remoteId = remoteId,
-            parentScope = this,
-            networkAvailable = networkMonitor.isAvailable,
-            retryInitialFailure = resume,
-        )
-        transport = webrtcTransport
-
-        observeTransport(
-            transport = webrtcTransport,
-            createConnected = { data -> SessionState.Connected.WebRTC(remoteId, data) },
-            createReconnecting = { attempt, data ->
-                SessionState.Reconnecting.WebRTC(attempt, remoteId, data, isOnline = networkMonitor.isAvailable.value)
-            },
-            backgroundInfo = { BackgroundedConnectionInfo.WebRTC(remoteId) },
-            onFreshConnect = {
-                settings.setLastConnectionMode("webrtc")
-                // Provisional — see the Direct path above.
-                settings.addOrUpdateHistoryEntry(
-                    ConnectionHistoryEntry(
-                        type = ConnectionType.WEBRTC,
-                        remoteId = remoteId.rawId,
-                    ),
-                )
-            },
-            onReconnected = {
-                // Re-auth is owned by AuthenticationManager (driven by the
-                // `needsReauthOnReconnect = true` gate above); nothing to do here.
-                // ArtworkRepository owns reusable bytes and retries failed fetches after reconnect.
-                logger.i { "WebRTC reconnection successful — awaiting AuthenticationManager re-auth" }
-            },
-            needsReauthOnReconnect = true,
-            // serverInfo cleared: WebRTC gateway races data channel `on_message`
-            // for `client/auth` against forwarding the new `server/hello`. Forcing
-            // `AwaitingServerInfo` until the fresh hello arrives sidesteps the race.
-            clearsServerInfoOnReconnect = true,
-        )
-        webrtcTransport.connect()
-    }
+    override fun connectWebRTC(remoteId: RemoteId) = dispatch(SessionEvent.Connect(SessionTarget.WebRTC(remoteId)))
 
     override fun disconnectByUser() {
         sessionHold.clear()
-        disconnect(SessionState.Disconnected.ByUser)
-    }
-
-    private fun disconnect(newState: SessionState.Disconnected) {
-        launch {
-            if (newState is SessionState.Disconnected.Backgrounded &&
-                (!isInBackground || !canTearDownInBackground)
-            ) {
-                logger.i { "Backgrounded disconnect aborted — the session is still needed" }
-                return@launch
-            }
-
-            tearDownTransport(newState, "Disconnected (${stateLabel(newState)})")
-        }
-    }
-
-    /**
-     * Cancelling the observer avoids a spurious `Disconnected.ByUser`; pending requests must be failed
-     * here, after the state update, so retries observe [newState].
-     */
-    private fun tearDownTransport(newState: SessionState, cause: String) {
-        transportObserverJob?.cancel()
-        transportObserverJob = null
-        transport?.disconnect()
-        transport?.close()
-        transport = null
-        _sessionState.update { newState }
-        rpcEngine.failAll(ConnectionLostException(cause))
+        launch { dispatch(SessionEvent.Disconnect(SessionState.Disconnected.ByUser)) }
     }
 
     // --- Auth ---
@@ -1096,51 +757,25 @@ class KtorServiceClient(
     }
 
     private fun kickRecovery() {
-        val state = _sessionState.value
-        when (state) {
-            is SessionState.Disconnected.Initial,
-            is SessionState.Disconnected.Error,
-                -> reconnectFromHistory(reason = "JIT: state=${stateLabel(state)}")
-            is SessionState.Disconnected.Backgrounded ->
-                reconnectFromHistory(reason = "JIT: state=${stateLabel(state)}", resume = true)
-            SessionState.Disconnected.ByUser,
-            SessionState.Disconnected.NoServerData,
-                -> logger.i { "JIT: honoring user-intent state=${stateLabel(state)}" }
-            SessionState.Connecting,
-            is SessionState.Reconnecting,
-                -> Unit // already in progress
-            is SessionState.Connected -> {
-                when (val dcs = state.dataConnectionState) {
-                    is DataConnectionState.AwaitingAuth -> {
-                        val auth = dcs.authProcessState
-                        val hasToken = savedTokenForState(state) != null
-                        if (auth is AuthProcessState.Failed && state.wasAutoLogin && hasToken) {
-                            logger.i { "JIT: bumping AwaitingAuth(Failed) → NotStarted to retry auto-login" }
-                            _sessionState.update {
-                                (it as? SessionState.Connected)?.update(
-                                    authProcessState = AuthProcessState.NotStarted,
-                                ) ?: it
-                            }
-                        }
-                        // NotStarted/InProgress/LoggedOut handled by AuthMgr or user; no-op.
-                    }
-                    DataConnectionState.AwaitingServerInfo -> Unit // server/hello pending
-                    is DataConnectionState.Authenticated -> Unit // ready
-                }
-            }
+        when (val state = _sessionState.value) {
+            is SessionState.Connected -> retryFailedAutoLogin(state)
+            else -> dispatch(SessionEvent.Kick)
         }
     }
 
-    private fun reconnectFromHistory(reason: String, resume: Boolean = false) {
-        val entry = settings.connectionHistory.value.firstOrNull() ?: run {
-            logger.i { "JIT: no history entry — cannot reconnect ($reason)" }
-            return
+    /** Auth recovery, outside the lifecycle machine: `AwaitingAuth(Failed)` after an auto-login. */
+    private fun retryFailedAutoLogin(state: SessionState.Connected) {
+        val auth = (state.dataConnectionState as? DataConnectionState.AwaitingAuth)?.authProcessState
+        if (auth is AuthProcessState.Failed && state.wasAutoLogin && savedTokenForState(state) != null) {
+            logger.i { "JIT: bumping AwaitingAuth(Failed) → NotStarted to retry auto-login" }
+            _sessionState.update {
+                (it as? SessionState.Connected)?.update(
+                    authProcessState = AuthProcessState.NotStarted,
+                ) ?: it
+            }
         }
-        logger.i { "JIT reconnect via ${entry.type} ($reason)" }
-        when (entry.type) {
-            ConnectionType.DIRECT -> entry.connectionInfo?.let { forceConnect(it, resume) }
-            ConnectionType.WEBRTC -> entry.remoteId?.let { forceConnectWebRTC(RemoteId(it), resume) }
-        }
+        // NotStarted/InProgress/LoggedOut are handled by AuthenticationManager or the user;
+        // AwaitingServerInfo waits for server/hello; Authenticated is ready.
     }
 
     private fun savedTokenForState(state: SessionState.Connected): String? {
@@ -1224,24 +859,8 @@ class KtorServiceClient(
                     if (rpcEngine.removeCallback(msgId)) {
                         continuation.resume(Result.failure(e))
                     }
-                    // A send failure is definitive liveness evidence: the high-level
-                    // Connected/Authenticated state can lag behind a closed WebRTC data channel.
-                    // Kick a fresh reconnect so callers that queue on failure are replayed when
-                    // the transport returns. Logout is user-intent teardown; never resurrect it.
-                    val sessionState = _sessionState.value
-                    val transportState = transport?.state?.value
-                    val canStartReconnect = request.command != APICommands.AUTH_LOGOUT &&
-                        sessionState !is SessionState.Connecting &&
-                        sessionState !is SessionState.Reconnecting &&
-                        transportState !is TransportState.Reconnecting
-                    val reconnectStarted = canStartReconnect && reconnectFromCurrent("send failed: ${e.message}")
-                    if (canStartReconnect && !reconnectStarted) {
-                        disconnect(
-                            SessionState.Disconnected.Error(
-                                Exception("Error sending command: ${e.message}"),
-                            ),
-                        )
-                    }
+                    // A send failure is liveness evidence: the machine starts a fresh reconnect.
+                    dispatch(SessionEvent.SendFailed(request.command, e))
                 }
             }
         }
@@ -1268,11 +887,6 @@ class KtorServiceClient(
 
     companion object {
         private const val ENSURE_READY_TIMEOUT_MS = 10_000L
-
-        // Upper bound on a single connect attempt before it's declared stuck. Generous
-        // enough to cover a healthy cold-start handshake (incl. WebRTC signaling + ICE)
-        // so it never trips a merely-slow connect, but bounded so `Connecting` can't wedge.
-        private const val CONNECT_TIMEOUT_MS = 20_000L
 
         // Silent reconnect re-auth failures tolerated before surfacing login — rides
         // through a flaky handoff without trapping the user if re-auth never recovers.

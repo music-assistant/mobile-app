@@ -52,7 +52,7 @@ class BrowseViewModel(
     fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
         val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return
         item.mediaUri?.let { mediaUri ->
-            Logger.withTag("PlayDispatch")
+            Logger.withTag("Session.PlayDispatch")
                 .i { "BrowseViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
             playDispatcher.play(
                 PlayRequest(
