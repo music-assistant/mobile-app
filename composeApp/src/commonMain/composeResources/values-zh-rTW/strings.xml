@@ -19,6 +19,7 @@
   <string name="action_choose_artist">選擇藝人</string>
   <string name="action_customize">自訂…</string>
   <string name="action_dislike">不喜歡</string>
+  <string name="action_export_playlist">匯出播放列表</string>
   <string name="action_favorite">收藏夾</string>
   <string name="action_find_on_music_services">在您的音樂服務中尋找</string>
   <string name="action_go_to_album">前往專輯</string>
@@ -51,6 +52,7 @@
   <string name="action_remove_from_library">從資料庫移除</string>
   <string name="action_remove_from_playlist">由播放列表中移除</string>
   <string name="action_replace_next">新增下一首並取代其餘內容</string>
+  <string name="action_select_multiple">多選</string>
   <string name="action_similar_artists">相似藝人</string>
   <string name="action_start_endless_mix">開始無窮音樂</string>
   <string name="action_start_radio">開始播放電台</string>
@@ -105,11 +107,16 @@
   <string name="announcement_title">播放公告</string>
   <string name="announcement_volume">音量：%1$d</string>
   <string name="app_name">Music Assistant</string>
+  <string name="artist_section_albums">專輯</string>
   <string name="artist_section_all">唱片目錄</string>
   <string name="artist_section_all_audiobooks">所有有聲書</string>
+  <string name="artist_section_appears_on">出現於：</string>
+  <string name="artist_section_discography">唱片目錄</string>
   <string name="artist_section_in_library">於資料庫</string>
+  <string name="artist_section_singles_eps">單曲與 EP</string>
   <string name="artist_section_top">熱門曲目</string>
   <string name="artist_source_all">全部</string>
+  <string name="artist_source_library">資料庫</string>
   <string name="artist_type_authors">作者</string>
   <string name="artist_type_narrators">旁白</string>
   <string name="auth_authenticating">正在驗證…</string>
@@ -148,6 +155,7 @@
   <string name="cd_applied">已套用</string>
   <string name="cd_autoplay_off">自動播放關閉</string>
   <string name="cd_autoplay_on">自動播放開啟</string>
+  <string name="cd_autoplay_repeat_locked">重複播放開啟時，自動播放關閉</string>
   <string name="cd_close">關閉</string>
   <string name="cd_collapse_sendspin_advanced">隱藏進階設定</string>
   <string name="cd_connection_history">連線歷史記錄</string>
@@ -175,6 +183,7 @@
   <string name="cd_lyrics_offset_increase">提前顯示歌詞</string>
   <string name="cd_more">更多</string>
   <string name="cd_mute">靜音</string>
+  <string name="cd_party_qr">加入派對的 QR 碼</string>
   <string name="cd_play_now">立即播放</string>
   <string name="cd_play_options">播放選項</string>
   <string name="cd_player_delay">播放延遲：%1$s</string>
@@ -186,6 +195,9 @@
   <string name="cd_remove_from_group">從群組中移除</string>
   <string name="cd_scan_qr_code">掃描 QR 碼</string>
   <string name="cd_select_codec">選擇編解碼器</string>
+  <string name="cd_shuffle_off">隨機播放關閉</string>
+  <string name="cd_shuffle_on">隨機播放開啟</string>
+  <string name="cd_shuffle_smart">智慧隨機播放開啟</string>
   <string name="cd_sleep_timer">睡眠計時器啟動</string>
   <string name="cd_sleep_timer_off">睡眠計時器關閉</string>
   <string name="cd_sort_direction">排序方向</string>
@@ -224,6 +236,7 @@
   <string name="common_delete">刪除</string>
   <string name="common_dismiss">關閉</string>
   <string name="common_done">完成</string>
+  <string name="common_save">儲存</string>
   <string name="connection_lost">已斷線 — 重新連線中…</string>
   <string name="default_click_dialog_save">儲存</string>
   <string name="default_click_dialog_title">預設點擊操作</string>
@@ -234,6 +247,9 @@
   <string name="dialog_remove_from_library_title">從資料庫移除？</string>
   <string name="dialog_remove_from_playlist_message">由此播放清單中移除 "1%1$s"？</string>
   <string name="dialog_remove_from_playlist_title">由播放列表中移除？</string>
+  <plurals name="dialog_remove_items_from_playlist_message">
+    <item quantity="other">從此播放列表移除 %1$d 個項目？</item>
+  </plurals>
   <string name="discover_edit_rows">編輯列</string>
   <string name="discover_save_rows">儲存列</string>
   <string name="discover_shortcuts">捷徑</string>
@@ -345,10 +361,20 @@
   <string name="nav_home">首頁</string>
   <string name="nav_library">資料庫</string>
   <string name="nav_menu">選單</string>
+  <string name="nav_party">派對</string>
   <string name="nav_search">搜尋</string>
   <string name="nav_settings">設定</string>
   <string name="nav_system">系統</string>
   <string name="not_connected_retry">未連線 — 重新連線後，再試一次</string>
+  <string name="party_copy_link">複製連結</string>
+  <string name="party_guest_access_off">訪客存取已關閉。請在伺服器的 Party 外掛程式設定中將其開啟。</string>
+  <string name="party_guest_access_off_host">設定派對後，開啟訪客存取權限以顯示 QR 碼。</string>
+  <string name="party_invite_error">無法載入派對連結。</string>
+  <string name="party_link_copied">連結已複製</string>
+  <string name="party_save_failed">無法儲存派對設定。</string>
+  <string name="party_scan_to_join">掃描 QR 碼加入派對！</string>
+  <string name="party_settings">派對設定</string>
+  <string name="party_settings_error">無法載入派對設定。</string>
   <string name="playback_speed_dialog_title">播放速度</string>
   <string name="player_autoplay">自動播放</string>
   <string name="player_crossfade">淡入淡出</string>
@@ -358,6 +384,7 @@
   <string name="player_power_on">開機</string>
   <string name="player_powered_off">已關機</string>
   <string name="player_show_buffer_indicator">顯示緩衝指示器</string>
+  <string name="player_show_waveform">顯示波形</string>
   <string name="player_sleep_timer">睡眠計時器</string>
   <string name="player_standby">播放機再睡。點擊喚醒。</string>
   <string name="player_unavailable">不可用</string>
@@ -381,6 +408,17 @@
   <string name="playlist_add_new">新增</string>
   <string name="playlist_add_to_title">新增至播放列表</string>
   <string name="playlist_create_title">新增播放列表</string>
+  <string name="playlist_import">匯入</string>
+  <string name="playlist_import_match_best_effort">全力以赴</string>
+  <string name="playlist_import_match_best_effort_description">優先選擇完全相符的結果，其次是相同的錄音，否則接受最接近的可用相符結果。</string>
+  <string name="playlist_import_match_exact">精確版本</string>
+  <string name="playlist_import_match_exact_description">僅將曲目與完全相同的發行版本進行比對。</string>
+  <string name="playlist_import_match_same_recording">相同錄音（建議）</string>
+  <string name="playlist_import_match_same_recording_description">優先完全符合的結果，否則接受來自不同發行版本的相同錄音。</string>
+  <string name="playlist_import_matching">曲目比對</string>
+  <string name="playlist_import_sources">在以下位置搜尋曲目</string>
+  <string name="playlist_import_sources_description">當曲目的原始來源無法使用時，所選的音樂來源將作為備用來源。</string>
+  <string name="playlist_import_title">匯入播放列表</string>
   <string name="playlist_name_label">播放列表名稱</string>
   <string name="playlist_no_editable">沒有可編輯的播放列表</string>
   <string name="playlist_sharing_everyone">所有人，包括訪客</string>
@@ -430,6 +468,12 @@
   <string name="search_source_library">資料庫</string>
   <string name="search_start">開始搜尋⋯</string>
   <string name="search_title">全域搜尋</string>
+  <string name="selection_actions">所選項目的操作</string>
+  <string name="selection_cancel">取消選擇</string>
+  <plurals name="selection_count">
+    <item quantity="other">已選取 %1$d 個</item>
+  </plurals>
+  <string name="selection_select_all">全選</string>
   <string name="sendspin_encryption_required_unavailable">需要加密連線，但此伺服器不支援。請更新 Music Assistant 或停用此要求。</string>
   <string name="sendspin_failed_incompatible_protocol">伺服器使用的 Sendspin 通訊協定版本不受此應用程式支援。請檢查應用程式和伺服器是否有可用更新，然後重新啟動本機播放器。若問題持續發生，請分享應用程式日誌。</string>
   <string name="sendspin_failed_server_rejected">伺服器拒絕將此裝置作為播放器。請檢查 Music Assistant 伺服器日誌。</string>
@@ -529,6 +573,8 @@
   <string name="settings_use_tls">使用 TLS（wss://）</string>
   <string name="settings_use_tls_wss">使用安全連線 (WSS/TLS)</string>
   <string name="settings_version_info">%1$s 版、架構 %2$s</string>
+  <string name="settings_volume_keys_control_player">音量按鈕控制所選播放器</string>
+  <string name="settings_volume_keys_control_player_hint">當應用程式開啟且選取了非本裝置的播放器時，音量按鈕將調整該播放器的音量，而非手機的音量。</string>
   <string name="settings_webrtc_description">無需通訊埠轉發，從任何地方連線</string>
   <string name="settings_webrtc_disclaimer">WebRTC 連線可能比直接或代理連線到您的伺服器更慢且更不穩定。</string>
   <string name="settings_webrtc_info">WebRTC 使用具備端對端加密的雲端訊號傳遞，可穿透大多數防火牆與 NAT。</string>
@@ -554,13 +600,20 @@
   <string name="toast_error_add_playlist">新增至播放清單時發生錯誤</string>
   <string name="toast_error_create_playlist">新增播放列表時發生錯誤</string>
   <string name="toast_error_favorite_stream_track">無法將正在播放的歌曲加入收藏。伺服器可能無法解析其標題。</string>
+  <string name="toast_error_import_playlist">匯入播放列表時發生錯誤</string>
   <string name="toast_error_mark_played">標記為已播放時發生錯誤</string>
   <string name="toast_error_mark_unplayed">標記為未播放時發生錯誤</string>
   <string name="toast_favorited_stream_track">已將播放中的歌曲加入收藏</string>
   <string name="toast_marked_played">標記為已播放</string>
   <string name="toast_marked_unplayed">標記為未播放</string>
   <string name="toast_no_uri">媒體項目沒有 URI</string>
+  <string name="toast_playlist_file_invalid">此檔案不是 M3U 播放列表</string>
+  <string name="toast_playlist_file_too_large">播放列表檔案太大</string>
+  <string name="toast_playlist_file_unreadable">無法讀取檔案</string>
+  <string name="toast_playlist_imported">已匯入 %1$s</string>
   <string name="unsupported_install_description">此伺服器並非透過支援的安裝方式進行安裝。部分功能可能無法正常運作，並且回報的問題可能無法得到支援，可能被關閉。</string>
   <string name="unsupported_install_link">安裝方式</string>
   <string name="unsupported_install_title">不支援的安裝方式</string>
+  <string name="volume_keys_no_volume_control">無法變更 %1$s 的音量</string>
+  <string name="volume_keys_player_off">%1$s 已關閉</string>
 </resources>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+  <string name="accent_color_blue">Sinine</string>
+  <string name="accent_color_default">Vaikimisi</string>
+  <string name="accent_color_green">Roheline</string>
+  <string name="accent_color_orange">Oranž</string>
+  <string name="accent_color_pink">Roosa</string>
+  <string name="accent_color_purple">Lilla</string>
+  <string name="accent_color_red">Punane</string>
+  <string name="accent_color_wallpaper">Taustapilt</string>
+  <string name="accent_color_yellow">Kollane</string>
+  <string name="artist_section_all_audiobooks">Kõik audioraamatud</string>
+  <string name="artist_type_authors">Autorid</string>
+  <string name="cd_toggle_hide_played_episodes">Peida mängitud osad</string>
+  <string name="filter_audiobooks_show">Näita</string>
+  <string name="genre_content_type_music">Muusika</string>
+  <string name="genre_filter_content_type">Sisu tüüp</string>
+  <string name="genre_filter_content_type_all">Kõik</string>
+  <string name="item_subtitle_sound">Heliefekt</string>
+  <string name="item_tab_other_episodes">Muud osad</string>
+  <string name="nav_explore">Avasta</string>
+  <string name="nav_system">Süsteem</string>
+  <string name="players_delay_slow_down">Aeglusta</string>
+  <string name="players_delay_speed_up">Kiirenda</string>
+  <string name="players_delay_step">%1$d ms</string>
+</resources>
