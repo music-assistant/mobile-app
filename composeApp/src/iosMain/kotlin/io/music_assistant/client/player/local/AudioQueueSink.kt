@@ -36,7 +36,7 @@ class AudioQueueSink(
     private val onRemoteCommand: (command: String) -> Unit,
     private val playerProvider: () -> PlatformAudioPlayer? = { PlatformPlayerProvider.player },
 ) : AudioSink {
-    private val logger = Logger.withTag("AudioQueueSink")
+    private val logger = Logger.withTag("Sendspin.AudioQueueSink")
 
     /** Throws when the native player cannot set up the stream; the scheduler reports SinkDied. */
     override fun open(format: SinkFormat): SinkHandle {

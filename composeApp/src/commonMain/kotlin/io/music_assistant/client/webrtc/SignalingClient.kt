@@ -65,7 +65,7 @@ class SignalingClient(
     private val signalingUrl: String = DEFAULT_SIGNALING_URL,
     val diagnostics: WebRTCDiagnostics = WebRTCDiagnostics(),
 ) {
-    private val logger = Logger.withTag("SignalingClient")
+    private val logger = Logger.withTag("Session.SignalingClient")
     private val mutex = Mutex()
 
     @Volatile

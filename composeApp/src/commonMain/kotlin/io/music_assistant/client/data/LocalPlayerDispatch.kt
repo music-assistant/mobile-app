@@ -70,7 +70,7 @@ suspend fun executeLocalPlayerDispatch(
             ),
         ).onFailure { onRpcFailure("detach", it) }
     }
-    Logger.withTag("PlayDispatch").i {
+    Logger.withTag("Session.PlayDispatch").i {
         "LocalPlayerDispatch (CarPlay/Siri): uris=${plan.mediaUris} option=${plan.option} " +
             "startItem=${plan.startItem} shuffle=${plan.shuffle} player=${plan.playerId} " +
             "detachFrom=${plan.detachFrom}"

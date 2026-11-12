@@ -30,7 +30,7 @@ class DirectTransport(
     /** A resumed session retries a failed first attempt, like a dropped connection. */
     private val retryInitialFailure: Boolean = false,
 ) : Transport {
-    private val logger = Logger.withTag("DirectTransport")
+    private val logger = Logger.withTag("Session.DirectTransport")
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         logger.e(throwable) { "Uncaught exception in DirectTransport scope" }

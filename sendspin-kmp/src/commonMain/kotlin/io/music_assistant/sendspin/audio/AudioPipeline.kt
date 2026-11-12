@@ -57,7 +57,7 @@ internal class AudioPipeline(
         val held: Boolean = false,
     )
 
-    private val logger = Logger.withTag("AudioPipeline")
+    private val logger = Logger.withTag("Sendspin.AudioPipeline")
     internal val buffer = JitterBuffer(capacityBytes)
     internal val stream = MutableStateFlow(StreamState(StreamPhase.Idle, null, 0, 0))
     internal val wakeups = Channel<Unit>(Channel.CONFLATED)

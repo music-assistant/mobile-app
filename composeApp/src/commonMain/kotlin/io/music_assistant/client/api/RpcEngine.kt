@@ -46,7 +46,7 @@ class RpcEngine(
     private val onAuthError: () -> Unit,
     private val onError: (String) -> Unit,
 ) {
-    private val logger = Logger.withTag("RpcEngine")
+    private val logger = Logger.withTag("Session.RpcEngine")
 
     private val pendingResponses =
         AtomicReference<Map<String, (Result<Answer>) -> Unit>>(emptyMap())

@@ -46,7 +46,7 @@ internal class Scheduler(
     private val clockSync: ClockSync,
     private val clock: MonotonicClock,
 ) {
-    private val logger = Logger.withTag("AudioScheduler")
+    private val logger = Logger.withTag("Sendspin.AudioScheduler")
     private val _status = MutableStateFlow(AudioStatus.IDLE)
     val status: StateFlow<AudioStatus> = _status
 

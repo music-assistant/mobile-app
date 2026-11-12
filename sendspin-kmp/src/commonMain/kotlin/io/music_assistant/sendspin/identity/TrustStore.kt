@@ -207,7 +207,7 @@ internal class SendspinTrustStore private constructor(
         private const val PSK_SIZE = 32
 
         private val json = Json { ignoreUnknownKeys = true }
-        private val logger = Logger.withTag("SendspinTrustStore")
+        private val logger = Logger.withTag("Sendspin.TrustStore")
 
         /** Loads persisted state, regenerating cleanly on missing/corrupt storage. */
         suspend fun load(keyStore: SendspinKeyStore, crypto: NoiseCrypto): SendspinTrustStore {

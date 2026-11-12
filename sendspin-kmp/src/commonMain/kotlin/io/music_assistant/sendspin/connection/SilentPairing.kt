@@ -27,7 +27,7 @@ internal class SilentPairing(
     private val pairingToken: () -> String,
     private val scope: CoroutineScope,
 ) {
-    private val logger = Logger.withTag("SilentPairing")
+    private val logger = Logger.withTag("Sendspin.SilentPairing")
     private var approval: Job? = null
 
     fun onReady(info: SessionInfo) {

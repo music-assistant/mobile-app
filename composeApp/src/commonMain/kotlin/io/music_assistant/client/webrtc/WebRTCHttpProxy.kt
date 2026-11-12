@@ -46,7 +46,7 @@ class WebRTCHttpProxy(
     private val sender: suspend (JsonObject) -> Unit,
     maxConcurrent: Int = DEFAULT_MAX_CONCURRENT,
 ) {
-    private val logger = Logger.withTag("WebRTCHttpProxy")
+    private val logger = Logger.withTag("Session.WebRTCHttpProxy")
 
     private val pendingMutex = Mutex()
 

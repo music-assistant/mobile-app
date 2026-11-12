@@ -38,7 +38,7 @@ class PlayDispatcher(
     private val scope: CoroutineScope,
     private val beforeSend: suspend (queueId: String) -> Unit = {},
 ) {
-    private val log = Logger.withTag("PlayDispatch")
+    private val log = Logger.withTag("Session.PlayDispatch")
 
     private data class Lane(
         val inProgress: PlayRequest? = null,

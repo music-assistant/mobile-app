@@ -35,7 +35,7 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
 }
 
-private val log = Logger.withTag("AuthMgr")
+private val log = Logger.withTag("Session.AuthMgr")
 
 class AuthenticationManager(
     private val serviceClient: ServiceClient,

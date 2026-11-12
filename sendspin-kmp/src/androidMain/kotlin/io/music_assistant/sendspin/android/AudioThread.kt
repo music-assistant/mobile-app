@@ -19,7 +19,7 @@ public fun sendspinAudioDispatcher(): ExecutorCoroutineDispatcher = Executors.ne
     }, "AudioThread-${System.currentTimeMillis()}").apply {
         priority = Thread.MAX_PRIORITY
         setUncaughtExceptionHandler { thread, exception ->
-            Logger.withTag("AudioDispatcher").e(exception) { "Uncaught exception in $thread" }
+            Logger.withTag("Sendspin.AudioDispatcher").e(exception) { "Uncaught exception in $thread" }
         }
     }
 }.asCoroutineDispatcher()

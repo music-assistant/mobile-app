@@ -197,7 +197,7 @@ class ActionsViewModel(
     fun onPlayItemsClick(items: List<AppMediaItem>, mode: PlayMode) {
         val queueId = dataSource.selectedPlayer?.queueOrPlayerId ?: return
         val media = items.mapNotNull { it.mediaUri }.takeIf { it.isNotEmpty() } ?: return
-        Logger.withTag("PlayDispatch")
+        Logger.withTag("Session.PlayDispatch")
             .i { "ActionsViewModel: uri=${media.first()} count=${media.size} mode=$mode queue=$queueId" }
         playDispatcher.play(
             PlayRequest(

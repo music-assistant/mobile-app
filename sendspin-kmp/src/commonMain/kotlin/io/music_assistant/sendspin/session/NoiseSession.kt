@@ -65,7 +65,7 @@ internal class NoiseSession(
     private val crypto: NoiseCrypto,
     private val trustStore: SendspinTrustStore,
 ) {
-    private val logger = Logger.withTag("NoiseSession")
+    private val logger = Logger.withTag("Sendspin.NoiseSession")
 
     private enum class Gate { CLOSED, OPEN, FAILED }
 
