@@ -67,6 +67,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
     /// Last enablement pushed to the buttons; nil until the first modes
     /// emission so the initial value always applies.
     private var nowPlayingButtonsEnabled: Bool?
+    /// Like channel: one retained instance per heart image. A state change
+    /// swaps which one is installed; Kotlin decides what a tap does.
+    private var likeButton: CPNowPlayingImageButton?
+    private var likedButton: CPNowPlayingImageButton?
+    private var likeSubscription: Cancellable?
+    /// nil until the first like emission this connection.
+    private var nowPlayingLike: NowPlayingLike?
 
     // MARK: - Up Next state
     //
@@ -167,6 +174,8 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
         trackSubscription = nil
         modesSubscription?.cancel()
         modesSubscription = nil
+        likeSubscription?.cancel()
+        likeSubscription = nil
         queueSubscription?.cancel()
         queueSubscription = nil
         queueRows = []
@@ -180,6 +189,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
         repeatButton = nil
         chapterBackButton = nil
         chapterForwardButton = nil
+        likeButton = nil
+        likedButton = nil
+        nowPlayingLike = nil
         nowPlayingButtonProfile = nil
         nowPlayingButtonsEnabled = nil
         libraryTemplate = nil
@@ -270,23 +282,48 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
         // while chapters apply, so always enabled — Kotlin handles the edges
         // (previous restarts the chapter; next past the last is a plain next).
         chapterBackButton = CPNowPlayingImageButton(
-            image: Self.chapterButtonImage(symbol: "backward.end.fill")
+            image: Self.nowPlayingButtonImage(symbol: "backward.end.fill")
         ) { _ in
             NowPlayingCoordinator.shared.dispatchCarCommand("previous")
         }
         chapterForwardButton = CPNowPlayingImageButton(
-            image: Self.chapterButtonImage(symbol: "forward.end.fill")
+            image: Self.nowPlayingButtonImage(symbol: "forward.end.fill")
         ) { _ in
             NowPlayingCoordinator.shared.dispatchCarCommand("next")
         }
         // Fresh CPNowPlayingButtons default to enabled; start disabled so the
         // runloop gap before the modes replay can't show enabled-looking
         // buttons before real enablement arrives.
+        // Both hearts run the same Kotlin toggle, which reads the state of
+        // the item that plays now: a liked track clears the like, any other
+        // track gets a like, a radio stream adds the song on air.
+        likeButton = CPNowPlayingImageButton(
+            image: Self.nowPlayingButtonImage(symbol: "heart")
+        ) { _ in
+            KmpHelper.shared.toggleNowPlayingLike()
+        }
+        likedButton = CPNowPlayingImageButton(
+            image: Self.nowPlayingButtonImage(symbol: "heart.fill")
+        ) { _ in
+            KmpHelper.shared.toggleNowPlayingLike()
+        }
         shuffleButton?.isEnabled = false
         repeatButton?.isEnabled = false
         nowPlayingButtonProfile = nil
         nowPlayingButtonsEnabled = nil
+        nowPlayingLike = nil
 
+        // Subscribed before the track channel: its replay only records the
+        // state, so the first profile presentation already holds the heart.
+        likeSubscription = KmpHelper.shared.observeNowPlayingLike { [weak self] like in
+            guard let self, self.nowPlayingLike != like else { return }
+            let installed = self.currentLikeButton()
+            self.nowPlayingLike = like
+            // NOT_LIKED and ON_AIR share the outline instance: nothing to swap.
+            if self.nowPlayingButtonProfile != nil, self.currentLikeButton() !== installed {
+                self.presentNowPlayingButtons()
+            }
+        }
         trackSubscription = KmpHelper.shared.observeNowPlayingTrack { [weak self] track in
             // Radio has no auxiliary controls. Long-form shows chapter
             // prev/next only with navigable chapters. A nil track keeps the
@@ -319,9 +356,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
         }
     }
 
-    /// SF-symbol template image for the chapter buttons; CarPlay applies its
+    /// SF-symbol template image for the image buttons; CarPlay applies its
     /// own tint to template-rendered images.
-    private static func chapterButtonImage(symbol: String) -> UIImage {
+    private static func nowPlayingButtonImage(symbol: String) -> UIImage {
         UIImage(
             systemName: symbol,
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
@@ -335,10 +372,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
         guard nowPlayingButtonProfile != profile else { return }
         let hadApplied = nowPlayingButtonProfile != nil
         nowPlayingButtonProfile = profile
-        // First emission of the empty profile: the template is already empty
-        // (didDisconnect teardown / fresh process), so there is nothing to
-        // remove — record the state without a no-op empty update.
-        guard profile != .empty || hadApplied else { return }
+        // First emission of the empty profile without a heart: the template is
+        // already empty (didDisconnect teardown / fresh process), so there is
+        // nothing to remove — record the state without a no-op empty update.
+        guard profile != .empty || hadApplied || currentLikeButton() != nil else { return }
         os_log("CP: now-playing buttons profile %{public}@",
                log: cpLog, type: .default, String(describing: profile))
         presentNowPlayingButtons()
@@ -349,16 +386,28 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPN
     /// teardown.
     private func presentNowPlayingButtons() {
         dispatchPrecondition(condition: .onQueue(.main))
+        // The heart sits between shuffle and repeat, as in Android Auto. It is
+        // nil wherever nothing can be liked (long-form content, no
+        // `library.write`), so every profile can carry it.
+        let like = currentLikeButton()
         let buttons: [CPNowPlayingButton]
         switch nowPlayingButtonProfile {
         case .music:
-            buttons = [shuffleButton, repeatButton].compactMap { $0 }
+            buttons = [shuffleButton, like, repeatButton].compactMap { $0 }
         case .chapters:
-            buttons = [chapterBackButton, chapterForwardButton].compactMap { $0 }
+            buttons = [chapterBackButton, chapterForwardButton, like].compactMap { $0 }
         case .empty, nil:
-            buttons = []
+            buttons = [like].compactMap { $0 }
         }
         CPNowPlayingTemplate.shared.updateNowPlayingButtons(buttons)
+    }
+
+    /// The retained heart instance for the current like state, or nil for no button.
+    private func currentLikeButton() -> CPNowPlayingButton? {
+        guard let like = nowPlayingLike else { return nil }
+        if like == .liked { return likedButton }
+        if like == .notLiked || like == .onAir { return likeButton }
+        return nil
     }
 
     // MARK: - Up Next
