@@ -55,6 +55,7 @@ import io.music_assistant.client.settings.planCarItemDispatch
 import io.music_assistant.client.settings.toCarDispatch
 import io.music_assistant.client.ui.compose.home.buildDisplayRows
 import io.music_assistant.client.ui.compose.home.upNext
+import io.music_assistant.client.ui.compose.home.visibleHomeFolders
 import io.music_assistant.client.ui.compose.library.reconcileCarTabs
 import io.music_assistant.client.ui.compose.library.visibleCategories
 import io.music_assistant.client.ui.theme.accentPrimary
@@ -399,11 +400,13 @@ object KmpHelper : KoinComponent {
         }
     }
 
+    /** The home rows the app shows: filtered and ordered by the user's Discover config. */
     fun fetchRecommendationFolders(
         completion: (List<RecommendationFolder>?) -> Unit,
     ) {
         launchFetch("recommendationFolders", completion) {
             mediaItemRepository.fetchRecommendationFolders().getOrNull()
+                ?.let { visibleHomeFolders(it, settingsRepository.homeRowsConfig.value) }
                 ?: emptyList()
         }
     }

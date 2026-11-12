@@ -215,7 +215,7 @@ iOS-only Swift-callable API in `KmpHelper.kt`:
 |---|---|
 | `fetchArtists / Albums / Tracks / Playlists / Audiobooks / Podcasts / RadioStations` | `Request.<Type>.listLibrary()` |
 | `fetchRecommendations` | `Request.Library.recommendations()` |
-| `fetchRecommendationFolders` | Same, filtered to `AppMediaItem.RecommendationFolder` |
+| `fetchRecommendationFolders` | Same, filtered to `AppMediaItem.RecommendationFolder`, then to the visible rows in the order of the Discover config (`visibleHomeFolders`, like Android Auto) |
 | `search(query)` | 6 media types (artist/album/track/playlist/audiobook/radio), `limit=10`, `libraryOnly=false` |
 | `playMediaItem(item)` | Selected player + `QueueOption.PLAY` |
 | `setFavorite(item, favorite) -> Boolean` | `addFavorite(uri\|mediaUri)` or `removeFavorite(id, mediaType)`. False if no URI for add. |
