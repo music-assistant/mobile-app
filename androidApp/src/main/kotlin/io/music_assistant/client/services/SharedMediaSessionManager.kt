@@ -31,7 +31,6 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.ResolvedChapter
-import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.EpisodeNumberFormat
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
@@ -41,7 +40,6 @@ import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
 import io.music_assistant.client.data.withPresentationChapter
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
-import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.home.QueueDisplayRow
 import io.music_assistant.client.ui.compose.home.buildDisplayRows
 import io.music_assistant.client.utils.formatDuration
@@ -527,18 +525,7 @@ class SharedMediaSessionManager(
                 val row = playerData.queueItems.orEmpty()
                     .buildDisplayRows(playerData.queueInfo?.currentItem?.id)
                     .find { it.sessionId == id } ?: return
-                when (row) {
-                    is QueueDisplayRow.QueueItem -> dataSource.queueAction(
-                        QueueAction.PlayQueueItem(
-                            playerData.queueInfo?.id ?: playerData.player.id,
-                            row.item.id,
-                        ),
-                    )
-
-                    // Same as the in-app chapter row: seek within the current book.
-                    is QueueDisplayRow.ChapterItem ->
-                        act(PlayerAction.SeekTo(chapterSeekSeconds(row.chapter.start)))
-                }
+                dataSource.selectQueueRow(playerData, row)
             }
 
             override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {

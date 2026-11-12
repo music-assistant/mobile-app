@@ -7,7 +7,7 @@ import os.log
 /// post-drive sysdiagnose (`.info`/`.debug` are in-memory only).
 private let cpLog = OSLog(subsystem: "io.music-assistant.mobile-client", category: "CarPlay")
 
-class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
+class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver {
 
     var interfaceController: CPInterfaceController?
 
@@ -67,6 +67,15 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     /// Last enablement pushed to the buttons; nil until the first modes
     /// emission so the initial value always applies.
     private var nowPlayingButtonsEnabled: Bool?
+
+    // MARK: - Up Next state
+    //
+    // One subscription per connection drives both the Up Next button
+    // enablement and, while it is on screen, the queue list.
+    private var queueSubscription: Cancellable?
+    private var queueRows: [CarPlayQueueRow] = []
+    /// Weak: the navigation stack owns the list; nil once it is popped.
+    private weak var queueTemplate: CPListTemplate?
 
     // Weakly held so a connectivity restore can re-fire the homepage fetch
     // without retaining the template after CarPlay disconnects.
@@ -140,6 +149,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 self?.handleReadinessChange(ready.boolValue)
             }
             self.setupNowPlayingButtons()
+            self.setupUpNext(loaded)
             self.setupTemplates()
         }
     }
@@ -157,9 +167,15 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         trackSubscription = nil
         modesSubscription?.cancel()
         modesSubscription = nil
+        queueSubscription?.cancel()
+        queueSubscription = nil
+        queueRows = []
+        queueTemplate = nil
         // The now-playing template is a process-lifetime singleton; leave it
         // empty rather than holding this connection's button instances.
         CPNowPlayingTemplate.shared.updateNowPlayingButtons([])
+        CPNowPlayingTemplate.shared.isUpNextButtonEnabled = false
+        CPNowPlayingTemplate.shared.remove(self)
         shuffleButton = nil
         repeatButton = nil
         chapterBackButton = nil
@@ -343,6 +359,77 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             buttons = []
         }
         CPNowPlayingTemplate.shared.updateNowPlayingButtons(buttons)
+    }
+
+    // MARK: - Up Next
+
+    /// Shows the system Up Next button on Now Playing while something comes
+    /// after the current item, and keeps an open queue list current.
+    private func setupUpNext(_ strings: CarPlayStrings) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let nowPlaying = CPNowPlayingTemplate.shared
+        nowPlaying.upNextTitle = strings.queue
+        nowPlaying.isUpNextButtonEnabled = false
+        nowPlaying.add(self)
+        queueSubscription?.cancel()
+        queueSubscription = KmpHelper.shared.observeCarPlayQueue(
+            limit: Int32(CPListTemplate.maximumItemCount)
+        ) { [weak self] rows in
+            guard let self else { return }
+            self.queueRows = rows
+            // The current item alone is not an Up Next list.
+            let enabled = rows.count > 1
+            if CPNowPlayingTemplate.shared.isUpNextButtonEnabled != enabled {
+                CPNowPlayingTemplate.shared.isUpNextButtonEnabled = enabled
+            }
+            self.queueTemplate?.updateSections(self.queueSections())
+        }
+    }
+
+    func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
+        guard let strings = strings else { return }
+        let template = CPListTemplate(title: strings.queue, sections: queueSections())
+        queueTemplate = template
+        safePushTemplate(template, animated: true)
+    }
+
+    /// Rows from the current item on. The current item shows the playing
+    /// indicator; chapter rows of a current audiobook follow it.
+    private func queueSections() -> [CPListSection] {
+        guard let strings = strings else { return [] }
+        let items: [CPListItem] = queueRows.compactMap { row in
+            let listItem: CPListItem
+            if let row = row as? CarPlayQueueRowItem {
+                guard let mapped = CarPlayContentManager.shared.mapToCPListItem(row.item) else { return nil }
+                mapped.isPlaying = row.isCurrent
+                listItem = mapped
+            } else if let row = row as? CarPlayQueueRowChapter {
+                listItem = CPListItem(
+                    text: row.title,
+                    detailText: row.duration,
+                    image: UIImage(systemName: "bookmark")
+                )
+            } else {
+                return nil
+            }
+            let key = row.key
+            listItem.handler = { [weak self] _, completion in
+                self?.handleQueueRowSelection(key: key)
+                completion()
+            }
+            return listItem
+        }
+        guard !items.isEmpty else { return [emptyStateSection(text: strings.queueEmpty)] }
+        return [CPListSection(items: items)]
+    }
+
+    /// Plays the item (or seeks to the chapter) and returns to Now Playing,
+    /// which is below the queue list in the stack.
+    private func handleQueueRowSelection(key: String) {
+        guard isReady else { showOfflineAlert(); return }
+        if KmpHelper.shared.playCarPlayQueueRow(key: key) {
+            pushNowPlayingTemplate(animated: true)
+        }
     }
 
     /// Set Library as the initial home screen / Root

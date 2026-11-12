@@ -19,6 +19,7 @@ import io.music_assistant.client.data.model.client.Queue
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.SongTiming
 import io.music_assistant.client.data.model.client.byId
+import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.isBefore
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.LongFormSeekDefaults
@@ -63,6 +64,7 @@ import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.StaleReason
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.home.QueueDisplayRow
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
@@ -1165,6 +1167,21 @@ class MainDataSource(
         }
         val resolved = playerRequestFactory.resolve(data, action)
         launch { sendResolved(data, resolved) }
+    }
+
+    /**
+     * A tap on a queue row of a car surface: a queue item plays, a chapter row seeks
+     * within the current book, like the in-app queue.
+     */
+    fun selectQueueRow(data: PlayerData, row: QueueDisplayRow) {
+        when (row) {
+            is QueueDisplayRow.QueueItem -> queueAction(
+                QueueAction.PlayQueueItem(data.queueInfo?.id ?: data.player.id, row.item.id),
+            )
+
+            is QueueDisplayRow.ChapterItem ->
+                playerAction(data, PlayerAction.SeekTo(chapterSeekSeconds(row.chapter.start)))
+        }
     }
 
     override val isReadyForCommands: StateFlow<Boolean>

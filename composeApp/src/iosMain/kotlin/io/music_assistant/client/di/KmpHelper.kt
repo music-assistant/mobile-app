@@ -11,7 +11,9 @@ import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthCallback
 import io.music_assistant.client.carplay.CarPlayAccent
+import io.music_assistant.client.carplay.CarPlayQueueRow
 import io.music_assistant.client.carplay.CarPlayStrings
+import io.music_assistant.client.carplay.toCarPlayQueueRow
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.data.NowPlayingModes
 import io.music_assistant.client.data.NowPlayingTrack
@@ -50,6 +52,8 @@ import io.music_assistant.client.settings.carBulkActions
 import io.music_assistant.client.settings.carTapAction
 import io.music_assistant.client.settings.planCarItemDispatch
 import io.music_assistant.client.settings.toCarDispatch
+import io.music_assistant.client.ui.compose.home.buildDisplayRows
+import io.music_assistant.client.ui.compose.home.upNext
 import io.music_assistant.client.ui.compose.library.reconcileCarTabs
 import io.music_assistant.client.ui.compose.library.visibleCategories
 import io.music_assistant.client.ui.theme.accentPrimary
@@ -65,6 +69,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -283,6 +290,45 @@ object KmpHelper : KoinComponent {
             mainDataSource.nowPlayingModes.collect { onChanged(it) }
         }
         return Cancellable { job.cancel() }
+    }
+
+    // MARK: - CarPlay Up Next
+
+    /**
+     * Subscribe to the Up Next rows of the local player: the current item, the chapters of a
+     * current audiobook, then the next items, at most [limit] (`CPListTemplate.maximumItemCount`).
+     * Replays on subscribe. Empty without a local player or a queue. Fires only when a row
+     * changes, so a position tick does not rebuild the list.
+     */
+    fun observeCarPlayQueue(limit: Int, onChanged: (List<CarPlayQueueRow>) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.localPlayer
+                .map { data ->
+                    val currentId = data?.queueInfo?.currentItem?.id
+                    data?.queueItems.orEmpty()
+                        .buildDisplayRows(currentId)
+                        .upNext(currentId, limit)
+                        .mapNotNull { it.toCarPlayQueueRow(currentId) }
+                }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Default)
+                .collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /**
+     * A tap on an Up Next row ([CarPlayQueueRow.key]): a queue item plays, a chapter seeks.
+     * False when the row is gone (the queue changed after the list was drawn).
+     */
+    fun playCarPlayQueueRow(key: String): Boolean {
+        val data = mainDataSource.localPlayer.value ?: return false
+        val row = data.queueItems.orEmpty()
+            .buildDisplayRows(data.queueInfo?.currentItem?.id)
+            .find { it.key == key }
+            ?: return false
+        mainDataSource.selectQueueRow(data, row)
+        return true
     }
 
     // MARK: - Swift Helpers for Data Fetching
