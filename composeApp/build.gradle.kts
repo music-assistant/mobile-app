@@ -35,7 +35,8 @@ kotlin {
         androidResources {
             enable = true
         }
-        withHostTestBuilder {
+        withHostTest {
+            isIncludeAndroidResources = true
         }
     }
 
@@ -174,6 +175,8 @@ dependencies {
     add("androidHostTestImplementation", libs.kotlin.test)
     add("androidHostTestImplementation", libs.junit)
     add("androidHostTestImplementation", libs.robolectric)
+    add("androidHostTestImplementation", libs.androidx.compose.ui.test.junit4)
+    add("androidHostTestImplementation", libs.androidx.compose.ui.test.manifest)
 }
 
 // --- Material Design Icons (community pack) webfont + codepoint table ---------

@@ -42,6 +42,7 @@ import io.music_assistant.client.settings.defaultCarBulkActions
 import io.music_assistant.client.settings.isCarSupported
 import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.ReorderableEnabledList
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.items.ActionDropdown
 import io.music_assistant.client.ui.compose.common.items.LocalClickActionConfig
 import io.music_assistant.client.ui.compose.common.items.labelRes
@@ -127,7 +128,7 @@ private fun CarItemActionsSheet(
     onEnqueue: () -> Unit,
     onBulk: (ItemKind) -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(modifier = Modifier.boundedModalSheet(), onDismissRequest = onDismiss) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
                 text = stringResource(Res.string.settings_car_item_actions),

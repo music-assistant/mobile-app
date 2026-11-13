@@ -51,6 +51,7 @@ fun <T> SettingsSheet(
     val state = remember { stateFactory() }
 
     ModalBottomSheet(
+        modifier = Modifier.boundedModalSheet(),
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         // Non-swipeable: kills drag/swipe-to-dismiss while keeping scrim + back

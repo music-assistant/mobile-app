@@ -9,11 +9,13 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.scene.OverlayScene
 import androidx.navigation3.scene.Scene
 import androidx.navigation3.scene.SceneStrategy
 import androidx.navigation3.scene.SceneStrategyScope
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.utils.BottomSheetSceneStrategy.Companion.bottomSheet
 
 internal class BottomSheetScene<T : Any>(
@@ -28,6 +30,7 @@ internal class BottomSheetScene<T : Any>(
 
     override val content: @Composable (() -> Unit) = {
         ModalBottomSheet(
+            modifier = Modifier.boundedModalSheet(),
             onDismissRequest = onBack,
             sheetState = rememberModalBottomSheetState(
                 skipPartiallyExpanded = true,
