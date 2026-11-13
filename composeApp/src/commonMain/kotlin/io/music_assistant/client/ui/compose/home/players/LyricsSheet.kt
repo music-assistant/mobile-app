@@ -345,6 +345,7 @@ private fun SyncedLyrics(
                 Text(
                     text = line.text,
                     fontSize = 28.sp,
+                    lineHeight = 36.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Transparent,
                     modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
@@ -352,6 +353,7 @@ private fun SyncedLyrics(
                 Text(
                     text = line.text,
                     fontSize = 28.sp,
+                    lineHeight = 36.sp,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                     color = if (active) {
                         MaterialTheme.colorScheme.onSurface
