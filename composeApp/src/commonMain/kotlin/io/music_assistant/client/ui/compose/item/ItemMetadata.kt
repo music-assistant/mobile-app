@@ -42,6 +42,7 @@ import io.music_assistant.client.data.model.client.items.PlaylistAccessPart
 import io.music_assistant.client.data.model.client.items.PlaylistOwnerLine
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.stringResource
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.utils.TotalDuration
 import io.music_assistant.client.utils.toTotalDuration
 import musicassistantclient.composeapp.generated.resources.Res
@@ -236,6 +237,7 @@ fun ItemDescriptionSheet(
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
+        modifier = Modifier.boundedModalSheet(),
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {

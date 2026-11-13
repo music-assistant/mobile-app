@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.KeepScreenOn
@@ -93,6 +94,7 @@ fun LyricsSheet(
     kind: LyricsSheetKind = LyricsSheetKind.LYRICS,
 ) {
     ModalBottomSheet(
+        modifier = Modifier.boundedModalSheet(),
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         dragHandle = null,

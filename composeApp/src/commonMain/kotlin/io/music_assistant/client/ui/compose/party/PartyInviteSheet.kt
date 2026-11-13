@@ -59,6 +59,7 @@ import io.music_assistant.client.data.model.client.PartySettingInput
 import io.music_assistant.client.data.model.client.PartySettings
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.QrCode
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.plainTextClipEntry
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -97,6 +98,7 @@ interface PartySheetActions {
 @Composable
 fun PartyInviteSheet(state: PartyViewModel.State, actions: PartySheetActions, onDismiss: () -> Unit) {
     ModalBottomSheet(
+        modifier = Modifier.boundedModalSheet(),
         onDismissRequest = onDismiss,
         sheetState = rememberBottomSheetState(
             initialValue = SheetValue.Hidden,
