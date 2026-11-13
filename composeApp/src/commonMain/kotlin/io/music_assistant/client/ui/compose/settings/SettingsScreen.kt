@@ -77,6 +77,7 @@ import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.settings.sections.AboutSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.CarSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.InterfaceSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.MiscSettingsSection
@@ -396,7 +397,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                 // Car options route to the local player — only meaningful when
                                 // it's reachable (authenticated) and enabled.
                                 if (sendspinEnabled) {
-                                    CarSection()
+                                    CarSettingsSection()
                                 }
                             }
 
