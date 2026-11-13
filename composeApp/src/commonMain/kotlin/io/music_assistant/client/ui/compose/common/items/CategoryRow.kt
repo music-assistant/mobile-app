@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -47,6 +49,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -315,52 +318,57 @@ fun CategoryRow(
         }
     }
 
-    RowWithTitle(
-        modifier = modifier,
-        title = {
-            Text(title)
-        },
-        actions = actions,
-    ) {
-        stackedPairs?.let { pairs ->
-            itemsIndexed(
-                items = pairs,
-                key = { index, _ -> itemKeys[index * 2] },
-                contentType = { _, _ -> "PlayablePair" },
-            ) { _, pair ->
-                // The next column shows at the edge, and a wide window gets several columns.
-                Column(
-                    modifier = Modifier.widthIn(max = 360.dp).fillParentMaxWidth(STACKED_COLUMN_FRACTION),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    pair.forEach {
-                        // The card shape matches the ripple shape of RowItem.
-                        Box(Modifier.clip(RoundedCornerShape(8.dp)).background(cardColor)) {
-                            tile(it, ViewMode.LIST)
+    BoxWithConstraints {
+        // A column is a fraction of the row viewport (the width inside the content padding), with a cap.
+        // fillParentMaxWidth ignores the incoming constraints, so the cap needs one explicit width.
+        val stackedColumnWidth = min((maxWidth - ROW_PADDING * 2) * STACKED_COLUMN_FRACTION, STACKED_COLUMN_MAX_WIDTH)
+        RowWithTitle(
+            modifier = modifier,
+            title = {
+                Text(title)
+            },
+            actions = actions,
+        ) {
+            stackedPairs?.let { pairs ->
+                itemsIndexed(
+                    items = pairs,
+                    key = { index, _ -> itemKeys[index * 2] },
+                    contentType = { _, _ -> "PlayablePair" },
+                ) { _, pair ->
+                    // The next column shows at the edge, and a wide window gets several columns.
+                    Column(
+                        modifier = Modifier.width(stackedColumnWidth),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        pair.forEach {
+                            // The card shape matches the ripple shape of RowItem.
+                            Box(Modifier.clip(RoundedCornerShape(8.dp)).background(cardColor)) {
+                                tile(it, ViewMode.LIST)
+                            }
                         }
                     }
                 }
-            }
-        } ?: itemsIndexed(
-            items = mediaItems,
-            key = { index, _ -> itemKeys[index] },
-            contentType = { _, item ->
-                when (item) {
-                    is Track -> "Track"
-                    is Artist -> "Artist"
-                    is Album -> "Album"
-                    is Playlist -> "Playlist"
-                    is Audiobook -> "Audiobook"
-                    is MediaCollection -> "Collection"
-                    is Podcast -> "Podcast"
-                    is PodcastEpisode -> "Episode"
-                    is RadioStation -> "RadioStation"
-                    is Genre -> "Genre"
-                    else -> "Unknown"
-                }
-            },
-        ) { _, item -> tile(item, ViewMode.GRID) }
+            } ?: itemsIndexed(
+                items = mediaItems,
+                key = { index, _ -> itemKeys[index] },
+                contentType = { _, item ->
+                    when (item) {
+                        is Track -> "Track"
+                        is Artist -> "Artist"
+                        is Album -> "Album"
+                        is Playlist -> "Playlist"
+                        is Audiobook -> "Audiobook"
+                        is MediaCollection -> "Collection"
+                        is Podcast -> "Podcast"
+                        is PodcastEpisode -> "Episode"
+                        is RadioStation -> "RadioStation"
+                        is Genre -> "Genre"
+                        else -> "Unknown"
+                    }
+                },
+            ) { _, item -> tile(item, ViewMode.GRID) }
+        }
     }
 }
 
@@ -394,7 +402,7 @@ private fun RowWithTitle(
         val rowListState = rememberLazyListState()
         LazyRow(
             state = rowListState,
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = ROW_PADDING),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             row()
@@ -502,6 +510,8 @@ private fun <T> FilterSelector(
 
 private const val PLACEHOLDER_ITEMS = 10
 private const val STACKED_COLUMN_FRACTION = 0.7f
+private val STACKED_COLUMN_MAX_WIDTH = 360.dp
+private val ROW_PADDING = 16.dp
 
 @Preview
 @Composable
