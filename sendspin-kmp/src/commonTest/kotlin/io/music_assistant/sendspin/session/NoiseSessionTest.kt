@@ -368,6 +368,15 @@ internal class LegacyNoiseSessionTest : NoiseSessionScenarios(WireVersion.LEGACY
     }
 
     @Test
+    fun aDisabledPairingPskIsNotOffered() = sessionTest { f ->
+        f.trustStore.setPairingPskEnabled(false)
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        val payload = payloadOf(server.completeHelloExchange())
+        assertEquals(0, payload.getValue("supported_pair_methods").jsonArray.size)
+    }
+
+    @Test
     fun rehandshakeRepeatsHelloWithTheNewTrustLevel() = sessionTest { f ->
         val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
         server.establish()
@@ -412,6 +421,20 @@ internal class SpecNoiseSessionTest : NoiseSessionScenarios(WireVersion.SPEC_1_0
         assertFalse(payload.getValue("player@v1_support").jsonObject.containsKey("supported_commands"))
         assertEquals(0, payload.getValue("supported_pair_methods").jsonObject.getValue("pairing_psk").jsonObject.size)
         assertFalse(clientHello.contains("null"), "a null optional field is rejected by the server: $clientHello")
+    }
+
+    @Test
+    fun theStoredPairingPskFlagDoesNotWithdrawTheMethod() = sessionTest { f ->
+        f.trustStore.setPairingPskEnabled(false)
+        val server = FakeServer(f, SendspinPsk.SENTINEL_PSK)
+        server.establish()
+        val methods = payloadOf(server.completeHelloExchange()).getValue("supported_pair_methods").jsonObject
+        assertEquals(setOf("pairing_psk"), methods.keys)
+        assertIs<Event.Ready>(f.nextEvent())
+
+        server.rehandshake(f.trustStore.pairingPsk, PAIRING_CATEGORY)
+        server.activate(activities = """["pairing"]""", activeRoles = "[]", pairing = """{"method":"pairing_psk"}""")
+        assertIs<Event.Activated>(f.nextEvent())
     }
 
     @Test

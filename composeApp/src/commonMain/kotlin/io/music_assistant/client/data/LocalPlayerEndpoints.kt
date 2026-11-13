@@ -6,6 +6,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.ENCRYPTED_SENDSPIN_MIN_SCHEMA
 import io.music_assistant.client.data.model.server.sendspinWireFor
 import io.music_assistant.client.data.model.server.supportsEncryptedSendspin
+import io.music_assistant.client.settings.SendspinConnectionAuth
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
@@ -104,10 +105,14 @@ class LocalPlayerEndpoints(
                 (previous as? Endpoint.WebRtc)?.takeIf { it.wire == wire } ?: Endpoint.WebRtc(wire, ::openFreshChannel)
 
             is SessionState.Connected.Direct -> state.authenticatedToken()?.let { token ->
-                Endpoint.WebSocket(webSocketUrl(state), wire, authToken = token)
+                Endpoint.WebSocket(webSocketUrl(state), wire, authToken = token.takeIf { proxySignIn() })
             }
         }
     }
+
+    /** The MA proxy needs its sign-in; a custom connection to a plain Sendspin server must not get it. */
+    private fun proxySignIn(): Boolean = settings.sendspinPlayerSettings.value.connectionOverride
+        .let { !it.enabled || it.auth == SendspinConnectionAuth.MUSIC_ASSISTANT }
 
     private fun webSocketUrl(state: SessionState.Connected.Direct): String {
         val override = settings.sendspinPlayerSettings.value.connectionOverride

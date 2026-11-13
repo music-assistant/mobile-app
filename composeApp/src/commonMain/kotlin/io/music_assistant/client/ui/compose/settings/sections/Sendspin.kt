@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.music_assistant.client.settings.SendspinConnectionAuth
 import io.music_assistant.client.settings.SendspinConnectionSettings
 import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
@@ -75,6 +76,7 @@ import musicassistantclient.composeapp.generated.resources.settings_buffer_size_
 import musicassistantclient.composeapp.generated.resources.settings_buffer_size_hint
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin
+import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin_ma_sign_in
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_hint
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_lossless_only
@@ -386,6 +388,25 @@ private fun CustomConnectionSection(
             )
         }
         ConnectionFieldsSection(connection = connection, onConnectionChange = onConnectionChange)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.settings_custom_sendspin_ma_sign_in),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
+            Checkbox(
+                checked = connection.auth == SendspinConnectionAuth.MUSIC_ASSISTANT,
+                onCheckedChange = { signIn ->
+                    val auth = if (signIn) SendspinConnectionAuth.MUSIC_ASSISTANT else SendspinConnectionAuth.NONE
+                    onConnectionChange(connection.copy(auth = auth))
+                },
+                enabled = connection.enabled,
+            )
+        }
     }
 }
 

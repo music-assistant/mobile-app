@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.compose.settings
 
 import com.russhwolf.settings.MapSettings
+import io.music_assistant.client.settings.SendspinConnectionAuth
 import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.sendspin.api.AudioCodec
@@ -212,7 +213,16 @@ class SendspinSettingsViewModelTest {
             bufferSeconds = 30,
             codecPreference = AudioCodec.PCM,
             bitDepth = 24,
-        ).let { it.copy(connectionOverride = it.connectionOverride.copy(enabled = true, tls = true, port = 9000)) }
+        ).let {
+            it.copy(
+                connectionOverride = it.connectionOverride.copy(
+                    enabled = true,
+                    tls = true,
+                    port = 9000,
+                    auth = SendspinConnectionAuth.NONE,
+                ),
+            )
+        }
         repository.setSendspinPlayerSettings(saved)
 
         assertEquals(saved, SettingsRepository(store, secrets).sendspinPlayerSettings.value)

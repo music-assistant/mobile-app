@@ -69,12 +69,13 @@ internal class SendspinTrustStore private constructor(
     }
 
     /** Live PSK-candidate set, computed from current state on every call so
-     *  config mutations are visible to in-flight lookups immediately. */
-    fun pskCandidates(): List<PskCandidate> {
+     *  config mutations are visible to in-flight lookups immediately.
+     *  [pairingPskOffered] defaults to the stored flag; spec 1.0.0-rc1 offers the pairing PSK always. */
+    fun pskCandidates(pairingPskOffered: Boolean = pairingPskEnabled): List<PskCandidate> {
         val snapshot = state.value
         return buildList {
             add(PskCandidate(SendspinPsk.SENTINEL_PSK, PskCategory.SENTINEL))
-            if (snapshot.pairingPskEnabled) {
+            if (pairingPskOffered) {
                 add(PskCandidate(SendspinBase64.decode(snapshot.pairingPsk), PskCategory.PAIRING))
             }
             snapshot.records.forEach { record ->
