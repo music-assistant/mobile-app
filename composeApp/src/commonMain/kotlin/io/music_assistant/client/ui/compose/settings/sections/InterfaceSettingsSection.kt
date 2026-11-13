@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,8 +23,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.ui.compose.settings.SectionCard
-import io.music_assistant.client.ui.compose.settings.SectionTitle
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.accentColorScheme
 import musicassistantclient.composeapp.generated.resources.Res
@@ -61,7 +58,6 @@ fun InterfaceSettingsSection(
  * One swatch for each [AccentColor] that this platform can give, in the primary color that the
  * accent gives in [darkTheme]. The line under the swatches names the current choice.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AccentColorSection(
     current: AccentColor,

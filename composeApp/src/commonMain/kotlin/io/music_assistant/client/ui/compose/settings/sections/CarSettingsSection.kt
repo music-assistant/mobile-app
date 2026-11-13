@@ -51,8 +51,6 @@ import io.music_assistant.client.ui.compose.common.items.toItemAction
 import io.music_assistant.client.ui.compose.library.CustomizeLibraryCategoriesDialog
 import io.music_assistant.client.ui.compose.settings.CarActionsViewModel
 import io.music_assistant.client.ui.compose.settings.CarDspSettingsDialog
-import io.music_assistant.client.ui.compose.settings.SectionCard
-import io.music_assistant.client.ui.compose.settings.SectionTitle
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_done

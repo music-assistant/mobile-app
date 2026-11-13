@@ -81,6 +81,8 @@ import io.music_assistant.client.ui.compose.settings.sections.CarSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.InterfaceSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.MiscSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.SectionCard
+import io.music_assistant.client.ui.compose.settings.sections.SectionTitle
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -436,36 +438,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
             }
         }
     }
-}
-
-@Composable
-internal fun SectionCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        ),
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-internal fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(bottom = 12.dp),
-    )
 }
 
 @Composable
