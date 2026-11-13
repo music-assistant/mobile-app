@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -50,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -129,32 +129,46 @@ fun SelectPlayerSheet(
         onDismissRequest = onDismissRequest,
         dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
-        var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
-        val groupPlayer = showGroupSettings?.let { players.byId(it) }
+        SubcomposeLayout { constraints ->
+            val contentPlaceable = subcompose("content") {
+                var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
+                val groupPlayer = showGroupSettings?.let { players.byId(it) }
 
-        if (groupPlayer != null) {
-            GroupLayout(
-                player = groupPlayer,
-                players = players,
-                onDismissRequest = onDismissRequest,
-                onPlayerAction = onPlayerAction,
-                playerDelays = playerDelays,
-                onLoadPlayerDelays = onLoadPlayerDelays,
-                onAdjustPlayerDelay = onAdjustPlayerDelay,
-                canLeaveGroup = canLeaveGroup,
-            )
-        } else {
-            PlayerLayout(
-                players = players,
-                selectedPlayer = selectedPlayer,
-                onDismissRequest = onDismissRequest,
-                onMoveToPlayer = onMoveToPlayer,
-                onReorder = onReorder,
-                onGroupRequest = { player -> showGroupSettings = player.playerId },
-                onTransportAction = onTransportAction,
-                hideUnavailable = hideUnavailable,
-                onToggleHideUnavailable = onToggleHideUnavailable,
-            )
+                if (groupPlayer != null) {
+                    GroupLayout(
+                        player = groupPlayer,
+                        players = players,
+                        onDismissRequest = onDismissRequest,
+                        onPlayerAction = onPlayerAction,
+                        playerDelays = playerDelays,
+                        onLoadPlayerDelays = onLoadPlayerDelays,
+                        onAdjustPlayerDelay = onAdjustPlayerDelay,
+                        canLeaveGroup = canLeaveGroup,
+                    )
+                } else {
+                    PlayerLayout(
+                        players = players,
+                        selectedPlayer = selectedPlayer,
+                        onDismissRequest = onDismissRequest,
+                        onMoveToPlayer = onMoveToPlayer,
+                        onReorder = onReorder,
+                        onGroupRequest = { player -> showGroupSettings = player.playerId },
+                        onTransportAction = onTransportAction,
+                        hideUnavailable = hideUnavailable,
+                        onToggleHideUnavailable = onToggleHideUnavailable,
+                    )
+                }
+            }[0].measure(constraints)
+
+            val height = if (contentPlaceable.height >= constraints.maxHeight * 0.5) {
+                constraints.maxHeight
+            } else {
+                contentPlaceable.height
+            }
+
+            layout(constraints.maxWidth, height) {
+                contentPlaceable.place(0, 0)
+            }
         }
     }
 }
@@ -171,7 +185,7 @@ private fun PlayerLayout(
     hideUnavailable: Boolean,
     onToggleHideUnavailable: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxHeight()) {
+    Column {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -251,7 +265,7 @@ private fun GroupLayout(
         listOf(player.playerId) + player.childrenBinds.filter { it.isBound }.map { it.id }
     }
     LaunchedEffect(memberIds) { onLoadPlayerDelays(memberIds) }
-    Column(modifier = Modifier.fillMaxHeight()) {
+    Column {
         Text(
             text = stringResource(Res.string.players_group_settings),
             style = MaterialTheme.typography.titleMedium,
