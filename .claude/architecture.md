@@ -297,6 +297,10 @@ actual class PlatformFeature {
   2.11. It is null on an older server, for a single track and for a live stream. The stream details
   dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to
   `opensItemDetails` when `ItemDetailsViewModel.getItemById` loads it.
+- **Queue end**: when a queue plays to its end, the server keeps `current_index` and `current_item` on
+  the last item and sets `ended` (every server 2.x that the app supports). `QueueInfo.activeItemId` gives
+  null for an ended queue. The queue list marks every row as played and shows "Playback finished". Use
+  `activeItemId`, not `currentItem`, to find the row that plays now.
 - **In-list filter**: `List.clientFiltered(query)` (`model/client/QueryFilter.kt`) filters loaded
   items on the client. Derive the visible list as raw → filter → sort in one place.
 - **Announcements**: `AnnouncementRepository` (`data/announcement/`) runs both kinds in an app scope,

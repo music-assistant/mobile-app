@@ -39,7 +39,16 @@ data class QueueInfo(
     val playActionInProgress: Boolean = false,
     /** Number of items in the queue, or null when the server did not send it. */
     val itemCount: Int? = null,
+    /**
+     * The queue played to its end. [currentItem] still names the last item, but nothing is
+     * current: every item counts as played. The server clears it when playback starts again.
+     */
+    val ended: Boolean = false,
 )
+
+/** Id of the item that plays now. Null when nothing is current, also after the queue [QueueInfo.ended]. */
+val QueueInfo.activeItemId: String?
+    get() = currentItem?.id?.takeUnless { ended }
 
 /**
  * Whether a plain `next` moves the queue. The server ignores it without a current item, and on
