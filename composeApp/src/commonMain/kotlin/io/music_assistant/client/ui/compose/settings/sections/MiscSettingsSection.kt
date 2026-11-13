@@ -18,8 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.music_assistant.client.ui.compose.settings.SectionCard
-import io.music_assistant.client.ui.compose.settings.SectionTitle
 import io.music_assistant.client.utils.supportsVolumeKeyRouting
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_delete_crash_logs
