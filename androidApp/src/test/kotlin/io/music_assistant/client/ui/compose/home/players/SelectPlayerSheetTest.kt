@@ -28,7 +28,7 @@ import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
 @RunWith(AndroidJUnit4::class)
-class SelectPlayerDialogTest {
+class SelectPlayerSheetTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -66,6 +65,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
+import io.music_assistant.client.ui.utils.SnapToHeightLayout
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_more
@@ -129,32 +129,34 @@ fun SelectPlayerSheet(
         onDismissRequest = onDismissRequest,
         dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
-        var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
-        val groupPlayer = showGroupSettings?.let { players.byId(it) }
+        SnapToHeightLayout(thresholdRatio = 0.6) {
+            var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
+            val groupPlayer = showGroupSettings?.let { players.byId(it) }
 
-        if (groupPlayer != null) {
-            GroupLayout(
-                player = groupPlayer,
-                players = players,
-                onDismissRequest = onDismissRequest,
-                onPlayerAction = onPlayerAction,
-                playerDelays = playerDelays,
-                onLoadPlayerDelays = onLoadPlayerDelays,
-                onAdjustPlayerDelay = onAdjustPlayerDelay,
-                canLeaveGroup = canLeaveGroup,
-            )
-        } else {
-            PlayerLayout(
-                players = players,
-                selectedPlayer = selectedPlayer,
-                onDismissRequest = onDismissRequest,
-                onMoveToPlayer = onMoveToPlayer,
-                onReorder = onReorder,
-                onGroupRequest = { player -> showGroupSettings = player.playerId },
-                onTransportAction = onTransportAction,
-                hideUnavailable = hideUnavailable,
-                onToggleHideUnavailable = onToggleHideUnavailable,
-            )
+            if (groupPlayer != null) {
+                GroupLayout(
+                    player = groupPlayer,
+                    players = players,
+                    onDismissRequest = onDismissRequest,
+                    onPlayerAction = onPlayerAction,
+                    playerDelays = playerDelays,
+                    onLoadPlayerDelays = onLoadPlayerDelays,
+                    onAdjustPlayerDelay = onAdjustPlayerDelay,
+                    canLeaveGroup = canLeaveGroup,
+                )
+            } else {
+                PlayerLayout(
+                    players = players,
+                    selectedPlayer = selectedPlayer,
+                    onDismissRequest = onDismissRequest,
+                    onMoveToPlayer = onMoveToPlayer,
+                    onReorder = onReorder,
+                    onGroupRequest = { player -> showGroupSettings = player.playerId },
+                    onTransportAction = onTransportAction,
+                    hideUnavailable = hideUnavailable,
+                    onToggleHideUnavailable = onToggleHideUnavailable,
+                )
+            }
         }
     }
 }
@@ -171,7 +173,7 @@ private fun PlayerLayout(
     hideUnavailable: Boolean,
     onToggleHideUnavailable: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxHeight()) {
+    Column {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -251,7 +253,7 @@ private fun GroupLayout(
         listOf(player.playerId) + player.childrenBinds.filter { it.isBound }.map { it.id }
     }
     LaunchedEffect(memberIds) { onLoadPlayerDelays(memberIds) }
-    Column(modifier = Modifier.fillMaxHeight()) {
+    Column {
         Text(
             text = stringResource(Res.string.players_group_settings),
             style = MaterialTheme.typography.titleMedium,
