@@ -78,6 +78,7 @@ import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.settings.sections.AboutSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
+import io.music_assistant.client.ui.compose.settings.sections.InterfaceSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.MiscSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
 import io.music_assistant.client.ui.theme.AccentColor
@@ -404,10 +405,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
-                AccentColorSection(
-                    current = accent.value,
-                    darkTheme = theme.value.isDark(),
-                    onChange = themeViewModel::setAccentColor,
+                InterfaceSettingsSection(
+                    currentAccent = accent.value,
+                    isDarkTheme = theme.value.isDark(),
+                    onChangeAccent = themeViewModel::setAccentColor,
                 )
 
                 // Misc settings - always visible
