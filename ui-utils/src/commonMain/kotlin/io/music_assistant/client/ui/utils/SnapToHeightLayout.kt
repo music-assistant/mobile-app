@@ -12,7 +12,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
  * height.
  *
  * The layout height will only ever grow and never shrink. This prevents shorter content from
- * repositing the layout.
+ * repositioning the layout.
  */
 @Composable
 fun SnapToHeightLayout(thresholdRatio: Double, content: @Composable () -> Unit) {
