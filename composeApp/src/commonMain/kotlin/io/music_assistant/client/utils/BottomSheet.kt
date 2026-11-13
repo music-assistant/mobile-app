@@ -7,7 +7,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.NavEntry
@@ -32,8 +33,9 @@ internal class BottomSheetScene<T : Any>(
         ModalBottomSheet(
             modifier = Modifier.boundedModalSheet(),
             onDismissRequest = onBack,
-            sheetState = rememberModalBottomSheetState(
-                skipPartiallyExpanded = true,
+            sheetState = rememberBottomSheetState(
+                initialValue = SheetValue.Hidden,
+                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
             ),
             properties = modalBottomSheetProperties,
             containerColor = MaterialTheme.colorScheme.background,

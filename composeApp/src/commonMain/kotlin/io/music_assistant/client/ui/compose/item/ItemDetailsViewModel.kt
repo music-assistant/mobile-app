@@ -782,7 +782,6 @@ class ItemDetailsViewModel(
         when (item) {
             is Podcast -> loadPodcastEpisodes(item.itemId, item.provider)
             is PodcastEpisode -> loadOtherEpisodes(item)
-            else -> Unit
         }
     }
 

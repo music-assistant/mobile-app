@@ -20,6 +20,7 @@ import io.music_assistant.sendspin.api.Frame
 import io.music_assistant.sendspin.api.SendspinTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
@@ -176,6 +177,7 @@ class LocalPlayerEndpoints(
 private class DataChannelTransport(private val wrapper: DataChannelWrapper) : SendspinTransport {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override val inbound: ReceiveChannel<Frame> = scope.produce(capacity = INBOUND_CAPACITY) {
         wrapper.inbound.collect { message ->
             send(
