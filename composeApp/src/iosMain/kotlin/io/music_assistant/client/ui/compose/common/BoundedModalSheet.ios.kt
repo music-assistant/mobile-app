@@ -1,3 +1,3 @@
 package io.music_assistant.client.ui.compose.common
 
-internal actual val boundModalSheetConstraints = true
+internal actual val needsBoundedModalSheet = true

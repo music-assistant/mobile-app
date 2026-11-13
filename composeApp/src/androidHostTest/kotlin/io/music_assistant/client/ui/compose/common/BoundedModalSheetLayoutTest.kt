@@ -1,8 +1,5 @@
 package io.music_assistant.client.ui.compose.common
 
-import android.app.Application
-import android.content.ComponentName
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -17,32 +14,18 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.ExternalResource
-import org.junit.rules.RuleChain
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BoundedModalSheetLayoutTest {
-    private val rule = createComposeRule()
-
     @get:Rule
-    val rules: RuleChain = RuleChain.outerRule(
-        object : ExternalResource() {
-            override fun before() {
-                val app = ApplicationProvider.getApplicationContext<Application>()
-                Shadows.shadowOf(app.packageManager)
-                    .addActivityIfNotPresent(ComponentName(app, ComponentActivity::class.java))
-            }
-        },
-    ).around(rule)
+    val rule = createComposeRule()
 
     @Test
     fun fractionalChildInUnboundedHeight() = verify(Constraints(0, 400, 0, Constraints.Infinity), true, 400, 800)
@@ -75,7 +58,11 @@ class BoundedModalSheetLayoutTest {
                     modifier = Modifier.onGloballyPositioned { rootTop = it.positionInRoot().y.toInt() },
                     content = {
                         Layout(
-                            modifier = Modifier.boundedModalSheetLayout(IntSize(400, 800), 640.dp, 600.dp),
+                            modifier = Modifier.boundedModalSheetLayout(
+                                IntSize(400, 800),
+                                WindowUnavailableSheetWidth,
+                                WindowUnavailableSheetHeight,
+                            ),
                             content = {
                                 Box(
                                     (if (fractional) Modifier.fillMaxHeight(0.5f) else Modifier.height(100.dp))

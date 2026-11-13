@@ -9,13 +9,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 
-internal expect val boundModalSheetConstraints: Boolean
+internal expect val needsBoundedModalSheet: Boolean
+
+internal val WindowUnavailableSheetWidth = 640.dp
+internal val WindowUnavailableSheetHeight = 600.dp
 
 @Composable
 internal fun Modifier.boundedModalSheet(): Modifier {
-    if (!boundModalSheetConstraints) return this
+    if (!needsBoundedModalSheet) return this
     val windowInfo = LocalWindowInfo.current
-    return boundedModalSheetLayout(windowInfo.containerSize, 640.dp, 600.dp)
+    return boundedModalSheetLayout(windowInfo.containerSize, WindowUnavailableSheetWidth, WindowUnavailableSheetHeight)
 }
 
 internal fun Modifier.boundedModalSheetLayout(
@@ -36,6 +39,7 @@ internal fun Modifier.boundedModalSheetLayout(
         layout(placeable.width, height) { placeable.placeRelative(0, 0) }
     }
 
+/** Bounds only unbounded axes using the window size or a fallback when the window is unavailable. */
 internal fun boundedModalSheetConstraints(
     constraints: Constraints,
     window: IntSize,
