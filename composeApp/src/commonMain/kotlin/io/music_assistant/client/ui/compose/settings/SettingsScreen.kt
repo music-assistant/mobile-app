@@ -58,7 +58,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -78,13 +77,13 @@ import io.music_assistant.client.ui.compose.common.UnsupportedInstallCard
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
+import io.music_assistant.client.ui.compose.settings.sections.AboutSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.ui.theme.isDark
-import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.SessionState
@@ -103,12 +102,8 @@ import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.nav_settings
-import musicassistantclient.composeapp.generated.resources.settings_about_description
-import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
 import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
-import musicassistantclient.composeapp.generated.resources.settings_app_documentation
-import musicassistantclient.composeapp.generated.resources.settings_app_version_info
 import musicassistantclient.composeapp.generated.resources.settings_connect
 import musicassistantclient.composeapp.generated.resources.settings_connect_saved
 import musicassistantclient.composeapp.generated.resources.settings_connect_webrtc
@@ -230,8 +225,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .windowInsetsPadding(WindowInsets.navigationBars),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                AppVersionSection(viewModel.appVersion)
-
                 var ipAddress by remember { mutableStateOf("") }
                 var port by remember { mutableStateOf(Defaults.PORT.toString()) }
                 var isTls by remember { mutableStateOf(false) }
@@ -300,12 +293,13 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
+                AboutSettingsSection(viewModel.appVersion)
+
                 val connectAttemptInFlight by viewModel.connectAttemptInFlight
                     .collectAsStateWithLifecycle()
 
                 when (sessionState) {
                     is SessionState.Disconnected -> {
-                        AboutSection()
                         LocalNetworkOnboardingCard(
                             resources = viewModel.localNetworkOnboardingResources,
                             visible = viewModel.isLocalNetworkOnboardingVisible(
@@ -576,44 +570,6 @@ internal fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.padding(bottom = 12.dp),
     )
-}
-
-@Composable
-private fun AppVersionSection(appVersion: AppVersion) {
-    val uriHandler = LocalUriHandler.current
-    SectionCard {
-        Text(
-            text = stringResource(Res.string.settings_app_version_info, appVersion.name, appVersion.code),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        )
-        Spacer(modifier = Modifier.size(4.dp))
-        Text(
-            text = stringResource(Res.string.settings_app_documentation),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.github.io/mobile-app/") },
-        )
-    }
-}
-
-@Composable
-private fun AboutSection() {
-    val uriHandler = LocalUriHandler.current
-    SectionCard {
-        Text(
-            text = stringResource(Res.string.settings_about_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(modifier = Modifier.size(4.dp))
-        Text(
-            text = stringResource(Res.string.settings_about_learn_more),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.io") },
-        )
-    }
 }
 
 @Composable
