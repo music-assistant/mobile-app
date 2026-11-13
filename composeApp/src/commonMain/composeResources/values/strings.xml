@@ -532,6 +532,7 @@
   <string name="settings_connection_method">Connection Method</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Custom Sendspin connection</string>
+  <string name="settings_custom_sendspin_ma_sign_in">Sign in through Music Assistant</string>
   <string name="settings_disable_local_player">Disable local player</string>
   <string name="settings_disconnect">Disconnect</string>
   <string name="settings_enable_local_player">Enable local player</string>

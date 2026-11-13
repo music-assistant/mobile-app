@@ -518,6 +518,9 @@ class SettingsRepository(
                 host = secrets.getString("sendspin_host", ""),
                 port = settings.getInt("sendspin_port", DEFAULT_SENDSPIN_PORT),
                 path = settings.getString("sendspin_path", DEFAULT_SENDSPIN_PATH),
+                auth = settings.getStringOrNull("sendspin_connection_auth")
+                    ?.let { name -> SendspinConnectionAuth.entries.firstOrNull { it.name == name } }
+                    ?: SendspinConnectionAuth.MUSIC_ASSISTANT,
             ),
         ),
     )
@@ -551,6 +554,7 @@ class SettingsRepository(
             secrets.putString("sendspin_host", host)
             settings.putInt("sendspin_port", port)
             settings.putString("sendspin_path", path)
+            settings.putString("sendspin_connection_auth", auth.name)
         }
         _sendspinPlayerSettings.update { value }
     }
