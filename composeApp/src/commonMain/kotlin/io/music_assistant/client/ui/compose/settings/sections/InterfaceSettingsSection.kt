@@ -1,4 +1,4 @@
-package io.music_assistant.client.ui.compose.settings
+package io.music_assistant.client.ui.compose.settings.sections
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +24,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import io.music_assistant.client.ui.compose.settings.SectionCard
+import io.music_assistant.client.ui.compose.settings.SectionTitle
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.accentColorScheme
 import musicassistantclient.composeapp.generated.resources.Res
@@ -42,13 +44,26 @@ import musicassistantclient.composeapp.generated.resources.settings_accent_color
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+@Composable
+fun InterfaceSettingsSection(
+    currentAccent: AccentColor,
+    isDarkTheme: Boolean,
+    onChangeAccent: (AccentColor) -> Unit,
+) {
+    AccentColorSection(
+        current = currentAccent,
+        darkTheme = isDarkTheme,
+        onChange = onChangeAccent,
+    )
+}
+
 /**
  * One swatch for each [AccentColor] that this platform can give, in the primary color that the
  * accent gives in [darkTheme]. The line under the swatches names the current choice.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AccentColorSection(
+private fun AccentColorSection(
     current: AccentColor,
     darkTheme: Boolean,
     onChange: (AccentColor) -> Unit,
@@ -86,7 +101,8 @@ private fun AccentSwatch(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val border = if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.outline
+    val border =
+        if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.outline
     Box(
         modifier = Modifier
             .size(40.dp)
