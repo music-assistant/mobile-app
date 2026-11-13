@@ -49,7 +49,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,6 +65,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
+import io.music_assistant.client.ui.utils.SnapToHeightLayout
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_more
@@ -129,45 +129,33 @@ fun SelectPlayerSheet(
         onDismissRequest = onDismissRequest,
         dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
-        SubcomposeLayout { constraints ->
-            val contentPlaceable = subcompose("content") {
-                var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
-                val groupPlayer = showGroupSettings?.let { players.byId(it) }
+        SnapToHeightLayout(thresholdRatio = 0.5) {
+            var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
+            val groupPlayer = showGroupSettings?.let { players.byId(it) }
 
-                if (groupPlayer != null) {
-                    GroupLayout(
-                        player = groupPlayer,
-                        players = players,
-                        onDismissRequest = onDismissRequest,
-                        onPlayerAction = onPlayerAction,
-                        playerDelays = playerDelays,
-                        onLoadPlayerDelays = onLoadPlayerDelays,
-                        onAdjustPlayerDelay = onAdjustPlayerDelay,
-                        canLeaveGroup = canLeaveGroup,
-                    )
-                } else {
-                    PlayerLayout(
-                        players = players,
-                        selectedPlayer = selectedPlayer,
-                        onDismissRequest = onDismissRequest,
-                        onMoveToPlayer = onMoveToPlayer,
-                        onReorder = onReorder,
-                        onGroupRequest = { player -> showGroupSettings = player.playerId },
-                        onTransportAction = onTransportAction,
-                        hideUnavailable = hideUnavailable,
-                        onToggleHideUnavailable = onToggleHideUnavailable,
-                    )
-                }
-            }[0].measure(constraints)
-
-            val height = if (contentPlaceable.height >= constraints.maxHeight * 0.5) {
-                constraints.maxHeight
+            if (groupPlayer != null) {
+                GroupLayout(
+                    player = groupPlayer,
+                    players = players,
+                    onDismissRequest = onDismissRequest,
+                    onPlayerAction = onPlayerAction,
+                    playerDelays = playerDelays,
+                    onLoadPlayerDelays = onLoadPlayerDelays,
+                    onAdjustPlayerDelay = onAdjustPlayerDelay,
+                    canLeaveGroup = canLeaveGroup,
+                )
             } else {
-                contentPlaceable.height
-            }
-
-            layout(constraints.maxWidth, height) {
-                contentPlaceable.place(0, 0)
+                PlayerLayout(
+                    players = players,
+                    selectedPlayer = selectedPlayer,
+                    onDismissRequest = onDismissRequest,
+                    onMoveToPlayer = onMoveToPlayer,
+                    onReorder = onReorder,
+                    onGroupRequest = { player -> showGroupSettings = player.playerId },
+                    onTransportAction = onTransportAction,
+                    hideUnavailable = hideUnavailable,
+                    onToggleHideUnavailable = onToggleHideUnavailable,
+                )
             }
         }
     }
