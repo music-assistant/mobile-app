@@ -129,7 +129,7 @@ fun SelectPlayerSheet(
         onDismissRequest = onDismissRequest,
         dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
-        SnapToHeightLayout(thresholdRatio = 0.5) {
+        SnapToHeightLayout(thresholdRatio = 0.6) {
             var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
             val groupPlayer = showGroupSettings?.let { players.byId(it) }
 
