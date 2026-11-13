@@ -47,6 +47,9 @@ internal class Scheduler(
     private val clock: MonotonicClock,
 ) {
     private val logger = Logger.withTag("Sendspin.AudioScheduler")
+
+    /** The periodic drift summary only, so one tag filters a long session down to it. */
+    private val driftLogger = Logger.withTag("Sendspin.Drift")
     private val _status = MutableStateFlow(AudioStatus.IDLE)
     val status: StateFlow<AudioStatus> = _status
 
@@ -62,6 +65,14 @@ internal class Scheduler(
     private var lateMicros = 0L
     private var insertedSilenceMicros = 0L
     private var underruns = 0
+
+    /** Audio content cut by late drops and trims: each microsecond moves playback ahead of the server timeline. */
+    private var skippedMicros = 0L
+
+    /** Net content the corrector removed (negative: added); same direction as [skippedMicros]. */
+    private var resampledMicros = 0L
+    private var flushes = 0
+    private var driftReportAtMicros = 0L
 
     /** [JitterBuffer.evicted] when this stream's sink opened; the stats report the difference. */
     private var evictedAtOpen = 0L
@@ -104,6 +115,7 @@ internal class Scheduler(
             decoder.reset()
             framesWritten = 0
             played = false // the next write is a new start: the app must be told again
+            flushes++
             restartCorrection()
         }
         when {
@@ -161,6 +173,10 @@ internal class Scheduler(
         lateMicros = 0
         insertedSilenceMicros = 0
         underruns = 0
+        skippedMicros = 0
+        resampledMicros = 0
+        flushes = 0
+        driftReportAtMicros = clock.nowMicros()
         evictedAtOpen = pipeline.buffer.evicted
         correctionLogs = 0
         lastWriteMicros = 0L
@@ -232,7 +248,11 @@ internal class Scheduler(
             logCorrection("late", lead, queuedMicros, position)
             val pcm = decode(chunk) ?: return true
             val blockMicros = framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
-            if (late >= blockMicros) return true // whole chunk is in the past
+            if (late >= blockMicros) {
+                skippedMicros += blockMicros
+                return true // whole chunk is in the past
+            }
+            skippedMicros += late
             val skip = microsToBytes(late, fmt)
             restartCorrection() // the trim is a deliberate gap: no interpolation across it
             return write(out, pcm, skip, pcm.size - skip)
@@ -258,7 +278,9 @@ internal class Scheduler(
                 // block, so every block of a continuous run goes through it, even with nothing to correct.
                 val blockMicros = framesToMicros((pcm.size / fmt.bytesPerFrame).toLong(), fmt)
                 val drift = correctionMicros(lead, blockMicros)
-                write(out, corrector?.correct(pcm, driftMicros = drift, blockMicros = blockMicros) ?: pcm)
+                val corrected = corrector?.correct(pcm, driftMicros = drift, blockMicros = blockMicros) ?: pcm
+                resampledMicros += framesToMicros(((pcm.size - corrected.size) / fmt.bytesPerFrame).toLong(), fmt)
+                write(out, corrected)
             }
         }
     }
@@ -325,7 +347,31 @@ internal class Scheduler(
             pipeline.emit(AudioEvent.Started)
         }
         publish(AudioPhase.Playing, starved = false)
+        reportDrift()
         return true
+    }
+
+    /**
+     * Once a minute while audio flows: the totals since the sink opened that move playback against the
+     * server timeline. `aheadMs` is content cut minus silence added; a value that grows over a long
+     * session means the client skipped audio. A flat `aheadMs` with a moving `offsetUs` points at the clock.
+     */
+    private fun reportDrift() {
+        val now = clock.nowMicros()
+        if (now - driftReportAtMicros < DRIFT_REPORT_INTERVAL_MICROS) return
+        driftReportAtMicros = now
+        val estimate = clockSync.snapshot()
+        val aheadMicros = skippedMicros + resampledMicros - insertedSilenceMicros
+        driftLogger.i {
+            "gen=$openGeneration aheadMs=${aheadMicros / MICROS_PER_MILLI} " +
+                "skippedMs=${skippedMicros / MICROS_PER_MILLI} lateDrops=$lateDrops " +
+                "resampledMs=${resampledMicros / MICROS_PER_MILLI} " +
+                "silenceMs=${insertedSilenceMicros / MICROS_PER_MILLI} " +
+                "smoothedLeadMs=${smoothedLeadMicros?.let { (it / MICROS_PER_MILLI).toLong() }} " +
+                "flushes=$flushes underruns=$underruns evictions=${pipeline.buffer.evicted - evictedAtOpen} " +
+                "offsetUs=${estimate?.offsetMicros?.toLong()} " +
+                "driftPpm=${estimate?.driftPerMicro?.times(MICROS_PER_SECOND)} clock=${clockSync.quality()}"
+        }
     }
 
     /** One line per hard correction, capped per stream: every input of the lead it acted on. */
@@ -441,6 +487,9 @@ internal class Scheduler(
 
         /** Writes normally return a block (~100 ms) apart; well beyond that the feeder stalled. */
         const val LOOP_GAP_LOG_MILLIS = 150L
+
+        /** One drift summary a minute: a long session stays readable. */
+        const val DRIFT_REPORT_INTERVAL_MICROS = 60_000_000L
         const val BITS_PER_BYTE = 8
         const val MICROS_PER_SECOND = 1_000_000L
         const val MICROS_PER_MILLI = 1_000L
