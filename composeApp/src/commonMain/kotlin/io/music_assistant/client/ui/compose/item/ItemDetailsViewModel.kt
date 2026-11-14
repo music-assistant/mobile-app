@@ -436,7 +436,7 @@ class ItemDetailsViewModel(
 
     /** The library genres mapped to a library item. The server maps none to an item of a music service. */
     private fun loadGenres(item: AppMediaItem) {
-        if (!item.isInLibrary) {
+        if (!item.isLibraryItem) {
             _state.update { it.copy(genres = emptyList()) }
             return
         }
@@ -840,7 +840,7 @@ class ItemDetailsViewModel(
 
     /** Shares the M3U8 file of the loaded library playlist. A server error reaches the user through the error bus. */
     fun exportPlaylist(chooserTitle: String) {
-        val playlist = (_state.value.itemOrNull() as? Playlist)?.takeIf { it.isInLibrary } ?: return
+        val playlist = (_state.value.itemOrNull() as? Playlist)?.takeIf { it.isLibraryItem } ?: return
         if (exportJob?.isActive == true) return
         exportJob = viewModelScope.launch {
             playlistTransfer.export(playlist, chooserTitle)

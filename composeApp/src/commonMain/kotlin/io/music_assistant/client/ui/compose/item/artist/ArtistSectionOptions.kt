@@ -17,7 +17,7 @@ internal fun Artist.providerGroups(): List<List<ProviderMapping>> =
  * tracks. A provider artist only has its own provider.
  */
 internal fun Artist.topTracksOptions(providers: List<ServerProviderInstance>): List<ItemList> {
-    if (!isInLibrary) return providerGroups().map { ItemList.ArtistTopTracks(it) }
+    if (!isLibraryItem) return providerGroups().map { ItemList.ArtistTopTracks(it) }
 
     val mapped = providerMappings.orEmpty().map { it.providerInstance }.toSet()
     val capable = providers.filter { it.available && ARTIST_TOPTRACKS_FEATURE in it.supportedFeatures }
