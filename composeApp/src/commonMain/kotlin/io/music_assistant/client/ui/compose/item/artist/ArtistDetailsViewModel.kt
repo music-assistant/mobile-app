@@ -86,7 +86,7 @@ class ArtistDetailsViewModel(
     private fun loadSections(artist: Artist) {
         audiobookType?.let { type ->
             viewModelScope.launch {
-                if (artist.isInLibrary) {
+                if (artist.isLibraryItem) {
                     val request = Request.Artist.getAudiobooks(
                         artist.itemId,
                         artist.provider,
@@ -112,7 +112,7 @@ class ArtistDetailsViewModel(
 
         viewModelScope.launch {
             // Both release rows list the same sources, so each source is fetched once.
-            val sources = listOfNotNull(ItemList.ArtistLibrary(artist.itemId).takeIf { artist.isInLibrary }) +
+            val sources = listOfNotNull(ItemList.ArtistLibrary(artist.itemId).takeIf { artist.isLibraryItem }) +
                 artist.providerGroups().map { ItemList.ArtistAlbums(it) }
             val (albumItems, singleItems) = fetchArtistItemsUseCase.run(
                 sources,
@@ -123,7 +123,7 @@ class ArtistDetailsViewModel(
         }
 
         // The server lists both for a library artist only.
-        val libraryListings = artist.isInLibrary && supportsArtistAppearsOnAndDiscography(schemaVersion())
+        val libraryListings = artist.isLibraryItem && supportsArtistAppearsOnAndDiscography(schemaVersion())
         listOf(
             appearsOnItems to Request.Artist.getAppearsOn(artist.itemId),
             discographyItems to Request.Artist.getDiscography(artist.itemId),
@@ -134,7 +134,7 @@ class ArtistDetailsViewModel(
         }
 
         viewModelScope.launch {
-            val providers = if (artist.isInLibrary) {
+            val providers = if (artist.isLibraryItem) {
                 providerRepository.providers.first { it !is DataState.Loading }.dataOrNull.orEmpty()
             } else {
                 emptyList()

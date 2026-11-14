@@ -495,7 +495,7 @@ private fun ItemContent(
                 refreshingItem = state.refreshingItem,
                 onRefreshItem = onRefreshItem,
                 // The server exports a library playlist only.
-                onExportPlaylist = onExportPlaylist.takeIf { item is Playlist && item.isInLibrary },
+                onExportPlaylist = onExportPlaylist.takeIf { item is Playlist && item.isLibraryItem },
                 query = state.playableItemsQuery,
                 onQueryChanged = onPlayableItemsQueryChanged.takeIf {
                     item is Album || item is Playlist || item is Podcast

@@ -124,7 +124,7 @@ private fun FactText(text: String, textAlign: TextAlign) {
 
 /** The names of the music services that hold a library item, in the order of its mappings. */
 private fun AppMediaItem.sourceNames(providerDetails: (String) -> ProviderDetails?): String? =
-    takeIf { isInLibrary }?.providerMappings.orEmpty()
+    takeIf { isLibraryItem }?.providerMappings.orEmpty()
         .filter { it.available }
         .mapNotNull { (providerDetails(it.providerInstance) ?: providerDetails(it.providerDomain))?.name }
         .distinct()

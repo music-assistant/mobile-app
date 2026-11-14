@@ -88,7 +88,21 @@ sealed class AppMediaItem {
     open val displayName: String get() = name
     open val subtitle: String? get() = null
 
-    val isInLibrary: Boolean get() = provider == "library"
+    /** True if the item has a row in the server's library database; its [itemId] is then a library id. */
+    val isLibraryItem: Boolean get() = provider == ServerMediaItem.LIBRARY_PROVIDER
+
+    /**
+     * True if the item is in the user's library. A library row alone does not tell: the server
+     * also keeps one for the album and the artists of a library track.
+     */
+    val isInLibrary: Boolean
+        get() {
+            if (!isLibraryItem) return false
+            if (favorite == true) return true
+            val flags = providerMappings.orEmpty().mapNotNull { it.inLibrary }
+            // a server that does not send the flag gives no way to tell
+            return flags.isEmpty() || flags.any { it }
+        }
     val isExplicit: Boolean get() = metadata?.explicit == true
 
     fun image(type: ImageType): ImageInfo? = images[type] ?: images[ImageType.MAIN]
