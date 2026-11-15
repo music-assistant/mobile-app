@@ -467,12 +467,12 @@ class ItemDetailsViewModel(
             setPlayableItemsState(DataState.Loading())
 
             try {
-                val tracks = mediaItemRepository.fetchMediaItems(
+                val tracks = mediaItemRepository.fetchAllMediaItems(
                     Request.Album.getTracks(
                         itemId = itemId,
                         providerInstanceIdOrDomain = provider,
                     ),
-                ).getOrNull()
+                )
                     ?.filterIsInstance<Track>()
                     ?: emptyList()
 
