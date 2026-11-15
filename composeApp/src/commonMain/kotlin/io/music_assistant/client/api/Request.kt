@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.server.DspConfig
 import io.music_assistant.client.data.model.server.ListSort
 import io.music_assistant.client.data.model.server.PlaylistMatchPolicy
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.SleepTimerMode
 import io.music_assistant.client.data.model.server.SortWire
 import io.music_assistant.client.utils.myJson
 import kotlinx.serialization.SerialName
@@ -89,6 +90,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             args = buildJsonObject {
                 put("player_id", JsonPrimitive(playerId))
                 put("seconds", JsonPrimitive(seconds))
+            },
+        )
+
+        /** Stops [playerId] at the end of the item or chapter that its queue plays (schema 105). */
+        fun setSleepTimer(
+            playerId: String,
+            mode: SleepTimerMode,
+        ) = Request(
+            command = APICommands.PLAYERS_SLEEP_TIMER_SET,
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("mode", myJson.encodeToJsonElement(SleepTimerMode.serializer(), mode))
             },
         )
 

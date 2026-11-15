@@ -126,6 +126,23 @@ class ServerPlayerSerializationTest {
     }
 
     @Test
+    fun carriesSleepTimerModeThroughToTheClientPlayer() {
+        val json = """{"player_id": "pl1", "sleep_timer_mode": "end_of_chapter"}"""
+
+        val server = myJson.decodeFromString<ServerPlayer>(json)
+
+        assertEquals(SleepTimerMode.END_OF_CHAPTER, server.sleepTimerMode)
+        assertEquals(SleepTimerMode.END_OF_CHAPTER, playerFactory.create(server).sleepTimerMode)
+    }
+
+    @Test
+    fun unknownSleepTimerModeDecodesAsNull() {
+        val json = """{"player_id": "pl1", "sleep_timer_mode": "end_of_queue"}"""
+
+        assertNull(myJson.decodeFromString<ServerPlayer>(json).sleepTimerMode)
+    }
+
+    @Test
     fun absentSleepTimerMeansNoTimer() {
         // Pre-35 servers omit the field entirely; that must read as "no timer",
         // not as a decoding failure.
@@ -133,6 +150,7 @@ class ServerPlayerSerializationTest {
 
         assertNull(server.sleepTimerExpiresAt)
         assertNull(playerFactory.create(server).sleepTimerExpiresAt)
+        assertNull(playerFactory.create(server).sleepTimerMode)
     }
 
     @Test

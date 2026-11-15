@@ -66,6 +66,8 @@ data class ServerPlayer(
     @SerialName("announcement_in_progress") val announcementInProgress: Boolean? = null,
     /** Unix (UTC) timestamp in seconds at which the sleep timer stops playback. */
     @SerialName("sleep_timer_expires_at") val sleepTimerExpiresAt: Double? = null,
+    /** The point at which the sleep timer stops playback, null without a timer (schema 105). */
+    @SerialName("sleep_timer_mode") val sleepTimerMode: SleepTimerMode? = null,
 )
 
 // @Serializable

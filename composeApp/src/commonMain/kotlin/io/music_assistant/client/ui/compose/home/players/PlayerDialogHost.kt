@@ -13,6 +13,8 @@ import io.music_assistant.client.data.model.client.byId
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.client.sleepTimerEndMode
+import io.music_assistant.client.data.model.client.sleepTimerEndModes
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
@@ -61,7 +63,15 @@ fun PlayerDialogHost(
 
         is PlayerDialogRequest.SleepTimer -> SleepTimerDialog(
             expiresAtSec = player.player.sleepTimerExpiresAt,
+            endMode = player.player.sleepTimerEndMode,
+            endModes = if (homeScreenViewModel.sleepTimerModesSupported.collectAsStateWithLifecycle().value) {
+                player.sleepTimerEndModes()
+            } else {
+                emptyList()
+            },
+            currentItem = player.queueInfo?.currentItem?.track,
             onSelect = { homeScreenViewModel.setSleepTimer(request.playerId, it) },
+            onSelectEnd = { homeScreenViewModel.setSleepTimer(request.playerId, it) },
             onClear = { homeScreenViewModel.clearSleepTimer(request.playerId) },
             onDismissRequest = onDismiss,
         )

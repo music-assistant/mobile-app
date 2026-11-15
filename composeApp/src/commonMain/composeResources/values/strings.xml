@@ -585,6 +585,11 @@
   <string name="settings_webrtc_disclaimer">WebRTC connection can be slower and less reliable than direct or proxied connection to your server.</string>
   <string name="settings_webrtc_info">WebRTC uses cloud signalling with end-to-end encryption. Works through most firewalls and NATs.</string>
   <string name="sleep_timer_clear">Clear timer</string>
+  <string name="sleep_timer_end_of_audiobook">End of audiobook</string>
+  <string name="sleep_timer_end_of_chapter">End of chapter</string>
+  <string name="sleep_timer_end_of_episode">End of episode</string>
+  <string name="sleep_timer_end_of_item">End of current item</string>
+  <string name="sleep_timer_end_of_track">End of track</string>
   <string name="sleep_timer_hour">1 hour</string>
   <string name="sleep_timer_hours">%1$d hours</string>
   <string name="sleep_timer_minutes">%1$d minutes</string>
