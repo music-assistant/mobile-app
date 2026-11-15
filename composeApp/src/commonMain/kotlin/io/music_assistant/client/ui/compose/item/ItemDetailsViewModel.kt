@@ -279,7 +279,7 @@ class ItemDetailsViewModel(
         providerId: String,
     ): AppMediaItem? {
         // The server looks an external item up and answers the item that it found.
-        if (ServerMediaItem.isExternalProvider(providerId)) {
+        if (providerId == ServerMediaItem.EXTERNAL_PROVIDER && mainDataSource.externalItemsSupported.value) {
             return mediaItemRepository.fetchMediaItem(Request.Library.item(mediaType, itemId, providerId)).getOrNull()
         }
         val request = when (mediaType) {

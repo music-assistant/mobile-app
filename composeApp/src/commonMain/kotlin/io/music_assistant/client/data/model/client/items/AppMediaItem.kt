@@ -96,7 +96,7 @@ sealed class AppMediaItem {
      * opened or played. It has no provider mappings, so it cannot be a favorite, go into a playlist
      * or be refreshed until it is found. It can be added to the library by its [uri].
      */
-    val isExternalItem: Boolean get() = ServerMediaItem.isExternalProvider(provider)
+    val isExternalItem: Boolean get() = provider == ServerMediaItem.EXTERNAL_PROVIDER
 
     /**
      * True if the item is in the user's library. A library row alone does not tell: the server

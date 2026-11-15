@@ -197,7 +197,7 @@ class ArtistTest {
         serviceClient.schemaVersion = SERVER_2_11_SCHEMA
         val artist = ServerMediaItemFixtures.artist()
         val otherAlbum = ServerMediaItemFixtures.album()
-        val release = ServerMediaItemFixtures.musicBrainzRelease(artist = artist)
+        val release = ServerMediaItemFixtures.externalRelease(artist = artist)
         serviceClient.addItems(artist, otherAlbum)
         serviceClient.addToLibrary(artist)
         serviceClient.setAppearsOn(artist, otherAlbum)
@@ -218,7 +218,7 @@ class ArtistTest {
         serviceClient.addItems(artist, otherAlbum)
         serviceClient.addToLibrary(artist)
         serviceClient.setAppearsOn(artist, otherAlbum)
-        serviceClient.setDiscography(artist, ServerMediaItemFixtures.musicBrainzRelease(artist = artist))
+        serviceClient.setDiscography(artist, ServerMediaItemFixtures.externalRelease(artist = artist))
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(artist, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
@@ -227,26 +227,7 @@ class ArtistTest {
     }
 
     @Test
-    fun `opens the album that a MusicBrainz discography release resolves to`() {
-        serviceClient.schemaVersion = SERVER_2_11_SCHEMA
-        val artist = ServerMediaItemFixtures.artist()
-        val release = ServerMediaItemFixtures.musicBrainzRelease(artist = artist)
-        // Another artist keeps the resolved album out of the Albums row, so its name is unique.
-        val resolved = ServerMediaItemFixtures.album(name = release.name)
-        serviceClient.addItems(artist, resolved)
-        serviceClient.addToLibrary(artist)
-        serviceClient.setDiscography(artist, release)
-        serviceClient.setExternalItem(release, resolved)
-
-        // The album page asserts its play button: the release itself has nothing to play.
-        launchLoggedInApp(composeTestRule, serviceClient)
-            .clickOnMedia(artist, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
-            .assertMediaDisplayed(release) // scrolls the row into view
-            .clickOnMedia(release, Res.string.nav_discover.get())
-    }
-
-    @Test
-    fun `opens the album that an external discography release resolves to`() {
+    fun `opens the album that a discography release resolves to`() {
         serviceClient.schemaVersion = SERVER_2_11_SCHEMA
         val artist = ServerMediaItemFixtures.artist()
         val release = ServerMediaItemFixtures.externalRelease(artist = artist)
@@ -266,6 +247,7 @@ class ArtistTest {
 
     @Test
     fun `opens the track that an external top track resolves to`() {
+        serviceClient.schemaVersion = SERVER_2_11_SCHEMA
         val artist = ServerMediaItemFixtures.artist()
         val topTrack = ServerMediaItemFixtures.externalTrack(artist = artist)
         val resolved = ServerMediaItemFixtures.track(name = "Found ${topTrack.name}")

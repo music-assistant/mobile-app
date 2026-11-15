@@ -88,16 +88,6 @@ data class ServerMediaItem(
          * MusicBrainz id (server 2.11). Its `item_id` is `<id type>:<id>`.
          */
         const val EXTERNAL_PROVIDER = "external"
-
-        /**
-         * The provider of a discography release that is on no music provider, as 2.11 betas
-         * before [EXTERNAL_PROVIDER] send it.
-         */
-        const val MUSICBRAINZ_PROVIDER = "musicbrainz"
-
-        /** True if [provider] marks an item that the server looks up when it is opened or played. */
-        fun isExternalProvider(provider: String): Boolean =
-            provider == EXTERNAL_PROVIDER || provider == MUSICBRAINZ_PROVIDER
     }
 }
 

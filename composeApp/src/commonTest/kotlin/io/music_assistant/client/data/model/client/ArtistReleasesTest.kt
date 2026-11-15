@@ -33,28 +33,14 @@ class ArtistReleasesTest {
     }
 
     @Test
-    fun `a MusicBrainz release is not playable and goes into no playlist`() {
-        val release = album.copy(provider = ServerMediaItem.MUSICBRAINZ_PROVIDER, providerMappings = emptyList())
+    fun `an external release is not playable and goes into no playlist`() {
+        val release = album.copy(provider = ServerMediaItem.EXTERNAL_PROVIDER, providerMappings = emptyList())
 
         assertTrue(release.isExternalItem)
         assertFalse(release.isPlayable)
         assertFalse(release.supportsAddToPlaylist)
         assertTrue(album.isPlayable)
         assertTrue(album.supportsAddToPlaylist)
-    }
-
-    @Test
-    fun `an external release is not playable and goes into no playlist`() {
-        val release = album.copy(
-            itemId = "musicbrainz_releasegroupid:rg-1",
-            provider = ServerMediaItem.EXTERNAL_PROVIDER,
-            providerMappings = emptyList(),
-            uri = "external://album/musicbrainz_releasegroupid:rg-1",
-        )
-
-        assertTrue(release.isExternalItem)
-        assertFalse(release.isPlayable)
-        assertFalse(release.supportsAddToPlaylist)
-        assertFalse(album.isExternalItem)
+        assertFalse(album.copy(provider = "musicbrainz", providerMappings = emptyList()).isExternalItem)
     }
 }

@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 interface ItemDetailsMainDataSource {
     val refreshItemAccess: StateFlow<RefreshItemAccess>
     val playlistAccessSupported: StateFlow<Boolean>
+    val externalItemsSupported: StateFlow<Boolean>
     val grantedScopes: StateFlow<GrantedScopes>
     val selectedPlayer: PlayerData?
 }

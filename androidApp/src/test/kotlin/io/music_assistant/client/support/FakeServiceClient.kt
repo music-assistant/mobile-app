@@ -164,9 +164,8 @@ class FakeServiceClient : ServiceClient {
             // An external item resolves to an item on a music provider.
             APICommands.MUSIC_ITEM -> {
                 val item = when (request.getArg("provider_instance_id_or_domain")) {
-                    ServerMediaItem.EXTERNAL_PROVIDER,
-                    ServerMediaItem.MUSICBRAINZ_PROVIDER,
-                        -> mediaItemStore.resolveExternalItem(request.getArg("item_id"))
+                    ServerMediaItem.EXTERNAL_PROVIDER ->
+                        mediaItemStore.resolveExternalItem(request.getArg("item_id"))
 
                     else -> findItem(request)
                 }

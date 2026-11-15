@@ -223,14 +223,13 @@ actual class PlatformFeature {
   id, such as a MusicBrainz id. The item has provider `external`, the `item_id`
   `<id type>:<id>` and no provider mappings (`AppMediaItem.isExternalItem`). A discography album
   and a top track of an artist can be external, and so can the album of an external track. The
-  2.11 betas before this form send a discography album with provider `musicbrainz`, and
-  `isExternalItem` is also true for it. The server looks an external item up when it is opened or
-  played. `ItemDetailsViewModel` loads every external item with `music/item`, which answers the
-  item that the server found. An external album is not playable. An external track keeps the
-  `is_playable` of the server, and a play request sends its uri. Until the server finds it, an
-  external item has no favorite (`canBeFavorited`), no playlist entry (`supportsAddToPlaylist`)
-  and no refresh entry. It is not in the library, so the menu offers "Add to library", which
-  sends the uri.
+  server looks an external item up when it is opened or played. From server 2.11
+  (`supportsExternalItems`), `ItemDetailsViewModel` loads every external item with `music/item`,
+  which answers the item that the server found. An external album is not playable. An external
+  track keeps the `is_playable` of the server, and a play request sends its uri. Until the server
+  finds it, an external item has no favorite (`canBeFavorited`), no playlist entry
+  (`supportsAddToPlaylist`) and no refresh entry. It is not in the library, so the menu offers
+  "Add to library", which sends the uri.
 - **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,
