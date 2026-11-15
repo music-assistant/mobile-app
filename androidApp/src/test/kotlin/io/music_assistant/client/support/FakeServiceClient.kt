@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -476,24 +477,7 @@ class FakeServiceClient : ServiceClient {
                         }
                     } ?: emptyList()
 
-                val queueId = request.getArg("queue_id")
-                updateQueue(
-                    queueId,
-                    mediaTracks.map { ServerQueueItem(uniqueIdGenerator.nextInt().toString(), it) },
-                )
-                updatePlayer({ it.activeSource == queueId }) {
-                    it.copy(
-                        state = PlayerState.PLAYING,
-                        currentMedia = mediaTracks.firstOrNull()?.let { track ->
-                            ServerPlayerMedia(
-                                uri = track.uri,
-                                mediaType = track.mediaType,
-                                title = track.name,
-                                sourceId = queueId,
-                            )
-                        },
-                    )
-                }
+                play(request.getArg("queue_id"), mediaTracks)
 
                 Result.success(Answer(JsonObject(emptyMap())))
             }
@@ -670,6 +654,31 @@ class FakeServiceClient : ServiceClient {
         }
     }
 
+    private suspend fun play(queueId: String, tracks: List<ServerMediaItem>) {
+        updateQueue(
+            queueId,
+            tracks.map { ServerQueueItem(uniqueIdGenerator.nextInt().toString(), it) },
+        )
+        updatePlayer({ it.activeSource == queueId }) {
+            it.copy(
+                state = PlayerState.PLAYING,
+                currentMedia = tracks.firstOrNull()?.let { track ->
+                    ServerPlayerMedia(
+                        uri = track.uri,
+                        mediaType = track.mediaType,
+                        title = track.name,
+                        sourceId = queueId,
+                    )
+                },
+            )
+        }
+    }
+
+    // A reconnecting client has no socket, so the server events of that time never reach it.
+    private suspend fun emitEvent(event: Event<out Any>) {
+        if (_sessionState.value !is SessionState.Reconnecting) _events.emit(event)
+    }
+
     private suspend fun updateQueue(
         queueId: String,
         items: List<ServerQueueItem>,
@@ -700,7 +709,7 @@ class FakeServiceClient : ServiceClient {
         queueItems[queueId] = items
 
         val queue = queues[queueIndex]
-        _events.emit(
+        emitEvent(
             QueueUpdatedEvent(
                 event = EventType.QUEUE_UPDATED,
                 objectId = queue.queueId,
@@ -708,7 +717,7 @@ class FakeServiceClient : ServiceClient {
             ),
         )
 
-        _events.emit(
+        emitEvent(
             QueueItemsUpdatedEvent(
                 event = EventType.QUEUE_ITEMS_UPDATED,
                 objectId = queue.queueId,
@@ -724,7 +733,7 @@ class FakeServiceClient : ServiceClient {
         val (playerIndex, originalPlayer) = findPlayer(search)
         val updatedPlayer = update(originalPlayer)
         players[playerIndex] = updatedPlayer
-        _events.emit(
+        emitEvent(
             PlayerUpdatedEvent(
                 event = EventType.PLAYER_UPDATED,
                 objectId = updatedPlayer.playerId,
@@ -1016,6 +1025,11 @@ class FakeServiceClient : ServiceClient {
 
     fun setTopTracks(artist: ServerMediaItem, vararg tracks: ServerMediaItem) {
         mediaItemStore.setTopTracks(artist, *tracks)
+    }
+
+    /** Plays [track] on [player] from the server side, for example when a track ends. */
+    fun playOnServer(player: ServerPlayer, track: ServerMediaItem) = runBlocking {
+        play(requireNotNull(player.activeSource), listOf(track))
     }
 
     fun setRequestErrors(requestError: Boolean) {
