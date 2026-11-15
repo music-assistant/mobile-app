@@ -3,6 +3,7 @@ package io.music_assistant.client.data.model.client.items
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.RefreshItemAccess
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -70,5 +71,14 @@ class RefreshItemActionTest {
         val episode = AppMediaItemFixtures.episodes(listOf("Episode")).first()
 
         assertNull(episode.refreshItemAction(RefreshItemAccess.ALL, emptyList()))
+    }
+
+    // An external item has no mappings, which would otherwise read as unavailable.
+    @Test
+    fun hiddenForAnExternalItem() {
+        val album = AppMediaItemFixtures.album()
+            .copy(provider = ServerMediaItem.EXTERNAL_PROVIDER, providerMappings = emptyList())
+
+        assertNull(album.refreshItemAction(RefreshItemAccess.ALL, listOf(spotify)))
     }
 }

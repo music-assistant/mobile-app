@@ -18,8 +18,8 @@ internal class FakeMediaItemStore {
     private val appearsOn = mutableMapOf<Pair<String, String>, List<ServerMediaItem>>()
     private val discographies = mutableMapOf<Pair<String, String>, List<ServerMediaItem>>()
 
-    // The album that a MusicBrainz release group resolves to, by the release group id.
-    private val musicBrainzReleases = mutableMapOf<String, ServerMediaItem>()
+    // The item that an external item resolves to, by the item id of the external item.
+    private val externalItems = mutableMapOf<String, ServerMediaItem>()
 
     // The server's `content_type` of a genre; a genre without an entry is in the music taxonomy.
     private val genreContentTypes = mutableMapOf<Pair<String, String>, String>()
@@ -74,12 +74,11 @@ internal class FakeMediaItemStore {
     fun getDiscography(libraryId: String): List<ServerMediaItem> =
         globalIdsOf(libraryId).flatMap { discographies[it].orEmpty() }
 
-    fun setMusicBrainzRelease(releaseGroupId: String, album: ServerMediaItem) {
-        musicBrainzReleases[releaseGroupId] = album
+    fun setExternalItem(itemId: String, resolved: ServerMediaItem) {
+        externalItems[itemId] = resolved
     }
 
-    fun resolveMusicBrainzRelease(releaseGroupId: String): ServerMediaItem =
-        musicBrainzReleases.getValue(releaseGroupId)
+    fun resolveExternalItem(itemId: String): ServerMediaItem = externalItems.getValue(itemId)
 
     private fun globalIdsOf(libraryId: String): List<Pair<String, String>> =
         libraryIds.entries.filter { it.value == libraryId }.map { it.key }

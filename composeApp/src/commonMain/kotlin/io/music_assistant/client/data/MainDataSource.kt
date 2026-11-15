@@ -51,6 +51,7 @@ import io.music_assistant.client.data.model.server.playMediaSupport
 import io.music_assistant.client.data.model.server.refreshItemAccess
 import io.music_assistant.client.data.model.server.supportsAiRadio
 import io.music_assistant.client.data.model.server.supportsDislike
+import io.music_assistant.client.data.model.server.supportsExternalItems
 import io.music_assistant.client.data.model.server.supportsPlaylistAccess
 import io.music_assistant.client.data.model.server.supportsSearchSources
 import io.music_assistant.client.data.play.PlayDispatcher
@@ -243,6 +244,12 @@ class MainDataSource(
     override val playlistAccessSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsPlaylistAccess((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(this, SharingStarted.Eagerly, false)
+
+    /** Whether the server looks up an external item ([supportsExternalItems]). False while no session is up. */
+    override val externalItemsSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsExternalItems((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(this, SharingStarted.Eagerly, false)
 
     /** Whether `music/search` takes `providers` ([supportsSearchSources]). False while no session is up. */

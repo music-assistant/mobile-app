@@ -28,10 +28,10 @@ fun AppMediaItem.refreshItemAction(
     }
 }
 
-// The server refreshes nothing for a genre, and a collection has no stored copy. A MusicBrainz
-// item exists only to link an artist.
+// The server refreshes nothing for a genre, and a collection has no stored copy. An external
+// item has no provider mappings: the server looks it up when it is opened.
 private val AppMediaItem.isRefreshable: Boolean
-    get() = provider != MUSICBRAINZ_PROVIDER && when (this) {
+    get() = !isExternalItem && when (this) {
         is Artist, is Album, is Track, is Playlist, is Podcast, is Audiobook -> true
         else -> false
     }
@@ -41,5 +41,3 @@ private fun AppMediaItem.isAvailableOn(providers: List<ServerProviderInstance>):
     providerMappings.orEmpty().any { mapping ->
         mapping.available && providers.any { it.instanceId == mapping.providerInstance && it.available }
     }
-
-private const val MUSICBRAINZ_PROVIDER = "musicbrainz"

@@ -622,7 +622,7 @@ the app:
 | Track detail screen | `tracks/get_track`, `track_albums`, `track_versions`, `similar_tracks`, `metadata/get_track_lyrics` | Easy | Done (issue #1189). A `Track` case in `ItemDetailsScreen` with tabs for albums, versions and similar tracks |
 | Radio detail screen | `radios/get_radio`, `radio_versions`, `radio_tracks` (2.11) | Easy | Same pattern. Show the tracklist for finite stations on 2.11 |
 | Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Done (issue 1204). A `PodcastEpisode` case in `ItemDetailsScreen`; the cues feed `LyricsSheet` as `Lyrics.Synced`. No steppers and no hide-fully-played filter |
-| Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Done (issue #1205). A `musicbrainz` release is dimmed. Its menu offers "Add to library" only, and a tap opens the album that `music/item` resolves |
+| Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Done (issue #1205). An external release is dimmed. Its menu offers "Add to library" only, and a tap opens the album that `music/item` resolves |
 | Artist audiobooks row | `artist_audiobooks` | Easy | Done (issue #1201). The author page rows with the existing provider filter |
 | Album versions, review, more from artist | `album_versions`, `artist_albums` | Easy | Two sections on the album screen |
 | Server-driven sort options | `music/sort_options` (2.11) | Easy | Replace the static table on 2.11. Map `label_key` to local strings |

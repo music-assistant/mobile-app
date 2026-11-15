@@ -55,6 +55,7 @@ fun SelectionBar(
     val actions = resolveSelectionActions(
         canEditLibrary = playlistActions != null && LocalGrantedScopes.current.canEditLibrary,
         canRemoveFromPlaylist = onRemoveFromPlaylist != null,
+        canAddToPlaylist = selection.items.all { it.supportsAddToPlaylist },
     )
     val count = selection.items.size
 

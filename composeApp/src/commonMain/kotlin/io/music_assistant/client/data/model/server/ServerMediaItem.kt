@@ -83,8 +83,11 @@ data class ServerMediaItem(
     companion object {
         const val LIBRARY_PROVIDER = "library"
 
-        /** The provider of a discography release that is on no music provider (server 2.11). */
-        const val MUSICBRAINZ_PROVIDER = "musicbrainz"
+        /**
+         * The provider of an item that the server knows only by an external id, such as a
+         * MusicBrainz id (server 2.11). Its `item_id` is `<id type>:<id>`.
+         */
+        const val EXTERNAL_PROVIDER = "external"
     }
 }
 

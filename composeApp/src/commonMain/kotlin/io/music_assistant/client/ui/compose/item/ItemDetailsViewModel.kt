@@ -278,13 +278,13 @@ class ItemDetailsViewModel(
         mediaType: MediaType,
         providerId: String,
     ): AppMediaItem? {
+        // The server looks an external item up and answers the item that it found.
+        if (providerId == ServerMediaItem.EXTERNAL_PROVIDER && mainDataSource.externalItemsSupported.value) {
+            return mediaItemRepository.fetchMediaItem(Request.Library.item(mediaType, itemId, providerId)).getOrNull()
+        }
         val request = when (mediaType) {
             MediaType.ARTIST -> Request.Artist.get(itemId, providerId)
-            MediaType.ALBUM -> if (providerId == ServerMediaItem.MUSICBRAINZ_PROVIDER) {
-                Request.Library.item(mediaType, itemId, providerId)
-            } else {
-                Request.Album.get(itemId, providerId)
-            }
+            MediaType.ALBUM -> Request.Album.get(itemId, providerId)
             MediaType.PLAYLIST -> Request.Playlist.get(itemId, providerId)
             MediaType.RADIO -> Request.RadioStation.get(itemId, providerId)
             MediaType.PODCAST -> Request.Podcast.get(itemId, providerId)

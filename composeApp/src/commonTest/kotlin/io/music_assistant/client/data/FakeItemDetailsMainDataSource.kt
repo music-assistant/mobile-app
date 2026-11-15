@@ -13,6 +13,9 @@ class FakeItemDetailsMainDataSource : ItemDetailsMainDataSource {
     override val playlistAccessSupported: StateFlow<Boolean> =
         MutableStateFlow(false)
 
+    override val externalItemsSupported: StateFlow<Boolean> =
+        MutableStateFlow(false)
+
     override val grantedScopes: StateFlow<GrantedScopes> =
         MutableStateFlow(GrantedScopes.NONE)
 
