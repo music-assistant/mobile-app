@@ -542,8 +542,10 @@ class MainDataSource(
 
                                     when (currentState.reason) {
                                         StaleReason.RECONNECTING -> {
-                                            // Brief disconnection — data is still fresh. Transition
-                                            // stale → Data without re-fetching to avoid a UI blink.
+                                            // Brief disconnection: show the cached data at once, so
+                                            // the UI does not blink, and re-fetch it, because the
+                                            // server does not replay the events of the gap (a track
+                                            // change, for example). The merge keeps newer event data.
                                             // This branch only runs when dataConnectionState is
                                             // already Authenticated; if a reconnect requires re-auth,
                                             // the else branch below preserves Stale data until
@@ -552,10 +554,7 @@ class MainDataSource(
                                             _serverPlayers.update {
                                                 DataState.Data(currentState.data)
                                             }
-
-                                            // selectedPlayerIndex doesn't re-emit on stale-recovery
-                                            // (same value before/after), so refresh manually.
-                                            refreshSelectedPlayerQueueItems()
+                                            updatePlayersAndQueues()
 
                                             // Sendspin reinit: WebRTC sendspin auth is inherited
                                             // from the data channel itself, not JSON-RPC auth state,
