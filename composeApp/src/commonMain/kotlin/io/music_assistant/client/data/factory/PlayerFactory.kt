@@ -51,6 +51,7 @@ class PlayerFactory(
             groupVolumeMuted = groupVolumeMuted == true,
             currentMedia = currentMedia?.let(::createPlayerMedia),
             sleepTimerExpiresAt = sleepTimerExpiresAt,
+            sleepTimerMode = sleepTimerMode,
         )
     }
 

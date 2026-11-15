@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
@@ -25,10 +26,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import io.music_assistant.client.data.model.client.items.Audiobook
+import io.music_assistant.client.data.model.client.items.PlayableItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
+import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.server.SleepTimerMode
 import io.music_assistant.client.utils.formatDuration
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.player_sleep_timer
 import musicassistantclient.composeapp.generated.resources.sleep_timer_clear
+import musicassistantclient.composeapp.generated.resources.sleep_timer_end_of_audiobook
+import musicassistantclient.composeapp.generated.resources.sleep_timer_end_of_chapter
+import musicassistantclient.composeapp.generated.resources.sleep_timer_end_of_episode
+import musicassistantclient.composeapp.generated.resources.sleep_timer_end_of_item
+import musicassistantclient.composeapp.generated.resources.sleep_timer_end_of_track
 import musicassistantclient.composeapp.generated.resources.sleep_timer_hour
 import musicassistantclient.composeapp.generated.resources.sleep_timer_hours
 import musicassistantclient.composeapp.generated.resources.sleep_timer_minutes
@@ -52,12 +63,18 @@ private val SLEEP_TIMER_OPTIONS = listOf(
  *
  * Stateless by design: the running timer's expiry already rides along on the player
  * payload, so there is nothing to load. [expiresAtSec] is an absolute unix (UTC)
- * timestamp, or `null` when no timer runs.
+ * timestamp, or `null` when no timer runs or an end-of-content timer waits while paused.
+ * [endMode] is the item or chapter end that the running timer waits for. [endModes] are the
+ * end-of-content options that the server accepts now, named after [currentItem].
  */
 @Composable
 fun SleepTimerDialog(
     expiresAtSec: Double?,
+    endMode: SleepTimerMode?,
+    endModes: List<SleepTimerMode>,
+    currentItem: PlayableItem?,
     onSelect: (seconds: Int) -> Unit,
+    onSelectEnd: (SleepTimerMode) -> Unit,
     onClear: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -75,10 +92,13 @@ fun SleepTimerDialog(
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
                 // The elapsed part of a running timer is not knowable from the expiry
-                // alone, so show the countdown instead of ticking an option.
-                remaining?.let {
+                // alone, so show the countdown instead of ticking an option. A paused
+                // end-of-content timer has no countdown, so name the end instead.
+                val status = remaining?.let { stringResource(Res.string.sleep_timer_stops_in, it.formatDuration()) }
+                    ?: endMode?.let { sleepTimerEndLabel(it, currentItem) }
+                status?.let {
                     Text(
-                        text = stringResource(Res.string.sleep_timer_stops_in, it.formatDuration()),
+                        text = it,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -97,7 +117,21 @@ fun SleepTimerDialog(
                         )
                     }
 
-                    if (remaining != null) {
+                    if (endModes.isNotEmpty()) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        endModes.forEach { mode ->
+                            SleepTimerRow(
+                                icon = if (mode == endMode) Icons.Default.Check else Icons.Default.Bedtime,
+                                label = sleepTimerEndLabel(mode, currentItem),
+                                onClick = {
+                                    onSelectEnd(mode)
+                                    onDismissRequest()
+                                },
+                            )
+                        }
+                    }
+
+                    if (remaining != null || endMode != null) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         SleepTimerRow(
                             icon = Icons.Default.TimerOff,
@@ -114,6 +148,18 @@ fun SleepTimerDialog(
         }
     }
 }
+
+/** Label of an end-of-content [mode], named after the type of [item] like the web frontend. */
+@Composable
+fun sleepTimerEndLabel(mode: SleepTimerMode, item: PlayableItem?): String = stringResource(
+    when {
+        mode == SleepTimerMode.END_OF_CHAPTER -> Res.string.sleep_timer_end_of_chapter
+        item is Track -> Res.string.sleep_timer_end_of_track
+        item is PodcastEpisode -> Res.string.sleep_timer_end_of_episode
+        item is Audiobook -> Res.string.sleep_timer_end_of_audiobook
+        else -> Res.string.sleep_timer_end_of_item
+    },
+)
 
 @Composable
 private fun optionLabel(seconds: Int): String = when {

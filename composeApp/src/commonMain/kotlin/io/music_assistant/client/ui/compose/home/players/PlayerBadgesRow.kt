@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.RepeatMode
+import io.music_assistant.client.data.model.client.sleepTimerEndMode
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.icons.CrossfadeIcon
 import io.music_assistant.client.ui.contentColorByLuminance
@@ -88,6 +89,9 @@ fun PlayerBadgesRow(
         if (onSleepTimerClick != null) {
             SleepTimerBadge(
                 remaining = sleepRemaining,
+                endLabel = player.player.sleepTimerEndMode?.let {
+                    sleepTimerEndLabel(it, player.queueInfo?.currentItem?.track)
+                },
                 tint = tint,
                 onClick = onSleepTimerClick,
             )

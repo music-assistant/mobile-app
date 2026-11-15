@@ -37,6 +37,7 @@ import io.music_assistant.client.data.model.server.RefreshItemAccess
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.SleepTimerMode
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemPlayedEvent
 import io.music_assistant.client.data.model.server.events.PlayerAddedEvent
@@ -1244,6 +1245,14 @@ class MainDataSource(
         launch {
             apiClient.sendRequest(Request.Player.setSleepTimer(playerId, seconds))
                 .onFailure { log.e(it) { "Failed to set sleep timer for $playerId" } }
+        }
+    }
+
+    /** Stops [playerId] at the end of the item or chapter that plays now. See [setSleepTimer]. */
+    fun setSleepTimer(playerId: String, mode: SleepTimerMode) {
+        launch {
+            apiClient.sendRequest(Request.Player.setSleepTimer(playerId, mode))
+                .onFailure { log.e(it) { "Failed to set sleep timer $mode for $playerId" } }
         }
     }
 

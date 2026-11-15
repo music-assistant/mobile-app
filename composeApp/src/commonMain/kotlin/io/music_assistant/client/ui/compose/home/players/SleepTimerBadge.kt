@@ -56,21 +56,24 @@ fun rememberSleepTimerRemaining(expiresAtSec: Double?): Duration? =
  *
  * A null [remaining] is the idle state: outlined pill and the `--:--` that
  * [formatDuration] already renders for a null duration. It stays tappable either way —
- * tapping with no timer running is how you set one.
+ * tapping with no timer running is how you set one. [endLabel] names the item or chapter
+ * end that a timer waits for. It shows while that timer has no countdown (paused).
  */
 @Composable
 fun SleepTimerBadge(
     remaining: Duration?,
+    endLabel: String?,
     tint: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val active = remaining != null || endLabel != null
     BadgePill(
         contentDescription = stringResource(
-            if (remaining != null) Res.string.cd_sleep_timer else Res.string.cd_sleep_timer_off,
+            if (active) Res.string.cd_sleep_timer else Res.string.cd_sleep_timer_off,
         ),
         tint = tint,
-        on = remaining != null,
+        on = active,
         onClick = onClick,
         modifier = modifier,
     ) {
@@ -81,11 +84,7 @@ fun SleepTimerBadge(
             modifier = Modifier.size(BADGE_ICON_SIZE),
         )
         Text(
-            text = if (remaining != null) {
-                remaining.formatDuration()
-            } else {
-                stringResource(Res.string.player_sleep_timer)
-            },
+            text = remaining?.formatDuration() ?: endLabel ?: stringResource(Res.string.player_sleep_timer),
             style = MaterialTheme.typography.labelSmall,
         )
     }

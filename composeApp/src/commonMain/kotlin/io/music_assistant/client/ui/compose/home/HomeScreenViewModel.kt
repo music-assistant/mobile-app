@@ -19,10 +19,12 @@ import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
+import io.music_assistant.client.data.model.server.SleepTimerMode
 import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
 import io.music_assistant.client.data.model.server.supportsAutoplayRepeatLock
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
+import io.music_assistant.client.data.model.server.supportsSleepTimerModes
 import io.music_assistant.client.data.model.server.supportsWaveform
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
@@ -167,6 +169,12 @@ class HomeScreenViewModel(
     val sleepTimerSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsSleepTimer((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /** The end-of-item and end-of-chapter sleep timers exist from schema 105 on. */
+    val sleepTimerModesSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsSleepTimerModes((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     /** Repeat ONE or ALL locks autoplay off from server 2.11 on. */
@@ -550,6 +558,9 @@ class HomeScreenViewModel(
     fun queueAction(action: QueueAction) = dataSource.queueAction(action)
     fun setSleepTimer(playerId: String, seconds: Int) =
         dataSource.setSleepTimer(playerId, seconds)
+
+    fun setSleepTimer(playerId: String, mode: SleepTimerMode) =
+        dataSource.setSleepTimer(playerId, mode)
 
     fun clearSleepTimer(playerId: String) = dataSource.clearSleepTimer(playerId)
 
