@@ -17,10 +17,13 @@ import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.PlayMediaSupport
 
-/** Item types accepted by playlist edits (server contract, not a UI choice). */
+/**
+ * Item types accepted by playlist edits (server contract, not a UI choice). An external item goes
+ * into a playlist once the server has found it.
+ */
 val AppMediaItem.supportsAddToPlaylist: Boolean
-    get() = this is Track || (this is Album && !isMusicBrainzRelease) || this is RadioStation ||
-            this is PodcastEpisode || this is Audiobook
+    get() = !isExternalItem &&
+        (this is Track || this is Album || this is RadioStation || this is PodcastEpisode || this is Audiobook)
 
 /**
  * Containers with an order worth shuffling, the same set as the web app. A podcast and an
@@ -86,16 +89,18 @@ fun resolveLongClickActions(
 /**
  * The actions menu of a track selection: the five queue options, which send all tracks in one
  * `play_media` request, then Add to playlist and Remove from playlist. [canEditLibrary]
- * (`library.write`) gates both playlist entries, and [canRemoveFromPlaylist] is true on an
- * editable playlist only.
+ * (`library.write`) gates both playlist entries, [canAddToPlaylist] is false while the selection
+ * holds an item that goes into no playlist, and [canRemoveFromPlaylist] is true on an editable
+ * playlist only.
  */
 fun resolveSelectionActions(
     canEditLibrary: Boolean,
     canRemoveFromPlaylist: Boolean = false,
+    canAddToPlaylist: Boolean = true,
 ): List<ItemAction> = buildList {
     addAll(QUEUE_ACTIONS)
     if (!canEditLibrary) return@buildList
-    add(ItemAction.AddToPlaylist)
+    if (canAddToPlaylist) add(ItemAction.AddToPlaylist)
     if (canRemoveFromPlaylist) add(ItemAction.RemoveFromPlaylist)
 }
 

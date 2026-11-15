@@ -278,6 +278,8 @@ class ItemActionResolverTest {
 
         assertEquals(queueOptions + ItemAction.AddToPlaylist, resolveSelectionActions(canEditLibrary = true))
         assertEquals(queueOptions, resolveSelectionActions(canEditLibrary = false))
+        // A selection that holds an item that goes into no playlist, such as an external track.
+        assertEquals(queueOptions, resolveSelectionActions(canEditLibrary = true, canAddToPlaylist = false))
     }
 
     @Test

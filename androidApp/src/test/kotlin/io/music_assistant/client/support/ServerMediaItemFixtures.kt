@@ -42,7 +42,7 @@ object ServerMediaItemFixtures {
         )
     }
 
-    /** A server 2.11 discography release that is on no music provider. */
+    /** A discography release that is on no music provider, as 2.11 betas before the external form send it. */
     fun musicBrainzRelease(
         releaseGroupId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Release $releaseGroupId",
@@ -56,6 +56,40 @@ object ServerMediaItemFixtures {
         artists = listOf(artist),
         uri = "musicbrainz://album/$releaseGroupId",
         isPlayable = false,
+        providerMappings = emptyList(),
+    )
+
+    /** A server 2.11 discography release that is on no music provider, known by its release group id. */
+    fun externalRelease(
+        releaseGroupId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Release $releaseGroupId",
+        artist: ServerMediaItem = artist(),
+    ): ServerMediaItem = ServerMediaItem(
+        itemId = "musicbrainz_releasegroupid:$releaseGroupId",
+        provider = ServerMediaItem.EXTERNAL_PROVIDER,
+        name = name,
+        mediaType = MediaType.ALBUM.serverValue,
+        albumType = "album",
+        artists = listOf(artist),
+        uri = "external://album/musicbrainz_releasegroupid:$releaseGroupId",
+        isPlayable = false,
+        providerMappings = emptyList(),
+    )
+
+    /** A server 2.11 top track that is known by its MusicBrainz recording id only. */
+    fun externalTrack(
+        recordingId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Recording $recordingId",
+        artist: ServerMediaItem = artist(),
+    ): ServerMediaItem = ServerMediaItem(
+        itemId = "musicbrainz_recordingid:$recordingId",
+        provider = ServerMediaItem.EXTERNAL_PROVIDER,
+        name = name,
+        mediaType = MediaType.TRACK.serverValue,
+        duration = 240.0,
+        artists = listOf(artist),
+        uri = "external://track/musicbrainz_recordingid:$recordingId",
+        isPlayable = true,
         providerMappings = emptyList(),
     )
 

@@ -216,11 +216,21 @@ actual class PlatformFeature {
   An `ItemList` keeps its `releases`, and `ItemList.select` applies them to "View all" too. Appears on
   (`music/artists/artist_appears_on`) and Discography (`music/artists/discography`) need server 2.11
   (`supportsArtistAppearsOnAndDiscography`) and a library artist. The discography shows all release
-  types. A release that no music provider has is an `Album` with provider `musicbrainz`
-  (`isMusicBrainzRelease`). It is not playable, so the row dims it and its menu offers "Add to
-  library" only. A tap opens the item page, and `ItemDetailsViewModel` loads it with `music/item`,
-  which resolves it to the album on a music provider. An author or a narrator keeps the rows In
-  library and All audiobooks.
+  types. A release that no music provider has is an external `Album` (see External items). It is
+  not playable, so the row dims it and its menu offers "Add to library" only. A tap opens the item
+  page. An author or a narrator keeps the rows In library and All audiobooks.
+- **External items**: from server 2.11, the server lists an item that it knows only by an external
+  id, such as a MusicBrainz id. The item has provider `external`, the `item_id`
+  `<id type>:<id>` and no provider mappings (`AppMediaItem.isExternalItem`). A discography album
+  and a top track of an artist can be external, and so can the album of an external track. The
+  2.11 betas before this form send a discography album with provider `musicbrainz`, and
+  `isExternalItem` is also true for it. The server looks an external item up when it is opened or
+  played. `ItemDetailsViewModel` loads every external item with `music/item`, which answers the
+  item that the server found. An external album is not playable. An external track keeps the
+  `is_playable` of the server, and a play request sends its uri. Until the server finds it, an
+  external item has no favorite (`canBeFavorited`), no playlist entry (`supportsAddToPlaylist`)
+  and no refresh entry. It is not in the library, so the menu offers "Add to library", which
+  sends the uri.
 - **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,

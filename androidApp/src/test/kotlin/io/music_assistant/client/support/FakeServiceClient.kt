@@ -161,11 +161,12 @@ class FakeServiceClient : ServiceClient {
                 Result.success(answer(request = request, result = item))
             }
 
-            // A `musicbrainz` discography release resolves to an album on a music provider.
+            // An external item resolves to an item on a music provider.
             APICommands.MUSIC_ITEM -> {
                 val item = when (request.getArg("provider_instance_id_or_domain")) {
-                    ServerMediaItem.MUSICBRAINZ_PROVIDER ->
-                        mediaItemStore.resolveMusicBrainzRelease(request.getArg("item_id"))
+                    ServerMediaItem.EXTERNAL_PROVIDER,
+                    ServerMediaItem.MUSICBRAINZ_PROVIDER,
+                        -> mediaItemStore.resolveExternalItem(request.getArg("item_id"))
 
                     else -> findItem(request)
                 }
@@ -1004,13 +1005,14 @@ class FakeServiceClient : ServiceClient {
         mediaItemStore.setAppearsOn(artist, *albums)
     }
 
-    /** [releases] holds library albums and `musicbrainz` albums, like the server listing. */
+    /** [releases] holds library albums and external albums, like the server listing. */
     fun setDiscography(artist: ServerMediaItem, vararg releases: ServerMediaItem) {
         mediaItemStore.setDiscography(artist, *releases)
     }
 
-    fun setMusicBrainzRelease(releaseGroupId: String, album: ServerMediaItem) {
-        mediaItemStore.setMusicBrainzRelease(releaseGroupId, album)
+    /** `music/item` answers [resolved] for the external item [external]. */
+    fun setExternalItem(external: ServerMediaItem, resolved: ServerMediaItem) {
+        mediaItemStore.setExternalItem(external.itemId, resolved)
     }
 
     fun setTopTracks(artist: ServerMediaItem, vararg tracks: ServerMediaItem) {
