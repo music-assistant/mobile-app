@@ -175,8 +175,11 @@ actual class PlatformFeature {
   web frontend: the biography of an artist (`metadata.description`), the review of an album
   (`metadata.review`, or its description), and the description of a playlist, a podcast or an
   audiobook. `AppMediaItem.itemDescription()` (`model/client/ItemDescription.kt`) selects the text
-  and `toPlainItemText` makes plain text from the Markdown and HTML that a provider sends. The page
-  clamps it to 3 lines, and "More" opens a sheet. The facts line shows the album type, the track
+  and `toItemText` makes plain text from the Markdown and HTML that a provider sends. It keeps the
+  links (`ItemLink`): an HTML anchor, a Markdown link and a bare URL. It keeps only the http, https
+  and mailto schemes, because the text comes from a provider. The page clamps it to 3 lines, and
+  "More" opens a sheet. A link works in the clamped text and in the sheet, because a short text
+  has no sheet. The platform `UriHandler` opens a link in the system browser. The facts line shows the album type, the track
   count and the total time (`PlayableSummary`, a client sum of the loaded tracks, none for a dynamic
   playlist), the publisher of an audiobook, and the music services of a library item. The genre chips
   come from `music/genres/genres_for_media_item`, which maps genres to library items only, so an
