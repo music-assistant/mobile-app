@@ -486,10 +486,7 @@ class AutoLibrary(
             SubItemContext.RADIO_TRACKS,
             -> return null
         }
-        val items = apiClient.sendRequest(request)
-            .resultAs<List<ServerMediaItem>>()
-            ?.let { mediaItemFactory.createList(it) }
-            ?: return null
+        val items = mediaItemRepository.fetchAllMediaItems(request) ?: return null
         val sorted = items.clientSorted(sort, context)
         // Tracks inside an album/playlist carry the container URI so a PLAY_FROM_HERE tap can
         // play the whole container starting from the tapped track.

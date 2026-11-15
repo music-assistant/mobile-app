@@ -20,7 +20,7 @@ import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.data.model.server.events.ServerFavoriteUpdate
-import io.music_assistant.client.data.model.server.pagesPlaylistTracksAndEpisodes
+import io.music_assistant.client.data.model.server.pagesSubItemLists
 import io.music_assistant.client.data.model.server.sendsFavoriteUpdates
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
@@ -51,7 +51,7 @@ interface MediaItemRepository {
     suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>>
 
     /**
-     * Every item of a `playlist_tracks` or `podcast_episodes` [request]. Null when nothing could
+     * Every item of an `album_tracks`, `playlist_tracks` or `podcast_episodes` [request]. Null when nothing could
      * be loaded; a page failure after the first page gives the items loaded so far.
      */
     suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>?
@@ -102,10 +102,10 @@ class ServiceClientMediaItemRepository(
 
     /**
      * A server from 2.11 answers one page, so the pages are walked. An older server streams the
-     * whole list on the plain request (see [pagesPlaylistTracksAndEpisodes]).
+     * whole list on the plain request (see [pagesSubItemLists]).
      */
     override suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>? =
-        if (pagesPlaylistTracksAndEpisodes(schemaVersion())) {
+        if (pagesSubItemLists(schemaVersion())) {
             request.fetchAllPages { fetchMediaItems(it).getOrNull() }
         } else {
             fetchMediaItems(request).getOrNull()
