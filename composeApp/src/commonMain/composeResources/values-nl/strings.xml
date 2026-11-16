@@ -396,7 +396,7 @@
   <string name="players_dsp_settings">DSP-instellingen</string>
   <string name="players_group_settings">Groepsinstellingen</string>
   <string name="players_group_volume">%1$s groepsvolume</string>
-  <string name="players_hide_unavailable">Niet beschikbare verbergen</string>
+  <string name="players_hide_unavailable">Niet-beschikbare verbergen</string>
   <string name="players_loading">Spelers laden…</string>
   <string name="players_none_available">Geen spelers beschikbaar</string>
   <string name="players_nothing">Speelt niets af</string>
@@ -446,6 +446,7 @@
   <string name="queue_dsm_disable">Don't Stop The Music uitschakelen</string>
   <string name="queue_dsm_enable">Don't Stop The Music inschakelen</string>
   <string name="queue_empty">De wachtrij is leeg</string>
+  <string name="queue_ended">Afspelen voltooid</string>
   <string name="queue_error">Fout bij laden wachtrij</string>
   <string name="queue_label">Wachtrij</string>
   <string name="queue_label_with_position">Wachtrij (%1$d/%2$d)</string>
@@ -532,6 +533,7 @@
   <string name="settings_connection_method">Verbindingsmethode</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Aangepaste Sendspin-verbinding</string>
+  <string name="settings_custom_sendspin_ma_sign_in">Inloggen via Music Assistant</string>
   <string name="settings_disable_local_player">Lokale speler uitschakelen</string>
   <string name="settings_disconnect">Verbinding verbreken</string>
   <string name="settings_enable_local_player">Lokale speler inschakelen</string>
@@ -583,6 +585,11 @@
   <string name="settings_webrtc_disclaimer">De WebRTC-verbinding kan trager en minder betrouwbaar zijn dan een directe verbinding of een verbinding via een proxy met je server.</string>
   <string name="settings_webrtc_info">WebRTC maakt gebruik van cloudsignalering met end-to-end-encryptie. Werkt door de meeste firewalls en NAT's.</string>
   <string name="sleep_timer_clear">Timer wissen</string>
+  <string name="sleep_timer_end_of_audiobook">Einde van het luisterboek</string>
+  <string name="sleep_timer_end_of_chapter">Einde van het hoofdstuk</string>
+  <string name="sleep_timer_end_of_episode">Einde van de aflevering</string>
+  <string name="sleep_timer_end_of_item">Einde van het huidige item</string>
+  <string name="sleep_timer_end_of_track">Einde van het nummer</string>
   <string name="sleep_timer_hour">1 uur</string>
   <string name="sleep_timer_hours">%1$d uur</string>
   <string name="sleep_timer_minutes">%1$d minuten</string>

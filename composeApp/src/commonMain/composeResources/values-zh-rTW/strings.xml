@@ -443,6 +443,7 @@
   <string name="queue_dsm_disable">停用音樂不間斷 Don't Stop The Music</string>
   <string name="queue_dsm_enable">啟用音樂不間斷 Don't Stop The Music</string>
   <string name="queue_empty">佇列為空</string>
+  <string name="queue_ended">播放完畢</string>
   <string name="queue_error">載入佇列時發生錯誤</string>
   <string name="queue_label">佇列</string>
   <string name="queue_label_with_position">佇列（%1$d/%2$d）</string>
@@ -528,6 +529,7 @@
   <string name="settings_connection_method">連線方式</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">自訂 Sendspin 連線</string>
+  <string name="settings_custom_sendspin_ma_sign_in">透過 Music Assistant 登入</string>
   <string name="settings_disable_local_player">停用本地播放器</string>
   <string name="settings_disconnect">中斷連線</string>
   <string name="settings_enable_local_player">啟用本地播放器</string>
