@@ -446,6 +446,7 @@
   <string name="queue_dsm_disable">Desactivar Que no pare la música</string>
   <string name="queue_dsm_enable">Activar Que no pare la música</string>
   <string name="queue_empty">La cola está vacía</string>
+  <string name="queue_ended">Reproducción finalizada</string>
   <string name="queue_error">Error al cargar la cola</string>
   <string name="queue_label">Cola</string>
   <string name="queue_label_with_position">Cola (%1$d/%2$d)</string>
@@ -532,6 +533,7 @@
   <string name="settings_connection_method">Método de conexión</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Conexión personalizada de Sendspin</string>
+  <string name="settings_custom_sendspin_ma_sign_in">Inicia sesión a través de Music Assistant</string>
   <string name="settings_disable_local_player">Desactivar reproductor local</string>
   <string name="settings_disconnect">Desconectar</string>
   <string name="settings_enable_local_player">Activar reproductor local</string>
