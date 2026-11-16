@@ -42,14 +42,14 @@ class ItemActionResolverTest {
     // with a null context. title()/icon() must fall back rather than throw (they used to).
     @Test
     fun `play from here title falls back to generic for context-less surfaces`() {
-        assertEquals(Res.string.action_play_from_here, ItemAction.PlayFromHere.title(null))
+        assertEquals(ItemAction.PlayFromHere.title(null), Res.string.action_play_from_here)
         assertEquals(
-            Res.string.action_play_album_from_here,
             ItemAction.PlayFromHere.title(ClickContext.ALBUM),
+            Res.string.action_play_album_from_here,
         )
         assertEquals(
-            Res.string.action_play_playlist_from_here,
             ItemAction.PlayFromHere.title(ClickContext.PLAYLIST),
+            Res.string.action_play_playlist_from_here,
         )
     }
 
@@ -167,16 +167,31 @@ class ItemActionResolverTest {
         val episode = testPodcastEpisode()
         assertTrue(ItemAction.PlayFromHere in playbackBlock(episode, ClickContext.PODCAST, ALL))
         assertFalse(ItemAction.PlayFromHere in playbackBlock(episode, ClickContext.HOME, ALL))
-        assertEquals(Res.string.action_play_podcast_from_here, ItemAction.PlayFromHere.title(ClickContext.PODCAST))
+        assertEquals(
+            ItemAction.PlayFromHere.title(ClickContext.PODCAST),
+            Res.string.action_play_podcast_from_here
+        )
     }
 
     @Test
     fun `each playback action maps to one play mode and the rest to none`() {
         assertEquals(PlayMode(QueueOption.REPLACE_NEXT), ItemAction.Play(QueueOption.REPLACE_NEXT).toPlayMode())
-        assertEquals(PlayMode(QueueOption.REPLACE, shuffle = true), ItemAction.PlayShuffled.toPlayMode())
-        assertEquals(PlayMode(QueueOption.PLAY, startFromBeginning = true), ItemAction.PlayFromBeginning.toPlayMode())
-        assertEquals(PlayMode(QueueOption.REPLACE, fromHereInParent = true), ItemAction.PlayFromHere.toPlayMode())
-        assertEquals(PlayMode(QueueOption.REPLACE, endlessMix = true), ItemAction.StartEndlessMix.toPlayMode())
+        assertEquals(
+            ItemAction.PlayShuffled.toPlayMode(),
+            PlayMode(QueueOption.REPLACE, shuffle = true)
+        )
+        assertEquals(
+            ItemAction.PlayFromBeginning.toPlayMode(),
+            PlayMode(QueueOption.PLAY, startFromBeginning = true)
+        )
+        assertEquals(
+            ItemAction.PlayFromHere.toPlayMode(),
+            PlayMode(QueueOption.REPLACE, fromHereInParent = true)
+        )
+        assertEquals(
+            ItemAction.StartEndlessMix.toPlayMode(),
+            PlayMode(QueueOption.REPLACE, endlessMix = true)
+        )
         assertEquals(null, ItemAction.AddToLibrary.toPlayMode())
         assertEquals(null, ItemAction.Customize.toPlayMode())
     }
