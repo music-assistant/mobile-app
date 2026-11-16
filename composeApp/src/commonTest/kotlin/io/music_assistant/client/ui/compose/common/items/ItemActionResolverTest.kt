@@ -169,7 +169,7 @@ class ItemActionResolverTest {
         assertFalse(ItemAction.PlayFromHere in playbackBlock(episode, ClickContext.HOME, ALL))
         assertEquals(
             ItemAction.PlayFromHere.title(ClickContext.PODCAST),
-            Res.string.action_play_podcast_from_here
+            Res.string.action_play_podcast_from_here,
         )
     }
 
@@ -178,19 +178,19 @@ class ItemActionResolverTest {
         assertEquals(PlayMode(QueueOption.REPLACE_NEXT), ItemAction.Play(QueueOption.REPLACE_NEXT).toPlayMode())
         assertEquals(
             ItemAction.PlayShuffled.toPlayMode(),
-            PlayMode(QueueOption.REPLACE, shuffle = true)
+            PlayMode(QueueOption.REPLACE, shuffle = true),
         )
         assertEquals(
             ItemAction.PlayFromBeginning.toPlayMode(),
-            PlayMode(QueueOption.PLAY, startFromBeginning = true)
+            PlayMode(QueueOption.PLAY, startFromBeginning = true),
         )
         assertEquals(
             ItemAction.PlayFromHere.toPlayMode(),
-            PlayMode(QueueOption.REPLACE, fromHereInParent = true)
+            PlayMode(QueueOption.REPLACE, fromHereInParent = true),
         )
         assertEquals(
             ItemAction.StartEndlessMix.toPlayMode(),
-            PlayMode(QueueOption.REPLACE, endlessMix = true)
+            PlayMode(QueueOption.REPLACE, endlessMix = true),
         )
         assertEquals(null, ItemAction.AddToLibrary.toPlayMode())
         assertEquals(null, ItemAction.Customize.toPlayMode())
