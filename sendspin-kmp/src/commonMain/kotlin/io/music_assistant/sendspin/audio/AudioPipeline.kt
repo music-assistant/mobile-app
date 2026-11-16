@@ -93,7 +93,13 @@ internal class AudioPipeline(
     fun apply(action: StreamAction) {
         when (action) {
             is StreamAction.StartFresh -> startFresh(action.format)
-            StreamAction.ResumeKeepBuffer -> wakeups.trySend(Unit)
+            StreamAction.ResumeKeepBuffer -> {
+                logger.i {
+                    "Stream resume: gen=${stream.value.generation} " +
+                        "kept=${buffer.size} chunks / ${buffer.byteCount / BYTES_PER_KB} KB"
+                }
+                wakeups.trySend(Unit)
+            }
             StreamAction.Restart -> {
                 // Same format: the sink and the decoder survive, only the timeline restarts.
                 logDiscontinuity("restart")

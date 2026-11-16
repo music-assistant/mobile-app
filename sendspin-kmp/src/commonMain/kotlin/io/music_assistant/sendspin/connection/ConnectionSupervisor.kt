@@ -90,6 +90,7 @@ internal class ConnectionSupervisor(
                 _state.value = ConnectionState.Connecting(attempt)
                 var activeSinceMicros: Long? = null
                 val reason = runAttempt(endpoint, sessionConfig, companion, handler, silentPairing, goodbyeOnCancel) {
+                    if (activeSinceMicros == null) logger.i { "Attempt $attempt active" }
                     activeSinceMicros = activeSinceMicros ?: clock.nowMicros()
                     seenChecks = connectionChecks.value
                 }
