@@ -347,8 +347,9 @@ already buffered keeps playing, and a stream that resumes in the same format is 
   pairing code, the server rejects each attempt with `pairing_required`. After 5 rejections in a
   row, the player goes to `Failed(Unauthorized)`. To try again, set the config to `null` and then
   set it again.
-- **One stream shape.** The player advertises stereo at 48 kHz only. FLAC and PCM can be 16-bit
-  or 24-bit. Opus is always 16-bit.
+- **Stereo at two rates.** The player advertises stereo at 48 kHz first. FLAC and PCM also get
+  44.1 kHz, so the server can send 44.1 kHz audio without a resample. The server selects the rate.
+  FLAC and PCM can be 16-bit or 24-bit. Opus is always 16-bit and 48 kHz.
 - **No server discovery.** The module does not find servers on the network. The application
   supplies the endpoint.
 - **Kotlin API only.** The public API uses coroutines, `StateFlow`, and sealed types. The module
