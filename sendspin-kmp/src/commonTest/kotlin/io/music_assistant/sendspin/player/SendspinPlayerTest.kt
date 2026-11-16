@@ -538,7 +538,12 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
         val hello = SendspinJson.parseToJsonElement(server.clientHello ?: "").jsonObject
         val formats = hello.getValue("payload").jsonObject.getValue("player@v1_support").jsonObject
             .getValue("supported_formats").jsonArray.map { it.jsonObject }
-        assertEquals(listOf("flac", "pcm"), formats.map { it.getValue("codec").jsonPrimitive.content })
+        assertEquals(
+            listOf("flac48000", "flac44100", "pcm48000"),
+            formats.map { fmt ->
+                fmt.getValue("codec").jsonPrimitive.content + fmt.getValue("sample_rate").jsonPrimitive.content
+            },
+        )
         val pcm = formats.last()
         assertEquals(16, pcm.getValue("bit_depth").jsonPrimitive.content.toInt())
         assertEquals(48_000, pcm.getValue("sample_rate").jsonPrimitive.content.toInt())
@@ -563,7 +568,7 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
         val formats = support.getValue("supported_formats").jsonArray.map {
             it.jsonObject.getValue("codec").jsonPrimitive.content + it.jsonObject.getValue("bit_depth").jsonPrimitive.content
         }
-        assertEquals(listOf("flac24", "flac16", "pcm16"), formats)
+        assertEquals(listOf("flac24", "flac16", "flac24", "flac16", "pcm16"), formats)
         assertEquals(30 * 288_000, support.getValue("buffer_capacity").jsonPrimitive.content.toInt())
     }
 
