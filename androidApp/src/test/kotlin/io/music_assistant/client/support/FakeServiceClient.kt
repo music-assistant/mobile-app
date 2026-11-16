@@ -750,7 +750,7 @@ class FakeServiceClient : ServiceClient {
 
     override suspend fun login(username: String, password: String) {
         if (username == this.username && password == this.password) {
-            authorize(accessToken, true)
+            authorize(accessToken, false)
         } else {
             failAuth("Invalid username or password")
         }
@@ -769,7 +769,7 @@ class FakeServiceClient : ServiceClient {
                         it.connectionData.copy(
                             authProcessState = AuthProcessState.NotStarted,
                             user = User("-1", username, username, "user"),
-                            wasAutoLogin = true,
+                            wasAutoLogin = isAutoLogin,
                             token = token,
                         ),
                     )
