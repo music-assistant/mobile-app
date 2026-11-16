@@ -29,6 +29,7 @@ import io.music_assistant.client.ui.compose.common.AutoLoginSplash
 import io.music_assistant.client.ui.compose.common.ConnectionStatusOverlay
 import io.music_assistant.client.ui.compose.home.MainNavigationRoot
 import io.music_assistant.client.ui.compose.nav.exitApp
+import io.music_assistant.client.ui.compose.settings.ConnectScreen
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.BottomSheetSceneStrategy
@@ -93,7 +94,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 DataConnectionState.Authenticated -> Nav.Main
 
         authManager.willAutoLoginOnLaunch -> Nav.Main
-        else -> Nav.Settings
+        else -> Nav.Connect
     }
 
     val backStack = rememberNavBackStack(
@@ -104,6 +105,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                     polymorphic(NavKey::class) {
                         subclass(Nav.Main::class, Nav.Main.serializer())
                         subclass(Nav.Settings::class, Nav.Settings.serializer())
+                        subclass(Nav.Connect::class, Nav.Connect.serializer())
                     }
                 }
             },
@@ -124,9 +126,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 } else {
                     // Navigate to Settings for all other disconnected states
                     // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
-                    if (backStack.last() !is Nav.Settings) {
+                    if (backStack.last() !is Nav.Connect) {
                         backStack.clear()
-                        backStack.add(Nav.Settings)
+                        backStack.add(Nav.Connect)
                     }
                 }
             }
@@ -186,6 +188,10 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             entryProvider = entryProvider {
+                entry<Nav.Connect> {
+                    ConnectScreen()
+                }
+
                 entry<Nav.Main> {
                     MainNavigationRoot(
                         goToSettings = { backStack.add(Nav.Settings) },
@@ -230,4 +236,7 @@ private sealed interface Nav : NavKey {
 
     @Serializable
     data object Settings : Nav
+
+    @Serializable
+    data object Connect : Nav
 }
