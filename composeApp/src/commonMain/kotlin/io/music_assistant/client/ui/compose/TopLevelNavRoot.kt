@@ -189,7 +189,12 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             entryProvider = entryProvider {
                 entry<Nav.Connect> {
-                    ConnectScreen()
+                    ConnectScreen(
+                        onConnect = {
+                            backStack.clear()
+                            backStack.add(Nav.Main)
+                        },
+                    )
                 }
 
                 entry<Nav.Main> {
@@ -201,7 +206,6 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 entry<Nav.Settings> {
                     SettingsScreen(
                         goHome = {
-                            ->
                             backStack.clear()
                             backStack.add(Nav.Main)
                         },
