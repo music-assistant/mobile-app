@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -47,7 +46,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -222,65 +220,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .windowInsetsPadding(WindowInsets.navigationBars),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                var ipAddress by remember { mutableStateOf("") }
-                var port by remember { mutableStateOf(Defaults.PORT.toString()) }
-                var isTls by remember { mutableStateOf(false) }
-                var basePath by remember { mutableStateOf("") }
-
-                LaunchedEffect(savedConnectionInfo) {
-                    savedConnectionInfo?.let {
-                        ipAddress = it.host
-                        port = it.port.toString()
-                        isTls = it.isTls
-                        basePath = it.basePath
-                    }
-                }
-
-                // Track if we've already attempted auto-reconnect
-                // Sticky for the screen's lifetime: once the iOS permission is determined,
-                // retries no longer wait on the prompt, so suppressing repeats is intended.
-                var autoReconnectAttempted by remember { mutableStateOf(false) }
-
-                // Auto-reconnect on error ONLY if user hasn't changed the connection info
-                // This prevents auto-reconnect to old server when user is trying to connect to new server
-                // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
-                val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
-                LaunchedEffect(sessionState) {
-                    val errorState = sessionState as? SessionState.Disconnected.Error
-                    val connInfo = savedConnectionInfo
-                    if (errorState != null &&
-                        !autoReconnectAttempted &&
-                        preferredMethod != "webrtc"
-                    ) {
-                        if (connInfo != null) {
-                            // Only auto-reconnect if text fields match saved connection info
-                            // (i.e., user hasn't changed anything)
-                            val userChangedConnectionInfo =
-                                ipAddress != connInfo.host ||
-                                        port != connInfo.port.toString() ||
-                                        isTls != connInfo.isTls ||
-                                        basePath != connInfo.basePath
-
-                            if (!userChangedConnectionInfo) {
-                                // User is trying to reconnect to same server - auto-retry
-                                autoReconnectAttempted = true
-                                viewModel.attemptConnection(
-                                    connInfo.host,
-                                    connInfo.port.toString(),
-                                    connInfo.isTls,
-                                    connInfo.basePath,
-                                )
-                            }
-                            // If user changed connection info, don't auto-retry - let them manually retry
-                        } else if (errorState.reason?.let(viewModel::isLikelyLocalNetworkBlocked) == true) {
-                            // Fresh install (no saved connection): retry once — the first
-                            // attempt is consumed by the platform permission prompt.
-                            autoReconnectAttempted = true
-                            viewModel.attemptConnection(ipAddress, port, isTls, basePath)
-                        }
-                    }
-                }
-
                 if (!isAuthenticated) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -292,118 +231,38 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 
                 AboutSettingsSection(viewModel.appVersion)
 
-                val connectAttemptInFlight by viewModel.connectAttemptInFlight
-                    .collectAsStateWithLifecycle()
+                if (sessionState is SessionState.Connected) {
+                    val connectedState = sessionState as SessionState.Connected
 
-                when (sessionState) {
-                    is SessionState.Disconnected -> {
-                        LocalNetworkOnboardingCard(
-                            resources = viewModel.localNetworkOnboardingResources,
-                            visible = viewModel.isLocalNetworkOnboardingVisible(
-                                connectionHistory,
-                                localNetworkOnboardingShown,
-                            ),
-                            onGotIt = viewModel::dismissLocalNetworkOnboarding,
-                        )
-                        ConnectionMethodTabs(
-                            viewModel = viewModel,
-                            ipAddress = ipAddress,
-                            port = port,
-                            isTls = isTls,
-                            onIpAddressChange = { ipAddress = it },
-                            onPortChange = { port = it },
-                            onTlsChange = { isTls = it },
-                            basePath = basePath,
-                            onBasePathChange = { basePath = it },
-                            onServerSelected = { connection ->
-                                ipAddress = connection.host
-                                port = connection.port.toString()
-                                isTls = connection.isTls
-                                basePath = connection.basePath
-                                viewModel.attemptConnection(
-                                    connection.host,
-                                    connection.port.toString(),
-                                    connection.isTls,
-                                    connection.basePath,
-                                )
-                            },
-                            onDirectConnect = {
-                                viewModel.attemptConnection(
-                                    ipAddress.ifBlank { Defaults.URI },
-                                    port,
-                                    isTls,
-                                    basePath,
-                                )
-                            },
-                            directConnectEnabled = ipAddress.ifBlank { Defaults.URI }.isValidHost() &&
-                                    port.isIpPort() &&
-                                    basePath.isValidBasePath() &&
-                                    !connectAttemptInFlight,
-                            sessionState = sessionState,
-                            connectionHistory = connectionHistory,
-                            localNetworkBlocked = localNetworkBlocked,
-                            probeGranted = probeGranted,
-                        )
-                    }
+                    // Server Info Section (always shown when connected)
+                    ServerInfoSection(
+                        connectionInfo = savedConnectionInfo,
+                        serverInfo = connectedState.serverInfo,
+                        isWebRTC = connectedState is SessionState.Connected.WebRTC,
+                        onDisconnect = { viewModel.disconnect() },
+                    )
 
-                    SessionState.Connecting -> {
-                        ConnectingSection(
-                            ipAddress = ipAddress.ifBlank { Defaults.URI },
-                            port = port,
-                            preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() },
-                        )
-                    }
+                    LoginSection(connectedState.user)
 
-                    is SessionState.Reconnecting -> {
-                        ConnectingSection(
-                            ipAddress = ipAddress.ifBlank { Defaults.URI },
-                            port = port,
-                            preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() },
-                        )
-                    }
-
-                    is SessionState.Connected -> {
-                        val connectedState = sessionState as SessionState.Connected
-
-                        // Server Info Section (always shown when connected)
-                        ServerInfoSection(
-                            connectionInfo = savedConnectionInfo,
-                            serverInfo = connectedState.serverInfo,
-                            isWebRTC = connectedState is SessionState.Connected.WebRTC,
-                            onDisconnect = { viewModel.disconnect() },
+                    if (dataConnection is DataConnectionState.Authenticated) {
+                        SendspinSettingsSection(
+                            enabled = sendspinEnabled,
+                            settings = sendspinDraft,
+                            isSavable = isSendspinSavable,
+                            isResettable = isSendspinResettable,
+                            isConfirmationPending = isSendspinConfirmationPending,
+                            onEnabledChange = sendspinViewModel::setEnabled,
+                            onSettingsChange = sendspinViewModel::update,
+                            onSave = sendspinViewModel::save,
+                            onReset = sendspinViewModel::reset,
+                            onConfirm = sendspinViewModel::confirm,
+                            onDismiss = sendspinViewModel::dismiss,
                         )
 
-                        LoginSection(connectedState.user)
-
-                        when (dataConnection) {
-                            is DataConnectionState.Authenticated -> {
-                                // State 4: Connected and authenticated
-
-                                // Local Player Section
-                                SendspinSettingsSection(
-                                    enabled = sendspinEnabled,
-                                    settings = sendspinDraft,
-                                    isSavable = isSendspinSavable,
-                                    isResettable = isSendspinResettable,
-                                    isConfirmationPending = isSendspinConfirmationPending,
-                                    onEnabledChange = sendspinViewModel::setEnabled,
-                                    onSettingsChange = sendspinViewModel::update,
-                                    onSave = sendspinViewModel::save,
-                                    onReset = sendspinViewModel::reset,
-                                    onConfirm = sendspinViewModel::confirm,
-                                    onDismiss = sendspinViewModel::dismiss,
-                                )
-
-                                // Car options route to the local player — only meaningful when
-                                // it's reachable (authenticated) and enabled.
-                                if (sendspinEnabled) {
-                                    CarSettingsSection()
-                                }
-                            }
-
-                            else -> Unit
+                        // Car options route to the local player — only meaningful when
+                        // it's reachable (authenticated) and enabled.
+                        if (sendspinEnabled) {
+                            CarSettingsSection()
                         }
                     }
                 }
@@ -441,7 +300,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 }
 
 @Composable
-private fun LocalNetworkOnboardingCard(
+fun LocalNetworkOnboardingCard(
     resources: LocalNetworkOnboardingResources?,
     visible: Boolean,
     onGotIt: () -> Unit,
@@ -481,9 +340,8 @@ private fun ExperimentalPill() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ConnectionMethodTabs(
+fun ConnectionMethodTabs(
     viewModel: SettingsViewModel,
     ipAddress: String,
     port: String,
@@ -990,7 +848,7 @@ private fun QrScanDialog(
 }
 
 @Composable
-private fun ConnectingSection(
+fun ConnectingSection(
     ipAddress: String,
     port: String,
     preferredMethod: String?,
@@ -1024,7 +882,7 @@ private fun ConnectingSection(
 }
 
 @Composable
-private fun ServerInfoSection(
+fun ServerInfoSection(
     connectionInfo: ConnectionInfo?,
     serverInfo: ServerInfo?,
     isWebRTC: Boolean = false,
@@ -1100,7 +958,7 @@ private fun ServerInfoSection(
 }
 
 @Composable
-private fun LoginSection(user: User?) {
+fun LoginSection(user: User?) {
     SectionCard {
         SectionTitle(stringResource(Res.string.auth_title))
 
