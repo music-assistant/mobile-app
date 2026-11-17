@@ -197,7 +197,6 @@ fun SettingsScreen(goHome: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
                     .clearFocusOnScroll()
                     .verticalScroll(rememberScrollState())
                     // Settings sits outside AdaptiveNavigationBarLayout, so nothing else reserves
