@@ -242,7 +242,7 @@ fun sharedModule(
         factory { BackgroundRestrictionViewModel(get(), get(), get()) }
         factory { SchemaVersionWarningViewModel(get()) }
         factory { ActionsViewModel(get(), get(), get(), get()) }
-        factory { SettingsViewModel(get(), get(), get(), get(), get(), get()) }
+        factory { SettingsViewModel(get(), get(), get(), get(), get(), get(), get()) }
         factory {
             val mainDataSource = get<MainDataSource>()
             SendspinSettingsViewModel(

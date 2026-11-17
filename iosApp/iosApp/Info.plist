@@ -69,6 +69,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_ma-preflight._tcp</string>
+		<string>_mass._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Music Assistant can optionally use the camera to scan a QR code when you set up a remote connection. You can also enter the connection details manually instead.</string>

@@ -7,8 +7,10 @@ plaintext session.
 
 The module is a pure Kotlin Multiplatform leaf. It depends on no other Gradle project. It
 contains no Compose code and no Koin code. Each platform difference is an interface that the
-application implements, with one exception. The X25519 backend is an `expect`/`actual`
-declaration, because the Android platform JCA has X25519 only from API 33.
+application implements, with one exception. The X25519 and ChaCha20-Poly1305 backends are one
+`expect`/`actual` declaration (`platformCrypto`). The Android platform JCA has X25519 only from
+API 33. It has the `ChaCha20-Poly1305` cipher name only from API 29. So Android gets both
+primitives from the lightweight BouncyCastle API, on every API level.
 
 This file documents the module from the outside, as a client of it sees it. Each package
 documents its own rules in KDoc next to the code. The cryptography, the specification mapping,

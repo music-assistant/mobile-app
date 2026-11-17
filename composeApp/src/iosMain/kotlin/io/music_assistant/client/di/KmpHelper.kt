@@ -43,6 +43,8 @@ import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationFolders
+import io.music_assistant.client.discovery.IosMdnsBrowser
+import io.music_assistant.client.discovery.NativeServiceBrowser
 import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.imageloader.ArtworkToken
 import io.music_assistant.client.input.VolumeButtonService
@@ -117,6 +119,13 @@ object KmpHelper : KoinComponent {
 
     fun setLocalNetworkPermissionProber(prober: LocalNetworkPermissionProber) {
         localNetworkPermissionGate.setProber(prober)
+    }
+
+    private val mdnsBrowser: IosMdnsBrowser by inject()
+
+    /** Server discovery on the connect screen; Swift gives a new `NWBrowser` session for each browse. */
+    fun setServiceBrowserFactory(factory: () -> NativeServiceBrowser) {
+        mdnsBrowser.setFactory(factory)
     }
 
     // Provide a scope for Swift to launch coroutines if needed
