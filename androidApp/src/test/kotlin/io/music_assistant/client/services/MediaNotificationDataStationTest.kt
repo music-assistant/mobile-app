@@ -5,6 +5,7 @@ import android.support.v4.media.session.PlaybackStateCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerMedia
 import io.music_assistant.client.data.model.client.QueueTrack
@@ -15,7 +16,9 @@ import io.music_assistant.client.ui.compose.common.DataState
 import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @RunWith(AndroidJUnit4::class)
 class MediaNotificationDataStationTest {
@@ -390,6 +393,24 @@ class MediaNotificationDataStationTest {
             playerName = null,
             duration = null,
             stationName = station,
+        )
+
+    @Test
+    fun `a stopped player with no current item has nothing to present`() {
+        val base = PlayerDataFixtures.playerData()
+        val stopped = base.copy(player = base.player.copy(isPlaying = false))
+
+        assertFalse(snapshot(stopped).hasNowPlaying)
+        // Playing without metadata still presents a card: the host shows the fallback labels.
+        assertTrue(snapshot(base).hasNowPlaying)
+    }
+
+    private fun snapshot(player: PlayerData) =
+        MediaNotificationData.from(
+            player,
+            multiplePlayers = false,
+            canEditLibrary = false,
+            effectiveElapsedSec = null,
         )
 
     private fun playerData(station: PlayableItem, media: PlayerMedia) =
