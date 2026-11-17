@@ -146,13 +146,10 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                         }
                     }
 
-                    // Transport is up but auth was rejected (disabled user, expired/invalid token).
-                    // Necessary because initial screen is biased to Main on auto-login launches;
-                    // without this, the splash would dismiss and reveal Main behind a failed auth.
-                    connectedState.authProcessState is AuthProcessState.Failed -> {
-                        if (backStack.last() !is Nav.Settings) {
+                    connState !is DataConnectionState.Authenticated -> {
+                        if (backStack.last() !is Nav.Connect) {
                             backStack.clear()
-                            backStack.add(Nav.Settings)
+                            backStack.add(Nav.Connect)
                         }
                     }
                 }
