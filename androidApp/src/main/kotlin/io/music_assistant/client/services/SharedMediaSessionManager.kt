@@ -653,6 +653,10 @@ class SharedMediaSessionManager(
         multiPlayer: Boolean = false,
     ) {
         val session = mediaSession ?: return
+        if (!data.hasNowPlaying) {
+            writeIdleToSession(session)
+            return
+        }
         val state = if (data.isPlaying) {
             PlaybackStateCompat.STATE_PLAYING
         } else {
@@ -717,10 +721,15 @@ class SharedMediaSessionManager(
     @Synchronized
     private fun writeBlockToSession() {
         val session = mediaSession ?: return
-        session.setPlaybackState(idlePlaybackState())
-        session.setMetadata(MediaMetadataCompat.Builder().build())
+        writeIdleToSession(session)
         session.setQueue(emptyList())
         session.isActive = false
+    }
+
+    // Stays active: voice "play X" and the car browse tree still route through the session.
+    private fun writeIdleToSession(session: MediaSessionCompat) {
+        session.setPlaybackState(idlePlaybackState())
+        session.setMetadata(MediaMetadataCompat.Builder().build())
     }
 
     /** Reactivate the session and restore the last known playback data. */

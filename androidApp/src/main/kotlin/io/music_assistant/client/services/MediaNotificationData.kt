@@ -52,6 +52,10 @@ data class MediaNotificationData(
     // A radio stream cannot seek, not even in a song whose length it reports.
     val isSeekable: Boolean = true,
 ) {
+    // Something to present: playback, a title, or a queue slot. Without any of them the
+    // session is idle, and a host must not draw an "Unknown Track" card.
+    val hasNowPlaying: Boolean get() = isPlaying || name != null || longItemId != null
+
     companion object {
         /**
          * Builds the snapshot pushed to MediaSession. [effectiveElapsedSec]
