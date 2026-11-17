@@ -78,6 +78,7 @@ import io.music_assistant.client.ui.compose.common.UnsupportedInstallCard
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
+import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
@@ -127,6 +128,8 @@ import musicassistantclient.composeapp.generated.resources.settings_history_webr
 import musicassistantclient.composeapp.generated.resources.settings_misc
 import musicassistantclient.composeapp.generated.resources.settings_no_saved_connections
 import musicassistantclient.composeapp.generated.resources.settings_port
+import musicassistantclient.composeapp.generated.resources.settings_port_home_assistant_hint
+import musicassistantclient.composeapp.generated.resources.settings_port_invalid
 import musicassistantclient.composeapp.generated.resources.settings_remote_id
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_hint
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_invalid
@@ -136,9 +139,10 @@ import musicassistantclient.composeapp.generated.resources.settings_server
 import musicassistantclient.composeapp.generated.resources.settings_server_base_path
 import musicassistantclient.composeapp.generated.resources.settings_server_base_path_hint
 import musicassistantclient.composeapp.generated.resources.settings_server_host
+import musicassistantclient.composeapp.generated.resources.settings_server_host_invalid
 import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
-import musicassistantclient.composeapp.generated.resources.settings_use_tls
+import musicassistantclient.composeapp.generated.resources.settings_ssl_tls
 import musicassistantclient.composeapp.generated.resources.settings_version_info
 import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player
 import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player_hint
@@ -304,8 +308,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         AboutSection()
                         LocalNetworkOnboardingCard(
                             resources = viewModel.localNetworkOnboardingResources,
-                            visible = connectionHistory.isEmpty() &&
-                                !localNetworkOnboardingShown,
+                            visible = viewModel.isLocalNetworkOnboardingVisible(
+                                connectionHistory,
+                                localNetworkOnboardingShown,
+                            ),
                             onGotIt = viewModel::dismissLocalNetworkOnboarding,
                         )
                         ConnectionMethodTabs(
@@ -318,6 +324,18 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onTlsChange = { isTls = it },
                             basePath = basePath,
                             onBasePathChange = { basePath = it },
+                            onServerSelected = { connection ->
+                                ipAddress = connection.host
+                                port = connection.port.toString()
+                                isTls = connection.isTls
+                                basePath = connection.basePath
+                                viewModel.attemptConnection(
+                                    connection.host,
+                                    connection.port.toString(),
+                                    connection.isTls,
+                                    connection.basePath,
+                                )
+                            },
                             onDirectConnect = {
                                 viewModel.attemptConnection(
                                     ipAddress.ifBlank { Defaults.URI },
@@ -651,6 +669,7 @@ private fun ConnectionMethodTabs(
     onTlsChange: (Boolean) -> Unit,
     basePath: String,
     onBasePathChange: (String) -> Unit,
+    onServerSelected: (ConnectionInfo) -> Unit,
     onDirectConnect: () -> Unit,
     directConnectEnabled: Boolean,
     sessionState: SessionState,
@@ -713,6 +732,13 @@ private fun ConnectionMethodTabs(
         when (selectedTab) {
             0 -> {
                 // Direct connection tab
+                val discoveredServers by viewModel.discoveredServers.collectAsStateWithLifecycle()
+                val connectAttemptInFlight by viewModel.connectAttemptInFlight.collectAsStateWithLifecycle()
+                DiscoveredServersList(
+                    servers = discoveredServers,
+                    enabled = !connectAttemptInFlight,
+                    onSelect = { onServerSelected(it.connection) },
+                )
                 DirectConnectionContent(
                     ipAddress = ipAddress,
                     port = port,
@@ -806,6 +832,8 @@ private fun DirectConnectionContent(
     onClientCertificateAliasChange: (String?) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
+    val isHostInvalid = !ipAddress.ifBlank { Defaults.URI }.isValidHost()
+    val isPortInvalid = !port.isIpPort()
 
     // Host input
     TextField(
@@ -816,6 +844,12 @@ private fun DirectConnectionContent(
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
         placeholder = { Text(Defaults.URI) },
+        supportingText = if (isHostInvalid) {
+            { Text(stringResource(Res.string.settings_server_host_invalid)) }
+        } else {
+            null
+        },
+        isError = isHostInvalid,
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -849,6 +883,24 @@ private fun DirectConnectionContent(
         ),
     )
 
+    // TLS toggle. A port at the default of the other mode follows the toggle; a custom port stays.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = isTls,
+            onCheckedChange = { checked ->
+                onTlsChange(checked)
+                port.takeIf { it.isBlank() || it == Defaults.port(!checked).toString() }
+                    ?.let { onPortChange(Defaults.port(checked).toString()) }
+            },
+        )
+        Text(stringResource(Res.string.settings_ssl_tls))
+    }
+
     // Port input
     TextField(
         modifier = Modifier
@@ -857,7 +909,19 @@ private fun DirectConnectionContent(
         value = port,
         onValueChange = onPortChange,
         label = { Text(stringResource(Res.string.settings_port)) },
-        placeholder = { Text("8095") },
+        placeholder = { Text(Defaults.port(isTls).toString()) },
+        supportingText = when {
+            isPortInvalid -> {
+                { Text(stringResource(Res.string.settings_port_invalid)) }
+            }
+
+            port.trim() == Defaults.HOME_ASSISTANT_PORT.toString() -> {
+                { Text(stringResource(Res.string.settings_port_home_assistant_hint)) }
+            }
+
+            else -> null
+        },
+        isError = isPortInvalid,
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Number,
@@ -869,20 +933,6 @@ private fun DirectConnectionContent(
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
         ),
     )
-
-    // TLS toggle
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = isTls,
-            onCheckedChange = onTlsChange,
-        )
-        Text(stringResource(Res.string.settings_use_tls))
-    }
 
     if (isTls) {
         ClientCertificateSetting(

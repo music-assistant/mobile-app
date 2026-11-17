@@ -25,7 +25,11 @@ design reference for the state-machine split, but no code was reused: it
 implements neither PSK tokens nor the KK pattern.
 
 Primitives come from cryptography-kotlin (pinned, pre-1.0), which wraps
-OS-native crypto: the JDK/JCA provider on Android and CryptoKit on iOS. Note
+OS-native crypto: the JDK/JCA provider on Android and CryptoKit on iOS. On
+Android, X25519 and ChaCha20-Poly1305 come from the lightweight BouncyCastle
+API instead (`platformCrypto`), because the platform JCA lacks them on part of
+the supported range (X25519 below API 33, the `ChaCha20-Poly1305` name below
+API 29). Note
 that on iOS the `cryptography-provider-cryptokit` artifact is required — the
 `cryptography-provider-apple` (CommonCrypto) artifact does not register XDH or
 ChaCha20-Poly1305. The `NoiseCrypto` interface exists so the backend is

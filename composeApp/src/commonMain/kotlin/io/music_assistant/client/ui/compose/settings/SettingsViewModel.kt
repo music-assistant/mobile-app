@@ -4,6 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.discovery.DiscoveredServer
+import io.music_assistant.client.discovery.MdnsBrowser
+import io.music_assistant.client.discovery.musicAssistantServers
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.logging.LogSharer
 import io.music_assistant.client.settings.ConnectionHistoryEntry
@@ -14,9 +17,16 @@ import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.StringResource
@@ -25,6 +35,7 @@ import org.jetbrains.compose.resources.StringResource
 // networks are the contenders to actually hit this
 private const val CONNECT_PROBE_TIMEOUT_MS = 15_000L
 private const val LOG_MIME_TYPE = "text/plain"
+private const val DISCOVERY_STOP_TIMEOUT_MS = 5_000L
 
 class SettingsViewModel(
     private val apiClient: ServiceClient,
@@ -32,6 +43,7 @@ class SettingsViewModel(
     private val logSharer: LogSharer,
     private val fileSharer: FileSharer,
     private val localNetworkPermissionGate: LocalNetworkPermissionGate,
+    mdnsBrowser: MdnsBrowser,
     val appVersion: AppVersion,
 ) : ViewModel() {
     val savedConnectionInfo = settings.connectionInfo
@@ -132,6 +144,22 @@ class SettingsViewModel(
             }
         }
     }
+
+    /**
+     * Servers on the local network, while the screen collects. On iOS a browse raises the Local
+     * Network prompt, so discovery waits until the onboarding card that announces it is gone.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val discoveredServers: StateFlow<List<DiscoveredServer>> =
+        combine(settings.localNetworkOnboardingShown, settings.connectionHistory) { shown, history ->
+            !isLocalNetworkOnboardingVisible(history, shown)
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { allowed -> if (allowed) mdnsBrowser.musicAssistantServers() else flowOf(emptyList()) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(DISCOVERY_STOP_TIMEOUT_MS), emptyList())
+
+    fun isLocalNetworkOnboardingVisible(history: List<ConnectionHistoryEntry>, shown: Boolean): Boolean =
+        localNetworkOnboardingResources != null && history.isEmpty() && !shown
 
     fun disconnect() {
         attemptJob?.cancel()

@@ -41,6 +41,15 @@ The Settings screen adapts its UI based on connection and authentication state:
 
 ### ServerConnectionSection
 - Text fields for host, port, and TLS checkbox
+- Port hint: if the port is 8123, the field tells the user that 8123 is the Home Assistant port. Music Assistant has its own port, 8095 by default.
+- Server discovery list (`DiscoveredServersList`), above the host field on the Direct tab:
+  - A Music Assistant server advertises `_mass._tcp`. The TXT record holds the server info of `get_server_info`, on server 2.10 and 2.11.
+  - `musicAssistantServers` (`discovery/ServerDiscovery.kt`) makes the address from the `base_url` field, with the scheme and the base path. If `base_url` is not there, the resolved IPv4 address and port are the fallback. iOS reads the TXT record only.
+  - A row shows the server name and the address. A row for a Home Assistant add-on also shows "Home Assistant add-on".
+  - A tap fills the host, port, TLS and base path fields, and connects.
+  - The list shows nothing while no server is found. A network that blocks mDNS gives no rows and no error.
+  - `MdnsBrowser` browses only while the screen collects `SettingsViewModel.discoveredServers`. It stops 5 s after the screen stops.
+  - On iOS, a browse shows the Local Network prompt. So discovery starts after the user closes the local network onboarding card, or when the app has a connection history.
 - Client certificate row (mTLS), shown when TLS is on. `ClientCertificateSetting` is an expect composable:
   - Android: **Choose** opens the system KeyChain chooser. The chooser lists the certificates that the user installed in Android settings.
   - iOS: **Choose** opens the document picker for a `.p12` file. A dialog asks for the file password. The app imports the identity into the Keychain.

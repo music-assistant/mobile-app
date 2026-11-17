@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
  * backend the other targets use.
  */
 class BouncyCastleX25519BackendTest {
-    private val bc = defaultX25519Backend(CryptographyProvider.Default)
+    private val bc = platformCrypto(CryptographyProvider.Default).x25519
     private val xdh = XdhX25519Backend(CryptographyProvider.Default)
 
     @Test

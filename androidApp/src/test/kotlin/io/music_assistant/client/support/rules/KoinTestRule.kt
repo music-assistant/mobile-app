@@ -8,12 +8,15 @@ import io.music_assistant.client.di.androidModule
 import io.music_assistant.client.di.appModule
 import io.music_assistant.client.di.sharedModule
 import io.music_assistant.client.di.webrtcModule
+import io.music_assistant.client.discovery.MdnsBrowser
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.client.support.FakeMdnsBrowser
 import io.music_assistant.client.support.FakeServiceClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.android.ext.koin.androidContext
+import org.koin.dsl.bind
 import org.koin.dsl.module
 import org.koin.test.KoinTestRule
 
@@ -34,10 +37,11 @@ fun createKoinTestRule(
 
 /**
  * Play requests run on the main looper, which the Compose test rule idles, so a test can read
- * the fake server's queue right after a tap.
+ * the fake server's queue right after a tap. Server discovery reads a fake, not the system responder.
  */
 private val testOverrides = module {
     single { PlayDispatcher(get(), CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)) }
+    single { FakeMdnsBrowser() } bind MdnsBrowser::class
 }
 
 private fun createFakeServiceClient(

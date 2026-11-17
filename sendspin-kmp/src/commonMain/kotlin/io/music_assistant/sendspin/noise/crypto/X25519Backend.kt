@@ -4,10 +4,8 @@ import dev.whyoleg.cryptography.CryptographyProvider
 import dev.whyoleg.cryptography.algorithms.XDH
 
 /**
- * The X25519 half of [NoiseCrypto], split out because it is the one primitive
- * whose availability differs per platform: the Android platform JCA registers
- * X25519 only from API 33, while the rest of the suite (ChaCha20-Poly1305,
- * SHA-256, HMAC) is available across the whole supported range.
+ * The X25519 half of [NoiseCrypto], one of the [PlatformCrypto] backends: the
+ * Android platform JCA registers X25519 only from API 33.
  *
  * Keys cross this boundary as raw 32-byte arrays in RFC 7748 little-endian
  * form, which is what every backend below encodes to, so an identity written
@@ -23,13 +21,6 @@ internal interface X25519Backend {
     /** Diffie-Hellman: the raw 32-byte shared secret for a private/public pair. */
     suspend fun sharedSecret(privateKey: ByteArray, publicKey: ByteArray): ByteArray
 }
-
-/**
- * The backend for the current platform. This is the only `expect` declaration in the
- * module: a pure-common `sendspin-core` split would have to publish [X25519Backend]
- * behind an opt-in marker. A new platform difference goes through a `SendspinDeps` port.
- */
-internal expect fun defaultX25519Backend(provider: CryptographyProvider): X25519Backend
 
 /**
  * [X25519Backend] over cryptography-kotlin's [XDH] algorithm, and through it
