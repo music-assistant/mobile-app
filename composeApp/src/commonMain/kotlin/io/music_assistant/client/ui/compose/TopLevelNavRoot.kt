@@ -28,6 +28,7 @@ import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.ui.compose.common.AutoLoginSplash
 import io.music_assistant.client.ui.compose.common.ConnectionStatusOverlay
 import io.music_assistant.client.ui.compose.home.MainNavigationRoot
+import io.music_assistant.client.ui.compose.nav.exitApp
 import io.music_assistant.client.ui.compose.settings.ConnectScreen
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
 import io.music_assistant.client.utils.AuthProcessState
@@ -189,6 +190,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                         onConnect = {
                             backStack.clear()
                             backStack.add(Nav.Main)
+                        },
+                        onExitApp = {
+                            exitApp()
                         },
                     )
                 }

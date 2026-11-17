@@ -3,9 +3,15 @@ package io.music_assistant.client.ui.compose.settings
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,12 +35,13 @@ import io.music_assistant.client.utils.isValidHost
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.mass
+import musicassistantclient.composeapp.generated.resources.settings_exit_app
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun ConnectScreen(onConnect: () -> Unit) {
+fun ConnectScreen(onConnect: () -> Unit, onExitApp: () -> Unit) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val savedConnectionInfo by viewModel.savedConnectionInfo.collectAsStateWithLifecycle()
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
@@ -112,95 +119,107 @@ fun ConnectScreen(onConnect: () -> Unit) {
         }
     }
 
-    Column(Modifier.verticalScroll(rememberScrollState())) {
+    Scaffold { contentPadding ->
         Column(
-            Modifier.align(Alignment.CenterHorizontally),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(contentPadding).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Image(painter = painterResource(Res.drawable.mass), contentDescription = null)
-            Text(
-                stringResource(Res.string.app_name),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.testTag(ScreenSemantics.TITLE_TAG),
-            )
-        }
-
-        when (sessionState) {
-            is SessionState.Disconnected -> {
-                LocalNetworkOnboardingCard(
-                    resources = viewModel.localNetworkOnboardingResources,
-                    visible = viewModel.isLocalNetworkOnboardingVisible(
-                        connectionHistory,
-                        localNetworkOnboardingShown,
-                    ),
-                    onGotIt = viewModel::dismissLocalNetworkOnboarding,
-                )
-                ConnectionMethodTabs(
-                    viewModel = viewModel,
-                    ipAddress = ipAddress,
-                    port = port,
-                    isTls = isTls,
-                    onIpAddressChange = { ipAddress = it },
-                    onPortChange = { port = it },
-                    onTlsChange = { isTls = it },
-                    basePath = basePath,
-                    onBasePathChange = { basePath = it },
-                    onServerSelected = { connection ->
-                        ipAddress = connection.host
-                        port = connection.port.toString()
-                        isTls = connection.isTls
-                        basePath = connection.basePath
-                        viewModel.attemptConnection(
-                            connection.host,
-                            connection.port.toString(),
-                            connection.isTls,
-                            connection.basePath,
-                        )
-                    },
-                    onDirectConnect = {
-                        viewModel.attemptConnection(
-                            ipAddress.ifBlank { Defaults.URI },
-                            port,
-                            isTls,
-                            basePath,
-                        )
-                    },
-                    directConnectEnabled = ipAddress.ifBlank { Defaults.URI }.isValidHost() &&
-                            port.isIpPort() &&
-                            basePath.isValidBasePath() &&
-                            !connectAttemptInFlight,
-                    sessionState = sessionState,
-                    connectionHistory = connectionHistory,
-                    localNetworkBlocked = localNetworkBlocked,
-                    probeGranted = probeGranted,
+            IconButton(modifier = Modifier.align(Alignment.Start), onClick = onExitApp) {
+                Icon(
+                    Icons.Default.Close,
+                    stringResource(Res.string.settings_exit_app),
                 )
             }
 
-            SessionState.Connecting -> {
-                ConnectingSection(
-                    ipAddress = ipAddress.ifBlank { Defaults.URI },
-                    port = port,
-                    preferredMethod = preferredMethod,
-                    onCancel = { viewModel.disconnect() },
+            Column(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Image(painter = painterResource(Res.drawable.mass), contentDescription = null)
+                Text(
+                    stringResource(Res.string.app_name),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.testTag(ScreenSemantics.TITLE_TAG),
                 )
             }
 
-            is SessionState.Reconnecting -> {
-                ConnectingSection(
-                    ipAddress = ipAddress.ifBlank { Defaults.URI },
-                    port = port,
-                    preferredMethod = preferredMethod,
-                    onCancel = { viewModel.disconnect() },
-                )
-            }
+            when (sessionState) {
+                is SessionState.Disconnected -> {
+                    LocalNetworkOnboardingCard(
+                        resources = viewModel.localNetworkOnboardingResources,
+                        visible = viewModel.isLocalNetworkOnboardingVisible(
+                            connectionHistory,
+                            localNetworkOnboardingShown,
+                        ),
+                        onGotIt = viewModel::dismissLocalNetworkOnboarding,
+                    )
+                    ConnectionMethodTabs(
+                        viewModel = viewModel,
+                        ipAddress = ipAddress,
+                        port = port,
+                        isTls = isTls,
+                        onIpAddressChange = { ipAddress = it },
+                        onPortChange = { port = it },
+                        onTlsChange = { isTls = it },
+                        basePath = basePath,
+                        onBasePathChange = { basePath = it },
+                        onServerSelected = { connection ->
+                            ipAddress = connection.host
+                            port = connection.port.toString()
+                            isTls = connection.isTls
+                            basePath = connection.basePath
+                            viewModel.attemptConnection(
+                                connection.host,
+                                connection.port.toString(),
+                                connection.isTls,
+                                connection.basePath,
+                            )
+                        },
+                        onDirectConnect = {
+                            viewModel.attemptConnection(
+                                ipAddress.ifBlank { Defaults.URI },
+                                port,
+                                isTls,
+                                basePath,
+                            )
+                        },
+                        directConnectEnabled = ipAddress.ifBlank { Defaults.URI }.isValidHost() &&
+                                port.isIpPort() &&
+                                basePath.isValidBasePath() &&
+                                !connectAttemptInFlight,
+                        sessionState = sessionState,
+                        connectionHistory = connectionHistory,
+                        localNetworkBlocked = localNetworkBlocked,
+                        probeGranted = probeGranted,
+                    )
+                }
 
-            is SessionState.Connected -> {
-                ConnectionSettingsSection(
-                    sessionState = sessionState,
-                    connectionInfo = savedConnectionInfo,
-                    onDisconnect = { viewModel.disconnect() },
-                )
+                SessionState.Connecting -> {
+                    ConnectingSection(
+                        ipAddress = ipAddress.ifBlank { Defaults.URI },
+                        port = port,
+                        preferredMethod = preferredMethod,
+                        onCancel = { viewModel.disconnect() },
+                    )
+                }
+
+                is SessionState.Reconnecting -> {
+                    ConnectingSection(
+                        ipAddress = ipAddress.ifBlank { Defaults.URI },
+                        port = port,
+                        preferredMethod = preferredMethod,
+                        onCancel = { viewModel.disconnect() },
+                    )
+                }
+
+                is SessionState.Connected -> {
+                    ConnectionSettingsSection(
+                        sessionState = sessionState,
+                        connectionInfo = savedConnectionInfo,
+                        onDisconnect = { viewModel.disconnect() },
+                    )
+                }
             }
         }
     }
