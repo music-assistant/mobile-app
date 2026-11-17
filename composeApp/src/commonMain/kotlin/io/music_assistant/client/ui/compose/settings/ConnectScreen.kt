@@ -15,9 +15,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.Defaults
+import io.music_assistant.client.ui.compose.ScreenSemantics
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
@@ -116,7 +118,11 @@ fun ConnectScreen(onConnect: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Image(painter = painterResource(Res.drawable.mass), contentDescription = null)
-            Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.titleLarge)
+            Text(
+                stringResource(Res.string.app_name),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.testTag(ScreenSemantics.TITLE_TAG),
+            )
         }
 
         when (sessionState) {
