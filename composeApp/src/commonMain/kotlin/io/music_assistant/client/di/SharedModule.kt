@@ -26,6 +26,7 @@ import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.ItemRefresher
 import io.music_assistant.client.data.repository.LibrarySortRepository
+import io.music_assistant.client.data.repository.LyricsRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.PartyRepository
 import io.music_assistant.client.data.repository.PlaylistTransfer
@@ -33,7 +34,6 @@ import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
-import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.imageloader.ArtworkDiskStore
 import io.music_assistant.client.imageloader.ArtworkRepository
@@ -208,8 +208,8 @@ fun sharedModule(
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
-        single {                            // Transcripts load once for the episode page and the player
-            TranscriptRepository(
+        single {                            // Lyrics and transcripts load once across Item Details and Now Playing
+            LyricsRepository(
                 mediaItemRepository = get(),
                 apiClient = get(),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),

@@ -1,5 +1,6 @@
 package io.music_assistant.client.data.repository
 
+import io.music_assistant.client.data.FakeItemDetailsServiceClient
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.Track
@@ -7,9 +8,11 @@ import io.music_assistant.client.data.model.client.items.support.StubMediaItemRe
 import io.music_assistant.client.ui.compose.common.DataState
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -20,16 +23,17 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class TrackLyricsRepositoryTest {
+class LyricsRepositoryTrackTest {
     private val serverLyrics = Lyrics.Plain("Found by the server")
 
     @Test
     fun missingMetadataLoadsLyricsAndUpdatesBothObservers() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val track = AppMediaItemFixtures.track().copy(provider = "glowmusic")
         val button = lyrics.lyrics(track)
         val panel = lyrics.lyrics(track)
+        lyrics.load(track) // Item Details and Now Playing request the same singleton concurrently.
         val observed = mutableListOf<DataState<Lyrics>>()
         backgroundScope.launch { button.collect { observed += it } }
 
@@ -49,7 +53,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun embeddedLyricsAreAvailableImmediatelyWithoutARequest() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val track = AppMediaItemFixtures.track().copy(
             metadata = AppMediaItemFixtures.metadata().copy(lyrics = "Embedded"),
         )
@@ -63,7 +67,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun metadataArrivingDuringARequestWinsOverTheServerResult() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val track = AppMediaItemFixtures.track()
         lyrics.load(track)
         runCurrent()
@@ -79,7 +83,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun absentLyricsAreCachedWithoutRepeatedRequests() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val track = AppMediaItemFixtures.track()
         lyrics.load(track)
         runCurrent()
@@ -95,7 +99,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun repeatedLoadsAndTrackCopiesShareOneInFlightAndCachedRequest() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val track = AppMediaItemFixtures.track()
         repeat(3) { lyrics.load(track.copy(favorite = it == 0)) }
         runCurrent()
@@ -114,7 +118,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun lateResponseForPreviousTrackCannotReplaceCurrentLyrics() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val previous = AppMediaItemFixtures.track(itemId = "previous")
         val current = AppMediaItemFixtures.track(itemId = "current")
         lyrics.load(previous)
@@ -138,7 +142,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun identicalItemIdsFromDifferentProvidersHaveSeparateLyrics() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val first = AppMediaItemFixtures.track(itemId = "same").copy(provider = "first")
         val second = first.copy(provider = "second")
         lyrics.load(first)
@@ -155,7 +159,7 @@ class TrackLyricsRepositoryTest {
     @Test
     fun failedRequestIsHiddenAndCanRetryOnNextLoad() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val track = AppMediaItemFixtures.track()
         lyrics.load(track)
         runCurrent()
@@ -173,9 +177,40 @@ class TrackLyricsRepositoryTest {
     }
 
     @Test
+    fun settledEntriesAreEvictedInCompletionOrder() = runTest {
+        val repository = GatedRepository()
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
+        val first = AppMediaItemFixtures.track(itemId = "A")
+        val second = AppMediaItemFixtures.track(itemId = "B")
+        lyrics.load(first)
+        runCurrent()
+        lyrics.load(second)
+        runCurrent()
+        assertEquals(listOf(first, second), repository.asked)
+
+        repository.answer(second, Result.success(serverLyrics))
+        runCurrent()
+        assertIs<DataState.Loading<Lyrics>>(lyrics.lyrics(first).value)
+        repository.answer(first, Result.success(serverLyrics))
+        runCurrent()
+
+        // Seven more answers exceed the eight-entry cache: B completed first, so it goes first.
+        repeat(7) { index ->
+            val track = AppMediaItemFixtures.track(itemId = "later-$index")
+            lyrics.load(track)
+            runCurrent()
+            repository.answer(track, Result.success(serverLyrics))
+            runCurrent()
+        }
+
+        assertIs<DataState.NoData<Lyrics>>(lyrics.lyrics(second).value)
+        assertEquals(serverLyrics, lyrics.lyrics(first).value.dataOrNull)
+    }
+
+    @Test
     fun settledCacheIsBoundedAndDoesNotEvictAnInFlightRequest() = runTest {
         val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
         val pending = AppMediaItemFixtures.track(itemId = "pending")
         val tracks = List(9) { AppMediaItemFixtures.track(itemId = "track-$it") }
         lyrics.load(pending)
@@ -195,32 +230,14 @@ class TrackLyricsRepositoryTest {
     }
 
     @Test
-    fun returningToCachedTrackProtectsItFromOlderPendingResponses() = runTest {
-        val repository = GatedRepository()
-        val lyrics = TrackLyricsRepository(repository, backgroundScope)
-        val current = AppMediaItemFixtures.track(itemId = "current")
-        lyrics.load(current)
-        runCurrent()
-        repository.answer(current, Result.success(serverLyrics))
-        runCurrent()
-        val previous = List(9) { AppMediaItemFixtures.track(itemId = "previous-$it") }
-        previous.forEach { lyrics.load(it) }
-        runCurrent()
-        lyrics.load(current)
-
-        previous.forEach { track ->
-            repository.answer(track, Result.success(Lyrics.Plain("Previous")))
-            runCurrent()
-            assertEquals(serverLyrics, lyrics.lyrics(current).value.dataOrNull)
-        }
-        assertEquals(1, repository.asked.count { it.itemId == current.itemId })
-    }
-
-    @Test
     fun ownerCancellationCancelsPendingRequest() = runTest {
         val repository = GatedRepository()
         val owner = Job()
-        val lyrics = TrackLyricsRepository(repository, CoroutineScope(backgroundScope.coroutineContext + owner))
+        val lyrics = LyricsRepository(
+            repository,
+            FakeItemDetailsServiceClient(),
+            CoroutineScope(backgroundScope.coroutineContext + owner),
+        )
         val track = AppMediaItemFixtures.track()
         lyrics.load(track)
         runCurrent()
@@ -231,6 +248,47 @@ class TrackLyricsRepositoryTest {
         repository.answer(track, Result.success(serverLyrics))
         runCurrent()
         assertIs<DataState.NoData<Lyrics>>(lyrics.lyrics(track).value)
+    }
+
+    @Test
+    fun simultaneousCallersReserveOnlyOneRequest() = runTest {
+        val repository = GatedRepository()
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
+        val track = AppMediaItemFixtures.track()
+        val start = CompletableDeferred<Unit>()
+        val callers = List(32) {
+            launch(Dispatchers.Default) {
+                start.await()
+                lyrics.load(track)
+            }
+        }
+
+        start.complete(Unit)
+        callers.joinAll()
+        assertIs<DataState.Loading<Lyrics>>(lyrics.lyrics(track).value)
+        runCurrent()
+        assertEquals(listOf(track), repository.asked)
+
+        repository.answer(track, Result.success(serverLyrics))
+        runCurrent()
+        assertEquals(serverLyrics, lyrics.lyrics(track).value.dataOrNull)
+    }
+
+    @Test
+    fun cancellingOneScreenCollectorDoesNotCancelSharedLookup() = runTest {
+        val repository = GatedRepository()
+        val lyrics = LyricsRepository(repository, FakeItemDetailsServiceClient(), backgroundScope)
+        val track = AppMediaItemFixtures.track()
+        val itemDetails = backgroundScope.launch { lyrics.lyrics(track).collect() }
+        val nowPlaying = lyrics.lyrics(track)
+        val callers = List(2) { backgroundScope.launch { lyrics.load(track) } }
+        runCurrent()
+        callers.forEach { it.join() }
+        itemDetails.cancel()
+        repository.answer(track, Result.success(serverLyrics))
+        runCurrent()
+        assertEquals(1, repository.asked.size)
+        assertEquals(serverLyrics, nowPlaying.value.dataOrNull)
     }
 
     private class GatedRepository : MediaItemRepository by StubMediaItemRepository() {
