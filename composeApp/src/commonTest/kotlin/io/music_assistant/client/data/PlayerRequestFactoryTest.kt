@@ -13,10 +13,12 @@ import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.testAudiobook
 import io.music_assistant.client.data.model.client.testPodcastEpisode
 import io.music_assistant.client.data.model.client.testTrack
-import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -50,9 +52,9 @@ class PlayerRequestFactoryTest {
         val tracker = PlayerPositionTracker()
         // Paused anchor → effectiveSec returns exactly positionSec (no wall-clock drift).
         tracker.setAnchor(queueId = queueId, elapsedSec = positionSec, isPlaying = false)
-        val preferences = UserPreferences().apply {
-            update(ServerUserPreferences(audiobookChapterProgress = chapterProgressEnabled))
-        }
+        val client =
+            FakePreferencesClient(buildJsonObject { put("audiobook_chapter_progress", chapterProgressEnabled) })
+        val preferences = UserPreferences(client).apply { runBlocking { refresh() } }
         return PlayerRequestFactory(tracker, preferences).resolve(playerDataWith(item), action)
     }
 
@@ -179,7 +181,7 @@ class PlayerRequestFactoryTest {
     fun crossfadeToggleSendsTheInverseOfTheCurrentState() {
         // The server command is an absolute setter, so the factory must invert here.
         // Echoing `current` back would make the badge look inert.
-        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences(FakePreferencesClient()))
         val data = playerDataWith(testAudiobook())
 
         val turningOn = factory.buildRequest(data, PlayerAction.ToggleCrossfade(current = false))
@@ -193,7 +195,7 @@ class PlayerRequestFactoryTest {
 
     @Test
     fun stopSendsPlayerStopKeyedOnThePlayer() {
-        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences(FakePreferencesClient()))
 
         val request = factory.buildRequest(playerDataWith(testTrack()), PlayerAction.Stop)
 
@@ -206,7 +208,7 @@ class PlayerRequestFactoryTest {
         // `players/cmd/ungroup` is player-scoped. Sending the queue id would target the
         // wrong entity, and the server — not the client — picks the successor, so no
         // member list and no `player_queues/transfer` may appear here.
-        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences())
+        val factory = PlayerRequestFactory(PlayerPositionTracker(), UserPreferences(FakePreferencesClient()))
         val data = playerDataWith(testAudiobook())
 
         val request = factory.buildRequest(data, PlayerAction.LeaveGroup)

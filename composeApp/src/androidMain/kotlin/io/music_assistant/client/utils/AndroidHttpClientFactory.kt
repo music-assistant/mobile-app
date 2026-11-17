@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import okhttp3.ConnectionPool
 import java.security.KeyStore
+import java.util.concurrent.TimeUnit
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
@@ -49,8 +50,16 @@ class AndroidHttpClientFactory(
             config {
                 sslSocketFactory(socketFactory, trustManager)
                 connectionPool(connectionPool)
+                // The WebSockets plugin `pingInterval` does not reach OkHttp: its session is
+                // already a DefaultWebSocketSession, so Ktor adds no pinger. Without this, a
+                // half-open socket stays "connected" until the OS drops it.
+                pingInterval(WEBSOCKET_PING_SECONDS, TimeUnit.SECONDS)
             }
         }
         block()
+    }
+
+    private companion object {
+        const val WEBSOCKET_PING_SECONDS = 10L
     }
 }

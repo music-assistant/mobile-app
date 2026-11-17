@@ -6,6 +6,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.ENCRYPTED_SENDSPIN_MIN_SCHEMA
 import io.music_assistant.client.data.model.server.sendspinWireFor
 import io.music_assistant.client.data.model.server.supportsEncryptedSendspin
+import io.music_assistant.client.settings.SendspinConnectionAuth
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
@@ -20,6 +21,7 @@ import io.music_assistant.sendspin.api.Frame
 import io.music_assistant.sendspin.api.SendspinTransport
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
@@ -53,7 +55,7 @@ class LocalPlayerEndpoints(
     private val settings: SettingsRepository,
     scope: CoroutineScope,
 ) {
-    private val log = Logger.withTag("LocalPlayerEndpoints")
+    private val log = Logger.withTag("Sendspin.LocalPlayerEndpoints")
 
     val endpoint: StateFlow<Endpoint?> = combine(
         apiClient.sessionState,
@@ -104,10 +106,14 @@ class LocalPlayerEndpoints(
                 (previous as? Endpoint.WebRtc)?.takeIf { it.wire == wire } ?: Endpoint.WebRtc(wire, ::openFreshChannel)
 
             is SessionState.Connected.Direct -> state.authenticatedToken()?.let { token ->
-                Endpoint.WebSocket(webSocketUrl(state), wire, authToken = token)
+                Endpoint.WebSocket(webSocketUrl(state), wire, authToken = token.takeIf { proxySignIn() })
             }
         }
     }
+
+    /** The MA proxy needs its sign-in; a custom connection to a plain Sendspin server must not get it. */
+    private fun proxySignIn(): Boolean = settings.sendspinPlayerSettings.value.connectionOverride
+        .let { !it.enabled || it.auth == SendspinConnectionAuth.MUSIC_ASSISTANT }
 
     private fun webSocketUrl(state: SessionState.Connected.Direct): String {
         val override = settings.sendspinPlayerSettings.value.connectionOverride
@@ -176,6 +182,7 @@ class LocalPlayerEndpoints(
 private class DataChannelTransport(private val wrapper: DataChannelWrapper) : SendspinTransport {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override val inbound: ReceiveChannel<Frame> = scope.produce(capacity = INBOUND_CAPACITY) {
         wrapper.inbound.collect { message ->
             send(

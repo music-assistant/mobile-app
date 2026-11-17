@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,11 +37,14 @@ import io.music_assistant.client.ui.compose.common.ProvidePlayMediaSupport
 import io.music_assistant.client.ui.compose.common.dismissKeyboardOnTap
 import io.music_assistant.client.ui.compose.common.items.ProvideClickActionPrefs
 import io.music_assistant.client.ui.compose.nav.exitApp
+import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.ui.theme.SystemAppearance
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
-import io.music_assistant.client.ui.theme.isSystemInDarkTheme
+import io.music_assistant.client.ui.theme.isDark
+import io.music_assistant.client.ui.utils.DeviceChrome
+import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_dismiss
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_message
@@ -73,21 +77,22 @@ private fun AppLifecycleObserver() {
     }
 }
 
+/**
+ * The app root. [deviceChrome] is the window geometry that the platform reports (see [DeviceChrome]).
+ * Only iOS gives one.
+ */
 @OptIn(KoinExperimentalAPI::class)
 @Composable
-fun App() {
+fun App(deviceChrome: DeviceChrome = DeviceChrome.None) {
     AppLifecycleObserver()
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
+    val accent = themeViewModel.accentColor.collectAsStateWithLifecycle(AccentColor.DEFAULT)
     val followsSystem = theme.value == ThemeSetting.FollowSystem
-    val darkTheme = when (theme.value) {
-        ThemeSetting.Dark -> true
-        ThemeSetting.Light -> false
-        ThemeSetting.FollowSystem -> isSystemInDarkTheme()
-    }
+    val darkTheme = theme.value.isDark()
     SystemAppearance(isDarkTheme = darkTheme, followsSystem = followsSystem)
     ProvideDynamicTypeFontScale {
-        AppTheme(darkTheme = darkTheme) {
+        AppTheme(darkTheme = darkTheme, accent = accent.value) {
             // Paint a themed background behind everything so the (light) platform window background
             // never bleeds through the transparent system bars in edge-to-edge — otherwise any region
             // Compose doesn't cover (e.g. the nav-bar strip beside the rail) shows as an off-theme white.
@@ -96,11 +101,13 @@ fun App() {
                     .background(MaterialTheme.colorScheme.background)
                     .dismissKeyboardOnTap(),
             ) {
-                ProvideGrantedScopes {
-                    ProvideDislikeSupport {
-                        ProvidePlayMediaSupport {
-                            ProvideClickActionPrefs {
-                                TopLevelNavRoot()
+                CompositionLocalProvider(LocalDeviceChrome provides deviceChrome) {
+                    ProvideGrantedScopes {
+                        ProvideDislikeSupport {
+                            ProvidePlayMediaSupport {
+                                ProvideClickActionPrefs {
+                                    TopLevelNavRoot()
+                                }
                             }
                         }
                     }

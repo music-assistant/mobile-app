@@ -136,8 +136,10 @@ class WebRTCTransport(
     parentScope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
     private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
+    /** A resumed session retries a failed first attempt, like a dropped connection. */
+    private val retryInitialFailure: Boolean = false,
 ) : Transport {
-    private val logger = Logger.withTag("WebRTCTransport")
+    private val logger = Logger.withTag("Session.WebRTCTransport")
 
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         logger.e(throwable) { "Uncaught exception in WebRTCTransport scope" }
@@ -189,7 +191,9 @@ class WebRTCTransport(
         startNetworkWatchIfNeeded()
         connectionJob = scope.launch {
             _state.value = TransportState.Connecting
-            connectInternal(isReconnect = false)
+            // A retried attempt reports no Failed: the reconnection loop owns the outcome.
+            connectInternal(isReconnect = retryInitialFailure)
+            if (retryInitialFailure && _state.value != TransportState.Connected) startReconnection()
         }
     }
 

@@ -44,12 +44,17 @@ import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
 import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import io.music_assistant.client.ui.compose.common.icons.SmartShuffleIcon
 import io.music_assistant.client.ui.compose.common.icons.StopIcon
 import io.music_assistant.client.ui.compose.common.tvFocus
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
 import musicassistantclient.composeapp.generated.resources.action_stop
+import musicassistantclient.composeapp.generated.resources.cd_shuffle_off
+import musicassistantclient.composeapp.generated.resources.cd_shuffle_on
+import musicassistantclient.composeapp.generated.resources.cd_shuffle_smart
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -69,27 +74,14 @@ fun PlayerControls(
 ) {
     val player = playerData.player
     val queue = playerData.queueInfo
-    val playerEnabled = player.canPlay && !player.isAnnouncing
-    val buttonsEnabled = queue?.currentItem?.isPlayable == true
+    val transport = playerData.transportState(chapterProgressEnabled)
+    val playerEnabled = transport.playerEnabled
+    val buttonsEnabled = transport.buttonsEnabled
     // Audiobooks / podcast episodes swap shuffle & repeat for skip-back / skip-forward seek.
     val isLongForm = queue?.currentItem?.track.isLongFormSpokenContent
     // A live input never ends, so shuffle and repeat have nothing to act on.
     val isLiveInput = queue?.currentItem?.track is AudioSource
-    val itemsCount = playerData.queueItems?.size ?: 0
-    // Like the web app, Stop stays available while playing even if the item is not playable.
-    val showStop = player.isPlaying && !playerData.canPauseContent
-    // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
-    // enabled while a chapter starts after the (event-driven, close-enough) position.
-    val elapsedSec = queue?.elapsedTime ?: 0.0
-    val hasUpcomingChapter = chapterProgressEnabled &&
-        queue?.currentItem?.track.navigationChapters()?.any { it.start > elapsedSec } == true
-    val skipForwardEnabled = when {
-        queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
-        hasUpcomingChapter -> true
-        // Chapterless/last-chapter fallback: an in-progress audiobook still takes a plain next.
-        (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
-        else -> false
-    }
+    val skipForwardEnabled = transport.skipForwardEnabled
     val smallButtonSize = (mainButtonSize.value * 0.6).dp
     // Explicit D-pad links for the transport row (Android TV): geometric focus search between
     // sibling IconButtons skips nodes, so the row is wired left-right through the focus graph.
@@ -134,16 +126,25 @@ fun PlayerControls(
                         modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle"),
                     ) { playerAction(playerData, PlayerAction.SeekBy(-LongFormSeekDefaults.BACK_SECONDS)) }
                 } else {
+                    // Like the web: smart shuffle shows only while shuffle is on.
+                    val smart = it.shuffleEnabled && it.smartShuffleActive
                     ActionButton(
-                        icon = if (it.shuffleEnabled) {
-                            ShuffleOnIcon
-                        } else {
-                            ShuffleOffIcon
+                        icon = when {
+                            smart -> SmartShuffleIcon
+                            it.shuffleEnabled -> ShuffleOnIcon
+                            else -> ShuffleOffIcon
                         },
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist && !isLiveInput,
                         modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle"),
+                        contentDescription = stringResource(
+                            when {
+                                smart -> Res.string.cd_shuffle_smart
+                                it.shuffleEnabled -> Res.string.cd_shuffle_on
+                                else -> Res.string.cd_shuffle_off
+                            },
+                        ),
                     ) {
                         playerAction(
                             playerData,
@@ -182,27 +183,15 @@ fun PlayerControls(
             // The ring is a sibling, not part of the button: the button is dimmed while the
             // queue is empty, which is exactly when a first play request is in flight.
             Box(contentAlignment = Alignment.Center) {
+                val main = playerData.mainTransport()
                 ActionButton(
-                    icon = when {
-                        showStop -> StopIcon
-                        player.isPlaying -> PauseIcon
-                        else -> PlayIcon
-                    },
+                    icon = main.button.icon,
                     tint = tint,
                     size = mainButtonSize,
-                    enabled = playerEnabled && (buttonsEnabled || showStop),
-                    contentDescription = when {
-                        showStop -> stringResource(Res.string.action_stop)
-                        player.isPlaying -> stringResource(Res.string.action_pause)
-                        else -> stringResource(Res.string.action_play)
-                    },
+                    enabled = main.enabled,
+                    contentDescription = stringResource(main.button.label),
                     modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "play"),
-                ) {
-                    playerAction(
-                        playerData,
-                        if (showStop) PlayerAction.Stop else PlayerAction.TogglePlayPause,
-                    )
-                }
+                ) { playerAction(playerData, main.action) }
                 if (playerData.playRequestPending) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(mainButtonSize),
@@ -316,4 +305,69 @@ private fun PreviewNoAdditional() {
 @Composable
 private fun PreviewNoSkipNoAdditional() {
     Preview(showSkip = false, showAdditionButtons = false, showSkipBack = false)
+}
+
+/** What the transport buttons may do for a player. Shared by the player and the vertical bar. */
+internal class TransportState(
+    val playerEnabled: Boolean,
+    val buttonsEnabled: Boolean,
+    // Like the web app, Stop stays available while playing even if the item is not playable.
+    val showStop: Boolean,
+    val skipForwardEnabled: Boolean,
+)
+
+internal fun PlayerData.transportState(chapterProgressEnabled: Boolean): TransportState {
+    val queue = queueInfo
+    val itemsCount = queueItems?.size ?: 0
+    // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
+    // enabled while a chapter starts after the (event-driven, close-enough) position.
+    val elapsedSec = queue?.elapsedTime ?: 0.0
+    val hasUpcomingChapter = chapterProgressEnabled &&
+        queue?.currentItem?.track.navigationChapters()?.any { it.start > elapsedSec } == true
+    val skipForwardEnabled = when {
+        queue?.currentIndex?.let { it < itemsCount - 1 } == true -> true
+        hasUpcomingChapter -> true
+        // Chapterless/last-chapter fallback: an in-progress audiobook still takes a plain next.
+        (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
+        else -> false
+    }
+    return TransportState(
+        playerEnabled = player.canPlay && !player.isAnnouncing,
+        buttonsEnabled = queue?.currentItem?.isPlayable == true,
+        showStop = player.isPlaying && !canPauseContent,
+        skipForwardEnabled = skipForwardEnabled,
+    )
+}
+
+/** The look of the main transport button. */
+internal enum class MainButton(val icon: ImageVector, val label: StringResource) {
+    PLAY(PlayIcon, Res.string.action_play),
+    PAUSE(PauseIcon, Res.string.action_pause),
+    STOP(StopIcon, Res.string.action_stop),
+}
+
+/** The main transport button of a player: what it shows, what it sends, and whether it can act. */
+internal class MainTransport(val button: MainButton, val action: PlayerAction, val enabled: Boolean)
+
+/**
+ * The one rule for the main transport button on every surface: Stop for content that cannot pause,
+ * and Pause (a cancel) while a play request is pending.
+ */
+internal fun PlayerData.mainTransport(): MainTransport {
+    // The main button does not read skipForwardEnabled, the only value that the flag changes.
+    val transport = transportState(chapterProgressEnabled = false)
+    val pending = pendingPlay && !player.isPlaying
+    return MainTransport(
+        button = when {
+            transport.showStop -> MainButton.STOP
+            player.isPlaying || pending -> MainButton.PAUSE
+            else -> MainButton.PLAY
+        },
+        action = when {
+            pending -> PlayerAction.Pause
+            transport.showStop -> PlayerAction.Stop
+            else -> PlayerAction.TogglePlayPause
+        },
+        enabled = transport.playerEnabled && (transport.buttonsEnabled || transport.showStop),
+    )
 }

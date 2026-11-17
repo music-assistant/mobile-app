@@ -152,4 +152,19 @@ class ServerMediaItemSerializationTest {
         assertFalse("episode_number" in echoed)
         assertFalse("season" in echoed)
     }
+
+    // The refresh entry reads the availability of each mapping. The server always sends the key.
+    @Test
+    fun decodesMappingAvailability() {
+        val item = myJson.decodeFromString<ServerMediaItem>(
+            """
+            {"item_id":"t1","provider":"library","name":"Track","media_type":"${MediaType.TRACK.serverValue}",
+             "provider_mappings":[
+               {"item_id":"1","provider_domain":"spotify","provider_instance":"spotify--1","available":false},
+               {"item_id":"2","provider_domain":"tidal","provider_instance":"tidal--1"}]}
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf(false, true), item.providerMappings?.map { it.available })
+    }
 }

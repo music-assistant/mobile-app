@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.server.ServerMediaItem
@@ -46,6 +47,7 @@ import musicassistantclient.composeapp.generated.resources.media_type_radio
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_menu
+import musicassistantclient.composeapp.generated.resources.nav_party
 import musicassistantclient.composeapp.generated.resources.nav_search
 import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.players_nothing
@@ -167,6 +169,23 @@ private fun ComposePage.clickNavDrawerItem(item: String) {
     composeTestRule.onNode(withinTag(NavigationDrawerSemantics.TAG).and(isTab(item))).performClick()
 }
 
+fun <T : ComposePage> T.assertNavDrawerItemDisplayed(item: String): T {
+    openNavDrawer()
+    val matcher = withinTag(NavigationDrawerSemantics.TAG).and(isTab(item))
+    // The gates behind a drawer item resolve on Dispatchers.Default, which the rule does not idle on.
+    composeTestRule.waitUntil("'$item' is in the navigation drawer") {
+        composeTestRule.onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty()
+    }
+    composeTestRule.onNode(matcher).performScrollTo().assertIsDisplayed()
+    return this
+}
+
+fun ComposePage.clickParty(): PartyPage {
+    assertNavDrawerItemDisplayed(Res.string.nav_party.get())
+    clickNavDrawerItem(Res.string.nav_party.get())
+    return PartyPage(composeTestRule)
+}
+
 fun ComposePage.clickSettings(): SettingsPage {
     openNavDrawer()
     clickNavDrawerItem(Res.string.nav_settings.get())
@@ -181,10 +200,12 @@ fun <T : ComposePage> T.assertMediaDisplayed(
 ): T {
     val matcher = mediaItemMatcher(serverMediaItem, withinTag, provider)
     composeTestRule.waitUntil("media '${serverMediaItem.name}' is displayed") {
-        if (inScrollable != null) {
-            composeTestRule.inScrollable(inScrollable) { onNode(matcher) }
-        }
-        composeTestRule.onNode(matcher).isDisplayed()
+        // A scroll to a node that is not in the list throws. The list loads on Dispatchers.Default,
+        // which the rule does not idle on, so a node can arrive after a poll: retry, do not fail.
+        val inList = inScrollable?.let { tag ->
+            runCatching { composeTestRule.inScrollable(tag) { onNode(matcher) } }.isSuccess
+        } ?: true
+        inList && composeTestRule.onNode(matcher).isDisplayed()
     }
 
     return this

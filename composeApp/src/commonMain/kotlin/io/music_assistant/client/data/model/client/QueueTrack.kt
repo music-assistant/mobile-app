@@ -15,6 +15,8 @@ data class QueueTrack(
     val isPlayable: Boolean,
     val format: AudioFormat?,
     val provider: String?,
+    /** The provider-native id of what streams ([provider] is its provider); null until the stream starts. */
+    val streamItemId: String? = null,
     val audioProcessingChain: AudioProcessingChain? = null,
     /** The container the item was played from (album, playlist, folder...). */
     val origin: AppMediaItem? = null,

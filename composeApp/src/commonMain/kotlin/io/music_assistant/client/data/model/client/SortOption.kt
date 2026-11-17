@@ -95,12 +95,16 @@ object SortConfig {
         SubItemContext.ARTIST_TRACKS -> listOf(SortField.NAME, SortField.DURATION)
         SubItemContext.ALBUM_TRACKS -> listOf(SortField.ORIGINAL)
         SubItemContext.PLAYLIST_ITEMS -> listOf(SortField.ORIGINAL)
+        SubItemContext.RADIO_TRACKS -> listOf(SortField.ORIGINAL)
         SubItemContext.COLLECTION_ITEMS -> listOf(SortField.ORIGINAL)
         SubItemContext.PODCAST_EPISODES -> listOf(SortField.NAME, SortField.RELEASE_DATE, SortField.DURATION)
         SubItemContext.ARTIST_TOP_TRACKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_APPEARS_ON,
+        SubItemContext.ARTIST_DISCOGRAPHY,
         -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.ARTIST_NAME, SortField.YEAR)
+        SubItemContext.ARTIST_AUDIOBOOKS -> listOf(SortField.ORIGINAL, SortField.NAME, SortField.DURATION)
     }
 
     /**
@@ -112,12 +116,16 @@ object SortConfig {
     fun defaultFor(context: SubItemContext): SortOption = when (context) {
         SubItemContext.ARTIST_ALBUMS -> SortOption(SortField.YEAR, descending = true)
         SubItemContext.ALBUM_TRACKS -> SortOption(SortField.ORIGINAL)
+        SubItemContext.RADIO_TRACKS -> SortOption(SortField.ORIGINAL)
         SubItemContext.PLAYLIST_ITEMS -> SortOption(SortField.ORIGINAL)
         SubItemContext.COLLECTION_ITEMS -> SortOption(SortField.ORIGINAL)
         SubItemContext.PODCAST_EPISODES -> SortOption(SortField.RELEASE_DATE, descending = true)
         SubItemContext.ARTIST_TOP_TRACKS,
         SubItemContext.ARTIST_ALL_ALBUMS,
         SubItemContext.ARTIST_LIBRARY_ALBUMS,
+        SubItemContext.ARTIST_APPEARS_ON,
+        SubItemContext.ARTIST_DISCOGRAPHY,
+        SubItemContext.ARTIST_AUDIOBOOKS,
         -> SortOption(SortField.ORIGINAL)
         else -> SortOption(SortField.NAME)
     }
@@ -128,6 +136,7 @@ enum class SubItemContext {
     ARTIST_TRACKS,
     ALBUM_TRACKS,
     PLAYLIST_ITEMS,
+    RADIO_TRACKS,
     PODCAST_EPISODES,
 
     // Books of an audiobook series, fixed in the server's series order.
@@ -138,6 +147,13 @@ enum class SubItemContext {
     ARTIST_TOP_TRACKS,
     ARTIST_ALL_ALBUMS,
     ARTIST_LIBRARY_ALBUMS,
+
+    // Server 2.11, newest first by default.
+    ARTIST_APPEARS_ON,
+    ARTIST_DISCOGRAPHY,
+
+    // The audiobooks of an author or a narrator, in the library and on a provider.
+    ARTIST_AUDIOBOOKS,
 }
 
 fun <T> List<T>.clientSorted(option: SortOption, context: SubItemContext? = null): List<T> {

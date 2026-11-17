@@ -23,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
  */
 object SignalingMessageSerializer :
     JsonContentPolymorphicSerializer<SignalingMessage>(SignalingMessage::class) {
-    private val logger = Logger.withTag("SignalingMessageSerializer")
+    private val logger = Logger.withTag("Session.SignalingMessageSerializer")
 
     override fun selectDeserializer(element: JsonElement): DeserializationStrategy<SignalingMessage> {
         val type = element.jsonObject["type"]?.jsonPrimitive?.contentOrNull

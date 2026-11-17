@@ -35,7 +35,8 @@ kotlin {
         androidResources {
             enable = true
         }
-        withHostTestBuilder {
+        withHostTest {
+            isIncludeAndroidResources = true
         }
     }
 
@@ -128,6 +129,7 @@ kotlin {
 
             implementation(libs.kmpalette.core)
             implementation(libs.kmpalette.extensions.network)
+            implementation(libs.material.kolor)
 
             implementation(libs.material.icons.core)
             implementation(libs.material.icons.extended)
@@ -144,6 +146,8 @@ kotlin {
             implementation(libs.ktor.client.webrtc)
 
             implementation(libs.easyqrscan)
+            // QR encoder only (a bit matrix); the party invite draws it with a Canvas.
+            implementation(libs.qrose.encoder.matrix)
 
             // Crypto primitives for the Sendspin Noise (encrypted) protocol.
             implementation(libs.cryptography.core)
@@ -171,6 +175,8 @@ dependencies {
     add("androidHostTestImplementation", libs.kotlin.test)
     add("androidHostTestImplementation", libs.junit)
     add("androidHostTestImplementation", libs.robolectric)
+    add("androidHostTestImplementation", libs.androidx.compose.ui.test.junit4)
+    add("androidHostTestImplementation", libs.androidx.compose.ui.test.manifest)
 }
 
 // --- Material Design Icons (community pack) webfont + codepoint table ---------

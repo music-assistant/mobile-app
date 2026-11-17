@@ -34,11 +34,11 @@ enum class MediaType(val serverValue: String) {
         fun fromServer(raw: String?): MediaType? = raw?.let { byServerValue[it] }
 
         /**
-         * Content types a genre can be filtered by (the genres endpoint's
-         * `media_type` arg). Excludes GENRE itself; tweak here if the server
-         * accepts more.
+         * The `media_type` choices of the Genres list under the music content type: genres
+         * that at least one library item of this type uses. The podcast and audiobook
+         * taxonomies have no such choice, because the content type already names their items.
          */
-        val genreMediaTypeOptions = listOf(ARTIST, ALBUM, TRACK, AUDIOBOOK)
+        val genreMediaTypeOptions = listOf(ARTIST, ALBUM, TRACK)
     }
 }
 

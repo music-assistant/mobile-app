@@ -1,6 +1,5 @@
 package io.music_assistant.client.ui.compose.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,15 +22,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import io.music_assistant.client.data.model.server.ServerAiRadioStation
+import io.music_assistant.client.ui.compose.common.items.MediaArtwork
+import io.music_assistant.client.ui.compose.common.items.ROW_BADGE_SIZE
 import io.music_assistant.client.ui.compose.common.items.RowItem
-import io.music_assistant.client.ui.compose.common.items.WavyHexagonShape
-import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
+import io.music_assistant.client.ui.compose.common.items.TypeBadge
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_play
@@ -145,6 +142,7 @@ private fun StationRow(
         // The row body is inert — no ripple to suggest a tap does something.
         enabled = false,
         prefixContent = { AiRadioStationImage(url = artworkUrl, name = name) },
+        badges = { TypeBadge(Icons.Default.SmartToy, ROW_BADGE_SIZE) },
         suffixContent = {
             IconButton(onClick = onPlay) {
                 Icon(
@@ -160,35 +158,15 @@ private fun StationRow(
 
 /**
  * A station's row image. Stations have no artwork, so [url] is the cover of the playlist the
- * station plays from, and it arrives after the row does. The wavy hexagon matches the Radios
- * section; the placeholder is the category's own icon, so an unresolved row still reads as
- * AI Radio rather than as a broken image.
+ * station plays from, and it arrives after the row does. The placeholder is the category's own
+ * icon, so an unresolved row still reads as AI Radio rather than as a broken image.
  */
 @Composable
-private fun AiRadioStationImage(url: String?, name: String) {
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-    val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(WavyHexagonShape())
-            .background(primaryContainer),
-    ) {
-        val placeholder = rememberPlaceholderPainter(
-            backgroundColor = primaryContainer,
-            iconColor = onPrimaryContainer,
-            icon = Icons.Default.SmartToy,
-        )
-        AsyncImage(
-            placeholder = placeholder,
-            fallback = placeholder,
-            model = url,
-            contentDescription = name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
-}
+private fun AiRadioStationImage(url: String?, name: String) = MediaArtwork(
+    imageUrl = url,
+    contentDescription = name,
+    icon = Icons.Default.SmartToy,
+)
 
 @Composable
 private fun ScreenMessage(text: String) {

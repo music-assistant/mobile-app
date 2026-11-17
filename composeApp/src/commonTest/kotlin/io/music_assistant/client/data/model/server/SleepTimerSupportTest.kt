@@ -26,4 +26,11 @@ class SleepTimerSupportTest {
         assertTrue(supportsSleepTimer(35))
         assertTrue(supportsSleepTimer(LOCAL_SCHEMA_VERSION))
     }
+
+    @Test
+    fun modesNeedSchema105() {
+        assertFalse(supportsSleepTimerModes(null))
+        assertFalse(supportsSleepTimerModes(104))
+        assertTrue(supportsSleepTimerModes(105))
+    }
 }

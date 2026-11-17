@@ -18,11 +18,15 @@
 	<array>
 		<string>en</string>
 		<string>de</string>
+		<string>en-AU</string>
 		<string>es</string>
+		<string>et-EE</string>
 		<string>fr</string>
 		<string>nl</string>
+		<string>ru</string>
 		<string>sk-SK</string>
 		<string>sr</string>
+		<string>sv-SE</string>
 		<string>zh-CN</string>
 		<string>zh-TW</string>
 	</array>
@@ -44,7 +48,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>54</string>
+	<string>57</string>
 	<key>INIntentsSupported</key>
 	<array>
 		<string>INPlayMediaIntent</string>
@@ -65,6 +69,7 @@
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_ma-preflight._tcp</string>
+		<string>_mass._tcp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Music Assistant can optionally use the camera to scan a QR code when you set up a remote connection. You can also enter the connection details manually instead.</string>

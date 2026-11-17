@@ -1,6 +1,7 @@
 package io.music_assistant.client.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -82,18 +83,19 @@ private val darkScheme = darkColorScheme(
     surfaceContainerHighest = surfaceContainerHighestDark,
 )
 
+internal fun defaultColorScheme(darkTheme: Boolean): ColorScheme = if (darkTheme) darkScheme else lightScheme
+
+/**
+ * The app theme. [accent] replaces the primary group of the default scheme (see [AccentColor]).
+ */
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: AccentColor = AccentColor.DEFAULT,
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        darkTheme -> darkScheme
-        else -> lightScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = accentColorScheme(accent, darkTheme) ?: defaultColorScheme(darkTheme),
         content = content,
     )
 }

@@ -3,6 +3,7 @@
 ## UI
 - **Compose Multiplatform** - Cross-platform UI
 - **Material3** - Design system
+- **MaterialKolor** (5.0.1) - Makes a Material 3 color scheme from one seed color. The accent color setting takes only the primary group from it.
 - **Material Icons Extended** - Icon set
 - **FontAwesome / Tabler Icons** - Additional icons
 
@@ -27,8 +28,9 @@
 
 ## Utilities
 - **Kermit** - Multiplatform logging
+- **QRose encoder** (`qrose-encoder-matrix` 1.3.1) - Makes the QR bit matrix of the party invite. It has no Compose dependency. `QrCode` draws the matrix.
 - **Reorderable** - Drag-drop list reordering
-- **mDNS** - Sendspin service discovery/advertising
+- **mDNS** - No library. Server discovery uses the platform API: `NsdManager` on Android, `NWBrowser` (`MassServiceBrowser.swift`) on iOS.
 
 ## Build
 - **Gradle** - Build system

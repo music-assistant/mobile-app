@@ -89,10 +89,38 @@ class SortOptionTest {
             SubItemContext.ARTIST_TOP_TRACKS,
             SubItemContext.ARTIST_ALL_ALBUMS,
             SubItemContext.ARTIST_LIBRARY_ALBUMS,
+            SubItemContext.ARTIST_AUDIOBOOKS,
         ).forEach {
             assertEquals(SortOption(SortField.ORIGINAL), SortConfig.defaultFor(it))
             assertTrue(SortConfig.isUserSortable(it))
         }
+    }
+
+    @Test
+    fun `default for radio tracks is original ascending`() {
+        assertEquals(
+            SortOption(SortField.ORIGINAL),
+            SortConfig.defaultFor(SubItemContext.RADIO_TRACKS),
+        )
+    }
+
+    @Test
+    fun `original preserves delivered order for radio tracks`() {
+        val t = { track: Int, id: String ->
+            testTrack().copy(
+                itemId = id,
+                discNumber = 1,
+                trackNumber = track,
+            )
+        }
+
+        val delivered = listOf(t(3, "a"), t(1, "b"), t(2, "c"))
+        val sorted = delivered.clientSorted(
+            SortOption(SortField.ORIGINAL),
+            SubItemContext.RADIO_TRACKS,
+        )
+
+        assertEquals(listOf("a", "b", "c"), sorted.map { it.itemId })
     }
 
     @Test

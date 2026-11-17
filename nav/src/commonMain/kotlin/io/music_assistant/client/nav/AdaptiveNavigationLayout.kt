@@ -13,24 +13,30 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,18 +45,25 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.WideNavigationRail
 import androidx.compose.material3.WideNavigationRailValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -63,9 +76,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavKey
 import androidx.window.core.layout.WindowSizeClass
+import compose.icons.TablerIcons
+import compose.icons.tablericons.GripVertical
+import io.music_assistant.client.ui.utils.LocalDeviceChrome
+import io.music_assistant.client.ui.utils.VerticalBarArea
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.ui.utils.fadingEdges
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.ReorderableColumn
 
 /**
  * Shows a navigation bar combined with a navigation drawer based on [sections] on
@@ -78,19 +96,25 @@ fun AdaptiveNavigationBarLayout(
     appName: String,
     sections: List<Section>,
     trailingItem: NavigationItem? = null,
+    playbackItems: List<PlaybackItem> = emptyList(),
     showNavigation: Boolean = true,
     drawInitiallyOpen: Boolean = false,
     navigationBarHeight: Dp = 64.dp,
     maxNavigationBarItems: Int = 2,
     menuLabel: String,
-    onEdited: ((List<String>) -> Unit)? = null,
+    // The overflow button of the vertical bar, which the nav module has no string resources for.
+    moreLabel: String,
+    onEdited: ((SidebarEdit) -> Unit)? = null,
     content: @Composable BoxScope.(contentPadding: PaddingValues, drawerOpen: Boolean) -> Unit,
 ) {
+    // Keyed on the ids and the flags only: the items get new click lambdas on each recomposition, and a
+    // key on the items would end an edit in progress.
+    val items = sections.flatMap { it.items }
     val editState = onEdited?.let { onEditedCallback ->
-        remember(sections) {
+        remember(items.map { it.id to it.enabled }) {
             EditableListState(
-                enabledIds = sections.flatMap { it.items }.filter { it.enabled }.map { it.id }
-                    .toSet(),
+                enabledIds = items.filter { it.enabled }.map { it.id }.toSet(),
+                orderedIds = items.map { it.id },
                 onSubmit = onEditedCallback,
             )
         }
@@ -100,8 +124,12 @@ fun AdaptiveNavigationBarLayout(
         RailLayout(
             appName = appName,
             sections = sections,
+            trailingItem = trailingItem,
+            playbackItems = playbackItems,
             showNavigation = showNavigation,
             editState = editState,
+            maxNavigationBarItems = maxNavigationBarItems,
+            moreLabel = moreLabel,
             content = content,
         )
     } else {
@@ -109,9 +137,11 @@ fun AdaptiveNavigationBarLayout(
             appName = appName,
             sections = sections,
             trailingItem = trailingItem,
+            playbackItems = playbackItems,
             showNavigation = showNavigation,
             navigationBarHeight = navigationBarHeight,
             menuLabel = menuLabel,
+            moreLabel = moreLabel,
             maxNavigationBarItems = maxNavigationBarItems,
             drawInitiallyOpen = drawInitiallyOpen,
             editState = editState,
@@ -124,32 +154,65 @@ fun AdaptiveNavigationBarLayout(
 private fun RailLayout(
     appName: String,
     sections: List<Section>,
+    trailingItem: NavigationItem?,
+    playbackItems: List<PlaybackItem>,
     showNavigation: Boolean,
     editState: EditableListState?,
+    maxNavigationBarItems: Int,
+    moreLabel: String,
     content: @Composable (BoxScope.(PaddingValues, Boolean) -> Unit),
 ) {
-    Row(Modifier.fillMaxWidth()) {
-        if (showNavigation) {
-            WideNavigationRail(
-                modifier = Modifier.width(280.dp),
-                state = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded),
-                header = {
-                    SidebarHeader(
-                        appName = appName,
+    // Across a vertical fold the rail takes the left page and the content the right one.
+    val deviceChrome = LocalDeviceChrome.current
+    val fold = deviceChrome.foldRegion
+    val verticalBarArea = deviceChrome.verticalBarArea
+    Box(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth()) {
+            if (showNavigation) {
+                WideNavigationRail(
+                    modifier = Modifier.width(fold?.start ?: 280.dp),
+                    state = rememberWideNavigationRailState(initialValue = WideNavigationRailValue.Expanded),
+                    header = {
+                        SidebarHeader(
+                            appName = appName,
+                            editState = editState,
+                        )
+                    },
+                ) {
+                    SidebarSections(
+                        sections = sections,
+                        itemOnClick = { it.onClick() },
                         editState = editState,
                     )
-                },
+                }
+                if (fold != null) {
+                    Spacer(Modifier.width(fold.end - fold.start))
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    // The content slides while it changes screens. Clip it, so that a screen that leaves
+                    // does not draw over the rail.
+                    .clipToBounds()
+                    // An expanded player keeps its background under the strip and insets its own content.
+                    .padding(end = if (showNavigation) verticalBarArea?.trailingInset ?: 0.dp else 0.dp),
             ) {
-                SidebarSections(
-                    sections = sections,
-                    itemOnClick = { it.onClick() },
-                    editState = editState,
-                )
+                content(PaddingValues(), false)
             }
         }
-
-        Box {
-            content(PaddingValues(), false)
+        if (verticalBarArea != null) {
+            VerticalNavigationBar(
+                area = verticalBarArea,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = verticalBarArea.end, bottom = verticalBarArea.bottom),
+                playbackItems = playbackItems,
+                items = sections.first().items.take(maxNavigationBarItems) + listOfNotNull(trailingItem),
+                moreLabel = moreLabel,
+            )
         }
     }
 }
@@ -159,9 +222,11 @@ private fun BarWithDrawerLayout(
     appName: String,
     sections: List<Section>,
     trailingItem: NavigationItem?,
+    playbackItems: List<PlaybackItem>,
     showNavigation: Boolean,
     navigationBarHeight: Dp,
     menuLabel: String,
+    moreLabel: String,
     maxNavigationBarItems: Int,
     drawInitiallyOpen: Boolean,
     editState: EditableListState?,
@@ -183,9 +248,12 @@ private fun BarWithDrawerLayout(
         }
     }
 
+    val verticalBarArea = LocalDeviceChrome.current.verticalBarArea
+    val noRoomForBar = verticalBarArea?.let { verticalBarCapacity(it) == 0 } == true
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = drawerIsOpeningOrOpen,
+        // Without room for the vertical bar there is no menu button, so the edge swipe has to open it.
+        gesturesEnabled = drawerIsOpeningOrOpen || noRoomForBar,
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.testTag(NavigationDrawerSemantics.TAG),
@@ -221,15 +289,42 @@ private fun BarWithDrawerLayout(
                 .calculateBottomPadding()
 
             content(
-                if (showNavigation) {
-                    PaddingValues(bottom = navigationBarHeight + bottomInset)
-                } else {
-                    PaddingValues()
+                when {
+                    // An expanded player keeps its background under the strip and insets its content.
+                    !showNavigation -> PaddingValues()
+                    verticalBarArea != null -> PaddingValues(end = verticalBarArea.trailingInset)
+                    else -> PaddingValues(bottom = navigationBarHeight + bottomInset)
                 },
                 drawerIsOpeningOrOpen,
             )
 
-            if (showNavigation) {
+            val menuItem = NavigationItem(
+                selected = false,
+                onClick = {
+                    scope.launch { drawerState.open() }
+                },
+                icon = Icons.Default.Menu,
+                label = menuLabel,
+            )
+            val barItems = buildList {
+                add(menuItem)
+                addAll(sections.first().items.take(maxNavigationBarItems))
+                if (trailingItem != null) {
+                    add(trailingItem)
+                }
+            }
+
+            if (verticalBarArea != null) {
+                VerticalNavigationBar(
+                    area = verticalBarArea,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = verticalBarArea.end, bottom = verticalBarArea.bottom),
+                    playbackItems = playbackItems,
+                    items = barItems,
+                    moreLabel = moreLabel,
+                )
+            } else if (showNavigation) {
                 // Two concerns are split so icon placement doesn't depend on M3's inset handling:
                 //  - the wrapper Box (navigationBarHeight + bottomInset tall) paints the bar background
                 //    down behind the system nav / home indicator, so no white bleeds through edge-to-edge;
@@ -251,24 +346,6 @@ private fun BarWithDrawerLayout(
                         containerColor = Color.Transparent,
                         windowInsets = WindowInsets(0, 0, 0, 0),
                     ) {
-                        val menuItem = NavigationItem(
-                            selected = false,
-                            onClick = {
-                                scope.launch { drawerState.open() }
-                            },
-                            icon = Icons.Default.Menu,
-                            label = menuLabel,
-                        )
-
-                        val firstSection = sections.first()
-                        val barItems = buildList {
-                            add(menuItem)
-                            addAll(firstSection.items.take(maxNavigationBarItems))
-                            if (trailingItem != null) {
-                                add(trailingItem)
-                            }
-                        }
-
                         barItems.forEach {
                             NavigationBarItem(it)
                         }
@@ -310,6 +387,8 @@ private fun SidebarSections(
     itemOnClick: (NavigationItem) -> Unit,
     editState: EditableListState?,
 ) {
+    // A checkbox of a fixed item lines up with the checkboxes of the reorderable items.
+    val reserveHandle = sections.any { it.reorderable }
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -322,40 +401,79 @@ private fun SidebarSections(
 
             SectionTitle(section.title)
 
-            section.items.forEach {
-                if (it.enabled || (editState?.isEditing == true)) {
-                    NavigationDrawerItem(
-                        label = {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(it.label)
-                                if (it.editable && editState?.isEditing == true) {
-                                    Checkbox(
-                                        checked = editState.isItemEnabled(it.id),
-                                        onCheckedChange = { checked ->
-                                            editState.setItemEnabled(it.id, checked)
-                                        },
-                                    )
-                                }
+            val itemsById = section.items.associateBy { it.id }
+            val sectionIds = section.items.map { it.id }
+            val orderedIds = editState?.ordered(sectionIds) ?: sectionIds
+            if (section.reorderable && editState?.isEditing == true) {
+                // The list holds ids, which stay equal across recompositions, so a drag survives them.
+                ReorderableColumn(
+                    list = orderedIds,
+                    onSettle = { from, to -> editState.move(sectionIds, from, to) },
+                ) { _, id, _ ->
+                    ReorderableItem {
+                        itemsById[id]?.let { item ->
+                            SidebarItem(item, itemOnClick, editState) {
+                                Icon(
+                                    imageVector = TablerIcons.GripVertical,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.draggableHandle().size(DragHandleSize),
+                                )
                             }
-                        },
-                        icon = {
-                            Icon(
-                                it.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        },
-                        selected = it.selected,
-                        onClick = { itemOnClick(it) },
-                    )
+                        }
+                    }
+                }
+            } else {
+                orderedIds.mapNotNull { itemsById[it] }.forEach { item ->
+                    if (item.enabled || editState?.isEditing == true) {
+                        SidebarItem(item, itemOnClick, editState) {
+                            if (reserveHandle && item.editable && editState?.isEditing == true) {
+                                Spacer(Modifier.size(DragHandleSize))
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SidebarItem(
+    item: NavigationItem,
+    onClick: (NavigationItem) -> Unit,
+    editState: EditableListState?,
+    dragHandle: @Composable () -> Unit = {},
+) {
+    NavigationDrawerItem(
+        label = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(item.label, modifier = Modifier.weight(1f))
+                if (item.editable && editState?.isEditing == true) {
+                    Checkbox(
+                        checked = editState.isItemEnabled(item.id),
+                        onCheckedChange = { checked ->
+                            editState.setItemEnabled(item.id, checked)
+                        },
+                    )
+                }
+                dragHandle()
+            }
+        },
+        icon = {
+            Icon(
+                item.icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+            )
+        },
+        selected = item.selected,
+        onClick = { onClick(item) },
+    )
 }
 
 @Composable
@@ -366,6 +484,141 @@ private fun SectionTitle(title: String) {
         style = MaterialTheme.typography.titleMedium,
     )
 }
+
+/** How many buttons of the vertical bar fit between the system areas above and below it. */
+@Composable
+private fun verticalBarCapacity(area: VerticalBarArea): Int {
+    val density = LocalDensity.current
+    val windowHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
+    return ((windowHeight - area.top - area.bottom) / VerticalBarWidth).toInt().coerceAtLeast(0)
+}
+
+/**
+ * The navigation bar for a [VerticalBarArea]: icons only, because the strip is too narrow for labels.
+ * The [playbackItems] come first.
+ *
+ * The strip is shared with the status bar and the Dynamic Island, which grows downwards when a Live
+ * Activity arrives. Buttons that no longer fit move into an overflow menu, as Apple's guidelines ask.
+ */
+@Composable
+private fun VerticalNavigationBar(
+    playbackItems: List<PlaybackItem>,
+    items: List<NavigationItem>,
+    moreLabel: String,
+    area: VerticalBarArea,
+    modifier: Modifier = Modifier,
+) {
+    // Never more buttons than the area the system left for the bar; with room for one, only "more".
+    val capacity = verticalBarCapacity(area)
+    if (capacity == 0) return
+    val entries = playbackItems.map { it.toBarEntry() } + items.map { it.toBarEntry() }
+    val visible = if (capacity >= 2 && entries.size <= capacity) entries else entries.take(capacity - 1)
+    val overflow = entries.drop(visible.size)
+    var overflowOpen by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = modifier
+            .width(VerticalBarWidth)
+            .testTag(NavigationBarSemantics.TAG),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = 3.dp,
+        shadowElevation = 3.dp,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            visible.forEach { entry ->
+                VerticalBarButton(entry)
+            }
+            if (overflow.isNotEmpty()) {
+                Box {
+                    VerticalBarButton(
+                        VerticalBarEntry(
+                            icon = Icons.Default.MoreVert,
+                            contentDescription = moreLabel,
+                            label = moreLabel,
+                            selected = overflow.any { it.selected },
+                            enabled = true,
+                            onClick = { overflowOpen = true },
+                        ),
+                    )
+                    DropdownMenu(expanded = overflowOpen, onDismissRequest = { overflowOpen = false }) {
+                        overflow.forEach { entry ->
+                            DropdownMenuItem(
+                                text = { Text(entry.label) },
+                                enabled = entry.enabled,
+                                leadingIcon = { Icon(entry.icon, contentDescription = null) },
+                                onClick = {
+                                    overflowOpen = false
+                                    entry.onClick()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VerticalBarButton(entry: VerticalBarEntry) {
+    IconButton(
+        modifier = Modifier.size(VerticalBarWidth),
+        onClick = entry.onClick,
+        enabled = entry.enabled,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .background(
+                    color = if (entry.selected) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        Color.Transparent
+                    },
+                    shape = CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = entry.icon,
+                contentDescription = entry.contentDescription,
+            )
+        }
+    }
+}
+
+/** One button of the vertical bar, from a [PlaybackItem] or a [NavigationItem]. */
+private class VerticalBarEntry(
+    val icon: ImageVector,
+    val label: String,
+    val contentDescription: String,
+    val selected: Boolean,
+    val enabled: Boolean,
+    val onClick: () -> Unit,
+)
+
+private fun PlaybackItem.toBarEntry() = VerticalBarEntry(
+    icon = icon,
+    label = label,
+    contentDescription = label,
+    selected = false,
+    enabled = enabled,
+    onClick = onClick,
+)
+
+private fun NavigationItem.toBarEntry() = VerticalBarEntry(
+    icon = icon,
+    label = overflowLabel ?: label,
+    contentDescription = contentDescription ?: label,
+    selected = selected,
+    enabled = true,
+    onClick = onClick,
+)
+
+private val VerticalBarWidth = 56.dp
+
+private val DragHandleSize = 20.dp
 
 @Composable
 private fun RowScope.NavigationBarItem(item: NavigationItem) {
@@ -378,14 +631,17 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
         selected = item.selected,
         onClick = item.onClick,
         icon = {
-            Icon(item.icon, contentDescription = null)
+            Box {
+                Icon(item.icon, contentDescription = null)
+                item.badgeColor?.let { StatusBadge(it) }
+            }
         },
         label = {
             val modifier = if (item.marqueeLabel) {
                 Modifier
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 4.dp)
                     .fillMaxWidth()
-                    .fadingEdges(12.dp)
+                    .fadingEdges(4.dp)
                     .basicMarquee()
             } else {
                 Modifier
@@ -401,9 +657,25 @@ private fun RowScope.NavigationBarItem(item: NavigationItem) {
     )
 }
 
+/** A dot on the bottom-end corner of the icon, ringed in the bar colour so it reads over the glyph. */
+@Composable
+private fun BoxScope.StatusBadge(color: Color) {
+    Box(
+        modifier = Modifier
+            .align(Alignment.BottomEnd)
+            .offset(x = 2.dp, y = 2.dp)
+            .size(10.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+            .padding(1.dp)
+            .background(color, CircleShape),
+    )
+}
+
 data class Section(
     val title: String,
     val items: List<NavigationItem>,
+    /** In edit mode, the items get drag handles and move within this section only. */
+    val reorderable: Boolean = false,
 )
 
 data class NavigationItem(
@@ -412,10 +684,25 @@ data class NavigationItem(
     val icon: ImageVector,
     val label: String,
     val contentDescription: String? = null,
+    /** Colour of the status dot on the icon, or null for no dot. Shown in the bottom bar only. */
+    val badgeColor: Color? = null,
     val marqueeLabel: Boolean = false,
     val enabled: Boolean = true,
     val editable: Boolean = false,
     val id: String = label,
+    /** Text for the vertical overflow menu. Null uses [label]. */
+    val overflowLabel: String? = null,
+)
+
+/**
+ * A playback button of the vertical bar, for example Play or Next. Only the vertical bar shows it.
+ * While [enabled] is false, the button shows dimmed and ignores taps.
+ */
+data class PlaybackItem(
+    val icon: ImageVector,
+    val label: String,
+    val enabled: Boolean,
+    val onClick: () -> Unit,
 )
 
 fun <T : NavKey> MultiBackStack<T>.createNavigationItem(
@@ -477,6 +764,7 @@ fun PreviewAdaptiveNavigationBarLayout(drawerOpen: Boolean = false) {
         ),
         drawInitiallyOpen = drawerOpen,
         menuLabel = "Menu",
+        moreLabel = "More",
     ) { contentPadding, _ ->
         Text(
             modifier = Modifier.padding(contentPadding),

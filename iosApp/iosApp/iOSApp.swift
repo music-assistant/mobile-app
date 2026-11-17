@@ -293,6 +293,9 @@ struct iOSApp: App {
         KmpHelper.shared.setLocalNetworkPermissionProber(prober: localNetworkProbe)
         NativeLog.shared.debug(tag: "LocalNetworkProbe", message: "registered on gate")
 
+        // Server discovery on the connect screen: one NWBrowser session for each browse.
+        KmpHelper.shared.setServiceBrowserFactory { MassServiceBrowser() }
+
         if UIApplication.shared.applicationState == .active {
             volumeButtonObserver.start()
         }

@@ -59,6 +59,15 @@ fun List<QueueTrack>.buildDisplayRows(currentItemId: String?): List<QueueDisplay
         }
     }
 
+/**
+ * The rows from the current queue item on (its chapter rows included), at most [limit].
+ * Starts at the first row when no row is the current item.
+ */
+fun List<QueueDisplayRow>.upNext(currentItemId: String?, limit: Int): List<QueueDisplayRow> {
+    val start = indexOfFirst { it is QueueDisplayRow.QueueItem && it.item.id == currentItemId }
+    return drop(start.coerceAtLeast(0)).take(limit.coerceAtLeast(0))
+}
+
 /** Last chapter whose start is at or before [position]; null if [position] precedes all. */
 internal fun List<Chapter>.activeChapter(position: Double): Chapter? =
     lastOrNull { it.start <= position }

@@ -22,7 +22,7 @@ open iosApp/iosApp.xcodeproj
 - Queue management and playback control for Music Assistant players
 - Library browsing (Artists, Albums, Tracks, Playlists)
 - Authentication: login/pass, OAuth, long-lived access token
-- Remote access via WebRTC (planned - see `.claude/webrtc-implementation-plan.md`)
+- Remote access via WebRTC (see `.claude/webrtc-completion-summary.md`)
 - Built-in player with Sendspin protocol support
 - Local music playback (platform-specific)
 - Android Auto / CarPlay support
@@ -39,7 +39,4 @@ open iosApp/iosApp.xcodeproj
 - **Settings Screen**: See `.claude/settings-screen.md` for complete documentation on server connection, authentication flows, and local player configuration
 - **CarPlay & Siri**: See `.claude/carplay.md` for CarPlay architecture, template constraints, and the Siri media-domain integration (`INPlayMediaIntent` donation, `INUpdateMediaAffinityIntent`, `INSearchForMediaIntent`)
 - **Feature parity**: See `.claude/feature-parity-report.md` for the listener-feature comparison with the web frontend on server 2.10 and the 2.11 beta, with the adjustments and the missing features
-
-## Planned Features
-
-- **WebRTC Remote Access**: See `.claude/webrtc-implementation-plan.md` for comprehensive implementation plan, protocol details, and architecture design
+- **WebRTC Remote Access**: See `.claude/webrtc-completion-summary.md` for the shipped implementation, and `.claude/sendspin-webrtc-status.md` for Sendspin over WebRTC

@@ -4,6 +4,7 @@ import android.app.ForegroundServiceStartNotAllowedException
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -19,6 +20,7 @@ import io.music_assistant.client.auth.OAuthHandler
 import io.music_assistant.client.data.MainDataSource
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.services.MainMediaPlaybackService
+import io.music_assistant.client.services.isAnyQueueItemPlaying
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.App
 import org.koin.android.ext.android.inject
@@ -32,6 +34,10 @@ class MainActivity : ComponentActivity() {
     private val oauthHandler: OAuthHandler by lazy {
         CustomTabsOAuthHandler(this)
     }
+    private val audioManager: AudioManager by lazy { getSystemService(AudioManager::class.java) }
+
+    // Volume key codes whose ACTION_DOWN went to the selected remote player.
+    private val routedVolumeKeys = mutableSetOf<Int>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         resolveOrientationLock(resources.configuration)?.let { requestedOrientation = it }
@@ -57,7 +63,7 @@ class MainActivity : ComponentActivity() {
         // Handle OAuth callback / page deep link if launched from one
         handleIncomingUri(intent)
 
-        dataSource.isAnythingPlaying.asLiveData()
+        dataSource.isAnyQueueItemPlaying.asLiveData()
             .observe(this) {
                 if (it) {
                     val serviceIntent = Intent(this, MainMediaPlaybackService::class.java)
@@ -98,13 +104,47 @@ class MainActivity : ComponentActivity() {
         handleIncomingUri(intent)
     }
 
+    /**
+     * Volume keys reach the activity only while it has window focus, so the selected remote
+     * player gets them only while the app is on screen. A key that went to the player on
+     * ACTION_DOWN keeps its repeats and its ACTION_UP, so the system never sees half a press.
+     * During a call or VoIP (mode not normal) the keys stay with the system.
+     */
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if ((keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) &&
-            event?.repeatCount == 0
-        ) {
-            volumeButtonService.onPlatformVolumeButtonPressed()
+        val up = volumeKeyDirection(keyCode) ?: return super.onKeyDown(keyCode, event)
+        val repeat = (event?.repeatCount ?: 0) > 0
+        return when {
+            repeat && keyCode in routedVolumeKeys -> {
+                volumeButtonService.onVolumeKey(up, isRepeat = true)
+                true
+            }
+
+            audioManager.mode == AudioManager.MODE_NORMAL && volumeButtonService.onVolumeKey(up, repeat) -> {
+                routedVolumeKeys += keyCode
+                true
+            }
+
+            else -> {
+                routedVolumeKeys -= keyCode
+                if (!repeat) volumeButtonService.onPlatformVolumeButtonPressed()
+                super.onKeyDown(keyCode, event)
+            }
         }
-        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean =
+        routedVolumeKeys.remove(keyCode) || super.onKeyUp(keyCode, event)
+
+    private fun volumeKeyDirection(keyCode: Int): Boolean? = when (keyCode) {
+        KeyEvent.KEYCODE_VOLUME_UP -> true
+        KeyEvent.KEYCODE_VOLUME_DOWN -> false
+        else -> null
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // The ACTION_UP of a held key goes to the new focus owner.
+        if (!hasFocus) routedVolumeKeys.clear()
     }
 
     /**

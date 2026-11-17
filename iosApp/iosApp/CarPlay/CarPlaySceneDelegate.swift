@@ -7,7 +7,7 @@ import os.log
 /// post-drive sysdiagnose (`.info`/`.debug` are in-memory only).
 private let cpLog = OSLog(subsystem: "io.music-assistant.mobile-client", category: "CarPlay")
 
-class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
+class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate, CPNowPlayingTemplateObserver {
 
     var interfaceController: CPInterfaceController?
 
@@ -67,6 +67,22 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     /// Last enablement pushed to the buttons; nil until the first modes
     /// emission so the initial value always applies.
     private var nowPlayingButtonsEnabled: Bool?
+    /// Like channel: one retained instance per heart image. A state change
+    /// swaps which one is installed; Kotlin decides what a tap does.
+    private var likeButton: CPNowPlayingImageButton?
+    private var likedButton: CPNowPlayingImageButton?
+    private var likeSubscription: Cancellable?
+    /// nil until the first like emission this connection.
+    private var nowPlayingLike: NowPlayingLike?
+
+    // MARK: - Up Next state
+    //
+    // One subscription per connection drives both the Up Next button
+    // enablement and, while it is on screen, the queue list.
+    private var queueSubscription: Cancellable?
+    private var queueRows: [CarPlayQueueRow] = []
+    /// Weak: the navigation stack owns the list; nil once it is popped.
+    private weak var queueTemplate: CPListTemplate?
 
     // Weakly held so a connectivity restore can re-fire the homepage fetch
     // without retaining the template after CarPlay disconnects.
@@ -129,6 +145,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         // `(Boolean) -> Unit` from Kotlin exposes as `KotlinBoolean`; unbox.
         // The generation check (not just `interfaceController != nil`) rejects
         // completions from a connection that has since been torn down.
+        iconTint = Self.iconTint(for: KmpHelper.shared.carPlayAccent())
         let gen = connectionGen
         KmpHelper.shared.loadCarPlayStrings { [weak self] loaded in
             guard let self = self, self.connectionGen == gen,
@@ -139,6 +156,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
                 self?.handleReadinessChange(ready.boolValue)
             }
             self.setupNowPlayingButtons()
+            self.setupUpNext(loaded)
             self.setupTemplates()
         }
     }
@@ -156,13 +174,24 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         trackSubscription = nil
         modesSubscription?.cancel()
         modesSubscription = nil
+        likeSubscription?.cancel()
+        likeSubscription = nil
+        queueSubscription?.cancel()
+        queueSubscription = nil
+        queueRows = []
+        queueTemplate = nil
         // The now-playing template is a process-lifetime singleton; leave it
         // empty rather than holding this connection's button instances.
         CPNowPlayingTemplate.shared.updateNowPlayingButtons([])
+        CPNowPlayingTemplate.shared.isUpNextButtonEnabled = false
+        CPNowPlayingTemplate.shared.remove(self)
         shuffleButton = nil
         repeatButton = nil
         chapterBackButton = nil
         chapterForwardButton = nil
+        likeButton = nil
+        likedButton = nil
+        nowPlayingLike = nil
         nowPlayingButtonProfile = nil
         nowPlayingButtonsEnabled = nil
         libraryTemplate = nil
@@ -253,23 +282,48 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         // while chapters apply, so always enabled — Kotlin handles the edges
         // (previous restarts the chapter; next past the last is a plain next).
         chapterBackButton = CPNowPlayingImageButton(
-            image: Self.chapterButtonImage(symbol: "backward.end.fill")
+            image: Self.nowPlayingButtonImage(symbol: "backward.end.fill")
         ) { _ in
             NowPlayingCoordinator.shared.dispatchCarCommand("previous")
         }
         chapterForwardButton = CPNowPlayingImageButton(
-            image: Self.chapterButtonImage(symbol: "forward.end.fill")
+            image: Self.nowPlayingButtonImage(symbol: "forward.end.fill")
         ) { _ in
             NowPlayingCoordinator.shared.dispatchCarCommand("next")
         }
         // Fresh CPNowPlayingButtons default to enabled; start disabled so the
         // runloop gap before the modes replay can't show enabled-looking
         // buttons before real enablement arrives.
+        // Both hearts run the same Kotlin toggle, which reads the state of
+        // the item that plays now: a liked track clears the like, any other
+        // track gets a like, a radio stream adds the song on air.
+        likeButton = CPNowPlayingImageButton(
+            image: Self.nowPlayingButtonImage(symbol: "heart")
+        ) { _ in
+            KmpHelper.shared.toggleNowPlayingLike()
+        }
+        likedButton = CPNowPlayingImageButton(
+            image: Self.nowPlayingButtonImage(symbol: "heart.fill")
+        ) { _ in
+            KmpHelper.shared.toggleNowPlayingLike()
+        }
         shuffleButton?.isEnabled = false
         repeatButton?.isEnabled = false
         nowPlayingButtonProfile = nil
         nowPlayingButtonsEnabled = nil
+        nowPlayingLike = nil
 
+        // Subscribed before the track channel: its replay only records the
+        // state, so the first profile presentation already holds the heart.
+        likeSubscription = KmpHelper.shared.observeNowPlayingLike { [weak self] like in
+            guard let self, self.nowPlayingLike != like else { return }
+            let installed = self.currentLikeButton()
+            self.nowPlayingLike = like
+            // NOT_LIKED and ON_AIR share the outline instance: nothing to swap.
+            if self.nowPlayingButtonProfile != nil, self.currentLikeButton() !== installed {
+                self.presentNowPlayingButtons()
+            }
+        }
         trackSubscription = KmpHelper.shared.observeNowPlayingTrack { [weak self] track in
             // Radio has no auxiliary controls. Long-form shows chapter
             // prev/next only with navigable chapters. A nil track keeps the
@@ -302,9 +356,9 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         }
     }
 
-    /// SF-symbol template image for the chapter buttons; CarPlay applies its
+    /// SF-symbol template image for the image buttons; CarPlay applies its
     /// own tint to template-rendered images.
-    private static func chapterButtonImage(symbol: String) -> UIImage {
+    private static func nowPlayingButtonImage(symbol: String) -> UIImage {
         UIImage(
             systemName: symbol,
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold)
@@ -318,10 +372,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         guard nowPlayingButtonProfile != profile else { return }
         let hadApplied = nowPlayingButtonProfile != nil
         nowPlayingButtonProfile = profile
-        // First emission of the empty profile: the template is already empty
-        // (didDisconnect teardown / fresh process), so there is nothing to
-        // remove — record the state without a no-op empty update.
-        guard profile != .empty || hadApplied else { return }
+        // First emission of the empty profile without a heart: the template is
+        // already empty (didDisconnect teardown / fresh process), so there is
+        // nothing to remove — record the state without a no-op empty update.
+        guard profile != .empty || hadApplied || currentLikeButton() != nil else { return }
         os_log("CP: now-playing buttons profile %{public}@",
                log: cpLog, type: .default, String(describing: profile))
         presentNowPlayingButtons()
@@ -332,16 +386,99 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     /// teardown.
     private func presentNowPlayingButtons() {
         dispatchPrecondition(condition: .onQueue(.main))
+        // The heart sits between shuffle and repeat, as in Android Auto. It is
+        // nil wherever nothing can be liked (long-form content, no
+        // `library.write`), so every profile can carry it.
+        let like = currentLikeButton()
         let buttons: [CPNowPlayingButton]
         switch nowPlayingButtonProfile {
         case .music:
-            buttons = [shuffleButton, repeatButton].compactMap { $0 }
+            buttons = [shuffleButton, like, repeatButton].compactMap { $0 }
         case .chapters:
-            buttons = [chapterBackButton, chapterForwardButton].compactMap { $0 }
+            buttons = [chapterBackButton, chapterForwardButton, like].compactMap { $0 }
         case .empty, nil:
-            buttons = []
+            buttons = [like].compactMap { $0 }
         }
         CPNowPlayingTemplate.shared.updateNowPlayingButtons(buttons)
+    }
+
+    /// The retained heart instance for the current like state, or nil for no button.
+    private func currentLikeButton() -> CPNowPlayingButton? {
+        guard let like = nowPlayingLike else { return nil }
+        if like == .liked { return likedButton }
+        if like == .notLiked || like == .onAir { return likeButton }
+        return nil
+    }
+
+    // MARK: - Up Next
+
+    /// Shows the system Up Next button on Now Playing while something comes
+    /// after the current item, and keeps an open queue list current.
+    private func setupUpNext(_ strings: CarPlayStrings) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        let nowPlaying = CPNowPlayingTemplate.shared
+        nowPlaying.upNextTitle = strings.queue
+        nowPlaying.isUpNextButtonEnabled = false
+        nowPlaying.add(self)
+        queueSubscription?.cancel()
+        queueSubscription = KmpHelper.shared.observeCarPlayQueue(
+            limit: Int32(CPListTemplate.maximumItemCount)
+        ) { [weak self] rows in
+            guard let self else { return }
+            self.queueRows = rows
+            // The current item alone is not an Up Next list.
+            let enabled = rows.count > 1
+            if CPNowPlayingTemplate.shared.isUpNextButtonEnabled != enabled {
+                CPNowPlayingTemplate.shared.isUpNextButtonEnabled = enabled
+            }
+            self.queueTemplate?.updateSections(self.queueSections())
+        }
+    }
+
+    func nowPlayingTemplateUpNextButtonTapped(_ nowPlayingTemplate: CPNowPlayingTemplate) {
+        guard let strings = strings else { return }
+        let template = CPListTemplate(title: strings.queue, sections: queueSections())
+        queueTemplate = template
+        safePushTemplate(template, animated: true)
+    }
+
+    /// Rows from the current item on. The current item shows the playing
+    /// indicator; chapter rows of a current audiobook follow it.
+    private func queueSections() -> [CPListSection] {
+        guard let strings = strings else { return [] }
+        let items: [CPListItem] = queueRows.compactMap { row in
+            let listItem: CPListItem
+            if let row = row as? CarPlayQueueRowItem {
+                guard let mapped = CarPlayContentManager.shared.mapToCPListItem(row.item) else { return nil }
+                mapped.isPlaying = row.isCurrent
+                listItem = mapped
+            } else if let row = row as? CarPlayQueueRowChapter {
+                listItem = CPListItem(
+                    text: row.title,
+                    detailText: row.duration,
+                    image: UIImage(systemName: "bookmark")
+                )
+            } else {
+                return nil
+            }
+            let key = row.key
+            listItem.handler = { [weak self] _, completion in
+                self?.handleQueueRowSelection(key: key)
+                completion()
+            }
+            return listItem
+        }
+        guard !items.isEmpty else { return [emptyStateSection(text: strings.queueEmpty)] }
+        return [CPListSection(items: items)]
+    }
+
+    /// Plays the item (or seeks to the chapter) and returns to Now Playing,
+    /// which is below the queue list in the stack.
+    private func handleQueueRowSelection(key: String) {
+        guard isReady else { showOfflineAlert(); return }
+        if KmpHelper.shared.playCarPlayQueueRow(key: key) {
+            pushNowPlayingTemplate(animated: true)
+        }
     }
 
     /// Set Library as the initial home screen / Root
@@ -353,22 +490,20 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     // MARK: - UI Construction
 
-    // App theme colors from Color.kt, adaptive for light/dark mode
-    // Light: primaryContainer ≈ #E0DEFF, primary = #575992
-    // Dark:  primaryContainer ≈ #404378, primary = #C0C1FF
-    private static let cardBackground = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0x40/255.0, green: 0x43/255.0, blue: 0x78/255.0, alpha: 1.0)
-            : UIColor(red: 0xE0/255.0, green: 0xDE/255.0, blue: 0xFF/255.0, alpha: 1.0)
-    }
-    private static let iconTint = UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0xC0/255.0, green: 0xC1/255.0, blue: 0xFF/255.0, alpha: 1.0)
-            : UIColor(red: 0x57/255.0, green: 0x59/255.0, blue: 0x92/255.0, alpha: 1.0)
+    /// Icon tint from the accent color setting (the Compose `primary` role),
+    /// resolved for the light and the dark CarPlay appearance. Read on each
+    /// connect: a CPListItem image is immutable, so an accent change on the
+    /// phone reaches CarPlay at the next connect.
+    private var iconTint: UIColor = .label
+
+    private static func iconTint(for accent: CarPlayAccent) -> UIColor {
+        UIColor { trait in
+            UIColor(argb: trait.userInterfaceStyle == .dark ? accent.darkArgb : accent.lightArgb)
+        }
     }
 
-    private static func renderCategoryImage(symbol symbolName: String, size: CGSize, traits: UITraitCollection) -> UIImage {
-        let tintColor = iconTint.resolvedColor(with: traits)
+    private static func renderCategoryImage(symbol symbolName: String, size: CGSize, tint: UIColor, traits: UITraitCollection) -> UIImage {
+        let tintColor = tint.resolvedColor(with: traits)
         let symbol = UIImage(systemName: symbolName)!
 
         // Use scale: 0 to automatically match the screen scale
@@ -393,10 +528,10 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
     }
 
     /// Creates a dynamic UIImage that re-renders for light/dark mode automatically
-    private static func dynamicCategoryImage(symbol: String, size: CGSize) -> UIImage {
-        let light = renderCategoryImage(symbol: symbol, size: size,
+    private func dynamicCategoryImage(symbol: String, size: CGSize) -> UIImage {
+        let light = Self.renderCategoryImage(symbol: symbol, size: size, tint: iconTint,
             traits: UITraitCollection(userInterfaceStyle: .light))
-        let dark = renderCategoryImage(symbol: symbol, size: size,
+        let dark = Self.renderCategoryImage(symbol: symbol, size: size, tint: iconTint,
             traits: UITraitCollection(userInterfaceStyle: .dark))
 
         let asset = UIImageAsset()
@@ -407,7 +542,7 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
 
     private func createLibraryTemplate(_ strings: CarPlayStrings) -> CPListTemplate {
         // "Browse" item pushes a CPGridTemplate with all categories
-        let browseIcon = Self.dynamicCategoryImage(symbol: "square.grid.2x2.fill", size: CPListItem.maximumImageSize)
+        let browseIcon = dynamicCategoryImage(symbol: "square.grid.2x2.fill", size: CPListItem.maximumImageSize)
         let browseItem = CPListItem(text: strings.browse, detailText: strings.browseSubtitle, image: browseIcon)
         browseItem.handler = { [weak self] _, completion in
             self?.pushBrowseGrid()
@@ -581,13 +716,13 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
             // AI Radio is not in allCategories: its rows are plugin stations, not AppMediaItem,
             // so attachHandlers would drop every tap. It gets its own template instead.
             if name == "AI_RADIO" {
-                let image = Self.dynamicCategoryImage(symbol: "sparkles", size: imageSize)
+                let image = dynamicCategoryImage(symbol: "sparkles", size: imageSize)
                 return CPGridButton(titleVariants: [strings.aiRadio], image: image) { [weak self] _ in
                     self?.pushAiRadioTemplate()
                 }
             }
             guard let category = allCategories[name] else { return nil }
-            let image = Self.dynamicCategoryImage(symbol: category.symbol, size: imageSize)
+            let image = dynamicCategoryImage(symbol: category.symbol, size: imageSize)
             return CPGridButton(titleVariants: [category.title], image: image) { [weak self] _ in
                 self?.pushCategoryTemplate(title: category.title, fetcher: category.fetcher)
             }
@@ -840,5 +975,18 @@ class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegate {
         )
         item.handler = nil
         return item
+    }
+}
+
+private extension UIColor {
+    /// A color from a Compose ARGB value (`Color.toArgb()`), as Kotlin `Int` crosses to Swift.
+    convenience init(argb: Int32) {
+        let value = UInt32(bitPattern: argb)
+        self.init(
+            red: CGFloat((value >> 16) & 0xFF) / 255.0,
+            green: CGFloat((value >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(value & 0xFF) / 255.0,
+            alpha: CGFloat((value >> 24) & 0xFF) / 255.0
+        )
     }
 }

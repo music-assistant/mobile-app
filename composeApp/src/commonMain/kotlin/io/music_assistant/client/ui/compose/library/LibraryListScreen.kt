@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.music_assistant.client.data.model.client.ArtistType
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
@@ -34,6 +35,7 @@ import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
+import io.music_assistant.client.ui.compose.common.rememberPlaylistFilePicker
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.item.ViewModeToggle
@@ -82,7 +84,20 @@ fun LibraryListScreen(
     val state by libraryListViewModel.state.collectAsStateWithLifecycle()
     val providerOptions by libraryListViewModel.providerOptions.collectAsStateWithLifecycle()
     val genreOptions by libraryListViewModel.genreOptions.collectAsStateWithLifecycle()
+    val audiobookArtistTypes by libraryListViewModel.audiobookArtistTypes.collectAsStateWithLifecycle()
     val viewMode by viewModeViewModel.viewModeFor(state.mediaType).collectAsStateWithLifecycle()
+    val importSources by libraryListViewModel.importSources.collectAsStateWithLifecycle()
+    val pickPlaylistFile = rememberPlaylistFilePicker(libraryListViewModel::onPlaylistFilePicked)
+    val canEditPlaylists = state.mediaType == MediaType.PLAYLIST && LocalGrantedScopes.current.canEditLibrary
+
+    state.importDraft?.let { draft ->
+        ImportPlaylistDialog(
+            draft = draft,
+            sources = importSources,
+            onDismiss = libraryListViewModel::dismissImport,
+            onImport = libraryListViewModel::importPlaylist,
+        )
+    }
 
     TopBarLayout(
         topBar = {
@@ -103,6 +118,7 @@ fun LibraryListScreen(
                 onFiltersChange = libraryListViewModel::setFilters,
                 providerOptions = providerOptions,
                 genreOptions = genreOptions,
+                audiobookArtistTypes = audiobookArtistTypes,
                 onLoadFilterOptions = libraryListViewModel::loadFilterOptions,
             )
         },
@@ -111,9 +127,8 @@ fun LibraryListScreen(
             data = state.dataState,
             onNavigateClick = onNavigateClick,
             onPlayClick = libraryListViewModel::onPlayClick,
-            onCreatePlaylist = libraryListViewModel::createPlaylist.takeIf {
-                state.mediaType == MediaType.PLAYLIST && LocalGrantedScopes.current.canEditLibrary
-            },
+            onCreatePlaylist = libraryListViewModel::createPlaylist.takeIf { canEditPlaylists },
+            onImportPlaylist = pickPlaylistFile.takeIf { canEditPlaylists },
             playlistActions = actionsViewModel,
             libraryActions = actionsViewModel,
             progressActions = actionsViewModel,
@@ -160,6 +175,7 @@ private fun LibraryListTopBar(
     onFiltersChange: (LibraryFilters) -> Unit,
     providerOptions: DataState<List<SelectOption<String>>>,
     genreOptions: DataState<List<SelectOption<Int>>>,
+    audiobookArtistTypes: List<ArtistType>,
     onLoadFilterOptions: () -> Unit,
 ) {
     var showSearch by remember { mutableStateOf(searchQuery.isNotEmpty()) }
@@ -218,6 +234,7 @@ private fun LibraryListTopBar(
                         filters = filters,
                         providerOptions = providerOptions,
                         genreOptions = genreOptions,
+                        audiobookArtistTypes = audiobookArtistTypes,
                         onLoadOptions = onLoadFilterOptions,
                         onApply = {
                             onFiltersChange(it)
@@ -248,7 +265,8 @@ private fun LibraryListTopBar(
                     onSortChanged = { onSortChanged(it) },
                 )
 
-                if (mediaType == MediaType.AUDIOBOOK) {
+                // Series grouping applies to the books, not to the authors or narrators.
+                if (mediaType == MediaType.AUDIOBOOK && filters.audiobookArtistType == null) {
                     SeriesGroupingToggle(
                         grouping = seriesGrouping,
                         onToggle = onToggleSeriesGrouping,

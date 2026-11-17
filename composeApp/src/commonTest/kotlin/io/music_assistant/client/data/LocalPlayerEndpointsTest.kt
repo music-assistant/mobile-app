@@ -9,6 +9,8 @@ import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
+import io.music_assistant.client.settings.SendspinConnectionAuth
+import io.music_assistant.client.settings.SendspinConnectionSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
@@ -221,6 +223,26 @@ class LocalPlayerEndpointsTest {
         val endpoint = assertIs<Endpoint.WebSocket>(endpoints.endpoint.value)
         assertEquals("ws://ma.local:8095/sendspin", endpoint.url)
         assertEquals("tok", endpoint.authToken)
+    }
+
+    @Test
+    fun aCustomConnectionSignsInOnlyWhenItGoesThroughTheProxy() = runTest {
+        val endpoints = LocalPlayerEndpoints(client, settings, backgroundScope)
+        client.sessionState.value = authenticated
+        val custom = SendspinConnectionSettings(enabled = true, host = "speaker.local", port = 8927, path = "/sendspin")
+        settings.setSendspinPlayerSettings(settings.sendspinPlayerSettings.value.copy(connectionOverride = custom))
+        runCurrent()
+        assertEquals("tok", assertIs<Endpoint.WebSocket>(endpoints.endpoint.value).authToken)
+
+        settings.setSendspinPlayerSettings(
+            settings.sendspinPlayerSettings.value.copy(
+                connectionOverride = custom.copy(auth = SendspinConnectionAuth.NONE),
+            ),
+        )
+        runCurrent()
+        val plain = assertIs<Endpoint.WebSocket>(endpoints.endpoint.value)
+        assertEquals("ws://speaker.local:8927/sendspin", plain.url)
+        assertNull(plain.authToken, "a plain Sendspin server rejects the proxy sign-in")
     }
 
     @Test

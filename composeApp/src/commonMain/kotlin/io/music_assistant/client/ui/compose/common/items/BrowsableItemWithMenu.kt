@@ -429,10 +429,13 @@ private fun <T : AppMediaItem> BrowsableItemWithMenu(
                     Modifier
                 },
             )
+        // A browsable row is never selectable, so it ignores taps and long presses while a
+        // selection of the screen is active.
+        val selecting = LocalItemSelection.current?.isActive == true
         itemComposable(
             contentModifier,
-            onNavigateClick,
-        ) { expandedItemId = item.itemId }
+            onNavigateClick.takeUnless { selecting } ?: { _: T -> },
+        ) { if (!selecting) expandedItemId = item.itemId }
 
         DropdownMenu(
             expanded = expandedItemId == item.itemId,

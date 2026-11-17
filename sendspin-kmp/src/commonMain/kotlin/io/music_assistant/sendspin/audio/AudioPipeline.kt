@@ -57,7 +57,7 @@ internal class AudioPipeline(
         val held: Boolean = false,
     )
 
-    private val logger = Logger.withTag("AudioPipeline")
+    private val logger = Logger.withTag("Sendspin.AudioPipeline")
     internal val buffer = JitterBuffer(capacityBytes)
     internal val stream = MutableStateFlow(StreamState(StreamPhase.Idle, null, 0, 0))
     internal val wakeups = Channel<Unit>(Channel.CONFLATED)
@@ -93,7 +93,13 @@ internal class AudioPipeline(
     fun apply(action: StreamAction) {
         when (action) {
             is StreamAction.StartFresh -> startFresh(action.format)
-            StreamAction.ResumeKeepBuffer -> wakeups.trySend(Unit)
+            StreamAction.ResumeKeepBuffer -> {
+                logger.i {
+                    "Stream resume: gen=${stream.value.generation} " +
+                        "kept=${buffer.size} chunks / ${buffer.byteCount / BYTES_PER_KB} KB"
+                }
+                wakeups.trySend(Unit)
+            }
             StreamAction.Restart -> {
                 // Same format: the sink and the decoder survive, only the timeline restarts.
                 logDiscontinuity("restart")

@@ -20,7 +20,7 @@ import kotlin.math.abs
  * thread reads an immutable snapshot without taking the lock.
  */
 internal class ClockSync(private val clock: MonotonicClock) {
-    private val logger = Logger.withTag("ClockSync")
+    private val logger = Logger.withTag("Sendspin.ClockSync")
     private val lock = SynchronizedObject()
     private val filter = ClockFilter()
     private val burst = ArrayList<ClockSample>()

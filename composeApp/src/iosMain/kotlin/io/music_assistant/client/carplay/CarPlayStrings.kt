@@ -29,6 +29,8 @@ import musicassistantclient.composeapp.generated.resources.media_type_radio
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_library
 import musicassistantclient.composeapp.generated.resources.not_connected_retry
+import musicassistantclient.composeapp.generated.resources.queue_empty
+import musicassistantclient.composeapp.generated.resources.queue_label
 import org.jetbrains.compose.resources.getString
 
 /**
@@ -59,6 +61,8 @@ class CarPlayStrings internal constructor(
     val radio: String,
     val aiRadio: String,
     val aiRadioEmpty: String,
+    val queue: String,
+    val queueEmpty: String,
     private val episodeNumbers: EpisodeNumberFormat,
     private val albumsByArtistTemplate: String,
     private val bulkActionTitlesByName: Map<String, String>,
@@ -94,6 +98,8 @@ class CarPlayStrings internal constructor(
             radio = getString(Res.string.media_type_radio),
             aiRadio = getString(Res.string.ai_radio_title),
             aiRadioEmpty = getString(Res.string.ai_radio_empty),
+            queue = getString(Res.string.queue_label),
+            queueEmpty = getString(Res.string.queue_empty),
             episodeNumbers = EpisodeNumberFormat.load(),
             albumsByArtistTemplate = getString(Res.string.albums_by_artist),
             bulkActionTitlesByName = mapOf(

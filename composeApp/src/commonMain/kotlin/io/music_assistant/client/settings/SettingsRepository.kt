@@ -11,6 +11,7 @@ import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortField
 import io.music_assistant.client.data.model.client.SortOption
 import io.music_assistant.client.data.model.client.SubItemContext
+import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.sendspin.api.AudioCodec
@@ -96,6 +97,18 @@ class SettingsRepository(
     fun switchTheme(theme: ThemeSetting) {
         settings.putString("theme", theme.name)
         _theme.update { theme }
+    }
+
+    private val _accentColor = MutableStateFlow(
+        settings.getStringOrNull("accent_color").let { stored ->
+            AccentColor.entries.firstOrNull { it.name == stored } ?: AccentColor.DEFAULT
+        },
+    )
+    val accentColor = _accentColor.asStateFlow()
+
+    fun setAccentColor(accent: AccentColor) {
+        settings.putString("accent_color", accent.name)
+        _accentColor.update { accent }
     }
 
     private val _connectionInfo = MutableStateFlow(
@@ -410,6 +423,18 @@ class SettingsRepository(
         _allowLandscapeOnAllDevices.update { enabled }
     }
 
+    // Opt-in, Android only: while the app has window focus, the hardware volume keys change the
+    // volume of the selected remote player instead of the phone volume.
+    private val _volumeKeysControlSelectedPlayer = MutableStateFlow(
+        settings.getBoolean("volume_keys_control_selected_player", false),
+    )
+    val volumeKeysControlSelectedPlayer = _volumeKeysControlSelectedPlayer.asStateFlow()
+
+    fun setVolumeKeysControlSelectedPlayer(enabled: Boolean) {
+        settings.putBoolean("volume_keys_control_selected_player", enabled)
+        _volumeKeysControlSelectedPlayer.update { enabled }
+    }
+
     // One-time Local Network onboarding; dismissed, not "first run", so a user who
     // clears it without connecting is not re-prompted on every launch.
     private val _localNetworkOnboardingShown = MutableStateFlow(
@@ -493,6 +518,9 @@ class SettingsRepository(
                 host = secrets.getString("sendspin_host", ""),
                 port = settings.getInt("sendspin_port", DEFAULT_SENDSPIN_PORT),
                 path = settings.getString("sendspin_path", DEFAULT_SENDSPIN_PATH),
+                auth = settings.getStringOrNull("sendspin_connection_auth")
+                    ?.let { name -> SendspinConnectionAuth.entries.firstOrNull { it.name == name } }
+                    ?: SendspinConnectionAuth.MUSIC_ASSISTANT,
             ),
         ),
     )
@@ -526,6 +554,7 @@ class SettingsRepository(
             secrets.putString("sendspin_host", host)
             settings.putInt("sendspin_port", port)
             settings.putString("sendspin_path", path)
+            settings.putString("sendspin_connection_auth", auth.name)
         }
         _sendspinPlayerSettings.update { value }
     }
@@ -541,6 +570,18 @@ class SettingsRepository(
         _showBufferVisualization.update { show }
     }
 
+    // Whether the expanded player draws the track waveform on the seek bar. Off by default, and
+    // apart from the `show_waveform` preference of the web frontend: a user can want it in one only.
+    private val _showWaveform = MutableStateFlow(
+        settings.getBoolean("show_waveform", false),
+    )
+    val showWaveform = _showWaveform.asStateFlow()
+
+    fun setShowWaveform(show: Boolean) {
+        settings.putBoolean("show_waveform", show)
+        _showWaveform.update { show }
+    }
+
     // User-tuned client-side playback delay (ms). LocalPlayerAdapter negates it
     // into LocalPlayerConfig.userDelayMs, so each chunk's local target time is
     //   target = serverTimeToLocal(ts) - userDelay*1000
@@ -552,12 +593,12 @@ class SettingsRepository(
     // later (escape hatch if this device somehow leads the group). Not reported
     // to the server. Range ±2000 ms.
     private val _sendspinStaticDelayMs = MutableStateFlow(
-        settings.getInt("sendspin_static_delay_ms", 0).coerceIn(-2000, 2000),
+        settings.getInt("sendspin_static_delay_ms", 0).coerceIn(SENDSPIN_STATIC_DELAY_RANGE),
     )
     val sendspinStaticDelayMs = _sendspinStaticDelayMs.asStateFlow()
 
     fun setSendspinStaticDelayMs(ms: Int) {
-        val clamped = ms.coerceIn(-2000, 2000)
+        val clamped = ms.coerceIn(SENDSPIN_STATIC_DELAY_RANGE)
         settings.putInt("sendspin_static_delay_ms", clamped)
         _sendspinStaticDelayMs.update { clamped }
     }
@@ -783,6 +824,16 @@ class SettingsRepository(
         settings.putString(SERIES_GROUPING_KEY, grouping.name)
     }
 
+    // Podcast-episodes display choice, shared by every podcast; the item ViewModel is the only writer.
+    fun getPodcastEpisodesPlayedFilter(): PlayedFilter =
+        settings.getStringOrNull(PODCAST_EPISODES_PLAYED_FILTER_KEY)
+            ?.let { runCatching { PlayedFilter.valueOf(it) }.getOrNull() }
+            ?: PlayedFilter.ALL
+
+    fun setPodcastEpisodesPlayedFilter(filter: PlayedFilter) {
+        settings.putString(PODCAST_EPISODES_PLAYED_FILTER_KEY, filter.name)
+    }
+
     fun getSortOption(context: SubItemContext): SortOption {
         // A fixed-order context has no chip, so a value persisted by an older app version could
         // never be changed back — including a stale descending flag on ORIGINAL. Ignore it outright.
@@ -807,6 +858,9 @@ class SettingsRepository(
     }
 
     companion object {
+        /** The range of the local player's static delay, in ms. Positive plays earlier. */
+        val SENDSPIN_STATIC_DELAY_RANGE = -2000..2000
+
         private const val CAR_DSP_CONNECT_KEY = "car_dsp_action_connect"
         private const val CAR_DSP_DISCONNECT_KEY = "car_dsp_action_disconnect"
 
@@ -816,6 +870,7 @@ class SettingsRepository(
         private const val SERVER_ID_PREFIX = "id_"
         private const val CLIENT_CERTIFICATE_ALIAS_KEY = "client_certificate_alias"
         private const val SERIES_GROUPING_KEY = "library_series_grouping"
+        private const val PODCAST_EPISODES_PLAYED_FILTER_KEY = "podcast_episodes_played_filter"
         private val SECRET_STRING_KEYS = listOf(
             "host",
             "webrtc_remote_id",

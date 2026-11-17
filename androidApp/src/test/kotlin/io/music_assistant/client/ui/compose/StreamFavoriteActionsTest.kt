@@ -231,6 +231,7 @@ class StreamFavoriteActionsTest {
                     isQueueExpanded = false,
                     onExpandQueue = {},
                     onSelectPlayer = {},
+                    onGroupPlayer = {},
                 )
                 ToastHost(toastState)
             }

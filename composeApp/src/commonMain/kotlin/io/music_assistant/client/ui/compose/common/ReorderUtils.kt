@@ -15,3 +15,8 @@ internal fun <T> moveToEnabledBoundary(
     mutable.add(insertIndex, target to newEnabled)
     return mutable
 }
+
+// Stable partition: enabled items first, each section keeps its order. A reconciled config
+// appends a new item enabled after the disabled ones, and reordering needs one enabled block.
+internal fun <T> List<Pair<T, Boolean>>.enabledFirst(): List<Pair<T, Boolean>> =
+    sortedByDescending { it.second }

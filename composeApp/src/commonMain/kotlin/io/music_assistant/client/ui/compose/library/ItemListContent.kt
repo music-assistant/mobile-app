@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import compose.icons.TablerIcons
+import compose.icons.tablericons.FileImport
 import compose.icons.tablericons.Plus
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -45,6 +47,7 @@ import musicassistantclient.composeapp.generated.resources.library_empty
 import musicassistantclient.composeapp.generated.resources.library_error
 import musicassistantclient.composeapp.generated.resources.library_search_global
 import musicassistantclient.composeapp.generated.resources.playlist_add_new
+import musicassistantclient.composeapp.generated.resources.playlist_import
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -59,6 +62,7 @@ fun ItemListContent(
     onNavigateClick: (AppMediaItem) -> Unit,
     onPlayClick: PlayHandler<AppMediaItem>,
     onCreatePlaylist: ((String) -> Unit)? = null,
+    onImportPlaylist: (() -> Unit)? = null,
     playlistActions: PlaylistActions,
     libraryActions: LibraryActions,
     progressActions: ProgressActions,
@@ -89,8 +93,13 @@ fun ItemListContent(
                     .fillMaxSize()
                     .clearFocusOnScroll(),
             ) {
+                // Shown in every state, so an empty or failed list still offers them.
+                PlaylistButtons(
+                    onCreate = onCreatePlaylist?.let { { showCreatePlaylistDialog = true } },
+                    onImport = onImportPlaylist,
+                )
                 // Content area
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     when (data) {
                         is DataState.Loading -> LoadingState()
                         is DataState.Error -> ErrorState()
@@ -102,45 +111,52 @@ fun ItemListContent(
                             if (items.isEmpty()) {
                                 EmptyState(onGlobalSearch)
                             } else {
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    if (onCreatePlaylist != null) {
-                                        OutlinedButton(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                                            onClick = { showCreatePlaylistDialog = true },
-                                        ) {
-                                            Icon(
-                                                TablerIcons.Plus,
-                                                contentDescription = stringResource(Res.string.cd_add_playlist),
-                                            )
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(stringResource(Res.string.playlist_add_new))
-                                        }
-                                    }
-
-                                    val gridState = rememberLazyGridState()
-                                    AdaptiveMediaGrid(
-                                        modifier = Modifier.fillMaxSize(),
-                                        items = items,
-                                        isLoadingMore = isLoadingMore,
-                                        hasMore = hasMore,
-                                        viewMode = viewMode,
-                                        onNavigateClick = onNavigateClick,
-                                        onPlayClick = onPlayClick,
-                                        onLoadMore = onLoadMore,
-                                        gridState = gridState,
-                                        playlistActions = playlistActions,
-                                        libraryActions = libraryActions,
-                                        progressActions = progressActions,
-                                        contentPadding = contentPadding,
-                                        albumSubtitle = albumSubtitle,
-                                    )
-                                }
+                                val gridState = rememberLazyGridState()
+                                AdaptiveMediaGrid(
+                                    modifier = Modifier.fillMaxSize(),
+                                    items = items,
+                                    isLoadingMore = isLoadingMore,
+                                    hasMore = hasMore,
+                                    viewMode = viewMode,
+                                    onNavigateClick = onNavigateClick,
+                                    onPlayClick = onPlayClick,
+                                    onLoadMore = onLoadMore,
+                                    gridState = gridState,
+                                    playlistActions = playlistActions,
+                                    libraryActions = libraryActions,
+                                    progressActions = progressActions,
+                                    contentPadding = contentPadding,
+                                    albumSubtitle = albumSubtitle,
+                                )
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** "Add new" and "Import" of the Playlists list; a null callback hides its button. */
+@Composable
+private fun PlaylistButtons(onCreate: (() -> Unit)?, onImport: (() -> Unit)?) {
+    if (onCreate == null && onImport == null) return
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        onCreate?.let {
+            OutlinedButton(modifier = Modifier.weight(1f), onClick = it) {
+                Icon(TablerIcons.Plus, contentDescription = stringResource(Res.string.cd_add_playlist))
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(Res.string.playlist_add_new))
+            }
+        }
+        onImport?.let {
+            OutlinedButton(modifier = Modifier.weight(1f), onClick = it) {
+                Icon(TablerIcons.FileImport, contentDescription = null)
+                Spacer(Modifier.width(4.dp))
+                Text(stringResource(Res.string.playlist_import))
             }
         }
     }

@@ -39,6 +39,7 @@ data class PodcastEpisode(
     ),
 ) : AppMediaItem(), PlayableItem, MarkableItem {
     override val mediaType: MediaType = MediaType.PODCAST_EPISODE
+    override val playsOnTap: Boolean = true
     override val subtitle = releaseDate?.let(::formatIsoDate)
     override val parentName: String? = podcast?.displayName
     override val defaultIcon = Icons.Default.Podcasts

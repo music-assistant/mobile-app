@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -53,6 +55,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import io.music_assistant.client.data.model.client.items.Album
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Artist
@@ -64,6 +67,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.settings.ViewMode
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.DisplayString
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
@@ -91,6 +95,7 @@ fun <T, U> CategoryRow(
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
     bottomFocusRequester: FocusRequester? = null,
+    viewAllColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (data is DataState.Data) {
         CategoryRow(
@@ -105,6 +110,7 @@ fun <T, U> CategoryRow(
             progressActions = progressActions,
             providerIconFetcher = providerIconFetcher,
             bottomFocusRequester = bottomFocusRequester,
+            viewAllColor = viewAllColor,
         )
     } else if (data is DataState.Loading) {
         val placeholderColor by rememberInfiniteTransition().animateColor(
@@ -146,6 +152,7 @@ fun <T> CategoryRow(
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
     bottomFocusRequester: FocusRequester? = null,
+    viewAllColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (itemCategory.items.isEmpty() && itemCategory.filter == null) {
         return
@@ -171,6 +178,7 @@ fun <T> CategoryRow(
                     rowTitle = title,
                     onNavigateToList = onNavigateToList,
                     itemList = itemCategory.list,
+                    color = viewAllColor,
                 )
             }
         },
@@ -219,135 +227,179 @@ fun CategoryRow(
     // Key by occurrence to avoid Compose's duplicate-key crash
     val itemKeys = remember(mediaItems) { mediaItems.lazyListOccurrenceKeys() }
 
-    RowWithTitle(
-        modifier = modifier,
-        title = {
-            Text(title)
-        },
-        actions = actions,
-        bottomFocusRequester = bottomFocusRequester,
-    ) {
-        itemsIndexed(
-            items = mediaItems,
-            key = { index, _ -> itemKeys[index] },
-            contentType = { _, item ->
-                when (item) {
-                    is Track -> "Track"
-                    is Artist -> "Artist"
-                    is Album -> "Album"
-                    is Playlist -> "Playlist"
-                    is Audiobook -> "Audiobook"
-                    is MediaCollection -> "Collection"
-                    is Podcast -> "Podcast"
-                    is PodcastEpisode -> "Episode"
-                    is RadioStation -> "RadioStation"
-                    is Genre -> "Genre"
-                    else -> "Unknown"
-                }
+    // A row of tap-to-play items shows list items, two in each column.
+    val stackedPairs = remember(mediaItems) {
+        mediaItems.takeIf { items -> items.isNotEmpty() && items.all { it.playsOnTap } }?.chunked(2)
+    }
+
+    // Stacked list items keep one title line, so both items of a column have the same height.
+    val tile: @Composable (AppMediaItem, ViewMode, FocusRequester?) -> Unit = { item, viewMode, itemFocusRequester ->
+        when (item) {
+            is Artist -> ArtistWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayClick,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            is Album -> AlbumWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                navigateToItem = onNavigateClick,
+                containerItem = containerItem,
+                onPlayOption = onPlayClick,
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                // Inside an artist the artist name repeats on every album, so show the year.
+                subtitle = if (containerItem is Artist) AlbumSubtitle.YEAR else AlbumSubtitle.ARTISTS,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            is Playlist -> PlaylistWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayClick,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            is Podcast -> PodcastWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayClick,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            is Track -> TrackWithMenu(
+                item = item,
+                viewMode = viewMode,
+                titleMaxLines = 1,
+                navigateToItem = onNavigateClick,
+                containerItem = containerItem,
+                onPlayOption = onPlayClick,
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            is PodcastEpisode -> PodcastEpisodeWithMenu(
+                item = item,
+                viewMode = viewMode,
+                titleMaxLines = 1,
+                navigateToItem = onNavigateClick,
+                containerItem = containerItem,
+                onPlayOption = onPlayClick,
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                progressActions = progressActions,
+                providerIconFetcher = providerIconFetcher,
+            )
+
+            is Audiobook -> AudiobookWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayClick,
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                progressActions = progressActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            // Audiobookshelf "Continue series" / "Recent series" rows.
+            is MediaCollection -> MediaCollectionWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayClick,
+                libraryActions = libraryActions,
+            )
+
+            is RadioStation -> RadioWithMenu(
+                item = item,
+                viewMode = viewMode,
+                titleMaxLines = 1,
+                onPlayOption = onPlayClick,
+                playlistActions = playlistActions,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            is Genre -> GenreWithMenu(
+                item = item,
+                onNavigateClick = onNavigateClick,
+                onPlayOption = onPlayClick,
+                libraryActions = libraryActions,
+                providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
+            )
+
+            else -> {}
+        }
+    }
+
+    BoxWithConstraints {
+        // A column is a fraction of the row viewport (the width inside the content padding), with a cap.
+        // fillParentMaxWidth ignores the incoming constraints, so the cap needs one explicit width.
+        val stackedColumnWidth = min((maxWidth - ROW_PADDING * 2) * STACKED_COLUMN_FRACTION, STACKED_COLUMN_MAX_WIDTH)
+        RowWithTitle(
+            modifier = modifier,
+            title = {
+                Text(title)
             },
-        ) { index, item ->
-            val itemFocusRequester = if (index == 0) firstItemFocusRequester else null
-            when (item) {
-                is Artist -> ArtistWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    onPlayOption = onPlayClick,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                is Album -> AlbumWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    navigateToItem = onNavigateClick,
-                    containerItem = containerItem,
-                    onPlayOption = onPlayClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    // Inside an artist the artist name repeats on every album, so show the year.
-                    subtitle = if (containerItem is Artist) AlbumSubtitle.YEAR else AlbumSubtitle.ARTISTS,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                is Playlist -> PlaylistWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    onPlayOption = onPlayClick,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                is Podcast -> PodcastWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    onPlayOption = onPlayClick,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                is Track -> TrackWithMenu(
-                    item = item,
-                    navigateToItem = onNavigateClick,
-                    containerItem = containerItem,
-                    onPlayOption = onPlayClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                is PodcastEpisode -> PodcastEpisodeWithMenu(
-                    item = item,
-                    onPlayOption = onPlayClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    progressActions = progressActions,
-                    providerIconFetcher = providerIconFetcher,
-                )
-
-                is Audiobook -> AudiobookWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    onPlayOption = onPlayClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    progressActions = progressActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                // Audiobookshelf "Continue series" / "Recent series" rows.
-                is MediaCollection -> MediaCollectionWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    onPlayOption = onPlayClick,
-                    libraryActions = libraryActions,
-                )
-
-                is RadioStation -> RadioWithMenu(
-                    item = item,
-                    onPlayOption = onPlayClick,
-                    playlistActions = playlistActions,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                is Genre -> GenreWithMenu(
-                    item = item,
-                    onNavigateClick = onNavigateClick,
-                    onPlayOption = onPlayClick,
-                    libraryActions = libraryActions,
-                    providerIconFetcher = providerIconFetcher,
-                    firstItemFocusRequester = itemFocusRequester,
-                )
-
-                else -> {}
-            }
+            actions = actions,
+            bottomFocusRequester = bottomFocusRequester,
+        ) {
+            stackedPairs?.let { pairs ->
+                itemsIndexed(
+                    items = pairs,
+                    key = { index, _ -> itemKeys[index * 2] },
+                    contentType = { _, _ -> "PlayablePair" },
+                ) { index, pair ->
+                    // The next column shows at the edge, and a wide window gets several columns.
+                    Column(
+                        modifier = Modifier.width(stackedColumnWidth),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        pair.forEachIndexed { pairIndex, item ->
+                            // The card shape matches the ripple shape of RowItem.
+                            Box(Modifier.clip(RoundedCornerShape(8.dp)).background(cardColor)) {
+                                tile(
+                                    item,
+                                    ViewMode.LIST,
+                                    if (index == 0 && pairIndex == 0) firstItemFocusRequester else null,
+                                )
+                            }
+                        }
+                    }
+                }
+            } ?: itemsIndexed(
+                items = mediaItems,
+                key = { index, _ -> itemKeys[index] },
+                contentType = { _, item ->
+                    when (item) {
+                        is Track -> "Track"
+                        is Artist -> "Artist"
+                        is Album -> "Album"
+                        is Playlist -> "Playlist"
+                        is Audiobook -> "Audiobook"
+                        is MediaCollection -> "Collection"
+                        is Podcast -> "Podcast"
+                        is PodcastEpisode -> "Episode"
+                        is RadioStation -> "RadioStation"
+                        is Genre -> "Genre"
+                        else -> "Unknown"
+                    }
+                },
+            ) { index, item -> tile(item, ViewMode.GRID, if (index == 0) firstItemFocusRequester else null) }
         }
     }
 }
@@ -399,7 +451,7 @@ private fun RowWithTitle(
                 Modifier
             },
             state = rowListState,
-            contentPadding = PaddingValues(horizontal = 16.dp),
+            contentPadding = PaddingValues(horizontal = ROW_PADDING),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             row()
@@ -429,6 +481,7 @@ private fun ViewAllButton(
     rowTitle: String,
     onNavigateToList: (String, ItemList) -> Unit,
     itemList: ItemList,
+    color: Color,
 ) {
     val viewAllContentDescription = stringResource(Res.string.cd_view_all, rowTitle)
     TextButton(
@@ -439,7 +492,10 @@ private fun ViewAllButton(
             onNavigateToList(rowTitle, itemList)
         },
     ) {
-        Text(stringResource(Res.string.action_view_all))
+        Text(
+            text = stringResource(Res.string.action_view_all),
+            color = color,
+        )
     }
 }
 
@@ -502,6 +558,9 @@ private fun <T> FilterSelector(
 }
 
 private const val PLACEHOLDER_ITEMS = 10
+private const val STACKED_COLUMN_FRACTION = 0.7f
+private val STACKED_COLUMN_MAX_WIDTH = 360.dp
+private val ROW_PADDING = 16.dp
 
 @Preview
 @Composable
@@ -516,7 +575,7 @@ fun PreviewCategoryRowEmpty() {
                 TODO("Not yet implemented")
             }
 
-            override fun addToPlaylist(itemUri: String?, playlist: Playlist) {
+            override fun addToPlaylist(itemUris: List<String>, playlist: Playlist) {
                 TODO("Not yet implemented")
             }
 
@@ -556,7 +615,7 @@ fun PreviewCategoryLoading() {
                 TODO("Not yet implemented")
             }
 
-            override fun addToPlaylist(itemUri: String?, playlist: Playlist) {
+            override fun addToPlaylist(itemUris: List<String>, playlist: Playlist) {
                 TODO("Not yet implemented")
             }
 
@@ -596,7 +655,7 @@ fun PreviewCategoryNoData() {
                 TODO("Not yet implemented")
             }
 
-            override fun addToPlaylist(itemUri: String?, playlist: Playlist) {
+            override fun addToPlaylist(itemUris: List<String>, playlist: Playlist) {
                 TODO("Not yet implemented")
             }
 

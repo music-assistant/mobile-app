@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.server.ServerProviderInstance
+import io.music_assistant.client.data.model.server.ServerUserSummary
 import io.music_assistant.client.data.model.server.events.ProvidersUpdatedEvent
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.resultAs
@@ -54,6 +55,14 @@ class ProviderRepository(
                 ?: state.takeIf { it is DataState.Data }
                 ?: DataState.Error()
         }
+
+    /**
+     * The users a playlist can be shared with, the caller included. Server 2.11, for a user with
+     * `library.write` or `config.providers.own`. Null when the server refuses or fails.
+     */
+    suspend fun shareCandidates(): List<ServerUserSummary>? =
+        apiClient.sendRequest(Request.Provider.shareCandidates())
+            .resultAs<List<ServerUserSummary>>()
 
     private suspend fun fetch(): List<ServerProviderInstance>? =
         apiClient.sendRequest(Request.Provider.all())

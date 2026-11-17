@@ -140,6 +140,46 @@ class QueueDisplayRowsTest {
         }
     }
 
+    // --- upNext -----------------------------------------------------------
+
+    @Test
+    fun upNextStartsAtTheCurrentItemAndKeepsItsChapterRows() {
+        val items = listOf(songTrack("s0"), audiobookTrack("b1"), songTrack("s2"))
+        val rows = items.buildDisplayRows(currentItemId = "b1")
+
+        val upNext = rows.upNext(currentItemId = "b1", limit = 100)
+
+        assertEquals(rows.drop(1), upNext)
+        assertEquals("b1", (upNext.first() as QueueDisplayRow.QueueItem).item.id)
+        assertEquals(chapterNames.size, upNext.count { it is QueueDisplayRow.ChapterItem })
+    }
+
+    @Test
+    fun upNextIsCappedAtTheLimit() {
+        val items = (0 until 5).map { songTrack("s$it") }
+        val rows = items.buildDisplayRows(currentItemId = "s1")
+
+        val upNext = rows.upNext(currentItemId = "s1", limit = 2)
+
+        assertEquals(listOf("s1", "s2"), upNext.map { (it as QueueDisplayRow.QueueItem).item.id })
+    }
+
+    @Test
+    fun upNextWithoutACurrentItemStartsAtTheFirstRow() {
+        val rows = listOf(songTrack("s0"), songTrack("s1")).buildDisplayRows(currentItemId = null)
+
+        assertEquals(rows, rows.upNext(currentItemId = null, limit = 10))
+        assertEquals(rows, rows.upNext(currentItemId = "gone", limit = 10))
+    }
+
+    @Test
+    fun upNextWithANonPositiveLimitIsEmpty() {
+        val rows = listOf(songTrack("s0")).buildDisplayRows(currentItemId = "s0")
+
+        assertTrue(rows.upNext(currentItemId = "s0", limit = 0).isEmpty())
+        assertTrue(rows.upNext(currentItemId = "s0", limit = -1).isEmpty())
+    }
+
     // --- robustness -------------------------------------------------------
 
     @Test

@@ -290,7 +290,7 @@ class AndroidAutoPlaybackService : MediaBrowserServiceCompat() {
      */
     private fun ensureNotificationService() {
         scope.launch {
-            dataSource.isAnythingPlaying.collect { isPlaying ->
+            dataSource.isAnyQueueItemPlaying.collect { isPlaying ->
                 if (isPlaying) {
                     val intent =
                         Intent(this@AndroidAutoPlaybackService, MainMediaPlaybackService::class.java)

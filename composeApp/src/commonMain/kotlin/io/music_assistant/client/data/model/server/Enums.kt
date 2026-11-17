@@ -15,6 +15,22 @@ enum class PlayerState {
     PLAYING,
 }
 
+/**
+ * The point at which a player's sleep timer stops playback. A value that a newer server adds
+ * decodes to null, through `coerceInputValues`.
+ */
+@Serializable
+enum class SleepTimerMode {
+    @SerialName("duration")
+    DURATION,
+
+    @SerialName("end_of_item")
+    END_OF_ITEM,
+
+    @SerialName("end_of_chapter")
+    END_OF_CHAPTER,
+}
+
 object PlayerFeature {
     const val POWER = "power"
     const val VOLUME_SET = "volume_set"

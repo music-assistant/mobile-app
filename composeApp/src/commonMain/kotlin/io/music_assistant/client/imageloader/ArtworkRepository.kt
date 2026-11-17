@@ -13,6 +13,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+@ConsistentCopyVisibility
 data class ArtworkToken internal constructor(
     internal val identity: ArtworkIdentity,
     internal val digest: String,

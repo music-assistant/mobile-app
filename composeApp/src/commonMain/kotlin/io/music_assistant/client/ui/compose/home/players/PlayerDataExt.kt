@@ -15,17 +15,38 @@ fun PlayerData.contentDescription(): String {
     return currentPlayerContentDescription
 }
 
-fun PlayerData.label(): String {
+/**
+ * The text of the group badge on the player icon: the member count of a group, "+N" for the
+ * players synced to a leader, or null for a player that plays alone.
+ */
+fun PlayerData.groupBadge(): String? {
     val boundCount = childrenBinds.count { it.isBound }
-    val playerLabel = when {
-        player.isGroup -> "${player.name} (${player.groupMembers?.size ?: 0})"
-        boundCount > 0 -> "${player.name} + $boundCount"
-        else -> player.name
+    return when {
+        player.isGroup -> (player.groupMembers?.size ?: 0).toString()
+        boundCount > 0 -> "+$boundCount"
+        else -> null
     }
-    return playerLabel
 }
 
-fun PlayerData.iconRes(): DrawableResource {
-    val iconId = if (this.isLocal) SharedIcons.SMARTPHONE else this.player.icon
-    return SharedIcons.getResource(iconId)
+/**
+ * True if the player offers grouping. The phone offers it only while the server lists it (then
+ * it has child candidates), like the web frontend, which hides a hidden player.
+ */
+val PlayerData.offersGrouping: Boolean
+    get() = !isLocal || childrenBinds.isNotEmpty() || player.isGrouped
+
+/** The player name and count for the text-only navigation overflow menu. */
+fun PlayerData.overflowLabel(): String {
+    val count = groupBadge()
+    return when {
+        count == null -> player.name
+        player.isGroup -> "${player.name} ($count)"
+        else -> "${player.name} + ${count.removePrefix("+")}"
+    }
 }
+
+fun PlayerData.iconRes(): DrawableResource = playerIconRes(player.icon, isLocal)
+
+/** The icon of a player: the phone for the local player, else the shared icon [icon] names. */
+fun playerIconRes(icon: String?, isLocal: Boolean): DrawableResource =
+    SharedIcons.getResource(if (isLocal) SharedIcons.SMARTPHONE else icon)

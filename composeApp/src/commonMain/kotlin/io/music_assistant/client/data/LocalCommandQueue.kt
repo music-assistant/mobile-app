@@ -44,7 +44,7 @@ internal class LocalCommandQueue(
     scope: CoroutineScope,
     private val requestRecovery: () -> Unit,
 ) {
-    private val log = Logger.withTag("LocalCommandQueue")
+    private val log = Logger.withTag("Sendspin.LocalCommandQueue")
     private val mutex = Mutex()
     private val queue = mutableListOf<Entry>()
     private val wake = Channel<Unit>(Channel.CONFLATED)
@@ -155,8 +155,8 @@ internal class LocalCommandQueue(
         }
     }
 
-    private companion object {
-        const val REPLAY_SPACING_MS = 100L
+    internal companion object {
+        private const val REPLAY_SPACING_MS = 100L
 
         /** The request gate's own budget: long enough to bring back a session torn down for idleness. */
         const val SEND_OR_DROP_WAIT_MS = 10_000L

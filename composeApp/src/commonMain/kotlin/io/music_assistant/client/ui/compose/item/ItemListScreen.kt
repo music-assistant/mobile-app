@@ -9,14 +9,21 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.ClickContext
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SubItemContext
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.ui.compose.common.items.AlbumSubtitle
+import io.music_assistant.client.ui.compose.common.items.ItemSelection
 import io.music_assistant.client.ui.compose.common.items.ItemSortChip
+import io.music_assistant.client.ui.compose.common.items.LocalItemSelection
+import io.music_assistant.client.ui.compose.common.items.SelectableItems
+import io.music_assistant.client.ui.compose.common.items.SelectionBar
+import io.music_assistant.client.ui.compose.common.items.rememberSelectionTopAppBarState
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.library.ItemListContent
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
@@ -45,10 +52,19 @@ fun ItemListScreen(
     val state by itemListViewModel.state.collectAsStateWithLifecycle()
     val query by itemListViewModel.query.collectAsStateWithLifecycle()
     val viewMode by viewModeViewModel.viewModeFor(mediaType).collectAsStateWithLifecycle()
+    // Every ItemList is an artist's list, and multi-select covers its tracks.
+    val itemSelection = remember { ItemSelection() }.takeIf { mediaType == MediaType.TRACK }
 
     TopBarLayout(
+        topAppBarState = rememberSelectionTopAppBarState(itemSelection),
         topBar = {
-            TwoRowTopAppBar(
+            itemSelection?.takeIf { it.isActive }?.let {
+                SelectionBar(
+                    selection = it,
+                    onPlay = actionsViewModel::onPlayItemsClick,
+                    playlistActions = actionsViewModel,
+                )
+            } ?: TwoRowTopAppBar(
                 title = {
                     query?.let {
                         SearchInput(
@@ -90,18 +106,21 @@ fun ItemListScreen(
             )
         },
     ) {
-        ItemListContent(
-            data = state.items,
-            onNavigateClick = onNavigateClick,
-            onPlayClick = actionsViewModel::onPlayClick,
-            playlistActions = actionsViewModel,
-            libraryActions = actionsViewModel,
-            progressActions = actionsViewModel,
-            contentPadding = contentPadding,
-            viewMode = viewMode,
-            clickContext = clickContext,
-            // Every ItemList is an artist's list, so the artist name would repeat on each album.
-            albumSubtitle = AlbumSubtitle.YEAR,
-        )
+        CompositionLocalProvider(LocalItemSelection provides itemSelection) {
+            SelectableItems(state.items.dataOrNull.orEmpty())
+            ItemListContent(
+                data = state.items,
+                onNavigateClick = onNavigateClick,
+                onPlayClick = actionsViewModel::onPlayClick,
+                playlistActions = actionsViewModel,
+                libraryActions = actionsViewModel,
+                progressActions = actionsViewModel,
+                contentPadding = contentPadding,
+                viewMode = viewMode,
+                clickContext = clickContext,
+                // Every ItemList is an artist's list, so the artist name would repeat on each album.
+                albumSubtitle = AlbumSubtitle.YEAR,
+            )
+        }
     }
 }

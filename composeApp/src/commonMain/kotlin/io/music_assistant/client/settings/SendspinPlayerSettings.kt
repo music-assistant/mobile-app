@@ -31,4 +31,11 @@ data class SendspinConnectionSettings(
     val host: String = "",
     val port: Int = SettingsRepository.DEFAULT_SENDSPIN_PORT,
     val path: String = SettingsRepository.DEFAULT_SENDSPIN_PATH,
+    val auth: SendspinConnectionAuth = SendspinConnectionAuth.MUSIC_ASSISTANT,
 )
+
+/**
+ * How the custom connection opens. [MUSIC_ASSISTANT] sends the sign-in of the Music Assistant
+ * `/sendspin` proxy first. [NONE] speaks plain Sendspin, for a server without that proxy.
+ */
+enum class SendspinConnectionAuth { MUSIC_ASSISTANT, NONE }

@@ -48,7 +48,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -89,7 +92,9 @@ import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderP
 import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
 import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.inactive
+import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import io.music_assistant.client.ui.utils.fadingEdges
+import io.music_assistant.client.utils.conditional
 import io.music_assistant.client.utils.formatDuration
 import io.music_assistant.sendspin.api.PlayerState
 import kotlinx.coroutines.flow.Flow
@@ -100,6 +105,7 @@ import musicassistantclient.composeapp.generated.resources.cd_ambient_sound_on
 import musicassistantclient.composeapp.generated.resources.cd_favorite
 import musicassistantclient.composeapp.generated.resources.cd_lyrics
 import musicassistantclient.composeapp.generated.resources.cd_playing
+import musicassistantclient.composeapp.generated.resources.cd_transcript
 import musicassistantclient.composeapp.generated.resources.player_needs_setup
 import musicassistantclient.composeapp.generated.resources.player_power_on
 import musicassistantclient.composeapp.generated.resources.player_powered_off
@@ -129,6 +135,11 @@ fun CompactPlayerItem(
     // Server preference gate for chapter-based Next enablement and the chapter subtitle.
     chapterProgressEnabled: Boolean = true,
     livePositionFlow: Flow<Double>? = null,
+    // True where the vertical bar carries Play and Next, as beside the collapsed player.
+    transportOnBar: Boolean = false,
+    // Grouping goes into the player chip if there is one ([onSelectPlayer]), else before Play, in place of Next.
+    // A player without grouping shows neither.
+    onGroup: (() -> Unit)? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -248,6 +259,10 @@ fun CompactPlayerItem(
             }
         }
 
+        onGroup?.takeIf { onSelectPlayer == null && item.offersGrouping }?.let {
+            GroupButton(player = item, onClick = it, tint = colors.controlTint)
+        }
+
         if (item.player.isPoweredOff) {
             IconButton(
                 modifier = Modifier.size(48.dp),
@@ -260,18 +275,20 @@ fun CompactPlayerItem(
                 )
             }
         } else {
-            PlayerControls(
-                playerData = item,
-                playerAction = playerAction,
-                showAdditionalButtons = showAdditionalControls,
-                mainButtonSize = 48.dp,
-                showSkip = true,
-                showSkipBack = onSelectPlayer != null,
-                tint = colors.controlTint,
-                tvFocusFlow = tvFocusFlow,
-                playUpTarget = "playerSelect",
-                chapterProgressEnabled = chapterProgressEnabled,
-            )
+            if (!transportOnBar) {
+                PlayerControls(
+                    playerData = item,
+                    playerAction = playerAction,
+                    showAdditionalButtons = showAdditionalControls,
+                    mainButtonSize = 48.dp,
+                    showSkip = onGroup == null || onSelectPlayer != null,
+                    showSkipBack = onSelectPlayer != null,
+                    tint = colors.controlTint,
+                    tvFocusFlow = tvFocusFlow,
+                    playUpTarget = "playerSelect",
+                    chapterProgressEnabled = chapterProgressEnabled,
+                )
+            }
         }
 
         if (onSelectPlayer != null) {
@@ -285,6 +302,7 @@ fun CompactPlayerItem(
                     controlTint = colors.controlTint,
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
+                    onGroup = onGroup,
                 )
             }
         }
@@ -327,6 +345,8 @@ fun FullPlayerItem(
     onAmbientSoundClick: (() -> Unit)? = null,
     // Server preference gate for the chapter-relative timeline.
     chapterProgressEnabled: Boolean = true,
+    // The waveform bins of the current track; null draws the plain track.
+    waveform: List<Float>? = null,
     navigateToItem: (AppMediaItem) -> Unit = {},
     // The chooser for a multi-artist track lives in the dialog host, outside the pager.
     onChooseArtist: () -> Unit = {},
@@ -346,16 +366,29 @@ fun FullPlayerItem(
             "lyrics" to TvFocusFlow.Links(left = "repeat", down = "play"),
         )
     }
+    // Across a horizontal fold the artwork ends above the crease, which leaves the controls, pushed
+    // down by SpaceBetween, on the lower half. Without a fold the position is not measured, so a drag
+    // or an animation that moves the player does not recompose it.
+    val density = LocalDensity.current
+    val horizontalFold = LocalDeviceChrome.current.horizontalFoldRegion
+    var topInWindow by remember { mutableStateOf(0.dp) }
+    val artworkMaxHeight = horizontalFold?.let { (it.start - topInWindow).coerceAtLeast(0.dp) }
 
     // Do not add padding here - title/subtitle should be full width.
     Column(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .conditional(horizontalFold != null) {
+                onGloballyPositioned { topInWindow = with(density) { it.positionInWindow().y.toDp() } }
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
         Box(
             modifier = Modifier.padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING)
+                .testTag(FullPlayerSemantics.ARTWORK_TAG)
                 .weight(1f, fill = false)
+                .then(artworkMaxHeight?.let { Modifier.heightIn(max = it) } ?: Modifier)
                 .aspectRatio(1f)
                 .heightIn(max = 500.dp)
                 .clip(RoundedCornerShape(16.dp))
@@ -561,6 +594,9 @@ fun FullPlayerItem(
         // armed (Material3 shows no focus change on a slider, so a focused slider reads as inert).
         var sliderFocused by remember { mutableStateOf(false) }
 
+        val trackEnabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff
+        // A disabled timeline keeps the plain track and its disabled colors.
+        val shownWaveform = waveform?.takeIf { trackEnabled }
         val progressSliderColors = SliderDefaults.colors().copy(
             thumbColor = controlTint,
             activeTrackColor = controlTint,
@@ -604,16 +640,40 @@ fun FullPlayerItem(
                         sliderPosition.takeIf { seekable }?.let {
                         SliderDefaults.Thumb(
                             interactionSource = remember { MutableInteractionSource() },
-                            thumbSize = if (sliderFocused) {
-                                DpSize(26.dp, 26.dp)
-                            } else {
-                                DpSize(16.dp, 16.dp)
+                            thumbSize = when {
+                                // Over a waveform the thumb is a playhead line that covers no bar.
+                                shownWaveform != null -> DpSize(4.dp, WAVEFORM_HEIGHT + 8.dp)
+                                // Android TV: enlarge the thumb while the slider holds D-pad focus
+                                // so seeking is visibly armed (Material3 shows no focus change on a
+                                // slider, so a focused slider reads as inert).
+                                sliderFocused -> DpSize(26.dp, 26.dp)
+                                else -> DpSize(16.dp, 16.dp)
                             },
                             colors = progressSliderColors,
                         )
                     }
                 },
-                track = { sliderState ->
+                track = track@{ sliderState ->
+                    // A waveform is shown for a track only, so it has no chapter ticks.
+                    shownWaveform?.let { bins ->
+                        val bufferedFraction = timelineDuration
+                            ?.takeIf { item.isLocal && it > 0f && bufferedAheadSec > 0f }
+                            ?.let { (timelinePosition + bufferedAheadSec) / it }
+                            ?: 0f
+                        WaveformTrack(
+                            bins = bins,
+                            playedFraction = {
+                                val range = sliderState.valueRange
+                                val span = range.endInclusive - range.start
+                                if (span > 0f) (sliderState.value - range.start) / span else 0f
+                            },
+                            bufferedFraction = bufferedFraction,
+                            playedColor = controlTint,
+                            bufferedColor = controlTint.copy(alpha = BUFFER_TRACK_ALPHA),
+                            restColor = controlTint.inactive(),
+                        )
+                        return@track
+                    }
                     val audiobook = item.queueInfo?.currentItem?.track as? Audiobook
                     val chapters = audiobook?.chapters
                     // Square inside corners leave a full or empty track, and the buffered band,
@@ -625,7 +685,7 @@ fun FullPlayerItem(
                             thumbTrackGapSize = 0.dp,
                             trackInsideCornerSize = 0.dp,
                             drawStopIndicator = null,
-                            enabled = currentMedia != null && !item.player.isAnnouncing && !poweredOff,
+                            enabled = trackEnabled,
                             modifier = Modifier.height(8.dp),
                         )
                         // Buffered-ahead highlight — the region between the real playhead and
@@ -848,7 +908,13 @@ fun FullPlayerItem(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Lyrics,
-                        contentDescription = stringResource(Res.string.cd_lyrics),
+                        contentDescription = stringResource(
+                            if (item.queueInfo?.currentItem?.track is PodcastEpisode) {
+                                Res.string.cd_transcript
+                            } else {
+                                Res.string.cd_lyrics
+                            },
+                        ),
                         tint = colors.controlTint,
                     )
                 }
@@ -860,6 +926,10 @@ fun FullPlayerItem(
 }
 
 private val FULL_PLAYER_HORIZONTAL_PADDING = 16.dp
+
+object FullPlayerSemantics {
+    const val ARTWORK_TAG = "FullPlayerArtwork"
+}
 
 private val previewPoweredOffColors = PlayerColors(dominant = Color.DarkGray, controlTint = Color.White)
 

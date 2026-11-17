@@ -90,9 +90,12 @@ import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.common.tvFocus
 import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
+import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
+import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
+import io.music_assistant.client.ui.theme.isDark
 import io.music_assistant.client.utils.AppVersion
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
@@ -102,6 +105,7 @@ import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isTelevisionDevice
 import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
+import io.music_assistant.client.utils.supportsVolumeKeyRouting
 import io.music_assistant.client.webrtc.model.RemoteId
 import kotlinx.coroutines.delay
 import musicassistantclient.composeapp.generated.resources.Res
@@ -145,6 +149,8 @@ import musicassistantclient.composeapp.generated.resources.settings_history_webr
 import musicassistantclient.composeapp.generated.resources.settings_misc
 import musicassistantclient.composeapp.generated.resources.settings_no_saved_connections
 import musicassistantclient.composeapp.generated.resources.settings_port
+import musicassistantclient.composeapp.generated.resources.settings_port_home_assistant_hint
+import musicassistantclient.composeapp.generated.resources.settings_port_invalid
 import musicassistantclient.composeapp.generated.resources.settings_remote_id
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_hint
 import musicassistantclient.composeapp.generated.resources.settings_remote_id_invalid
@@ -154,10 +160,13 @@ import musicassistantclient.composeapp.generated.resources.settings_server
 import musicassistantclient.composeapp.generated.resources.settings_server_base_path
 import musicassistantclient.composeapp.generated.resources.settings_server_base_path_hint
 import musicassistantclient.composeapp.generated.resources.settings_server_host
+import musicassistantclient.composeapp.generated.resources.settings_server_host_invalid
 import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
-import musicassistantclient.composeapp.generated.resources.settings_use_tls
+import musicassistantclient.composeapp.generated.resources.settings_ssl_tls
 import musicassistantclient.composeapp.generated.resources.settings_version_info
+import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player
+import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player_hint
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_description
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_disclaimer
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_info
@@ -180,6 +189,7 @@ private const val CONFIG_FOCUS_RETRY_DELAY = 250L
 fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
+    val accent = themeViewModel.accentColor.collectAsStateWithLifecycle(AccentColor.DEFAULT)
     val viewModel = koinViewModel<SettingsViewModel>()
     val savedConnectionInfo by viewModel.savedConnectionInfo.collectAsStateWithLifecycle()
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
@@ -416,8 +426,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                         }
                         LocalNetworkOnboardingCard(
                             resources = viewModel.localNetworkOnboardingResources,
-                            visible = connectionHistory.isEmpty() &&
-                                !localNetworkOnboardingShown,
+                            visible = viewModel.isLocalNetworkOnboardingVisible(
+                                connectionHistory,
+                                localNetworkOnboardingShown,
+                            ),
                             onGotIt = viewModel::dismissLocalNetworkOnboarding,
                         )
                         ConnectionMethodTabs(
@@ -433,6 +445,18 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                             onTlsChange = { isTls = it },
                             basePath = basePath,
                             onBasePathChange = { basePath = it },
+                            onServerSelected = { connection ->
+                                ipAddress = connection.host
+                                port = connection.port.toString()
+                                isTls = connection.isTls
+                                basePath = connection.basePath
+                                viewModel.attemptConnection(
+                                    connection.host,
+                                    connection.port.toString(),
+                                    connection.isTls,
+                                    connection.basePath,
+                                )
+                            },
                             onDirectConnect = {
                                 viewModel.attemptConnection(
                                     ipAddress.ifBlank { Defaults.URI },
@@ -524,14 +548,24 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 }
 
+                AccentColorSection(
+                    current = accent.value,
+                    darkTheme = theme.value.isDark(),
+                    onChange = themeViewModel::setAccentColor,
+                )
+
                 // Misc settings - always visible
                 val shareLogsTitle = stringResource(Res.string.settings_share_logs)
                 val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
                 val allowLandscape by viewModel.allowLandscapeOnAllDevices
                     .collectAsStateWithLifecycle()
+                val volumeKeysControlPlayer by viewModel.volumeKeysControlSelectedPlayer
+                    .collectAsStateWithLifecycle()
                 MiscSection(
                     allowLandscape = allowLandscape,
                     onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
+                    volumeKeysControlPlayer = volumeKeysControlPlayer,
+                    onVolumeKeysControlPlayerChange = { viewModel.setVolumeKeysControlSelectedPlayer(it) },
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,
@@ -553,6 +587,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
 private fun MiscSection(
     allowLandscape: Boolean,
     onAllowLandscapeChange: (Boolean) -> Unit,
+    volumeKeysControlPlayer: Boolean,
+    onVolumeKeysControlPlayerChange: (Boolean) -> Unit,
     onShareLogs: () -> Unit,
     hasCrashLog: Boolean,
     isPreparingShare: Boolean,
@@ -563,26 +599,20 @@ private fun MiscSection(
 ) {
     SectionCard {
         SectionTitle(stringResource(Res.string.settings_misc))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(
-                checked = allowLandscape,
-                onCheckedChange = onAllowLandscapeChange,
-            )
-            Text(
-                text = stringResource(Res.string.settings_allow_landscape),
-                color = MaterialTheme.colorScheme.onBackground,
+        CheckboxSetting(
+            checked = allowLandscape,
+            onCheckedChange = onAllowLandscapeChange,
+            label = stringResource(Res.string.settings_allow_landscape),
+            hint = stringResource(Res.string.settings_allow_landscape_hint),
+        )
+        if (supportsVolumeKeyRouting) {
+            CheckboxSetting(
+                checked = volumeKeysControlPlayer,
+                onCheckedChange = onVolumeKeysControlPlayerChange,
+                label = stringResource(Res.string.settings_volume_keys_control_player),
+                hint = stringResource(Res.string.settings_volume_keys_control_player_hint),
             )
         }
-        Text(
-            // Aligned under the label: the checkbox occupies a 48.dp touch target.
-            modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
-            text = stringResource(Res.string.settings_allow_landscape_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
         OutlinedButton(
             modifier = Modifier
                 .fillMaxWidth()
@@ -627,6 +657,35 @@ private fun MiscSection(
             }
         }
     }
+}
+
+@Composable
+private fun CheckboxSetting(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    label: String,
+    hint: String,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+        )
+        Text(
+            text = label,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+    Text(
+        // Aligned under the label: the checkbox occupies a 48.dp touch target.
+        modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
+        text = hint,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -755,6 +814,7 @@ private fun ConnectionMethodTabs(
     onTlsChange: (Boolean) -> Unit,
     basePath: String,
     onBasePathChange: (String) -> Unit,
+    onServerSelected: (ConnectionInfo) -> Unit,
     onDirectConnect: () -> Unit,
     directConnectEnabled: Boolean,
     sessionState: SessionState,
@@ -822,6 +882,13 @@ private fun ConnectionMethodTabs(
         when (selectedTab) {
             0 -> {
                 // Direct connection tab
+                val discoveredServers by viewModel.discoveredServers.collectAsStateWithLifecycle()
+                val connectAttemptInFlight by viewModel.connectAttemptInFlight.collectAsStateWithLifecycle()
+                DiscoveredServersList(
+                    servers = discoveredServers,
+                    enabled = !connectAttemptInFlight,
+                    onSelect = { onServerSelected(it.connection) },
+                )
                 DirectConnectionContent(
                     configFlow = configFlow,
                     configLinks = configLinks,
@@ -972,6 +1039,8 @@ fun DirectConnectionContent(
     }
 
     val focusManager = LocalFocusManager.current
+    val isHostInvalid = !ipAddress.ifBlank { Defaults.URI }.isValidHost()
+    val isPortInvalid = !port.isIpPort()
 
     // Host input
     TextField(
@@ -983,6 +1052,12 @@ fun DirectConnectionContent(
         onValueChange = onIpAddressChange,
         label = { Text(stringResource(Res.string.settings_server_host)) },
         placeholder = { Text(Defaults.URI) },
+        supportingText = if (isHostInvalid) {
+            { Text(stringResource(Res.string.settings_server_host_invalid)) }
+        } else {
+            null
+        },
+        isError = isHostInvalid,
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(
@@ -1016,6 +1091,26 @@ fun DirectConnectionContent(
         ),
     )
 
+    // TLS toggle. A port at the default of the other mode follows the toggle; a custom port stays.
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(
+            checked = isTls,
+            onCheckedChange = { checked ->
+                onTlsChange(checked)
+                port.takeIf { it.isBlank() || it == Defaults.port(!checked).toString() }
+                    ?.let { onPortChange(Defaults.port(checked).toString()) }
+            },
+            modifier = configFlow.modifierFor("tls", configLinks.getValue("tls"))
+                .testTag("Config-Tls"),
+        )
+        Text(stringResource(Res.string.settings_ssl_tls))
+    }
+
     // Port input
     TextField(
         modifier = configFlow.modifierFor("port", configLinks.getValue("port"), textField = true)
@@ -1025,7 +1120,19 @@ fun DirectConnectionContent(
         value = port,
         onValueChange = onPortChange,
         label = { Text(stringResource(Res.string.settings_port)) },
-        placeholder = { Text(Defaults.PORT.toString()) },
+        placeholder = { Text(Defaults.port(isTls).toString()) },
+        supportingText = when {
+            isPortInvalid -> {
+                { Text(stringResource(Res.string.settings_port_invalid)) }
+            }
+
+            port.trim() == Defaults.HOME_ASSISTANT_PORT.toString() -> {
+                { Text(stringResource(Res.string.settings_port_home_assistant_hint)) }
+            }
+
+            else -> null
+        },
+        isError = isPortInvalid,
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Number,
@@ -1037,22 +1144,6 @@ fun DirectConnectionContent(
             unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
         ),
     )
-
-    // TLS toggle
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = isTls,
-            onCheckedChange = onTlsChange,
-            modifier = configFlow.modifierFor("tls", configLinks.getValue("tls"))
-                .testTag("Config-Tls"),
-        )
-        Text(stringResource(Res.string.settings_use_tls))
-    }
 
     if (isTls) {
         ClientCertificateSetting(

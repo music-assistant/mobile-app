@@ -31,8 +31,9 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.ui.compose.common.ToastHost
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.rememberToastState
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.utils.KeepScreenOn
@@ -63,6 +66,9 @@ import musicassistantclient.composeapp.generated.resources.cd_keep_screen_on_ena
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_close
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_offset_decrease
 import musicassistantclient.composeapp.generated.resources.cd_lyrics_offset_increase
+import musicassistantclient.composeapp.generated.resources.cd_transcript_close
+import musicassistantclient.composeapp.generated.resources.cd_transcript_offset_decrease
+import musicassistantclient.composeapp.generated.resources.cd_transcript_offset_increase
 import musicassistantclient.composeapp.generated.resources.edit_audio
 import musicassistantclient.composeapp.generated.resources.lyrics_screen_wake_on
 import musicassistantclient.composeapp.generated.resources.night_sight_auto
@@ -70,12 +76,15 @@ import musicassistantclient.composeapp.generated.resources.night_sight_auto_off
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 
+/** What the sheet shows; the labels name it, because a transcript is not lyrics. */
+enum class LyricsSheetKind { LYRICS, TRANSCRIPT }
+
 /**
  * Modal sheet showing [lyrics], peeking to ~80% of the available height and
  * painted with the same art-derived gradient as the player view. [Lyrics.Synced]
  * enlarges, highlights, and auto-scrolls the active line against
  * [livePositionFlow] (seconds); when the flow is absent (or the lyrics are
- * [Lyrics.Plain]) it renders as static scrollable text.
+ * [Lyrics.Plain]) it renders as static scrollable text. [kind] names the content in the labels.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,6 +92,45 @@ fun LyricsSheet(
     lyrics: Lyrics,
     livePositionFlow: Flow<Double>?,
     onDismiss: () -> Unit,
+    kind: LyricsSheetKind = LyricsSheetKind.LYRICS,
+) {
+    ModalBottomSheet(
+        modifier = Modifier.boundedModalSheet(),
+        onDismissRequest = onDismiss,
+        sheetState = rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        ),
+        dragHandle = null,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
+        // Content fills to the edge; the nav-bar/safe-area inset would otherwise show as an
+        // empty bottom band (pointless on iOS, which has no button bar). Matches BottomSheet.kt.
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+    ) {
+        LyricsPanel(
+            lyrics = lyrics,
+            livePositionFlow = livePositionFlow,
+            onDismiss = onDismiss,
+            kind = kind,
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(LYRICS_BOTTOM_SHEET_HEIGHT)
+                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
+        )
+    }
+}
+
+/** The contents of [LyricsSheet], also shown on their own beside the player on a foldable. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LyricsPanel(
+    lyrics: Lyrics,
+    livePositionFlow: Flow<Double>?,
+    onDismiss: () -> Unit,
+    kind: LyricsSheetKind,
+    modifier: Modifier = Modifier,
+    // A sheet closes downwards; beside the player the arrow would look like collapsing the player.
+    closeIcon: ImageVector = Icons.Default.ExpandMore,
 ) {
     var offsetMs by remember(lyrics) { mutableStateOf(0) }
     var keepScreenOn by remember { mutableStateOf(false) }
@@ -92,105 +140,97 @@ fun LyricsSheet(
     val toastState = rememberToastState()
     val screenWakeOnMessage = stringResource(Res.string.lyrics_screen_wake_on)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        dragHandle = null,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.95f),
-        // Content fills to the edge; the nav-bar/safe-area inset would otherwise show as an
-        // empty bottom band (pointless on iOS, which has no button bar). Matches BottomSheet.kt.
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(LYRICS_BOTTOM_SHEET_HEIGHT)
-                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Scoped to the sheet: leaving the composition releases the screen lock,
-                // whichever way the sheet was closed.
-                KeepScreenOn(enabled = keepScreenOn)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            Icons.Default.ExpandMore,
-                            contentDescription = stringResource(Res.string.cd_lyrics_close),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.weight(1f),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (canAdjustOffset) {
-                            LyricsOffsetStepper(
-                                offsetMs = offsetMs,
-                                onOffsetChange = { offsetMs = it },
-                            )
-                        }
-                    }
-                    IconToggleButton(
-                        checked = keepScreenOn,
-                        onCheckedChange = {
-                            keepScreenOn = it
-                            if (it) toastState.showToast(screenWakeOnMessage)
-                        },
-                        colors = IconButtonDefaults.iconToggleButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                            checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    Box(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Scoped to the sheet: leaving the composition releases the screen lock,
+            // whichever way the sheet was closed.
+            KeepScreenOn(enabled = keepScreenOn)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        closeIcon,
+                        contentDescription = stringResource(
+                            when (kind) {
+                                LyricsSheetKind.LYRICS -> Res.string.cd_lyrics_close
+                                LyricsSheetKind.TRANSCRIPT -> Res.string.cd_transcript_close
+                            },
                         ),
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                if (keepScreenOn) {
-                                    Res.drawable.night_sight_auto_off
-                                } else {
-                                    Res.drawable.night_sight_auto
-                                },
-                            ),
-                            contentDescription = stringResource(
-                                if (keepScreenOn) {
-                                    Res.string.cd_keep_screen_on_disable
-                                } else {
-                                    Res.string.cd_keep_screen_on_enable
-                                },
-                            ),
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (canAdjustOffset) {
+                        LyricsOffsetStepper(
+                            kind = kind,
+                            offsetMs = offsetMs,
+                            onOffsetChange = { offsetMs = it },
                         )
                     }
                 }
-                when (lyrics) {
-                    is Lyrics.Plain -> PlainLyrics(
-                        text = lyrics.text,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    )
-
-                    // Without a position every synced line would render dimmed, so show plain lines.
-                    is Lyrics.Synced if livePositionFlow == null -> PlainLyrics(
-                        text = lyrics.lines.joinToString("\n") { it.text },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                    )
-
-                    is Lyrics.Synced -> SyncedLyrics(
-                        lines = lyrics.lines,
-                        livePositionFlow = livePositionFlow,
-                        offsetMs = offsetMs,
-                        modifier = Modifier.fillMaxWidth().weight(1f),
+                IconToggleButton(
+                    checked = keepScreenOn,
+                    onCheckedChange = {
+                        keepScreenOn = it
+                        if (it) toastState.showToast(screenWakeOnMessage)
+                    },
+                    colors = IconButtonDefaults.iconToggleButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                ) {
+                    Icon(
+                        painter = painterResource(
+                            if (keepScreenOn) {
+                                Res.drawable.night_sight_auto_off
+                            } else {
+                                Res.drawable.night_sight_auto
+                            },
+                        ),
+                        contentDescription = stringResource(
+                            if (keepScreenOn) {
+                                Res.string.cd_keep_screen_on_disable
+                            } else {
+                                Res.string.cd_keep_screen_on_enable
+                            },
+                        ),
                     )
                 }
             }
-            ToastHost(toastState = toastState)
+            when (lyrics) {
+                is Lyrics.Plain -> PlainLyrics(
+                    text = lyrics.text,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                )
+
+                // Without a position every synced line would render dimmed, so show plain lines.
+                is Lyrics.Synced if livePositionFlow == null -> PlainLyrics(
+                    text = lyrics.lines.joinToString("\n") { it.text },
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                )
+
+                is Lyrics.Synced -> SyncedLyrics(
+                    lines = lyrics.lines,
+                    livePositionFlow = livePositionFlow,
+                    offsetMs = offsetMs,
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                )
+            }
         }
+        ToastHost(toastState = toastState)
     }
 }
 
 /** `− value +` stepper for the lyrics offset; each end disables its button at the limit. */
 @Composable
 private fun LyricsOffsetStepper(
+    kind: LyricsSheetKind,
     offsetMs: Int,
     onOffsetChange: (Int) -> Unit,
 ) {
@@ -217,7 +257,12 @@ private fun LyricsOffsetStepper(
         ) {
             Icon(
                 Icons.Default.Remove,
-                contentDescription = stringResource(Res.string.cd_lyrics_offset_decrease),
+                contentDescription = stringResource(
+                    when (kind) {
+                        LyricsSheetKind.LYRICS -> Res.string.cd_lyrics_offset_decrease
+                        LyricsSheetKind.TRANSCRIPT -> Res.string.cd_transcript_offset_decrease
+                    },
+                ),
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -236,7 +281,12 @@ private fun LyricsOffsetStepper(
         ) {
             Icon(
                 Icons.Default.Add,
-                contentDescription = stringResource(Res.string.cd_lyrics_offset_increase),
+                contentDescription = stringResource(
+                    when (kind) {
+                        LyricsSheetKind.LYRICS -> Res.string.cd_lyrics_offset_increase
+                        LyricsSheetKind.TRANSCRIPT -> Res.string.cd_transcript_offset_increase
+                    },
+                ),
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -301,6 +351,7 @@ private fun SyncedLyrics(
                 Text(
                     text = line.text,
                     fontSize = 28.sp,
+                    lineHeight = 36.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.Transparent,
                     modifier = Modifier.fillMaxWidth().clearAndSetSemantics {},
@@ -308,6 +359,7 @@ private fun SyncedLyrics(
                 Text(
                     text = line.text,
                     fontSize = 28.sp,
+                    lineHeight = 36.sp,
                     fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                     color = if (active) {
                         MaterialTheme.colorScheme.onSurface

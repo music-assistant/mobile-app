@@ -354,5 +354,5 @@ if (openState == null) {
 
 - **Sendspin Status:** `.claude/sendspin-status.md`
 - **WebRTC Sendspin Status:** `.claude/sendspin-webrtc-status.md`
-- **WebRTC Implementation:** `.claude/webrtc-implementation-plan.md`
+- **WebRTC Implementation:** `.claude/webrtc-completion-summary.md`
 - **Transport Interface:** `composeApp/src/commonMain/kotlin/io/music_assistant/client/player/sendspin/transport/SendspinTransport.kt`

@@ -4,6 +4,7 @@
 package io.music_assistant.client.ui.compose.home.players
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
@@ -23,10 +24,10 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,40 +49,68 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import compose.icons.TablerIcons
 import compose.icons.tablericons.GripVertical
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerDelay
 import io.music_assistant.client.data.model.client.byId
-import io.music_assistant.client.sharedicons.SharedIcons
 import io.music_assistant.client.ui.MAX_DIALOG_HEIGHT
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.icons.NowPlayingIcon
+import io.music_assistant.client.ui.utils.SnapToHeightLayout
 import io.music_assistant.client.utils.isTelevisionDevice
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.player_unavailable
 import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
+import musicassistantclient.composeapp.generated.resources.players_nothing
 import musicassistantclient.composeapp.generated.resources.players_title
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.compose.resources.vectorResource
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+
+/**
+ * Keeps a scroll inside the sheet content from moving the sheet. The sheet collapses from
+ * the leftover of a content scroll (post-scroll and post-fling), so consuming that leftover
+ * here leaves the drag handle, the header, the back gesture and the close button as the
+ * only ways to close it.
+ */
+private object SheetStaysOnContentScroll : NestedScrollConnection {
+    override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource) = available
+    override suspend fun onPostFling(consumed: Velocity, available: Velocity) = available
+}
+
+/** What the player sheet shows when it opens. */
+sealed interface PlayerSheetStart {
+    /** The list of players. */
+    data object Players : PlayerSheetStart
+
+    /** The group settings of one player. */
+    data class Group(val playerId: String) : PlayerSheetStart
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,10 +121,15 @@ fun SelectPlayerSheet(
     onMoveToPlayer: (String) -> Unit = {},
     onReorder: (List<String>) -> Unit = {},
     onPlayerAction: (String, PlayerAction) -> Unit = { _, _ -> },
+    // The main transport button of a row, sent like the player's own button.
+    onTransportAction: (PlayerData, PlayerAction) -> Unit = { _, _ -> },
     hideUnavailable: Boolean = false,
     onToggleHideUnavailable: () -> Unit = {},
-    onAdjustPlaybackDelay: (Int) -> Unit = {},
+    playerDelays: Map<String, PlayerDelay> = emptyMap(),
+    onLoadPlayerDelays: (Collection<String>) -> Unit = {},
+    onAdjustPlayerDelay: (String, Int) -> Unit = { _, _ -> },
     canLeaveGroup: Boolean = false,
+    start: PlayerSheetStart = PlayerSheetStart.Players,
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
@@ -103,32 +137,39 @@ fun SelectPlayerSheet(
     )
 
     ModalBottomSheet(
+        modifier = Modifier.boundedModalSheet(),
         sheetState = sheetState,
         onDismissRequest = onDismissRequest,
+        dragHandle = { SheetHandle(onClose = onDismissRequest) },
     ) {
-        var showGroupSettings by remember { mutableStateOf<String?>(null) }
-        val groupPlayer = showGroupSettings?.let { players.byId(it) }
+        SnapToHeightLayout(thresholdRatio = 0.6) {
+            var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
+            val groupPlayer = showGroupSettings?.let { players.byId(it) }
 
-        if (groupPlayer != null) {
-            GroupLayout(
-                player = groupPlayer,
-                players = players,
-                onDismissRequest = onDismissRequest,
-                onPlayerAction = onPlayerAction,
-                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
-                canLeaveGroup = canLeaveGroup,
-            )
-        } else {
-            PlayerLayout(
-                players = players,
-                selectedPlayer = selectedPlayer,
-                onDismissRequest = onDismissRequest,
-                onMoveToPlayer = onMoveToPlayer,
-                onReorder = onReorder,
-                onGroupRequest = { player -> showGroupSettings = player.playerId },
-                hideUnavailable = hideUnavailable,
-                onToggleHideUnavailable = onToggleHideUnavailable,
-            )
+            if (groupPlayer != null) {
+                GroupLayout(
+                    player = groupPlayer,
+                    players = players,
+                    onDismissRequest = onDismissRequest,
+                    onPlayerAction = onPlayerAction,
+                    playerDelays = playerDelays,
+                    onLoadPlayerDelays = onLoadPlayerDelays,
+                    onAdjustPlayerDelay = onAdjustPlayerDelay,
+                    canLeaveGroup = canLeaveGroup,
+                )
+            } else {
+                PlayerLayout(
+                    players = players,
+                    selectedPlayer = selectedPlayer,
+                    onDismissRequest = onDismissRequest,
+                    onMoveToPlayer = onMoveToPlayer,
+                    onReorder = onReorder,
+                    onGroupRequest = { player -> showGroupSettings = player.playerId },
+                    onTransportAction = onTransportAction,
+                    hideUnavailable = hideUnavailable,
+                    onToggleHideUnavailable = onToggleHideUnavailable,
+                )
+            }
         }
     }
 }
@@ -141,6 +182,7 @@ private fun PlayerLayout(
     onMoveToPlayer: (String) -> Unit,
     onReorder: (List<String>) -> Unit,
     onGroupRequest: (PlayerData) -> Unit,
+    onTransportAction: (PlayerData, PlayerAction) -> Unit,
     hideUnavailable: Boolean,
     onToggleHideUnavailable: () -> Unit,
 ) {
@@ -186,7 +228,7 @@ private fun PlayerLayout(
             }
         }
 
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
             PlayerSelection(
                 players = shownPlayers,
                 selectedPlayer = selectedPlayer,
@@ -202,6 +244,7 @@ private fun PlayerLayout(
                     )
                 },
                 onGroupRequest = onGroupRequest,
+                onTransportAction = onTransportAction,
             )
         }
     }
@@ -213,9 +256,16 @@ private fun GroupLayout(
     players: List<PlayerData>,
     onDismissRequest: () -> Unit,
     onPlayerAction: (String, PlayerAction) -> Unit,
-    onAdjustPlaybackDelay: (Int) -> Unit,
+    playerDelays: Map<String, PlayerDelay>,
+    onLoadPlayerDelays: (Collection<String>) -> Unit,
+    onAdjustPlayerDelay: (String, Int) -> Unit,
     canLeaveGroup: Boolean,
 ) {
+    // The pivot and the bound members show controls, so their delays load; a new member loads on join.
+    val memberIds = remember(player.playerId, player.childrenBinds) {
+        listOf(player.playerId) + player.childrenBinds.filter { it.isBound }.map { it.id }
+    }
+    LaunchedEffect(memberIds) { onLoadPlayerDelays(memberIds) }
     Column {
         Text(
             text = stringResource(Res.string.players_group_settings),
@@ -223,14 +273,30 @@ private fun GroupLayout(
             modifier = Modifier.padding(start = 16.dp),
         )
 
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
             GroupSettings(
                 player = player,
                 onDismiss = onDismissRequest,
                 playerAction = onPlayerAction,
                 localPlayerId = players.firstOrNull { it.isLocal }?.playerId,
-                onAdjustPlaybackDelay = onAdjustPlaybackDelay,
+                playerDelays = playerDelays,
+                onAdjustPlayerDelay = onAdjustPlayerDelay,
                 canLeaveGroup = canLeaveGroup,
+            )
+        }
+    }
+}
+
+/** The drag handle of the sheet, with the close button at its end. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetHandle(onClose: () -> Unit) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
+        IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(Res.string.cd_close),
             )
         }
     }
@@ -244,6 +310,7 @@ private fun PlayerSelection(
     onSelectPlayer: (String) -> Unit,
     onReorder: (reordered: List<String>, movedId: String) -> Unit,
     onGroupRequest: (PlayerData) -> Unit,
+    onTransportAction: (PlayerData, PlayerAction) -> Unit,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
 
@@ -316,7 +383,7 @@ private fun PlayerSelection(
                 },
             ),
         state = listState,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
             items = internalPlayers,
@@ -344,7 +411,7 @@ private fun PlayerSelection(
             ) {
                 Row(
                     modifier = Modifier
-                        .height(80.dp)
+                        .height(56.dp)
                         .fillMaxWidth()
                         .testTag("PlayerRow-${item.player.id}")
                         .then(
@@ -383,16 +450,27 @@ private fun PlayerSelection(
                         contentDescription = null,
                     )
 
-                    Text(
-                        text = item.player.name,
+                    Column(
                         modifier = Modifier
                             .padding(start = 8.dp)
                             .weight(1f)
                             .alphaOn(!dormant),
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    ) {
+                        Text(
+                            text = item.player.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        // Never blank, so the marquee always has text to scroll.
+                        Text(
+                            text = item.player.currentMedia?.title?.takeUnless { it.isBlank() }
+                                ?: stringResource(Res.string.players_nothing),
+                            modifier = Modifier.basicMarquee().alpha(0.6f),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
+                    }
 
                     if (item.player.isPlaying || item.player.isAnnouncing) {
                         NowPlayingIcon(
@@ -406,28 +484,17 @@ private fun PlayerSelection(
                         )
                     }
 
-                    if (!item.isLocal) {
-                        IconButton(onClick = { onGroupRequest(item) }) {
-                            BadgedBox(
-                                badge = {
-                                    val groupMembers = item.player.groupMembers?.size ?: 0
-                                    val playerCount = if (groupMembers > 0) {
-                                        groupMembers
-                                    } else {
-                                        1
-                                    }
-
-                                    Badge {
-                                        Text(playerCount.toString())
-                                    }
-                                },
-                            ) {
-                                Icon(
-                                    vectorResource(SharedIcons.getResource(SharedIcons.SPEAKER)),
-                                    contentDescription = null,
-                                )
-                            }
+                    item.mainTransport().takeIf { it.enabled }?.let { main ->
+                        IconButton(onClick = { onTransportAction(item, main.action) }) {
+                            Icon(
+                                imageVector = main.button.icon,
+                                contentDescription = stringResource(main.button.label),
+                            )
                         }
+                    }
+
+                    if (item.offersGrouping) {
+                        GroupButton(player = item, onClick = { onGroupRequest(item) })
                     }
 
                     if (!item.player.isSelectable) {
@@ -439,26 +506,31 @@ private fun PlayerSelection(
                         )
                     }
 
-                    if (!item.isLocal) {
-                        Icon(
-                            modifier = Modifier
-                                .padding(start = 8.dp)
-                                .draggableHandle(
-                                    onDragStopped = {
-                                        dragEndIndex?.let {
-                                            onReorder(
-                                                internalPlayers.map { p -> p.player.id },
-                                                item.player.id,
-                                            )
-                                        }
-                                    },
-                                )
-                                .size(16.dp),
-                            imageVector = TablerIcons.GripVertical,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
+                    // The local player is pinned first, so its handle is invisible and inert;
+                    // it keeps the group buttons of all rows aligned.
+                    val handle = if (item.isLocal) {
+                        Modifier.alpha(0f)
+                    } else {
+                        Modifier.draggableHandle(
+                            onDragStopped = {
+                                dragEndIndex?.let {
+                                    onReorder(
+                                        internalPlayers.map { p -> p.player.id },
+                                        item.player.id,
+                                    )
+                                }
+                            },
                         )
                     }
+                    Icon(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .then(handle)
+                            .size(16.dp),
+                        imageVector = TablerIcons.GripVertical,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
                 }
             }
         }

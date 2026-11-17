@@ -1,13 +1,17 @@
 package io.music_assistant.client.support.pages
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performSemanticsAction
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.ScreenSemantics
@@ -35,7 +39,17 @@ class HomePage(composeTestRule: ComposeTestRule) : ComposePage(composeTestRule) 
     }
 
     fun clickOnMedia(item: ServerMediaItem, withinTag: String? = null): ItemPage {
+        withinTag?.let(::scrollRowToTop)
         return clickOnMedia(item, Res.string.nav_discover.get(), withinTag)
+    }
+
+    // An item in a row at the bottom edge passes assertIsDisplayed, but a tap on its center misses it.
+    private fun scrollRowToTop(rowTag: String) {
+        val list = composeTestRule.onNodeWithTag(HomeScreenSemantics.LIST_TAG)
+        list.performScrollToNode(hasTestTag(rowTag))
+        val offset = composeTestRule.onNodeWithTag(rowTag).fetchSemanticsNode().boundsInRoot.top -
+            list.fetchSemanticsNode().boundsInRoot.top
+        list.performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy -> scrollBy(0f, offset) }
     }
 
     fun refresh(): HomePage {

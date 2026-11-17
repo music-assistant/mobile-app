@@ -31,6 +31,7 @@ data class AudioSource(
     val canPlayPause: Boolean,
 ) : AppMediaItem(), PlayableItem {
     override val mediaType: MediaType = MediaType.AUDIO_SOURCE
+    override val playsOnTap: Boolean = true
     override val favorite: Boolean? = null
     override val duration: Double? = null
     override val version: String? = null

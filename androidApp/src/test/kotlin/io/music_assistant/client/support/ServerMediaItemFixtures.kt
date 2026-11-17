@@ -1,6 +1,8 @@
 package io.music_assistant.client.support
 
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.server.AI_RADIO_DOMAIN
+import io.music_assistant.client.data.model.server.PARTY_DOMAIN
 import io.music_assistant.client.data.model.server.ProviderMapping
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerProviderInstance
@@ -18,12 +20,14 @@ object ServerMediaItemFixtures {
             DEFAULT_PROVIDER_DOMAIN,
             DEFAULT_PROVIDER_INSTANCE,
         ),
+        albumType: String? = null,
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
             provider = provider.domain,
             name = name,
             mediaType = MediaType.ALBUM.serverValue,
+            albumType = albumType,
             artists = listOf(artist),
             uri = "http://example.com/album/$itemId",
             isPlayable = true,
@@ -38,6 +42,40 @@ object ServerMediaItemFixtures {
         )
     }
 
+    /** A server 2.11 discography release that is on no music provider. */
+    fun externalRelease(
+        releaseGroupId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Release $releaseGroupId",
+        artist: ServerMediaItem = artist(),
+    ): ServerMediaItem = ServerMediaItem(
+        itemId = "musicbrainz_releasegroupid:$releaseGroupId",
+        provider = ServerMediaItem.EXTERNAL_PROVIDER,
+        name = name,
+        mediaType = MediaType.ALBUM.serverValue,
+        albumType = "album",
+        artists = listOf(artist),
+        uri = "external://album/musicbrainz_releasegroupid:$releaseGroupId",
+        isPlayable = false,
+        providerMappings = emptyList(),
+    )
+
+    /** A server 2.11 top track that is known by its MusicBrainz recording id only. */
+    fun externalTrack(
+        recordingId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Recording $recordingId",
+        artist: ServerMediaItem = artist(),
+    ): ServerMediaItem = ServerMediaItem(
+        itemId = "musicbrainz_recordingid:$recordingId",
+        provider = ServerMediaItem.EXTERNAL_PROVIDER,
+        name = name,
+        mediaType = MediaType.TRACK.serverValue,
+        duration = 240.0,
+        artists = listOf(artist),
+        uri = "external://track/musicbrainz_recordingid:$recordingId",
+        isPlayable = true,
+        providerMappings = emptyList(),
+    )
+
     fun artist(
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Artist $itemId",
@@ -45,12 +83,14 @@ object ServerMediaItemFixtures {
             DEFAULT_PROVIDER_DOMAIN,
             DEFAULT_PROVIDER_INSTANCE,
         ),
+        artistType: String? = null,
     ): ServerMediaItem {
         return ServerMediaItem(
             itemId = itemId,
             provider = provider.domain,
             name = name,
             mediaType = MediaType.ARTIST.serverValue,
+            artistType = artistType,
             providerMappings = listOf(
                 ProviderMapping(
                     itemId = itemId,
@@ -58,6 +98,7 @@ object ServerMediaItemFixtures {
                     providerInstance = provider.instanceId,
                 ),
             ),
+            uri = "http://example.com/artist/$itemId",
         )
     }
 
@@ -151,6 +192,31 @@ object ServerMediaItemFixtures {
         )
     }
 
+    fun podcastEpisode(
+        podcast: ServerMediaItem,
+        itemId: String = uniqueIdGenerator.nextInt().toString(),
+        name: String = "Episode $itemId",
+        fullyPlayed: Boolean? = null,
+    ): ServerMediaItem {
+        return ServerMediaItem(
+            itemId = itemId,
+            provider = DEFAULT_PROVIDER_DOMAIN,
+            name = name,
+            mediaType = MediaType.PODCAST_EPISODE.serverValue,
+            podcast = podcast,
+            fullyPlayed = fullyPlayed,
+            uri = "http://example.com/episode/$itemId",
+            isPlayable = true,
+            providerMappings = listOf(
+                ProviderMapping(
+                    itemId = itemId,
+                    providerDomain = DEFAULT_PROVIDER_DOMAIN,
+                    providerInstance = DEFAULT_PROVIDER_INSTANCE,
+                ),
+            ),
+        )
+    }
+
     fun radio(
         itemId: String = uniqueIdGenerator.nextInt().toString(),
         name: String = "Radio $itemId",
@@ -204,6 +270,22 @@ object ServerMediaItemFixtures {
             supportedFeatures = supportedFeatures,
         )
     }
+
+    /** The loaded `ai_radio` plugin, as the `providers` command lists it. */
+    fun aiRadioPlugin(): ServerProviderInstance = ServerProviderInstance(
+        domain = AI_RADIO_DOMAIN,
+        instanceId = AI_RADIO_DOMAIN,
+        name = "AI Radio",
+        type = "plugin",
+    )
+
+    /** The loaded `party` plugin, as the `providers` command lists it. */
+    fun partyPlugin(): ServerProviderInstance = ServerProviderInstance(
+        domain = PARTY_DOMAIN,
+        instanceId = PARTY_DOMAIN,
+        name = "Party",
+        type = "plugin",
+    )
 
     private const val DEFAULT_PROVIDER_DOMAIN = "test-domain"
     private const val DEFAULT_PROVIDER_INSTANCE = "test-instance"

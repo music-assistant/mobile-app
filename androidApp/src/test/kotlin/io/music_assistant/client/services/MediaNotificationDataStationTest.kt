@@ -8,6 +8,7 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerMedia
 import io.music_assistant.client.data.model.client.QueueTrack
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.ui.compose.common.DataState
@@ -74,6 +75,15 @@ class MediaNotificationDataStationTest {
         assertEquals(
             PlaybackStateCompat.ACTION_SEEK_TO,
             sessionTransportActions(data.copy(isSeekable = true)) and PlaybackStateCompat.ACTION_SEEK_TO,
+        )
+        val modeSetters = PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE or PlaybackStateCompat.ACTION_SET_REPEAT_MODE
+        assertEquals(
+            modeSetters,
+            sessionTransportActions(data.copy(shuffleEnabled = false, repeatMode = RepeatMode.OFF)) and modeSetters,
+        )
+        assertEquals(
+            0L,
+            sessionTransportActions(data.copy(shuffleEnabled = null, repeatMode = null)) and modeSetters,
         )
     }
 

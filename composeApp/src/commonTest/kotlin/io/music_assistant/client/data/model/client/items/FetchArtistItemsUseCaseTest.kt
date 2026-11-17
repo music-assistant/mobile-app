@@ -1,10 +1,13 @@
 package io.music_assistant.client.data.model.client.items
 
 import io.music_assistant.client.api.Request
+import io.music_assistant.client.data.model.client.AlbumType
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
+import io.music_assistant.client.data.model.client.ArtistReleases
 import io.music_assistant.client.data.model.client.items.FetchArtistItemsUseCase.ArtistItems
 import io.music_assistant.client.data.model.client.items.support.StubMediaItemRepository
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.ui.compose.item.ItemList
 import io.music_assistant.client.ui.compose.item.artist.providerGroups
 import kotlinx.coroutines.test.TestResult
@@ -138,6 +141,54 @@ class FetchArtistItemsUseCaseTest {
                 options = listOf(expectedItemList),
             ),
             artistItems,
+        )
+    }
+
+    @Test
+    fun `release rows share the sources and each keeps the sources with its own releases`() = runTest {
+        val mapping = ProviderMapping("1", "niflheim", "niflheim-1")
+        val artist = AppMediaItemFixtures.artist(itemId = "7", providerMappings = listOf(mapping))
+        val libraryAlbum = AppMediaItemFixtures.album(artist = artist).copy(albumType = AlbumType.ALBUM)
+        val librarySingle = AppMediaItemFixtures.album(artist = artist).copy(albumType = AlbumType.SINGLE)
+        val providerSingle = AppMediaItemFixtures.album(artist = artist).copy(albumType = AlbumType.SINGLE)
+        mediaItemRepository.setItemsResult(
+            request = Request.Artist.getAlbums("7", ServerMediaItem.LIBRARY_PROVIDER),
+            result = Result.success(listOf(libraryAlbum, librarySingle)),
+        )
+        mediaItemRepository.setItemsResult(
+            request = Request.Artist.getAlbums(mapping.itemId, mapping.providerInstance),
+            result = Result.success(listOf(providerSingle)),
+        )
+
+        val (albums, singles) = FetchArtistItemsUseCase(mediaItemRepository).run(
+            listOf(ItemList.ArtistLibrary("7"), ItemList.ArtistAlbums(mapping)),
+            listOf(
+                { source -> source },
+                { source ->
+                    when (source) {
+                        is ItemList.ArtistLibrary -> source.copy(releases = ArtistReleases.SINGLES_EPS)
+                        is ItemList.ArtistAlbums -> source.copy(releases = ArtistReleases.SINGLES_EPS)
+                        else -> source
+                    }
+                },
+            ),
+        )
+
+        // The items are the whole answer: the row selects its releases when it shows them.
+        assertEquals(
+            ArtistItems(
+                items = listOf(libraryAlbum, librarySingle),
+                itemList = ItemList.ArtistLibrary("7"),
+                options = listOf(ItemList.ArtistLibrary("7")),
+            ),
+            albums,
+        )
+        assertEquals(
+            listOf(
+                ItemList.ArtistLibrary("7", ArtistReleases.SINGLES_EPS),
+                ItemList.ArtistAlbums(listOf(mapping), ArtistReleases.SINGLES_EPS),
+            ),
+            singles?.options,
         )
     }
 }

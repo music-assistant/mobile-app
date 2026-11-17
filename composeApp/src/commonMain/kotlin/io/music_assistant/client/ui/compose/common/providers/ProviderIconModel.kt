@@ -47,6 +47,8 @@ sealed class ProviderIconModel {
     }
 
     companion object Companion {
+        private const val SVG_MIME = "image/svg+xml"
+
         fun fromSvg(svg: String): ProviderIconModel? {
             return svg.let { svgString ->
                 val b64i = svgString.indexOf("base64,")
@@ -56,14 +58,18 @@ sealed class ProviderIconModel {
                     val cleanedData = base64Data.substringBefore("\"").substringBefore("<")
                     try {
                         val bytes = Base64.decode(cleanedData)
-                        Png(bytes)
+                        if (svgString.substring(0, b64i).contains(SVG_MIME)) {
+                            Svg(inlineSvgClassStyles(bytes.decodeToString()).encodeToByteArray())
+                        } else {
+                            Png(bytes)
+                        }
                     } catch (e: Exception) {
-                        Logger.e("Cannot decode base64 PNG: ${e.message}")
+                        Logger.e("Cannot decode base64 icon: ${e.message}")
                         null
                     }
                 } else {
                     try {
-                        val svgBytes = svgString.encodeToByteArray()
+                        val svgBytes = inlineSvgClassStyles(svgString).encodeToByteArray()
                         Svg(svgBytes)
                     } catch (e: Exception) {
                         Logger.e("Cannot encode SVG to bytes: ${e.message}")

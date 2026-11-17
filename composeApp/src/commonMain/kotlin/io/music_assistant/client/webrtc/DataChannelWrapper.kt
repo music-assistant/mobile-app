@@ -54,7 +54,7 @@ class DataChannelWrapper internal constructor(
     )
 
     private val logChannel = "${safeChannelLabel(label)}#${hashCode().toUInt().toString(16)}"
-    private val logger = Logger.withTag("DataChannelWrapper")
+    private val logger = Logger.withTag("Session.DataChannelWrapper")
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // close() is called exactly once per channel from WebRTCConnectionManager's
@@ -107,17 +107,17 @@ class DataChannelWrapper internal constructor(
 
         // Receive loop — the only producer of `inbound`, so source order is preserved
         // by construction; closed on exit so a collector doesn't hang on a dead feed.
+        // invokeOnCompletion, not finally: a close() right after construction can
+        // cancel the job before it starts, and then its body never runs.
         scope.launch {
-            try {
-                runCatchingNonCancellation("receive loop failed on channel $label") {
-                    while (true) {
-                        inboundChannel.send(receiveSource.receive())
-                    }
+            runCatchingNonCancellation("receive loop failed on channel $label") {
+                while (true) {
+                    inboundChannel.send(receiveSource.receive())
                 }
-            } finally {
-                diagnostics.event("channel=$logChannel receive terminated localClose=$closed state=${_state.value}")
-                inboundChannel.close()
             }
+        }.invokeOnCompletion {
+            diagnostics.event("channel=$logChannel receive terminated localClose=$closed state=${_state.value}")
+            inboundChannel.close()
         }
 
         // State propagation — filtered by channel identity so siblings on the same

@@ -23,6 +23,7 @@ data class Audiobook(
     override val isPlayable: Boolean,
     val authors: List<String>?,
     val narrators: List<String>?,
+    val publisher: String? = null,
     val chapters: List<Chapter>?,
     val fullyPlayed: Boolean?,
     val resumePositionMs: Long?,

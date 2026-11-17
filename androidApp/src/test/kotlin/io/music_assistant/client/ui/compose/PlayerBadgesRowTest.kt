@@ -19,12 +19,14 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTrack
 import io.music_assistant.client.data.model.client.Queue
+import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.support.get
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.home.players.PlayerBadgesRow
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_off
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_on
+import musicassistantclient.composeapp.generated.resources.cd_autoplay_repeat_locked
 import musicassistantclient.composeapp.generated.resources.cd_crossfade_off
 import musicassistantclient.composeapp.generated.resources.cd_crossfade_on
 import musicassistantclient.composeapp.generated.resources.cd_sleep_timer
@@ -55,11 +57,13 @@ class PlayerBadgesRowTest {
         emptyQueue: Boolean = false,
         sleepTimer: Boolean = false,
         crossfadeEnabled: Boolean? = null,
+        repeatMode: RepeatMode = RepeatMode.OFF,
     ): PlayerData {
         val base = PlayerDataFixtures.playerData()
         val queue = (base.queue as DataState.Data<Queue>).data
         val info = queue.info.copy(
             autoPlayEnabled = autoPlayEnabled,
+            repeatMode = repeatMode,
             crossfadeEnabled = crossfadeEnabled,
             isDynamicPlaylist = isDynamicPlaylist,
             currentItem = if (emptyQueue) null else AppMediaItemFixtures.track().toQueueTrack(),
@@ -76,12 +80,17 @@ class PlayerBadgesRowTest {
         )
     }
 
-    private fun show(player: PlayerData, sleepTimerSupported: Boolean = true) {
+    private fun show(
+        player: PlayerData,
+        sleepTimerSupported: Boolean = true,
+        repeatLocksAutoplay: Boolean = true,
+    ) {
         composeTestRule.setContent {
             PlayerBadgesRow(
                 player = player,
                 tint = Color.Red,
                 onSleepTimerClick = {}.takeIf { sleepTimerSupported },
+                repeatLocksAutoplay = repeatLocksAutoplay,
                 onToggleAutoplay = { toggledWith += it },
                 onToggleCrossfade = { crossfadeToggledWith += it },
             )
@@ -122,6 +131,29 @@ class PlayerBadgesRowTest {
         node(Res.string.cd_autoplay_on).assertIsDisplayed().assertHasNoClickAction().performClick()
         assertEquals(emptyList(), toggledWith)
     }
+
+    @Test
+    fun `autoplay stays tappable with repeat on before server 2_11`() {
+        show(playerWith(autoPlayEnabled = true, repeatMode = RepeatMode.ALL), repeatLocksAutoplay = false)
+        node(Res.string.cd_autoplay_on).assertIsDisplayed().assertHasClickAction().performClick()
+        assertEquals(listOf(true), toggledWith)
+    }
+
+    // The lock reads as off even if the server still reports autoplay on.
+    private fun assertRepeatLocksAutoplay(mode: RepeatMode) {
+        show(playerWith(autoPlayEnabled = true, repeatMode = mode))
+        node(Res.string.cd_autoplay_repeat_locked)
+            .assertIsDisplayed()
+            .assertHasNoClickAction()
+            .performClick()
+        assertEquals(emptyList(), toggledWith)
+    }
+
+    @Test
+    fun `autoplay is off and disabled while repeat all is on`() = assertRepeatLocksAutoplay(RepeatMode.ALL)
+
+    @Test
+    fun `autoplay is off and disabled while repeat one is on`() = assertRepeatLocksAutoplay(RepeatMode.ONE)
 
     @Test
     fun `autoplay is disabled when there is nothing to play`() {
@@ -207,6 +239,7 @@ class PlayerBadgesRowTest {
                     player = playerWith(autoPlayEnabled = null),
                     tint = Color.Red,
                     onSleepTimerClick = null,
+                    repeatLocksAutoplay = true,
                     onToggleAutoplay = {},
                     onToggleCrossfade = {},
                     modifier = Modifier.testTag("empty"),
@@ -219,6 +252,7 @@ class PlayerBadgesRowTest {
                     ),
                     tint = Color.Red,
                     onSleepTimerClick = {},
+                    repeatLocksAutoplay = true,
                     onToggleAutoplay = {},
                     onToggleCrossfade = {},
                     modifier = Modifier.testTag("populated"),

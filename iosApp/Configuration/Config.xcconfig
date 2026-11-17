@@ -1,9 +1,42 @@
-TEAM_ID=GUYFAK8DC6
-PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.mobile-client
-APP_NAME=MusicAssistantClient
 IPHONEOS_DEPLOYMENT_TARGET = 18.5
 
 // Intel-simulator slice was removed from the KMP build (iosX64 dropped after CMP 1.11.0).
 // Without this exclusion, xcodebuild on CI builds a universal simulator slice and the
 // :composeApp:syncComposeResourcesForIos task fails with "Unknown iOS simulator arch: 'x86_64'".
 EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64
+
+// Signing and identity. The defaults build the official app. To build under your own
+// Apple developer account (your own TestFlight, Xcode Cloud), set the MA_* values:
+//   * as environment variables for xcodebuild, or
+//   * in Local.xcconfig next to this file (git-ignored; Xcode does not see shell variables).
+// Xcode Cloud: set them as workflow environment variables. ci_scripts/ci_post_clone.sh
+// writes them into Local.xcconfig.
+//
+//   MA_TEAM_ID         Apple developer team id
+//   MA_BUNDLE_ID       bundle identifier, for example com.example.music-assistant
+//   MA_CARPLAY         YES (default) or NO. NO signs without the CarPlay audio entitlement,
+//                      which Apple grants per account on request.
+//   MA_SIGNING_STYLE   Manual (default, the official App Store profile) or Automatic.
+//                      Only the Release configuration uses it; Debug is always Automatic.
+//                      Xcode Cloud needs Automatic.
+TEAM_ID = $(MA_TEAM_ID:default=GUYFAK8DC6)
+DEVELOPMENT_TEAM = $(TEAM_ID)
+PRODUCT_BUNDLE_IDENTIFIER = $(MA_BUNDLE_ID:default=io.music-assistant.mobile-client)
+APP_NAME = MusicAssistantClient
+
+MA_ENTITLEMENTS_YES = iosApp/CarPlay.entitlements
+MA_ENTITLEMENTS_NO = iosApp/NoCarPlay.entitlements
+MA_APP_ENTITLEMENTS = $(MA_ENTITLEMENTS_$(MA_CARPLAY:default=YES))
+
+MA_RELEASE_SIGNING = $(MA_SIGNING_STYLE:default=Manual)
+MA_SIGN_STYLE_Manual = Manual
+MA_SIGN_IDENTITY_Manual = Apple Distribution
+MA_SIGN_PROFILE_Manual = Music Assistant App Store
+MA_SIGN_STYLE_Automatic = Automatic
+MA_SIGN_IDENTITY_Automatic = Apple Development
+MA_SIGN_PROFILE_Automatic =
+MA_RELEASE_SIGN_STYLE = $(MA_SIGN_STYLE_$(MA_RELEASE_SIGNING))
+MA_RELEASE_SIGN_IDENTITY = $(MA_SIGN_IDENTITY_$(MA_RELEASE_SIGNING))
+MA_RELEASE_SIGN_PROFILE = $(MA_SIGN_PROFILE_$(MA_RELEASE_SIGNING))
+
+#include? "Local.xcconfig"

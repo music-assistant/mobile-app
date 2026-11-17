@@ -6,15 +6,20 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.ArtistType
 import io.music_assistant.client.data.model.client.LibraryFilters
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.SortConfig
 import io.music_assistant.client.data.model.client.SortOption
+import io.music_assistant.client.data.model.client.genreMediaTypeFilter
+import io.music_assistant.client.data.model.client.isM3uPlaylist
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
 import io.music_assistant.client.data.model.client.items.MediaCollection
 import io.music_assistant.client.data.model.client.items.isAiRadioShow
+import io.music_assistant.client.data.model.client.m3uPlaylistName
 import io.music_assistant.client.data.model.server.ListSort
+import io.music_assistant.client.data.model.server.PlaylistMatchPolicy
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
@@ -22,12 +27,14 @@ import io.music_assistant.client.data.repository.LibrarySortMenu
 import io.music_assistant.client.data.repository.LibrarySortRepository
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.PlaylistTransfer
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.settings.SeriesGrouping
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.Timings
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.PickedPlaylistFile
 import io.music_assistant.client.ui.compose.common.SelectOption
 import io.music_assistant.client.ui.compose.common.mapData
 import kotlinx.coroutines.FlowPreview
@@ -38,11 +45,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.toast_error_create_playlist
+import musicassistantclient.composeapp.generated.resources.toast_error_import_playlist
+import musicassistantclient.composeapp.generated.resources.toast_playlist_file_invalid
+import musicassistantclient.composeapp.generated.resources.toast_playlist_file_too_large
+import musicassistantclient.composeapp.generated.resources.toast_playlist_file_unreadable
+import musicassistantclient.composeapp.generated.resources.toast_playlist_imported
 import org.jetbrains.compose.resources.getString
 
 @OptIn(FlowPreview::class)
@@ -55,6 +68,7 @@ class LibraryListViewModel(
     private val playDispatcher: PlayDispatcher,
     private val librarySortRepository: LibrarySortRepository,
     providerRepository: ProviderRepository,
+    private val playlistTransfer: PlaylistTransfer,
 ) : ViewModel() {
     private val searchTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
@@ -90,11 +104,27 @@ class LibraryListViewModel(
             ?.stateIn(viewModelScope, SharingStarted.Eagerly, DataState.NoData())
             ?: MutableStateFlow(DataState.NoData())
 
+    // The music sources that an import can search for tracks, like the web frontend.
+    val importSources: StateFlow<List<SelectOption<String>>> =
+        providerRepository.providers
+            .map { providers ->
+                providers.dataOrNull.orEmpty()
+                    .filter { it.type == "music" && it.available && SEARCH_FEATURE in it.supportedFeatures }
+                    .map { SelectOption(it.instanceId, it.name) }
+                    .sortedBy { it.label.lowercase() }
+            }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
     // Genre filter options, loaded lazily the first time the filter sheet asks for them
     // (see loadFilterOptions).
     private val _genreOptions =
         MutableStateFlow<DataState<List<SelectOption<Int>>>>(DataState.NoData())
     val genreOptions = _genreOptions.asStateFlow()
+
+    // The artist types the library holds besides singers; the Audiobooks sheet offers them.
+    // Loaded with the genre options. Empty until then, and after a failed load.
+    private val _audiobookArtistTypes = MutableStateFlow<List<ArtistType>>(emptyList())
+    val audiobookArtistTypes = _audiobookArtistTypes.asStateFlow()
     private var optionsRequested = false
 
     init {
@@ -128,7 +158,7 @@ class LibraryListViewModel(
                     // Refetch first page so the new row lands in its sorted/filtered
                     // position (matches the "page refresh" semantics for creation).
                     is MediaItemChange.Added ->
-                        if (change.item.mediaType == mediaType) loadFirstPage()
+                        if (change.item.mediaType == _state.value.listedMediaType) loadFirstPage()
                     // Cheap in-place removal; ordering of the rest is unaffected.
                     is MediaItemChange.Deleted -> removeItem(change.item)
                 }
@@ -139,7 +169,7 @@ class LibraryListViewModel(
     }
 
     private fun removeItem(deleted: AppMediaItem) {
-        if (deleted.mediaType != mediaType) return
+        if (deleted.mediaType != _state.value.listedMediaType) return
         _state.update { st ->
             val data = st.dataState as? DataState.Data ?: return@update st
             val remaining = data.data.filterNot { it.matchesIdentityOf(deleted) }
@@ -150,7 +180,7 @@ class LibraryListViewModel(
 
     private fun patchItem(change: MediaItemChange) {
         val updated = change.item
-        if (updated.mediaType != mediaType) return
+        if (updated.mediaType != _state.value.listedMediaType) return
         _state.update { st ->
             val data = st.dataState as? DataState.Data ?: return@update st
             if (data.data.none { it.matchesIdentityOf(updated) }) return@update st
@@ -177,12 +207,25 @@ class LibraryListViewModel(
         settingsRepository.setLibraryFilters(mediaType, filters)
     }
 
-    // Idempotent: fetch genre options once per VM. The genres list has no genre filter,
+    // Idempotent: fetch the options once per VM. The genres list has no genre filter,
     // so skip the call entirely there.
     fun loadFilterOptions() {
         if (optionsRequested || mediaType == MediaType.GENRE) return
         optionsRequested = true
         loadGenreOptions()
+        if (mediaType == MediaType.AUDIOBOOK) loadAudiobookArtistTypes()
+    }
+
+    private fun loadAudiobookArtistTypes() {
+        viewModelScope.launch {
+            val types = apiClient.sendRequest(Request.Artist.libraryTypes())
+                .onFailure { Logger.e("Failed to load library artist types", it) }
+                .getOrNull()
+                ?.resultAs<List<String>>()
+                .orEmpty()
+                .mapNotNull(ArtistType::fromServer)
+            _audiobookArtistTypes.update { ArtistType.audiobookOptions.filter { it in types } }
+        }
     }
 
     private fun loadGenreOptions() {
@@ -345,7 +388,20 @@ class LibraryListViewModel(
                 genres = genres,
             )
 
-            MediaType.AUDIOBOOK -> Request.Audiobook.listLibrary(
+            // The list shows the library authors or narrators instead of the books while the
+            // filter names an artist type; the sort then comes from the artists menu.
+            MediaType.AUDIOBOOK -> filters.audiobookArtistType?.let { artistType ->
+                Request.Artist.listLibrary(
+                    limit = PAGE_SIZE,
+                    offset = offset,
+                    search = searchQuery,
+                    sort = sort,
+                    favorite = favorite,
+                    providers = providers,
+                    genres = genres,
+                    artistType = artistType.serverValue,
+                )
+            } ?: Request.Audiobook.listLibrary(
                 limit = PAGE_SIZE,
                 offset = offset,
                 search = searchQuery,
@@ -384,7 +440,8 @@ class LibraryListViewModel(
                 favorite = favorite,
                 providers = providers,
                 hideEmpty = filters.hideEmpty.hideEmpty,
-                mediaType = filters.genreMediaType?.serverValue,
+                mediaType = filters.genreMediaTypeFilter?.serverValue,
+                contentType = filters.genreContentType?.serverValue,
             )
 
             else -> throw IllegalArgumentException("Invalid MediaType for ItemListViewModel!")
@@ -405,11 +462,52 @@ class LibraryListViewModel(
         }
     }
 
+    /** Opens the import options for a valid M3U file; any other result gives a toast. */
+    fun onPlaylistFilePicked(file: PickedPlaylistFile) {
+        val problem = when (file) {
+            PickedPlaylistFile.TooLarge -> Res.string.toast_playlist_file_too_large
+            PickedPlaylistFile.Unreadable -> Res.string.toast_playlist_file_unreadable
+            is PickedPlaylistFile.Read -> {
+                if (isM3uPlaylist(file.text)) {
+                    val name = m3uPlaylistName(file.text, file.name)
+                    val draft = PlaylistImportDraft(name, file.text, playlistTransfer.supportsMatchPolicy)
+                    _state.update { it.copy(importDraft = draft) }
+                    return
+                }
+                Res.string.toast_playlist_file_invalid
+            }
+        }
+        viewModelScope.launch { _toasts.emit(getString(problem)) }
+    }
+
+    fun dismissImport() {
+        _state.update { it.copy(importDraft = null) }
+    }
+
+    /**
+     * Imports the open draft. All of [importSources] send no source list, so a source that
+     * the server adds later is searched too, like the web frontend.
+     */
+    fun importPlaylist(sources: Set<String>, matchPolicy: PlaylistMatchPolicy?) {
+        val draft = _state.value.importDraft ?: return
+        _state.update { it.copy(importDraft = null) }
+        val all = importSources.value.map { it.value }
+        val matchProviders = all.filter { it in sources }.takeIf { it.size < all.size }
+        viewModelScope.launch {
+            playlistTransfer.import(draft.m3uData, matchProviders, matchPolicy)
+                .onSuccess { name -> _toasts.emit(getString(Res.string.toast_playlist_imported, name ?: draft.name)) }
+                .onFailure {
+                    Logger.withTag("LibraryListVM").e(it) { "Failed to import playlist ${draft.name}" }
+                    _toasts.emit(getString(Res.string.toast_error_import_playlist))
+                }
+        }
+    }
+
     fun onPlayClick(item: AppMediaItem, mode: PlayMode) {
         val queueId = mainDataSource.selectedPlayer?.queueOrPlayerId ?: return
 
         item.mediaUri?.let { mediaUri ->
-            Logger.withTag("PlayDispatch")
+            Logger.withTag("Session.PlayDispatch")
                 .i { "ItemListViewModel: uri=$mediaUri mode=$mode queue=$queueId" }
             playDispatcher.play(
                 PlayRequest(
@@ -432,7 +530,8 @@ class LibraryListViewModel(
             val searchQuery = state.value.serverSearchQuery()
             updateState(DataState.Loading())
             // Before the request: a 2.11 server rejects a field that the list does not offer.
-            val sortMenu = librarySortRepository.menu(mediaType)
+            val listedMediaType = state.value.listedMediaType
+            val sortMenu = librarySortRepository.menu(listedMediaType)
             val sortOption = sortMenu.resolve(chosenSort)
             _state.update { it.copy(sortMenu = sortMenu, sortOption = sortOption) }
 
@@ -448,7 +547,7 @@ class LibraryListViewModel(
 
             result.getOrNull()
                 // A grouped audiobook listing mixes series rows in with the books.
-                ?.filter { it.mediaType == mediaType || it is MediaCollection }
+                ?.filter { it.mediaType == listedMediaType || it is MediaCollection }
                 ?.let { items ->
                     updateStateWithData(
                         items = items,
@@ -490,6 +589,9 @@ class LibraryListViewModel(
     companion object Companion {
         private const val PAGE_SIZE = 50
         private const val GENRE_OPTIONS_LIMIT = 1000
+
+        // The provider feature of a music source that the server can search.
+        private const val SEARCH_FEATURE = "search"
     }
 
     data class State(
@@ -506,5 +608,11 @@ class LibraryListViewModel(
         val filters: LibraryFilters = LibraryFilters.DEFAULT,
         // Audiobooks only: GROUPED sends `collapse_collections`, so a series comes back as one row.
         val seriesGrouping: SeriesGrouping = SeriesGrouping.FLAT,
-    )
+        // A picked playlist file that waits for the import options; null hides the dialog.
+        val importDraft: PlaylistImportDraft? = null,
+    ) {
+        /** The type of the rows: the Audiobooks list shows artists while [filters] name an artist type. */
+        val listedMediaType: MediaType
+            get() = if (filters.audiobookArtistType != null) MediaType.ARTIST else mediaType
+    }
 }

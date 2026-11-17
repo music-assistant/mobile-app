@@ -28,11 +28,15 @@ class FakeAiRadioClient(val results: MutableMap<String, String?>) : StubServiceC
     /** When set for a command, its answer waits until the deferred completes. */
     val holds = mutableMapOf<String, CompletableDeferred<Unit>>()
 
+    /** The commands that fail, as the server does when it refuses one. */
+    val failures = mutableSetOf<String>()
+
     override val events = eventFlow
     override val isReadyForCommands = ready
 
     override suspend fun sendRequest(request: Request): Result<Answer> {
         sent += request
+        if (request.command in failures) return Result.failure(IllegalStateException("refused ${request.command}"))
         if (request.command !in results) fail("unexpected command ${request.command}")
         // Read the answer before waiting, so a hold returns what was current when the call began.
         val result = results[request.command]

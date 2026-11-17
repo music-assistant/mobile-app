@@ -6,7 +6,9 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.QueueTrack
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.ResolvedChapter
+import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.PlayableItem
+import io.music_assistant.client.data.model.client.items.canBeFavorited
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.items.isLongFormSpokenContent
 import io.music_assistant.client.data.model.client.navigationChapters
@@ -66,6 +68,43 @@ data class NowPlayingModes(
     val repeatMode: RepeatMode?,
     val togglesEnabled: Boolean,
 )
+
+/**
+ * The system-media like button for the current item. The rules match the Android Auto
+ * favorite action (`MediaNotificationData`): a track toggles between liked and no choice,
+ * and a radio stream adds the song on air.
+ */
+enum class NowPlayingLike {
+    /** No button: nothing to like, or the user lacks `library.write`. */
+    UNAVAILABLE,
+
+    /** A liked track. A tap clears the like (never a dislike). */
+    LIKED,
+
+    /** A track with no like (no choice, or disliked). A tap likes it. */
+    NOT_LIKED,
+
+    /**
+     * A radio stream with a song on air that the server can resolve. A tap adds the song.
+     * The station's own favorite flag is not the song's, so the heart never fills.
+     */
+    ON_AIR,
+}
+
+internal fun buildNowPlayingLike(
+    playerData: PlayerData?,
+    canEditLibrary: Boolean,
+    canFavoriteOnAir: Boolean,
+): NowPlayingLike {
+    if (!canEditLibrary) return NowPlayingLike.UNAVAILABLE
+    if (canFavoriteOnAir) return NowPlayingLike.ON_AIR
+    val item = playerData?.queueInfo?.currentItem?.track as? AppMediaItem
+    return when {
+        item == null || item.mediaType != MediaType.TRACK || !item.canBeFavorited -> NowPlayingLike.UNAVAILABLE
+        item.favorite == true -> NowPlayingLike.LIKED
+        else -> NowPlayingLike.NOT_LIKED
+    }
+}
 
 /** Change detection shared by the channel flow and its plain-value tests. */
 internal object NowPlayingChannelChangeDetection {

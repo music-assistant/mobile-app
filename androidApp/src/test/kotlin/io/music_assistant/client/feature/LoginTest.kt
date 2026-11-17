@@ -35,6 +35,20 @@ class LoginTest {
     }
 
     @Test
+    fun `can login with an access token`() {
+        launchApp(composeTestRule)
+            .connect()
+            .loginWithToken(serviceClient.accessToken)
+    }
+
+    @Test
+    fun `entering an invalid access token shows the server error`() {
+        launchApp(composeTestRule)
+            .connect()
+            .loginWithTokenError("wrong", "Invalid or expired token")
+    }
+
+    @Test
     fun `can logout`() {
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSettings()

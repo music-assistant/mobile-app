@@ -15,6 +15,7 @@ import androidx.compose.ui.window.ComposeUIViewController
 import io.music_assistant.client.di.initKoin
 import io.music_assistant.client.di.iosModule
 import io.music_assistant.client.logging.InMemoryLogWriter
+import io.music_assistant.client.ui.DeviceChromeBridge
 import io.music_assistant.client.ui.compose.App
 import kotlinx.cinterop.staticCFunction
 import platform.Foundation.NSException
@@ -61,7 +62,10 @@ private val kmpBootstrap: Unit by lazy {
 ) // iOS factory function intentionally PascalCase; called from Swift as if it were a constructor
 fun MainViewController() = ComposeUIViewController(
     configure = { bootstrapKmp() },
-) { App() }
+) {
+    // The probe in ContentView.swift reports the window geometry through the bridge.
+    App(deviceChrome = DeviceChromeBridge.deviceChrome)
+}
 
 private fun cleanupStaleLogFile() {
     NSFileManager.defaultManager.removeItemAtPath(

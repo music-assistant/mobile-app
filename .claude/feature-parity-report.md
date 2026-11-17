@@ -117,9 +117,9 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Sort options | client table | server `sort_options` | client table | fixed | fixed | Adjust-2.11 | See 5.4 |
 | Favorites, provider, genre, album type, album artist filters | yes | yes | yes | n/a | n/a | Parity | AA has a Favorites sub-list |
 | Series grouping for audiobooks | yes | yes | yes | flat | flat | Parity | `collapse_collections` |
-| Author and narrator tabs | yes | yes | no | n/a | n/a | Missing | `music/artists/library_artist_types` |
-| Genre content-type tabs | yes | yes | no | n/a | n/a | Missing | music, audiobooks, podcasts |
-| Hide fully played episodes | yes | yes | no | no | no | Missing | 2.11: `podcast_episodes(fully_played=False)`. 2.10: client filter |
+| Author and narrator tabs | yes | yes | yes | n/a | n/a | Parity | Issue #1201. A "Show" row in the Audiobooks filter sheet, offered when `library_artist_types` has authors or narrators |
+| Genre content-type tabs | yes | yes | yes | n/a | n/a | Parity | Issue #1201. A "Content type" row in the Genres filter sheet sends `content_type`. The "Media type" row refines the music content type only |
+| Hide fully played episodes | yes | yes | yes | no | no | Parity | Issue #1201. A toggle on the episodes tab. The app sends `fully_played=false` and also filters the answer, because 2.10 ignores the argument |
 | List and grid view | yes | yes | yes | n/a | n/a | Parity | |
 | Grid size slider | no | yes | no | n/a | n/a | Missing | |
 | In-list search | yes | yes | yes | n/a | n/a | Parity | App sends the `search` argument |
@@ -128,7 +128,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Retry after a load failure | no | yes | part | n/a | n/a | Adjust-partial | App shows an error state. Check that it offers retry |
 | Add a radio or a track by URL | yes | yes | no | n/a | n/a | Missing | `builtin/add_radio`, `builtin/add_track` |
 | Create playlist | yes | yes | yes | n/a | n/a | Parity | |
-| Import and export playlist | yes | yes | no | n/a | n/a | Missing | M3U file; 2.11 adds `match_policy` |
+| Import and export playlist | yes | yes | yes | n/a | n/a | Parity | Issue #1208. M3U file. The 2.11 `match_policy` is gated on `SERVER_2_11_SCHEMA` |
 | Smart playlist create | yes | yes | no | n/a | n/a | Missing | `smart_playlists/*` |
 | Track table with BPM and key columns | no | yes | no | n/a | n/a | Missing | Low value on a phone |
 | Recent and New sub-lists in the car | n/a | n/a | n/a | yes | no | Parity | App feature for AA |
@@ -138,10 +138,10 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
 | Global search for 7 media types | yes | yes | yes | yes | Siri | Parity | AA: `onSearch` and voice. CP: Siri only |
-| Genre search | yes | yes | no | no | no | Adjust-partial | Web queries `genres/library_items`. App has a TODO in `app/ui/compose/search/SearchViewModel.kt` |
-| Library-only toggle | yes | yes | yes | n/a | n/a | Parity | |
-| Source picker per provider | no | yes | no | n/a | n/a | Missing | Preference `search.sources` |
-| Recent searches | yes | yes | no | n/a | n/a | Missing | Preference `search.recent` |
+| Genre search | yes | yes | yes | no | no | Parity | Issue #1197. From server 2.10.0, `music/search` searches the library genres. The app has a Genre chip, and a genre-only search asks the library only, like the web |
+| Library-only toggle | yes | yes | yes | n/a | n/a | Parity | From server 2.10.0, the Library source of the source picker replaces it |
+| Source picker per provider | no | yes | yes | n/a | n/a | Parity | Issue #1197. Preference `search.sources`, shared with the web. Server 2.10.0 (schema 63) and later |
+| Recent searches | yes | yes | yes | n/a | n/a | Parity | Issue #1197. Preference `search.recent`, shared with the web. Opening, playing or playing from the menu of a result saves the query |
 | Search limits | 15 per type, 50 for one type | same | 10 per type, 30 for one type | 10 | 10 | Parity | Limits must stay small, see memory on the 8 s soft timeout |
 | In-car search screen | n/a | n/a | n/a | yes | no | Decided | CarPlay audio apps have no search template |
 
@@ -158,19 +158,19 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 
 | Feature | Web 2.10 | Web 2.11 | Phone | AA | CP | Class | Note |
 |---|---|---|---|---|---|---|---|
-| Artist page | yes | yes | yes | drill | drill | Parity | App: top tracks with source picker, library albums, all albums, similar artists |
-| Artist appears on, singles, discography | no | yes | no | no | no | Missing | `artist_appears_on`, `discography`. Discography items are provider `musicbrainz`, addable but not playable |
-| Artist audiobooks row | yes | yes | no | no | no | Missing | `artist_audiobooks` |
+| Artist page | yes | yes | yes | drill | drill | Parity | App: top tracks, albums, and singles and EPs, each with a source picker, and similar artists |
+| Artist appears on, singles, discography | no | yes | yes | no | no | Adjusted | Issue #1205. Singles and EPs on every server. Appears on and discography from 2.11, library artists only. One discography row with all release types, no type picker |
+| Artist audiobooks row | yes | yes | yes | no | no | Parity | Issue #1201. An author or narrator page shows "In library" and "All audiobooks" rows instead of albums and top tracks |
 | Album page | yes | yes | yes | drill | drill | Parity | Year shown in the header |
 | Album versions, review, more from artist | yes | yes | no | no | no | Missing | `album_versions` |
 | Track page | yes | yes | yes | n/a | n/a | Parity | Albums, versions and similar tracks tabs. Similar shows only if a provider has `similar_tracks`. Lyrics in the overflow menu. Open with "Go to track" or the player title |
 | Playlist page | yes | yes | yes | drill | drill | Parity | Force refresh in the header |
-| Playlist description and featured artists | part | yes | no | no | no | Missing | |
+| Playlist description and featured artists | part | yes | description | no | no | Missing | Featured artists are missing. The description, the owner and the access record are on the page |
 | Podcast page | yes | yes | yes | drill | drill | Parity | Episode sort by name, date or duration |
 | Podcast episode page with transcript | no | yes | no | no | no | Missing | `podcast_episode`, `podcast_episode_transcript` |
 | Audiobook page with chapters | yes | yes | yes | n/a | buttons | Parity | Tap a chapter to play from it |
 | Collection (series) page | yes | yes | yes | flat | flat | Parity | |
-| Radio page | yes | yes | no | n/a | n/a | Missing | `radio_versions`; 2.11 adds `radio_tracks` for finite stations |
+| Radio page | yes | yes | yes | n/a | n/a | Parity | `radio_versions`; finite stations expose `radio_tracks` |
 | Genre page | yes | yes | yes | no | no | Parity | Artists and Albums tabs from `genres/overview` |
 | Descriptions, biography, publisher, narrators | yes | yes | no | no | no | Adjust-partial | The DTO parses the fields. No screen renders them |
 | User-customizable detail rows | no | yes | no | n/a | n/a | Missing | Low value on a phone |
@@ -191,7 +191,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Add to playlist, remove from playlist | yes | yes | yes | no | no | Parity | |
 | Mark played and unplayed | yes | yes | yes | no | no | Parity | |
 | Play from beginning | yes | yes | yes | no | no | Parity | Podcast episodes with progress, schema 40 and newer |
-| Refresh item, find on music services | yes | yes | no | no | no | Missing | `music/refresh_item`. 2.11 lowers the scope to `library.write` |
+| Refresh item, find on music services | yes | yes | details menu | no | no | Parity | `music/refresh_item`. 2.11 lowers the scope to `library.write`. The app offers it on the item details screen only |
 | Update metadata, edit builtin items | yes | yes | no | no | no | Out of scope | Needs `library.manage` |
 | Export, migrate, share playlist | export | all three | no | no | no | Missing | See 4.10 |
 | Go to artist and album | yes | yes | yes | no | no | Parity | |
@@ -213,7 +213,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Sleep timer | yes | yes | yes | no | no | Parity | Schema 35 and newer |
 | Lyrics with offset | yes | yes | yes | no | no | Parity | |
 | Podcast transcript in the lyrics panel | no | yes | no | no | no | Missing | Timed cues |
-| Waveform on the seek bar | yes | yes | no | no | no | Missing | `audio_analysis/wave_form` |
+| Waveform on the seek bar | yes | yes | yes | no | no | Parity | `audio_analysis/wave_form`, schema 36. Tracks only. A local setting, off by default |
 | Visualizer | yes | yes | no | n/a | n/a | Not viable | WebGL and Web Audio in the browser |
 | Stream and quality details | yes | yes | yes | no | no | Parity | |
 | "Played from" container | no | yes | yes | no | no | Parity | `QueueItem.origin` |
@@ -248,7 +248,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Join and leave members, group volume | yes | yes | yes | no | no | Parity | `set_members`, `ungroup` |
 | Local player playback delay | n/a | n/a | yes | no | no | Parity | App extra |
 | Create a group player | settings | settings | no | no | no | Out of scope | `players/create_group_player` |
-| Group the local player | yes | yes | no | no | no | Decided | See memory on local-player grouping |
+| Group the local player | yes | yes | yes | no | no | Parity | Only while the server lists the phone (not hidden), like the web. |
 
 ### 4.10 Playlists
 
@@ -272,7 +272,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Mark played and unplayed | yes | yes | yes | no | no | Parity | |
 | Play episodes from here to the latest | yes | yes | yes | no | no | Parity | Episodes tab of the podcast |
 | Episode and season numbers | no | yes | yes | yes | yes | Parity | `PodcastEpisode.episode_number`, `season` |
-| Transcript | no | yes | no | no | no | Missing | |
+| Transcript | no | yes | yes | no | no | Parity | Episode page and player sheet; schema 81 (`supportsEpisodeTranscript`) |
 | Next unplayed book in a series | yes | yes | yes | yes | yes | Parity | Server starts the first unfinished book |
 
 ### 4.12 Radio and AI Radio
@@ -281,7 +281,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 |---|---|---|---|---|---|---|---|
 | Library radio list | yes | yes | yes | yes | yes | Parity | App hides AI Radio show rows |
 | Favorite the song on air | no | no | yes | yes | no | Parity | App extra, schema 27 |
-| Finite station tracklist | no | yes | no | no | no | Missing | `Radio.is_endless`, `radio_tracks` |
+| Finite station tracklist | no | yes | yes | no | no | Parity | is_endless, radio_tracks; not dynamic |
 | AI Radio shows: list and play | session API | Radio items | Radio items | yes | yes | Parity | App needs schema 88; 2.10 sessions are not supported |
 | AI Radio show and host editing | yes | yes | no | no | no | Out of scope | Scope `config.providers.write` |
 
@@ -293,7 +293,7 @@ Columns: Web 2.10, Web 2.11, Phone, AA (Android Auto), CP (CarPlay).
 | Home Assistant OAuth | yes | yes | yes | n/a | n/a | Parity | iOS uses `ASWebAuthenticationSession` |
 | PKCE return to the app | no | yes | yes | n/a | n/a | Parity | `auth/exchange` (issue #1184). Remote Access only |
 | Saved token auto-login | yes | yes | yes | n/a | n/a | Parity | |
-| Long-lived token login | yes | yes | no | n/a | n/a | Adjust-partial | `project.md` claims it. No UI exists. Decided: add the UI (issue #1202) |
+| Long-lived token login | yes | yes | yes | n/a | n/a | Parity | "Use a token instead" in the Music Assistant login form (issue #1202). The app sends the token with `auth` |
 | Join code login | yes | yes | no | n/a | n/a | Missing | `auth/join_code/exchange` |
 | Logout | yes | yes | yes | n/a | n/a | Parity | |
 | Profile: name, avatar, password, tokens | yes | yes | no | n/a | n/a | Missing | `auth/me`, `auth/user/update`, `auth/tokens` |
@@ -571,9 +571,9 @@ URL on the PKCE path. See `.claude/settings-screen.md`.
   shows "Playing from" with the container of `origin`. The text opens the details screen of the
   container if the app has one. A folder shows as text only. An older server does not send the
   fields, so the app shows nothing. These fields need no schema gate.
-- `Radio.is_endless` (schema 88) and the finite station tracklist moved to issue #1190. Only
-  AI Radio shows are finite. `radio_tracks` returns a new shuffled snapshot on each call, so the
-  list does not match the order that plays.
+- `Radio.is_endless` (schema 88) and the finite station tracklist are supported. Only AI Radio shows are finite.
+  A radio station exposes a tracklist when `is_endless=false` and `is_dynamic` is not true.
+  `radio_tracks` returns a new shuffled snapshot on each call, so the list does not match the order that plays.
 - The frontend 2.11 refuses servers below schema 86. The app has no minimum of its own. The app
   constant `LOCAL_SCHEMA_VERSION` is 65 (`app/data/model/server/ServerInfo.kt:7`), because the app
   was checked against server 2.10.6 and 2.10.7. Both report 65, so they show no dialog. The nightly
@@ -603,9 +603,9 @@ the app:
 | Item | What the web does | What the app lacks | Where | Feasibility |
 |---|---|---|---|---|
 | Genre search | Queries `genres/library_items` with the search text | The genre chip is absent | `app/ui/compose/search/SearchViewModel.kt:76` | Easy |
-| Descriptions and biographies | Shows bio, review, description, publisher, narrators | Nothing renders the parsed fields | `app/ui/compose/item/` | Easy |
+| Descriptions and biographies | Shows bio, review, description, publisher, narrators | Done. The item page shows them under the header, with the genre chips, the track count and the duration, and the playlist owner | `app/ui/compose/item/ItemMetadata.kt` | Done |
 | In progress and recently played rows | Builds the rows from `in_progress_items` and `recently_played_items` | Rows appear only if the server sends them as recommendations | `app/ui/compose/home/HomeScreenViewModel.kt` | Easy |
-| Long-lived token login | Paste a token in the login form | No field exists. `project.md` claims the feature | `app/ui/compose/auth/AuthenticationPanel.kt` | Easy |
+| Long-lived token login | Paste a token in the login form | Done (issue #1202). "Use a token instead" in the Music Assistant form sends the token with `auth` | `app/ui/compose/auth/AuthenticationPanel.kt` | Done |
 | Show info | Info sheet for every item type | Tracks and radios have no screen | `app/ui/compose/item/ItemDetailsScreen.kt` | Easy |
 | Players that need setup | Setup warning and setup-only menu | Listed only. Setup is admin work | `app/ui/compose/home/players/` | Decided |
 | Retry after a load failure | Retry button in the list | Check each list error state for a retry action | `app/ui/compose/library/` | Easy |
@@ -621,9 +621,9 @@ the app:
 |---|---|---|---|
 | Track detail screen | `tracks/get_track`, `track_albums`, `track_versions`, `similar_tracks`, `metadata/get_track_lyrics` | Easy | Done (issue #1189). A `Track` case in `ItemDetailsScreen` with tabs for albums, versions and similar tracks |
 | Radio detail screen | `radios/get_radio`, `radio_versions`, `radio_tracks` (2.11) | Easy | Same pattern. Show the tracklist for finite stations on 2.11 |
-| Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Episode page with steppers. Feed the cues into `LyricsSheet` timing |
-| Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Two more artist sections. Discography items carry provider `musicbrainz`. Show them dimmed and offer "Add to library" only |
-| Artist audiobooks row | `artist_audiobooks` | Easy | One more section with the existing provider filter |
+| Podcast episode screen with transcript | `podcasts/podcast_episode`, `podcast_episode_transcript` (2.11) | Medium | Done (issue 1204). A `PodcastEpisode` case in `ItemDetailsScreen`; the cues feed `LyricsSheet` as `Lyrics.Synced`. No steppers and no hide-fully-played filter |
+| Artist appears on, singles, discography | `artist_appears_on`, `discography` (2.11) | Medium | Done (issue #1205). An external release is dimmed. Its menu offers "Add to library" only, and a tap opens the album that `music/item` resolves |
+| Artist audiobooks row | `artist_audiobooks` | Easy | Done (issue #1201). The author page rows with the existing provider filter |
 | Album versions, review, more from artist | `album_versions`, `artist_albums` | Easy | Two sections on the album screen |
 | Server-driven sort options | `music/sort_options` (2.11) | Easy | Replace the static table on 2.11. Map `label_key` to local strings |
 | Dislike | `favorites/set_item` (2.11) | Easy | Three-state heart menu. Hide on 2.10 |
@@ -631,24 +631,24 @@ the app:
 | Playlist rename, image, delete | `playlists/update`, `library/remove_item` | Easy | Needs `library.write`. Hide if the scope is absent |
 | Playlist sharing and collaboration | `playlists/set_access`, `config/providers/share_candidates` (2.11) | Medium | A dialog with a user picker. Needs the `Playlist.access` DTO |
 | Playlist migration | `migrate_playlist` (2.11) | Medium | The command returns a background task. The app has no task progress UI. Show a toast and let the server finish |
-| Playlist import and export | `import_playlist`, `export_playlist` | Medium | Needs a platform file picker and a share sheet. M3U text only |
+| Playlist import and export | `import_playlist`, `export_playlist` | Medium | Done (issue #1208). Export through the share sheet, import through the platform file picker |
 | Smart playlists | `smart_playlists/*` | Hard | A rule editor is heavy on a phone. Low value. Defer |
 | Refresh item, find on music services | `music/refresh_item` | Easy | Long-press action. Scope `library.write` on 2.11, `library.manage` on 2.10 |
 | Add radio or track by URL | `builtin/add_radio`, `builtin/add_track` | Easy | A text dialog in the Radio and Tracks lists |
-| Multi-select and bulk actions | existing commands | Medium | Compose selection mode on the list screens. Needed for bulk mark played and bulk add to playlist |
+| Multi-select and bulk actions | existing commands | Medium | Partly done (issue #1209). Tracks and podcast episodes on the album, artist, playlist, podcast and episode pages: the queue options, add to playlist, and remove from an editable playlist. Not done: the library lists, other item types and bulk mark played |
 | Search source picker and recent searches | `music/search` with `providers`, preferences `search.sources` and `search.recent` | Easy | Chips above the result list. Keep limits at 40 or lower |
 | Per-row provider filter on home | preference `discover.hiddenProviders.<row>` | Easy | Edit mode already exists |
 | Shortcut add and remove | `auth/user/update` with `sidebar.shortcuts` | Easy | Long-press action. The app already reads the list |
 | Played-state badge on home cards | item `fully_played`, `resume_position_ms` | Easy | Overlay icon on the card |
-| Author and narrator tabs | `artists/library_artist_types` | Easy | Tabs on the Audiobooks list |
-| Genre content-type tabs | `genres/library_items` filters | Easy | Tabs on the Genres list |
-| Hide fully played episodes | `podcast_episodes(fully_played=False)` on 2.11, client filter on 2.10 | Easy | Toggle on the podcast screen |
+| Author and narrator tabs | `artists/library_artist_types` | Easy | Done (issue #1201). A row in the Audiobooks filter sheet |
+| Genre content-type tabs | `genres/library_items` filters | Easy | Done (issue #1201). A row in the Genres filter sheet |
+| Hide fully played episodes | `podcast_episodes(fully_played=False)` on 2.11, client filter on 2.10 | Easy | Done (issue #1201). Toggle on the episodes tab |
 | Play and Shuffle on a browse folder | `play_media` | Easy | Header buttons in `BrowseScreen` |
 | User profile and tokens | `auth/me`, `auth/user/update`, `auth/tokens`, `auth/token/create`, `auth/token/revoke` | Medium | A profile screen in Settings. This also closes the long-lived token gap |
 | Join code login | `auth/join_code/exchange` | Easy | One more login tab |
 | PKCE OAuth return to the app | `auth/authorization_url`, `auth/exchange` (2.11) | Medium | Needs Remote Access on the server. Fixes the iOS OAuth return. Keep the current flow for 2.10 |
 | Scope-gated UI | `auth/scopes` | Medium | Cross-cutting. One `Scopes` value object in `MainDataSource` and a check in each action resolver |
-| Waveform on the seek bar | `audio_analysis/wave_form` | Medium | Draw with Compose `Canvas`. Check the payload size first |
+| Waveform on the seek bar | `audio_analysis/wave_form` | Medium | Done (issue 1210). 1800 bins, about 30 kB. `WaveformTrack` in the slider track. The toggle is in the player menu |
 | Cast to dashboard | `dashboard/dashboards`, `sessions`, `show`, `hide`, `get_url` | Easy | A dialog in the player overflow. Scope `users.invite` |
 | Unsupported install banner | `server_info.unsupported_install` (2.11) | Easy | Dismissible card on the home screen |
 | "Played from" container | `QueueItem.origin` (2.11) | Easy | Link in the stream details dialog |

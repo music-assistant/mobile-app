@@ -22,13 +22,16 @@ import io.music_assistant.client.ui.compose.item.ItemDetailsScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
 import musicassistantclient.composeapp.generated.resources.action_play_now
+import musicassistantclient.composeapp.generated.resources.action_refresh_item
 import musicassistantclient.composeapp.generated.resources.cd_find_in_list
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_provider_filter
+import musicassistantclient.composeapp.generated.resources.cd_toggle_hide_played_episodes
 import musicassistantclient.composeapp.generated.resources.cd_view_all
 import musicassistantclient.composeapp.generated.resources.find_in_list_label
 import musicassistantclient.composeapp.generated.resources.item_tab_versions
 import musicassistantclient.composeapp.generated.resources.media_type_albums
+import musicassistantclient.composeapp.generated.resources.media_type_episodes
 import musicassistantclient.composeapp.generated.resources.media_type_tracks
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import musicassistantclient.composeapp.generated.resources.nav_search
@@ -80,9 +83,9 @@ class ItemPage(
 
             MediaType.RADIO -> TODO()
             MediaType.AUDIOBOOK -> TODO()
-            MediaType.PODCAST -> TODO()
+            MediaType.PODCAST -> waitForTab(Res.string.media_type_episodes.get())
             MediaType.PODCAST_EPISODE -> TODO()
-            MediaType.GENRE -> TODO()
+            MediaType.GENRE -> Unit
             MediaType.FOLDER -> TODO()
             MediaType.COLLECTION -> TODO()
             MediaType.FLOW_STREAM -> TODO()
@@ -103,6 +106,12 @@ class ItemPage(
         }
     }
 
+    fun refreshItem(): ItemPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
+        composeTestRule.onNodeWithText(Res.string.action_refresh_item.get()).performClick()
+        return this
+    }
+
     fun clickGoToArtist(artist: String): ItemPage {
         composeTestRule.onNodeWithContentDescription(Res.string.cd_more.get()).performClick()
         composeTestRule.onNodeWithText(Res.string.action_go_to_artist.get()).performClick()
@@ -112,6 +121,12 @@ class ItemPage(
             navigationItem,
             composeTestRule,
         ).assertOnPage()
+    }
+
+    fun toggleHidePlayedEpisodes(): ItemPage {
+        composeTestRule.onNodeWithContentDescription(Res.string.cd_toggle_hide_played_episodes.get())
+            .performClick()
+        return this
     }
 
     fun clickPlay(): ItemPage {

@@ -8,4 +8,6 @@ class ThemeViewModel(
 ) : ViewModel() {
     val theme = settingsRepository.theme
     fun switchTheme(theme: ThemeSetting) = settingsRepository.switchTheme(theme)
+    val accentColor = settingsRepository.accentColor
+    fun setAccentColor(accent: AccentColor) = settingsRepository.setAccentColor(accent)
 }

@@ -6,9 +6,9 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * Server default page size for `library_items`, `player_queues/items` and, from server 2.11,
- * `playlist_tracks` and `podcast_episodes`. Those commands answer in ONE message, so a single
- * oversized `limit` is what trips the server's per-message cap. Server 2.10 streams the last two
- * in `partial` batches instead and ignores `limit`; `MediaItemRepository.fetchAllMediaItems`
+ * `album_tracks`, `playlist_tracks` and `podcast_episodes`. Those commands answer in ONE message,
+ * so a single oversized `limit` is what trips the server's per-message cap. Server 2.10 answers
+ * the last three whole and ignores `limit`; `MediaItemRepository.fetchAllMediaItems`
  * picks the right method from the schema.
  */
 const val SERVER_PAGE_SIZE = 500

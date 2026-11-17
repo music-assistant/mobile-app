@@ -21,7 +21,7 @@ import kotlinx.serialization.json.contentOrNull
 internal class ManagementHandler(
     private val trustStore: SendspinTrustStore,
 ) {
-    private val logger = Logger.withTag("ManagementHandler")
+    private val logger = Logger.withTag("Sendspin.ManagementHandler")
 
     /** The reply to send, plus whether the connection must close afterwards. */
     class Outcome(

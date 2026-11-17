@@ -5,7 +5,8 @@ import io.music_assistant.sendspin.connection.ServerSilentException
 import io.music_assistant.sendspin.wire.ClientTimeMessage
 import io.music_assistant.sendspin.wire.ClientTimePayload
 import io.music_assistant.sendspin.wire.WireCodec
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -20,24 +21,36 @@ import kotlinx.coroutines.withTimeoutOrNull
  * A probe unanswered for [PROBE_TIMEOUT_MILLIS] ends its burst early: the link
  * is stalled, and samples taken through a stall are the worst of the burst.
  *
+ * A connection check (an increment of [connectionChecks]) starts a burst at once,
+ * and the bursts after it repeat with no wait while they stay silent. So a dead
+ * link ends in [SILENT_BURSTS_LIMIT] probe timeouts, and the stall tolerance
+ * without a check does not change.
+ *
  * [send] is the session's gated send, so probing starts once activated.
  */
 internal class ClockProbe(
     private val sync: ClockSync,
     private val clock: MonotonicClock,
+    private val connectionChecks: StateFlow<Int> = MutableStateFlow(0),
     private val send: suspend (json: String) -> Unit,
 ) {
     suspend fun run(): Nothing {
         val startMicros = clock.nowMicros()
         var silentBursts = 0
+        var seenChecks = connectionChecks.value
+        var checking = false
         while (true) {
             val burstStartMicros = clock.nowMicros()
             (1..PROBES_PER_BURST).all { probe() } // stops at the first unanswered probe
             silentBursts = if (sync.endBurst() == 0) silentBursts + 1 else 0
             if (silentBursts >= SILENT_BURSTS_LIMIT) throw ServerSilentException()
+            checking = checking && silentBursts > 0
+            if (checking) continue
             val warmingUp = clock.nowMicros() - startMicros < WARMUP_MICROS
             val intervalMillis = if (warmingUp) WARMUP_BURST_INTERVAL_MILLIS else BURST_INTERVAL_MILLIS
-            delay(intervalMillis - (clock.nowMicros() - burstStartMicros) / MICROS_PER_MILLI)
+            val waitMillis = intervalMillis - (clock.nowMicros() - burstStartMicros) / MICROS_PER_MILLI
+            checking = withTimeoutOrNull(waitMillis) { connectionChecks.first { it != seenChecks } } != null
+            seenChecks = connectionChecks.value
         }
     }
 

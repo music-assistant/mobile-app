@@ -5,11 +5,15 @@ import io.ktor.client.webrtc.WebRtcClient
 import io.ktor.utils.io.ExperimentalKtorApi
 import io.music_assistant.client.data.announcement.AudioRecordCapture
 import io.music_assistant.client.data.announcement.MicrophoneCapture
+import io.music_assistant.client.discovery.MdnsBrowser
+import io.music_assistant.client.discovery.NsdMdnsBrowser
 import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AndroidBackgroundUsageGuard
+import io.music_assistant.client.utils.AndroidFileSharer
 import io.music_assistant.client.utils.AndroidHttpClientFactory
 import io.music_assistant.client.utils.BackgroundUsageGuard
+import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.sendspinClock
 import io.music_assistant.sendspin.android.AndroidDecoderFactory
@@ -25,7 +29,9 @@ fun androidModule() = module {
     single<AudioSink> { AudioTrackSink(androidContext(), sendspinClock) }
     single<DecoderFactory> { AndroidDecoderFactory() }
     single<MicrophoneCapture> { AudioRecordCapture() }
+    single<FileSharer> { AndroidFileSharer(androidContext()) }
     single<BackgroundUsageGuard> { AndroidBackgroundUsageGuard(androidContext()) }
+    single<MdnsBrowser> { NsdMdnsBrowser(androidContext()) }
     single<HttpClientFactory> {
         AndroidHttpClientFactory(androidContext(), get<SettingsRepository>().clientCertificateAlias)
     }

@@ -41,6 +41,15 @@ The Settings screen adapts its UI based on connection and authentication state:
 
 ### ServerConnectionSection
 - Text fields for host, port, and TLS checkbox
+- Port hint: if the port is 8123, the field tells the user that 8123 is the Home Assistant port. Music Assistant has its own port, 8095 by default.
+- Server discovery list (`DiscoveredServersList`), above the host field on the Direct tab:
+  - A Music Assistant server advertises `_mass._tcp`. The TXT record holds the server info of `get_server_info`, on server 2.10 and 2.11.
+  - `musicAssistantServers` (`discovery/ServerDiscovery.kt`) makes the address from the `base_url` field, with the scheme and the base path. If `base_url` is not there, the resolved IPv4 address and port are the fallback. iOS reads the TXT record only.
+  - A row shows the server name and the address. A row for a Home Assistant add-on also shows "Home Assistant add-on".
+  - A tap fills the host, port, TLS and base path fields, and connects.
+  - The list shows nothing while no server is found. A network that blocks mDNS gives no rows and no error.
+  - `MdnsBrowser` browses only while the screen collects `SettingsViewModel.discoveredServers`. It stops 5 s after the screen stops.
+  - On iOS, a browse shows the Local Network prompt. So discovery starts after the user closes the local network onboarding card, or when the app has a connection history.
 - Client certificate row (mTLS), shown when TLS is on. `ClientCertificateSetting` is an expect composable:
   - Android: **Choose** opens the system KeyChain chooser. The chooser lists the certificates that the user installed in Android settings.
   - iOS: **Choose** opens the document picker for a `.p12` file. A dialog asks for the file password. The app imports the identity into the Keychain.
@@ -62,6 +71,7 @@ The Settings screen adapts its UI based on connection and authentication state:
 ### LoginSection
 - Wraps AuthenticationPanel in a SectionCard
 - Shows authentication provider tabs (builtin, OAuth providers)
+- The Music Assistant form has a "Use a token instead" link under the password field
 - Provider-specific login forms
 - Error messages displayed below login form
 
@@ -76,6 +86,13 @@ The Settings screen adapts its UI based on connection and authentication state:
 - MainDataSource automatically manages Sendspin lifecycle based on `sendspinEnabled` setting
 - Configuration changes only allowed when player is stopped
 
+### AccentColorSection
+- Always visible, above the Misc section
+- One round swatch for each `AccentColor` that the platform can give, in the primary color that the accent gives in the current light or dark theme
+- The line under the swatches names the current choice
+- `ThemeViewModel.accentColor` and `setAccentColor` read and write the setting (`SettingsRepository`, key `accent_color`)
+- The light, system and dark toggle stays in the top bar (`ThemeChooser`)
+
 ## Authentication Flow
 
 ### Builtin Authentication
@@ -83,6 +100,13 @@ The Settings screen adapts its UI based on connection and authentication state:
 2. Clicks Login button
 3. On success: User is authenticated and UI updates to State 4
 4. On failure: Error message displayed below login form
+
+### Token Authentication
+1. The user taps "Use a token instead" under the password field of the Music Assistant form. "Use a password instead" goes back.
+2. The user pastes a long-lived token. The web frontend makes the token on the profile page.
+3. The user clicks the Login button. The app trims the token and sends the `auth` command.
+4. On success, the app saves the token for the server. The next connection signs in with it.
+5. On failure, the server error shows below the form, for example "Invalid or expired token".
 
 ### OAuth Authentication (e.g., HomeAssistant)
 1. The user clicks the "Authorize with [Provider]" button.
@@ -124,11 +148,12 @@ If the app does not use the result in 20 seconds, it shows "Connection timeout. 
 3. Server receives logout request
 4. Token is cleared locally
 5. Session state updates to `AuthProcessState.LoggedOut`
-6. **Websocket connection remains active** (no disconnection)
+6. The server revokes the token and closes the WebSocket of that token. The client reconnects without a login.
 7. UI updates to State 3 (shows login form again)
 
 **Important:**
-- Logout does NOT disconnect from server
+- The app does not disconnect on logout. The server closes the socket, and the client reconnects on its own.
+- `AuthenticationViewModel` loads the provider list again on each new connection. A load that the logout started dies with the old socket, and the manager reports no error for it.
 - Sendspin lifecycle managed by MainDataSource based on auth state
 - User can immediately log back in without reconnecting
 
@@ -155,7 +180,7 @@ If the app does not use the result in 20 seconds, it shows "Connection timeout. 
 1. `ServiceClient.login()` sets `AuthProcessState.Failed` with error message
 2. `AuthenticationManager` monitors session state and sets `authState = Error(message)`
 3. `AuthenticationViewModel` prevents `loadProviders()` when in Failed state
-4. `AuthenticationPanel` uses `LaunchedEffect` to capture error in local state
+4. `AuthenticationPanel` shows the message while `AuthState.Error` is the current state. A retry of the provider load, a new login attempt or a reconnect replaces the state and removes the message.
 5. Error message displayed at bottom of panel (outside user check, so always visible)
 
 **Key Implementation Details:**

@@ -7,20 +7,24 @@ import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.items.AppMediaItem
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.lyricsOf
+import io.music_assistant.client.data.model.client.transcriptOf
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerTranscriptCue
 import io.music_assistant.client.data.model.server.events.FavoriteUpdatedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemAddedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemDeletedEvent
 import io.music_assistant.client.data.model.server.events.MediaItemUpdatedEvent
 import io.music_assistant.client.data.model.server.events.ServerFavoriteUpdate
-import io.music_assistant.client.data.model.server.pagesPlaylistTracksAndEpisodes
+import io.music_assistant.client.data.model.server.pagesSubItemLists
 import io.music_assistant.client.data.model.server.sendsFavoriteUpdates
 import io.music_assistant.client.ui.compose.common.getOrEmptyList
 import io.music_assistant.client.utils.HasConnectionData
+import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -39,13 +43,15 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlin.time.Duration.Companion.seconds
 
 interface MediaItemRepository {
     suspend fun fetchMediaItems(request: Request): Result<List<AppMediaItem>>
 
     /**
-     * Every item of a `playlist_tracks` or `podcast_episodes` [request]. Null when nothing could
+     * Every item of an `album_tracks`, `playlist_tracks` or `podcast_episodes` [request]. Null when nothing could
      * be loaded; a page failure after the first page gives the items loaded so far.
      */
     suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>?
@@ -55,6 +61,9 @@ interface MediaItemRepository {
 
     /** The lyrics the server finds for [track]; `Result.success(null)` when it has none. */
     suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?>
+
+    /** The transcript of [episode] as [Lyrics]; `Result.success(null)` when the server has none. */
+    suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?>
     fun publishLocalChange(change: MediaItemChange)
 }
 
@@ -93,10 +102,10 @@ class ServiceClientMediaItemRepository(
 
     /**
      * A server from 2.11 answers one page, so the pages are walked. An older server streams the
-     * whole list on the plain request (see [pagesPlaylistTracksAndEpisodes]).
+     * whole list on the plain request (see [pagesSubItemLists]).
      */
     override suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>? =
-        if (pagesPlaylistTracksAndEpisodes(schemaVersion())) {
+        if (pagesSubItemLists(schemaVersion())) {
             request.fetchAllPages { fetchMediaItems(it).getOrNull() }
         } else {
             fetchMediaItems(request).getOrNull()
@@ -133,6 +142,20 @@ class ServiceClientMediaItemRepository(
             apiClient.sendRequest(Request.Metadata.getTrackLyrics(track)).map { answer ->
                 answer.resultAs<List<String?>>()
                     ?.let { lyricsOf(plain = it.getOrNull(0), lrc = it.getOrNull(1)) }
+            }
+        }
+
+    /** `music/podcasts/podcast_episode_transcript` answers a `[text, cues]` tuple. */
+    override suspend fun fetchEpisodeTranscript(episode: PodcastEpisode): Result<Lyrics?> =
+        withContext(workDispatcher) {
+            val request = Request.Podcast.getEpisodeTranscript(episode.itemId, episode.provider)
+            apiClient.sendRequest(request).mapCatching { answer ->
+                answer.resultAs<JsonArray>()?.let { tuple ->
+                    transcriptOf(
+                        text = tuple.getOrNull(0)?.let { myJson.decodeFromJsonElement<String?>(it) },
+                        cues = tuple.getOrNull(1)?.let { myJson.decodeFromJsonElement<List<ServerTranscriptCue>?>(it) },
+                    )
+                }
             }
         }
 

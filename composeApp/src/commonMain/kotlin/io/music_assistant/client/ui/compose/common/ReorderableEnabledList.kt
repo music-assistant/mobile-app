@@ -53,7 +53,7 @@ fun <T> ReorderableEnabledList(
     canDisableLast: Boolean = false,
 ) {
     val plateShape = RoundedCornerShape(12.dp)
-    var items by remember { mutableStateOf(initialItems) }
+    var items by remember { mutableStateOf(initialItems.enabledFirst()) }
     val enabledCount = items.count { it.second }
     val listState = rememberLazyListState()
     val reorderableLazyListState =

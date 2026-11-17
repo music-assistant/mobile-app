@@ -13,16 +13,17 @@ import io.music_assistant.client.data.model.server.AudioProcessingChain
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.PlayerState
+import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
+import io.music_assistant.client.data.model.server.Scope
 import io.music_assistant.client.data.model.server.SearchResult
 import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
+import io.music_assistant.client.data.model.server.ServerPartyConfig
 import io.music_assistant.client.data.model.server.ServerPlayer
 import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
-import io.music_assistant.client.data.model.server.ServerUser
-import io.music_assistant.client.data.model.server.ServerUserPreferences
 import io.music_assistant.client.data.model.server.StreamDetails
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
@@ -43,15 +44,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.util.concurrent.atomic.AtomicBoolean
 
 class FakeServiceClient : ServiceClient {
-    private var legacyVersion: LegacyVersion? = null
     private val requestErrors = AtomicBoolean(false)
     private var connectionError: Exception? = null
 
@@ -63,12 +69,27 @@ class FakeServiceClient : ServiceClient {
     private val queues = mutableListOf<ServerQueue>()
     private val queueItems = mutableMapOf<String, List<ServerQueueItem>>()
     private val mediaItemStore = FakeMediaItemStore()
-    private val shortcuts = mutableListOf<String>()
+
+    // The server keeps one object per user, and an update replaces it whole.
+    var preferences = JsonObject(emptyMap())
+        private set
     private val providers = mutableListOf<ServerProviderInstance>()
+
+    /** The Party plugin: the join link that guest access hands out, and the settings that a save changes. */
+    var partyUrl: String? = null
+    var partyName: String? = null
+    var partyGuestAccess = true
+
+    /** Scopes that the test user gets on top of the default role scopes. */
+    val extraScopes = mutableSetOf<String>()
 
     val username = "user"
     val password = "password"
+    val accessToken = "token"
     var serverId = "serverId"
+
+    // 63 (server 2.10.0) and higher turn on the search source picker.
+    var schemaVersion = 39
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -95,16 +116,12 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.AUTH_ME -> {
-                Result.success(
-                    answer(
-                        request = request,
-                        result = if (shortcuts.isNotEmpty()) {
-                            ServerUser(preferences = ServerUserPreferences(shortcuts))
-                        } else {
-                            ServerUser()
-                        },
-                    ),
-                )
+                Result.success(answer(request, buildJsonObject { put("preferences", preferences) }))
+            }
+
+            APICommands.AUTH_USER_UPDATE -> {
+                preferences = request.args!!["preferences"] as JsonObject
+                Result.success(answer(request, buildJsonObject { put("preferences", preferences) }))
             }
 
             APICommands.AUTH_PROVIDERS -> {
@@ -122,15 +139,54 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
+            APICommands.AUTH_SCOPES -> {
+                // Give the test user admin rights
+                Result.success(
+                    answer(
+                        request = request,
+                        result = mapOf(
+                            "user" to listOf(
+                                Scope.LIBRARY_READ,
+                                Scope.LIBRARY_WRITE,
+                                Scope.LIBRARY_MANAGE,
+                                Scope.QUEUES_CONTROL,
+                            ) + extraScopes,
+                        ),
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_REFRESH_ITEM -> {
+                val uri = request.getArg("media_item")
+                val item = mediaItemStore.getByUri(uri)!!.enrichLibraryItem()
+                Result.success(answer(request = request, result = item))
+            }
+
+            // An external item resolves to an item on a music provider.
+            APICommands.MUSIC_ITEM -> {
+                val item = when (request.getArg("provider_instance_id_or_domain")) {
+                    ServerMediaItem.EXTERNAL_PROVIDER ->
+                        mediaItemStore.resolveExternalItem(request.getArg("item_id"))
+
+                    else -> findItem(request)
+                }
+                Result.success(answer(request = request, result = item.enrichLibraryItem()))
+            }
+
+            APICommands.MUSIC_ARTISTS_ARTIST_APPEARS_ON -> {
+                Result.success(answer(request, mediaItemStore.getAppearsOn(request.getArg("item_id"))))
+            }
+
+            APICommands.MUSIC_ARTISTS_DISCOGRAPHY -> {
+                Result.success(answer(request, mediaItemStore.getDiscography(request.getArg("item_id"))))
+            }
+
             APICommands.MUSIC_ITEM_BY_URI -> {
                 val item = mediaItemStore.getByUri(request.getArg("uri"))!!
                 Result.success(answer(request = request, result = item.enrichLibraryItem()))
             }
 
             APICommands.MUSIC_RECOMMENDATIONS -> {
-                // Legacy servers embed each row's items; current servers return
-                // item-less rows resolved via MUSIC_RECOMMENDATIONS_ITEMS.
-                val embedItems = legacyVersion != null
                 Result.success(
                     answer(
                         request = request,
@@ -140,11 +196,7 @@ class FakeServiceClient : ServiceClient {
                                 provider = "library",
                                 name = name,
                                 mediaType = MediaType.FOLDER.serverValue,
-                                items = if (embedItems) {
-                                    recommendationRowItems(itemId)
-                                } else {
-                                    emptyList()
-                                },
+                                items = emptyList(),
                             )
                         },
                     ),
@@ -152,23 +204,19 @@ class FakeServiceClient : ServiceClient {
             }
 
             APICommands.MUSIC_RECOMMENDATIONS_ITEMS -> {
-                if (legacyVersion != null) {
-                    // Command doesn't exist on legacy servers.
-                    Result.failure(UnsupportedOperationException())
-                } else {
-                    Result.success(
-                        answer(
-                            request = request,
-                            result = recommendationRowItems(request.getArg("item_id")),
-                        ),
-                    )
-                }
+                Result.success(
+                    answer(
+                        request = request,
+                        result = recommendationRowItems(request.getArg("item_id")),
+                    ),
+                )
             }
 
             APICommands.MUSIC_SEARCH -> {
                 val mediaTypes =
                     (request.args!!["media_types"] as JsonArray).map { (it as JsonPrimitive).content }
-                val libraryOnly = request.getArgOrNull("library_only") == "true"
+                val libraryOnly = request.getArgOrNull("library_only") == "true" ||
+                    request.args!!["providers"] == JsonArray(listOf(JsonPrimitive("library")))
                 val results = mediaItemStore.query(
                     request.getArg("search_query"),
                     inLibraryOnly = libraryOnly,
@@ -273,13 +321,59 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
-            APICommands.musicGet(APICommands.KIND_PLAYLISTS) -> {
+            APICommands.musicGet(APICommands.KIND_GENRES) -> {
                 Result.success(
                     answer(
                         request = request,
                         result = findItem(request).enrichLibraryItem(),
                     ),
                 )
+            }
+
+            // No artist or album rows: the genre page shows its header only.
+            APICommands.MUSIC_GENRES_OVERVIEW -> {
+                Result.success(answer(request, JsonArray(emptyList())))
+            }
+
+            APICommands.musicGet(APICommands.KIND_PLAYLISTS),
+            APICommands.musicGet(APICommands.KIND_PODCASTS),
+                -> {
+                Result.success(
+                    answer(
+                        request = request,
+                        result = findItem(request).enrichLibraryItem(),
+                    ),
+                )
+            }
+
+            // Server 2.11 applies `fully_played`; an older server ignores the argument.
+            APICommands.MUSIC_PODCASTS_PODCAST_EPISODES -> {
+                val fullyPlayed = request.getArgOrNull("fully_played")
+                    ?.takeIf { schemaVersion >= SERVER_2_11_SCHEMA }
+                    ?.toBoolean()
+                Result.success(
+                    answer(
+                        request = request,
+                        result = mediaItemStore.getEpisodesByPodcast(findItem(request))
+                            .filter { fullyPlayed == null || (it.fullyPlayed ?: false) == fullyPlayed },
+                    ),
+                )
+            }
+
+            APICommands.MUSIC_ARTISTS_ARTIST_AUDIOBOOKS -> {
+                val audiobooks = when (request.getArg("provider_instance_id_or_domain")) {
+                    ServerMediaItem.LIBRARY_PROVIDER -> mediaItemStore.getAudiobooksByLibraryArtist(
+                        libraryId = request.getArg("item_id"),
+                        inLibraryOnly = request.getArgOrNull("in_library_only") == "true",
+                    ).enrichLibraryItems()
+
+                    else -> mediaItemStore.getAudiobooksByArtist(findItem(request))
+                }
+                Result.success(answer(request = request, result = audiobooks))
+            }
+
+            APICommands.MUSIC_ARTISTS_LIBRARY_ARTIST_TYPES -> {
+                Result.success(answer(request = request, result = mediaItemStore.libraryArtistTypes()))
             }
 
             APICommands.MUSIC_PLAYLISTS_PLAYLIST_TRACKS -> {
@@ -383,24 +477,7 @@ class FakeServiceClient : ServiceClient {
                         }
                     } ?: emptyList()
 
-                val queueId = request.getArg("queue_id")
-                updateQueue(
-                    queueId,
-                    mediaTracks.map { ServerQueueItem(uniqueIdGenerator.nextInt().toString(), it) },
-                )
-                updatePlayer({ it.activeSource == queueId }) {
-                    it.copy(
-                        state = PlayerState.PLAYING,
-                        currentMedia = mediaTracks.firstOrNull()?.let { track ->
-                            ServerPlayerMedia(
-                                uri = track.uri,
-                                mediaType = track.mediaType,
-                                title = track.name,
-                                sourceId = queueId,
-                            )
-                        },
-                    )
-                }
+                play(request.getArg("queue_id"), mediaTracks)
 
                 Result.success(Answer(JsonObject(emptyMap())))
             }
@@ -549,6 +626,19 @@ class FakeServiceClient : ServiceClient {
                 )
             }
 
+            APICommands.PARTY_URL -> Result.success(answer(request, partyUrl?.takeIf { partyGuestAccess }))
+
+            APICommands.CONFIG_PROVIDERS_GET -> Result.success(answer(request, partyProviderConfig()))
+
+            APICommands.CONFIG_PROVIDERS_SAVE -> {
+                val values = request.args!!["values"]!!.jsonObject
+                values["enable_guest_access"]?.jsonPrimitive?.boolean?.let { partyGuestAccess = it }
+                values["party_name"]?.jsonPrimitive?.content?.let { partyName = it }
+                Result.success(answer(request, partyProviderConfig()))
+            }
+
+            APICommands.PARTY_CONFIG -> Result.success(answer(request, ServerPartyConfig(partyName = partyName)))
+
             APICommands.METADATA_GET_TRACK_LYRICS -> {
                 Result.success(
                     answer(
@@ -562,6 +652,31 @@ class FakeServiceClient : ServiceClient {
                 Result.failure(UnsupportedOperationException())
             }
         }
+    }
+
+    private suspend fun play(queueId: String, tracks: List<ServerMediaItem>) {
+        updateQueue(
+            queueId,
+            tracks.map { ServerQueueItem(uniqueIdGenerator.nextInt().toString(), it) },
+        )
+        updatePlayer({ it.activeSource == queueId }) {
+            it.copy(
+                state = PlayerState.PLAYING,
+                currentMedia = tracks.firstOrNull()?.let { track ->
+                    ServerPlayerMedia(
+                        uri = track.uri,
+                        mediaType = track.mediaType,
+                        title = track.name,
+                        sourceId = queueId,
+                    )
+                },
+            )
+        }
+    }
+
+    // A reconnecting client has no socket, so the server events of that time never reach it.
+    private suspend fun emitEvent(event: Event<out Any>) {
+        if (_sessionState.value !is SessionState.Reconnecting) _events.emit(event)
     }
 
     private suspend fun updateQueue(
@@ -594,7 +709,7 @@ class FakeServiceClient : ServiceClient {
         queueItems[queueId] = items
 
         val queue = queues[queueIndex]
-        _events.emit(
+        emitEvent(
             QueueUpdatedEvent(
                 event = EventType.QUEUE_UPDATED,
                 objectId = queue.queueId,
@@ -602,7 +717,7 @@ class FakeServiceClient : ServiceClient {
             ),
         )
 
-        _events.emit(
+        emitEvent(
             QueueItemsUpdatedEvent(
                 event = EventType.QUEUE_ITEMS_UPDATED,
                 objectId = queue.queueId,
@@ -618,7 +733,7 @@ class FakeServiceClient : ServiceClient {
         val (playerIndex, originalPlayer) = findPlayer(search)
         val updatedPlayer = update(originalPlayer)
         players[playerIndex] = updatedPlayer
-        _events.emit(
+        emitEvent(
             PlayerUpdatedEvent(
                 event = EventType.PLAYER_UPDATED,
                 objectId = updatedPlayer.playerId,
@@ -635,18 +750,17 @@ class FakeServiceClient : ServiceClient {
 
     override suspend fun login(username: String, password: String) {
         if (username == this.username && password == this.password) {
-            authorize("token", true)
-            _isReadyForCommands.value = true
+            authorize(accessToken, true)
         } else {
-            _sessionState.update { state ->
-                (state as SessionState.Connected).update(
-                    authProcessState = AuthProcessState.Failed("Invalid username or password"),
-                )
-            }
+            failAuth("Invalid username or password")
         }
     }
 
     override suspend fun authorize(token: String, isAutoLogin: Boolean) {
+        if (token != accessToken) {
+            failAuth("Invalid or expired token")
+            return
+        }
         _sessionState.update {
             when (it) {
                 is SessionState.Connected.Direct -> {
@@ -663,6 +777,22 @@ class FakeServiceClient : ServiceClient {
 
                 else -> error("Unhandled request type in FakeServiceClient")
             }
+        }
+        _isReadyForCommands.value = true
+    }
+
+    // Like the real client, an attempt passes through InProgress and then waits for the server.
+    // Without the yield, a collector sees only the final state, and a second failure with the
+    // same reason is equal to the first, so the StateFlow does not emit it.
+    private suspend fun failAuth(reason: String) {
+        setAuthProcessState(AuthProcessState.InProgress)
+        yield()
+        setAuthProcessState(AuthProcessState.Failed(reason))
+    }
+
+    private fun setAuthProcessState(authProcessState: AuthProcessState) {
+        _sessionState.update { state ->
+            (state as SessionState.Connected).update(authProcessState = authProcessState)
         }
     }
 
@@ -716,10 +846,7 @@ class FakeServiceClient : ServiceClient {
                     serverInfo = ServerInfo(
                         serverId = serverId,
                         serverVersion = "fake",
-                        // Schema 39+ moved recommendation row items behind
-                        // MUSIC_RECOMMENDATIONS_ITEMS; this fake serves that
-                        // shape unless a legacy version is set.
-                        schemaVersion = if (legacyVersion != null) -1 else 39,
+                        schemaVersion = schemaVersion,
                         baseUrl = "http://homeassistant.example",
                     ),
                 )
@@ -788,7 +915,28 @@ class FakeServiceClient : ServiceClient {
     }
 
     fun addShortcut(item: ServerMediaItem) {
-        shortcuts.add(item.uri!!)
+        val shortcuts = (preferences["sidebar.shortcuts"] as? JsonArray).orEmpty()
+        setPreference("sidebar.shortcuts", JsonArray(shortcuts + JsonPrimitive(item.uri!!)))
+    }
+
+    fun setPreference(key: String, value: JsonElement) {
+        preferences = JsonObject(preferences + (key to value))
+    }
+
+    private fun partyProviderConfig(): JsonObject = buildJsonObject {
+        put(
+            "values",
+            buildJsonObject {
+                put("enable_guest_access", configEntry("boolean", "Guest access", JsonPrimitive(partyGuestAccess)))
+                put("party_name", configEntry("string", "Party Name", JsonPrimitive(partyName.orEmpty())))
+            },
+        )
+    }
+
+    private fun configEntry(type: String, label: String, value: JsonPrimitive) = buildJsonObject {
+        put("type", JsonPrimitive(type))
+        put("label", JsonPrimitive(label))
+        put("value", value)
     }
 
     fun addProvider(provider: ServerProviderInstance) {
@@ -840,7 +988,17 @@ class FakeServiceClient : ServiceClient {
             mediaType = mediaType,
             inLibraryOnly = true,
             favoritesOnly = favoritesOnly,
+            artistType = request.getArgOrNull("artist_type"),
+            genreContentType = request.getArgOrNull("content_type"),
         )
+    }
+
+    fun setArtistAudiobooks(artist: ServerMediaItem, vararg audiobooks: ServerMediaItem) {
+        mediaItemStore.setArtistAudiobooks(artist, *audiobooks)
+    }
+
+    fun setGenreContentType(genre: ServerMediaItem, contentType: String) {
+        mediaItemStore.setGenreContentType(genre, contentType)
     }
 
     fun getQueueForPlayer(player: ServerPlayer): List<ServerMediaItem> {
@@ -851,16 +1009,31 @@ class FakeServiceClient : ServiceClient {
         mediaItemStore.setPlaylist(playlist, *tracks)
     }
 
+    fun setAppearsOn(artist: ServerMediaItem, vararg albums: ServerMediaItem) {
+        mediaItemStore.setAppearsOn(artist, *albums)
+    }
+
+    /** [releases] holds library albums and external albums, like the server listing. */
+    fun setDiscography(artist: ServerMediaItem, vararg releases: ServerMediaItem) {
+        mediaItemStore.setDiscography(artist, *releases)
+    }
+
+    /** `music/item` answers [resolved] for the external item [external]. */
+    fun setExternalItem(external: ServerMediaItem, resolved: ServerMediaItem) {
+        mediaItemStore.setExternalItem(external.itemId, resolved)
+    }
+
     fun setTopTracks(artist: ServerMediaItem, vararg tracks: ServerMediaItem) {
         mediaItemStore.setTopTracks(artist, *tracks)
     }
 
-    fun setRequestErrors(requestError: Boolean) {
-        requestErrors.set(requestError)
+    /** Plays [track] on [player] from the server side, for example when a track ends. */
+    fun playOnServer(player: ServerPlayer, track: ServerMediaItem) = runBlocking {
+        play(requireNotNull(player.activeSource), listOf(track))
     }
 
-    fun setLegacyVersion(version: LegacyVersion) {
-        this.legacyVersion = version
+    fun setRequestErrors(requestError: Boolean) {
+        requestErrors.set(requestError)
     }
 
     fun setReconnecting(reconnecting: Boolean) {
@@ -949,8 +1122,6 @@ class FakeServiceClient : ServiceClient {
     private fun List<ServerMediaItem>.enrichLibraryItems(): List<ServerMediaItem> {
         return this.map { mediaItemStore.enrichLibraryItem(it) }
     }
-
-    enum class LegacyVersion
 }
 
 private fun answer(request: Request, result: JsonElement): Answer {

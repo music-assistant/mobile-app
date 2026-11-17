@@ -8,17 +8,22 @@ import io.music_assistant.client.data.CarConnectionMonitor
 import io.music_assistant.client.data.LocalPlayerAdapter
 import io.music_assistant.client.data.announcement.AudioEngineCapture
 import io.music_assistant.client.data.announcement.MicrophoneCapture
+import io.music_assistant.client.discovery.IosMdnsBrowser
+import io.music_assistant.client.discovery.MdnsBrowser
 import io.music_assistant.client.player.PlatformContext
 import io.music_assistant.client.player.local.AudioQueueSink
 import io.music_assistant.client.player.local.IosDecoderFactory
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.BackgroundUsageGuard
+import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.IosBackgroundUsageGuard
+import io.music_assistant.client.utils.IosFileSharer
 import io.music_assistant.client.utils.IosHttpClientFactory
 import io.music_assistant.client.utils.KeychainClientIdentity
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 @OptIn(ExperimentalKtorApi::class)
@@ -29,8 +34,10 @@ fun iosModule() = module {
     }
     single<DecoderFactory> { IosDecoderFactory() }
     single<MicrophoneCapture> { AudioEngineCapture() }
+    single<FileSharer> { IosFileSharer() }
     single<BackgroundUsageGuard> { IosBackgroundUsageGuard() }
     single { KeychainClientIdentity() }
+    single { IosMdnsBrowser() } bind MdnsBrowser::class
     single<HttpClientFactory> {
         IosHttpClientFactory(get<SettingsRepository>().clientCertificateAlias, get())
     }

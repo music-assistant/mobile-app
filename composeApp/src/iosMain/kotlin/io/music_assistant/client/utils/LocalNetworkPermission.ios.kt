@@ -5,8 +5,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.settings_error_local_network_ios
 import musicassistantclient.composeapp.generated.resources.settings_error_offline_ios
-import musicassistantclient.composeapp.generated.resources.settings_local_network_onboarding_body_ios
 import musicassistantclient.composeapp.generated.resources.settings_local_network_onboarding_title_ios
+import musicassistantclient.composeapp.generated.resources.settings_local_network_prompt_ios
 import org.jetbrains.compose.resources.StringResource
 import kotlin.coroutines.resume
 
@@ -27,7 +27,7 @@ actual class LocalNetworkPermissionGate actual constructor() {
     actual val isAvailable: Boolean = true
     actual val onboardingResources: LocalNetworkOnboardingResources? = LocalNetworkOnboardingResources(
         title = Res.string.settings_local_network_onboarding_title_ios,
-        body = Res.string.settings_local_network_onboarding_body_ios,
+        body = Res.string.settings_local_network_prompt_ios,
     )
 
     fun setProber(prober: LocalNetworkPermissionProber) {

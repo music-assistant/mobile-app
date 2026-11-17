@@ -65,7 +65,7 @@ internal class NoiseSession(
     private val crypto: NoiseCrypto,
     private val trustStore: SendspinTrustStore,
 ) {
-    private val logger = Logger.withTag("NoiseSession")
+    private val logger = Logger.withTag("Sendspin.NoiseSession")
 
     private enum class Gate { CLOSED, OPEN, FAILED }
 
@@ -80,6 +80,13 @@ internal class NoiseSession(
     }
 
     val wire: WireVersion get() = config.wire
+
+    /**
+     * Spec 1.0.0-rc1: every client offers the Pairing PSK method, so the flag that a 9.x
+     * `management/set-pairing-config` stored applies to the 9.x wire only.
+     */
+    private val pairingPskOffered: Boolean
+        get() = config.wire == WireVersion.SPEC_1_0 || trustStore.pairingPskEnabled
 
     private val gate = MutableStateFlow(Gate.CLOSED)
 
@@ -135,7 +142,7 @@ internal class NoiseSession(
             val initial = SendspinHandshake(
                 crypto = crypto,
                 clientStatic = trustStore.identity.keyPair,
-                pskCandidates = { trustStore.pskCandidates() },
+                pskCandidates = { trustStore.pskCandidates(pairingPskOffered) },
                 wire = config.wire,
                 messageTimeoutMillis = config.stepTimeoutMillis,
             )
@@ -323,7 +330,7 @@ internal class NoiseSession(
         },
         supportedPairMethods = pairMethods(
             config.wire,
-            listOfNotNull(ActivationPolicy.PAIR_METHOD_PSK.takeIf { trustStore.pairingPskEnabled }),
+            listOfNotNull(ActivationPolicy.PAIR_METHOD_PSK.takeIf { pairingPskOffered }),
         ),
         unpairedAccess = UnpairedAccess(enabled = trustStore.unpairedAccessEnabled),
     )
@@ -381,7 +388,7 @@ internal class NoiseSession(
                 persistedRoles = persistedRoles,
                 pairingMethod = payload.pairing?.method,
                 unpairedAccessEnabled = trustStore.unpairedAccessEnabled,
-                pairingPskEnabled = trustStore.pairingPskEnabled,
+                pairingPskEnabled = pairingPskOffered,
             ),
         )
         when (decision) {

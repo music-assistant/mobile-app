@@ -1,10 +1,12 @@
 package io.music_assistant.client.data.model.client.items
 
+import io.music_assistant.client.data.model.client.AlbumType
 import io.music_assistant.client.data.model.client.ImageInfo
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Metadata
 import io.music_assistant.client.data.model.server.ProviderMapping
+import io.music_assistant.client.ui.compose.common.icons.AlbumIcon
 
 data class Album(
     override val itemId: String,
@@ -19,11 +21,21 @@ data class Album(
     val version: String?,
     val year: Int?,
     val artists: List<Artist>,
+    /** Null when the server does not know the type. */
+    val albumType: AlbumType? = null,
 ) : AppMediaItem() {
     override fun withFavorite(favorite: Boolean?) = copy(favorite = favorite)
     override val mediaType: MediaType = MediaType.ALBUM
+    override val defaultIcon = AlbumIcon
     override val canStartEndlessMix: Boolean = true
     override val displayName =
         "${name}${version?.trim()?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()}"
     override val subtitle = artists.joinToString(separator = ", ") { it.displayName }
+
+    /**
+     * False for an external album ([isExternalItem]), such as a discography release that is on no
+     * music provider. It has nothing to play, but its page opens: the server looks it up on the
+     * music providers. It can be added to the library.
+     */
+    override val isPlayable: Boolean get() = !isExternalItem
 }

@@ -119,6 +119,26 @@ class PlayerTest {
     }
 
     @Test
+    fun `shows track that started while reconnecting`() {
+        val track1 = ServerMediaItemFixtures.track()
+        val track2 = ServerMediaItemFixtures.track()
+        serviceClient.addItems(track1, track2)
+
+        val player = ServerPlayerFixtures.player()
+        serviceClient.addPlayers(player)
+
+        val page = launchLoggedInApp(composeTestRule, serviceClient)
+            .playMedia(track1)
+            .assertPlayer(player.displayName, playing = true, item = track1.name)
+
+        serviceClient.setReconnecting(true)
+        serviceClient.playOnServer(player, track2)
+        serviceClient.setReconnecting(false)
+
+        page.assertPlayer(player.displayName, playing = true, item = track2.name)
+    }
+
+    @Test
     fun `can change current player`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)

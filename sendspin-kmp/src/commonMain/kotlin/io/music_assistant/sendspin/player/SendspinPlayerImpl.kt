@@ -60,6 +60,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -95,7 +96,7 @@ internal class SendspinPlayerImpl(
     /** One connector per enabled lifetime; injectable so tests can watch its close. */
     private val connectorFactory: (HttpClient) -> TransportConnector = TransportConnector::ktor,
 ) : SendspinPlayer {
-    private val logger = Logger.withTag("SendspinPlayer")
+    private val logger = Logger.withTag("Sendspin.Player")
     private val _state = MutableStateFlow<PlayerState>(PlayerState.Disabled)
     private val _events = MutableSharedFlow<PlayerEvent>(
         extraBufferCapacity = 16,
@@ -106,9 +107,14 @@ internal class SendspinPlayerImpl(
     override val events: Flow<PlayerEvent> = _events
 
     private val held = MutableStateFlow(false)
+    private val connectionChecks = MutableStateFlow(0)
 
     override fun hold(held: Boolean) {
         this.held.value = held
+    }
+
+    override fun checkConnection() {
+        connectionChecks.update { it + 1 }
     }
 
     private data class ConnectionKey(
@@ -178,6 +184,7 @@ internal class SendspinPlayerImpl(
             online = deps.online,
             clock = deps.clock,
             approvePairing = deps.approvePairing,
+            connectionChecks = connectionChecks,
         )
         val session = Session(pipeline, clockSync, trustStore, supervisor)
         launch(deps.audioDispatcher) { pipeline.run() }
@@ -275,7 +282,7 @@ internal class SendspinPlayerImpl(
 
         /** Per attempt: clock probes (also liveness), state reports, and the clock-quality watch. */
         suspend fun companion(scope: CoroutineScope, session: NoiseSession) {
-            scope.launch { ClockProbe(clockSync, deps.clock) { session.send(it) }.run() }
+            scope.launch { ClockProbe(clockSync, deps.clock, connectionChecks) { session.send(it) }.run() }
             scope.launch { reportState(session) }
             scope.launch { watchClockQuality() }
         }

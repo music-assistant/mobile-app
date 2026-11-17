@@ -3,6 +3,8 @@ package io.music_assistant.client.ui.compose.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.repository.PartyRepository
+import io.music_assistant.client.nav.SidebarEdit
 import io.music_assistant.client.settings.SettingsRepository
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,10 +17,11 @@ import kotlinx.coroutines.launch
 class LibraryCategoriesViewModel(
     private val settingsRepository: SettingsRepository,
     private val dataSource: MainDataSource,
+    private val partyRepository: PartyRepository,
 ) : ViewModel() {
     /**
      * The last reconciled config, INCLUDING the categories filtered out of [state]. Kept so a
-     * save can merge the hidden ones back instead of dropping them — see [mergeHiddenCategories].
+     * save keeps their stored flag instead of turning them off — see [applySidebarEdit].
      */
     private var reconciled: List<Pair<LibraryCategory, Boolean>> = emptyList()
 
@@ -30,18 +33,19 @@ class LibraryCategoriesViewModel(
             combine(
                 settingsRepository.libraryCategoryConfig,
                 dataSource.aiRadioAvailable,
-            ) { setting, aiRadioAvailable -> getCategoryStates(setting, aiRadioAvailable) }
+                partyRepository.available,
+            ) { setting, aiRadioAvailable, partyAvailable ->
+                getCategoryStates(setting, aiRadioAvailable, partyAvailable)
+            }
                 .collect { categories -> _state.update { it.copy(categories = categories) } }
         }
     }
 
-    fun onEnabledChanged(enabledCategories: List<String>) {
+    fun onSidebarEdited(edit: SidebarEdit) {
+        val visible = _state.value.categories.mapTo(HashSet()) { it.libraryCategory }
         settingsRepository.setLibraryCategoryConfig(
-            reconciled.map { (category, _) ->
-                SettingsRepository.LibraryCategoryPref(
-                    category.name,
-                    enabledCategories.contains(category.name),
-                )
+            applySidebarEdit(reconciled, visible, edit.enabledIds, edit.orderedIds).map { (category, enabled) ->
+                SettingsRepository.LibraryCategoryPref(category.name, enabled)
             },
         )
     }
@@ -49,14 +53,16 @@ class LibraryCategoriesViewModel(
     private fun buildInitialCategories(): List<CategoryState> = getCategoryStates(
         settingsRepository.libraryCategoryConfig.value,
         dataSource.aiRadioAvailable.value,
+        partyRepository.available.value,
     )
 
     private fun getCategoryStates(
         setting: List<SettingsRepository.LibraryCategoryPref>?,
         aiRadioAvailable: Boolean,
+        partyAvailable: Boolean,
     ): List<CategoryState> {
         reconciled = reconcileLibraryCategories(setting)
-        return visibleCategories(reconciled, aiRadioAvailable)
+        return visibleCategories(reconciled, aiRadioAvailable, partyAvailable)
             .map { (category, enabled) -> CategoryState(category, enabled) }
     }
 

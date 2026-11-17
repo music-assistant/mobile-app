@@ -18,6 +18,7 @@
 - [The Players Pager](players-pager.md)
 - [Managing Playlists](playlists.md)
 - [Android Auto](android-auto.md)
+- [Apple CarPlay](carplay.md)
 
 ## 🔗 Quick Links
 

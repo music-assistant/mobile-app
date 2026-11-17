@@ -4,7 +4,7 @@ import co.touchlab.kermit.Logger
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.delay
 
-private val log = Logger.withTag("SilentReauth")
+private val log = Logger.withTag("Session.SilentReauth")
 
 /** Tuning for [SilentReauth]. */
 internal data class ReauthPolicy(

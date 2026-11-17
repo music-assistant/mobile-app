@@ -7,22 +7,33 @@ import io.music_assistant.client.api.APICommands
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.model.client.Lyrics
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
+import io.music_assistant.client.data.model.client.PlayerDelay
 import io.music_assistant.client.data.model.client.Shortcut
+import io.music_assistant.client.data.model.client.WaveformKey
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.client.items.Genre
+import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.ServerUser
+import io.music_assistant.client.data.model.server.SleepTimerMode
 import io.music_assistant.client.data.model.server.events.PlaylogUpdatedEvent
+import io.music_assistant.client.data.model.server.supportsAutoplayRepeatLock
 import io.music_assistant.client.data.model.server.supportsLeaderLeave
 import io.music_assistant.client.data.model.server.supportsSleepTimer
+import io.music_assistant.client.data.model.server.supportsSleepTimerModes
+import io.music_assistant.client.data.model.server.supportsWaveform
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
+import io.music_assistant.client.data.repository.SendspinDelayRepository
+import io.music_assistant.client.data.repository.TranscriptRepository
+import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.data.repository.fetchRecommendationRowItems
 import io.music_assistant.client.data.repository.fetchRecommendationRows
@@ -43,11 +54,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
@@ -90,25 +99,33 @@ class HomeScreenViewModel(
     private val settings: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val playDispatcher: PlayDispatcher,
+    private val transcriptRepository: TranscriptRepository,
+    private val sendspinDelays: SendspinDelayRepository,
+    private val waveformRepository: WaveformRepository,
 ) : ViewModel() {
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
     private var deepLinkPlayerJob: Job? = null
 
-    private val _links = MutableSharedFlow<String>()
-    val links = _links.asSharedFlow()
-
-    // Local (Sendspin) player identity — used by the group dialog to decide
-    // whether to show the playback-delay adjuster.
+    // Local (Sendspin) player identity — the group sheet shows it with the phone icon.
     val localPlayerId: String
         get() = settings.sendspinEffectivePlayerId.value
 
-    fun adjustSendspinStaticDelayMs(deltaMs: Int) {
-        settings.setSendspinStaticDelayMs(settings.sendspinStaticDelayMs.value + deltaMs)
-    }
+    /** The delay of each player that has one, for the group sheet. See [SendspinDelayRepository]. */
+    val playerDelays: StateFlow<Map<String, PlayerDelay>> get() = sendspinDelays.delays
+
+    fun loadPlayerDelays(playerIds: Collection<String>) = sendspinDelays.load(playerIds)
+
+    fun adjustPlayerDelay(playerId: String, deltaMs: Int) = sendspinDelays.adjust(playerId, deltaMs)
 
     /** Live elapsed-time flow for the slider. Ticks at 500 ms only while playing + subscribed. */
     fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
+
+    /** Loads the transcript of [episode] once, for the lyrics sheet. See [TranscriptRepository]. */
+    fun loadTranscript(episode: PodcastEpisode) = transcriptRepository.load(episode)
+
+    /** The transcript of [episode], as [loadTranscript] loads it. */
+    fun transcript(episode: PodcastEpisode): StateFlow<DataState<Lyrics>> = transcriptRepository.transcript(episode)
 
     /**
      * Server-synced `audiobook_chapter_progress` gate for the chapter-relative timeline.
@@ -124,6 +141,22 @@ class HomeScreenViewModel(
      */
     fun observeLocalBufferedSeconds() = dataSource.localBufferedSeconds.sample(BUFFER_REAL_INTERVAL)
 
+    /** User toggle: whether the expanded player draws the track waveform on the seek bar. */
+    val showWaveform = settings.showWaveform
+
+    /** Whether the server has `audio_analysis/wave_form`; the toggle stays hidden without it. */
+    val waveformSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsWaveform((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /** Loads the waveform of [key], the current track of [queueId], for the seek bar. See [WaveformRepository]. */
+    fun loadWaveform(queueId: String, key: WaveformKey) = waveformRepository.load(queueId, key)
+
+    /** The waveform of [key] on [queueId], as [loadWaveform] loads it. */
+    fun waveform(queueId: String, key: WaveformKey): StateFlow<DataState<List<Float>>> =
+        waveformRepository.waveform(queueId, key)
+
     /** User toggle: whether the now-playing slider draws the buffered-ahead segment. */
     val showBufferVisualization = settings.showBufferVisualization
 
@@ -136,6 +169,18 @@ class HomeScreenViewModel(
     val sleepTimerSupported: StateFlow<Boolean> =
         apiClient.sessionState
             .map { supportsSleepTimer((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /** The end-of-item and end-of-chapter sleep timers exist from schema 105 on. */
+    val sleepTimerModesSupported: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsSleepTimerModes((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
+
+    /** Repeat ONE or ALL locks autoplay off from server 2.11 on. */
+    val repeatLocksAutoplay: StateFlow<Boolean> =
+        apiClient.sessionState
+            .map { supportsAutoplayRepeatLock((it as? HasConnectionData)?.serverInfo?.schemaVersion) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), false)
 
     /**
@@ -410,7 +455,7 @@ class HomeScreenViewModel(
     /** Plays [item] on the queue that the caller names, for a surface that shows several players. */
     fun playOnQueue(queueOrPlayerId: String, item: AppMediaItem, mode: PlayMode) {
         val mediaUri = item.mediaUri ?: return
-        Logger.withTag("PlayDispatch")
+        Logger.withTag("Session.PlayDispatch")
             .i { "HomeScreenViewModel: uri=$mediaUri mode=$mode queue=$queueOrPlayerId" }
         playDispatcher.play(
             PlayRequest(
@@ -514,22 +559,12 @@ class HomeScreenViewModel(
     fun setSleepTimer(playerId: String, seconds: Int) =
         dataSource.setSleepTimer(playerId, seconds)
 
+    fun setSleepTimer(playerId: String, mode: SleepTimerMode) =
+        dataSource.setSleepTimer(playerId, mode)
+
     fun clearSleepTimer(playerId: String) = dataSource.clearSleepTimer(playerId)
 
     fun onPlayersSortChanged(newSort: List<String>) = dataSource.onPlayersSortChanged(newSort)
-    fun openPlayerSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
-        onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id")
-    }
-
-    fun openPlayerDspSettings(id: String) = settings.connectionInfo.value?.webUrl?.let { url ->
-        onOpenExternalLink("$url/?code=${currentServerToken().orEmpty()}#/settings/editplayer/$id/dsp")
-    }
-
-    private fun currentServerToken(): String? =
-        (apiClient.sessionState.value as? SessionState.Connected)
-            ?.serverInfo?.serverId?.let { settings.getTokenForServer(it) }
-
-    private fun onOpenExternalLink(url: String) = viewModelScope.launch { _links.emit(url) }
 
     /**
      * Persists the edited working list. Prefs for folders not currently present

@@ -75,7 +75,7 @@ class WebRTCConnectionManager(
     private val scope: CoroutineScope,
 ) {
     val diagnostics: WebRTCDiagnostics = signalingClient.diagnostics
-    private val logger = Logger.withTag("WebRTCConnectionManager")
+    private val logger = Logger.withTag("Session.WebRTCConnectionManager")
     private val mutex = Mutex()
 
     private var peerConnection: PeerConnectionWrapper? = null

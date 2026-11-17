@@ -13,13 +13,17 @@ import io.music_assistant.client.data.model.client.items.Playlist
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
+import io.music_assistant.client.data.model.client.items.SoundEffect
 import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.server.PlayMediaSupport
 
-/** Item types accepted by playlist edits (server contract, not a UI choice). */
+/**
+ * Item types accepted by playlist edits (server contract, not a UI choice). An external item goes
+ * into a playlist once the server has found it.
+ */
 val AppMediaItem.supportsAddToPlaylist: Boolean
-    get() = this is Track || this is Album || this is RadioStation ||
-            this is PodcastEpisode || this is Audiobook
+    get() = !isExternalItem &&
+        (this is Track || this is Album || this is RadioStation || this is PodcastEpisode || this is Audiobook)
 
 /**
  * Containers with an order worth shuffling, the same set as the web app. A podcast and an
@@ -58,6 +62,8 @@ fun resolveLongClickActions(
         return@buildList
     }
     if (item.isPlayable) addPlaybackActions(item, clickContext, playMediaSupport)
+    // Provider sounds can be played from Browse, but have no library or per-kind tap settings.
+    if (item is SoundEffect) return@buildList
     if (customizationAllowed) add(ItemAction.Customize)
     if (!canEditLibrary) return@buildList
     if (librarySupported) {
@@ -81,6 +87,24 @@ fun resolveLongClickActions(
 }
 
 /**
+ * The actions menu of a track selection: the five queue options, which send all tracks in one
+ * `play_media` request, then Add to playlist and Remove from playlist. [canEditLibrary]
+ * (`library.write`) gates both playlist entries, [canAddToPlaylist] is false while the selection
+ * holds an item that goes into no playlist, and [canRemoveFromPlaylist] is true on an editable
+ * playlist only.
+ */
+fun resolveSelectionActions(
+    canEditLibrary: Boolean,
+    canRemoveFromPlaylist: Boolean = false,
+    canAddToPlaylist: Boolean = true,
+): List<ItemAction> = buildList {
+    addAll(QUEUE_ACTIONS)
+    if (!canEditLibrary) return@buildList
+    if (canAddToPlaylist) add(ItemAction.AddToPlaylist)
+    if (canRemoveFromPlaylist) add(ItemAction.RemoveFromPlaylist)
+}
+
+/**
  * Item detail screen play-button split-button overflow — every applicable play action
  * except [default] (which the leading button performs).
  */
@@ -95,6 +119,15 @@ fun resolvePlayButtonActions(
         if (customizationAllowed) add(ItemAction.Customize)
     }.filterNot { it == default }
 
+/** The five queue options of `play_media`, in menu order. */
+private val QUEUE_ACTIONS = listOf(
+    QueueOption.REPLACE,
+    QueueOption.PLAY,
+    QueueOption.NEXT,
+    QueueOption.ADD,
+    QueueOption.REPLACE_NEXT,
+).map { ItemAction.Play(it) }
+
 /** The contexts whose list is a container that plays on from the long-pressed item. */
 private val FROM_HERE_CONTEXTS = setOf(ClickContext.ALBUM, ClickContext.PLAYLIST, ClickContext.PODCAST)
 
@@ -107,11 +140,7 @@ private fun MutableList<ItemAction>.addPlaybackActions(
     context: ClickContext? = null,
     support: PlayMediaSupport,
 ) {
-    add(ItemAction.Play(QueueOption.REPLACE))
-    add(ItemAction.Play(QueueOption.PLAY))
-    add(ItemAction.Play(QueueOption.NEXT))
-    add(ItemAction.Play(QueueOption.ADD))
-    add(ItemAction.Play(QueueOption.REPLACE_NEXT))
+    addAll(QUEUE_ACTIONS)
 
     if (context in FROM_HERE_CONTEXTS) add(ItemAction.PlayFromHere)
     if (support.shuffle && item.canPlayShuffled) add(ItemAction.PlayShuffled)

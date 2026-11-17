@@ -77,3 +77,6 @@ androidApp/src/selfSignedRelease/assets/adi-registration.properties
 # Logs and other junk files
 tmp/
 .server
+
+# Personal iOS signing overrides (see iosApp/Configuration/Config.xcconfig)
+iosApp/Configuration/Local.xcconfig

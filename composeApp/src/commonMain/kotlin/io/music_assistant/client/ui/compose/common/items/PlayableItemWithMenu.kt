@@ -1,8 +1,17 @@
 package io.music_assistant.client.ui.compose.common.items
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,10 +25,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.itemKind
 import io.music_assistant.client.data.model.client.items.AppMediaItem
-import io.music_assistant.client.data.model.client.items.AudioSource
 import io.music_assistant.client.data.model.client.items.PlayableItem
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RadioStation
@@ -35,6 +45,7 @@ import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.tvFocusRing
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_remove
+import musicassistantclient.composeapp.generated.resources.action_select_multiple
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_message
 import musicassistantclient.composeapp.generated.resources.dialog_remove_from_playlist_title
 import org.jetbrains.compose.resources.stringResource
@@ -45,6 +56,7 @@ typealias PlayHandler<T> = (item: T, mode: PlayMode) -> Unit
 fun TrackWithMenu(
     item: Track,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
     showTrackNumber: Boolean = false,
     navigateToItem: (AppMediaItem) -> Unit,
     containerItem: AppMediaItem? = null,
@@ -77,6 +89,7 @@ fun TrackWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> TrackGridItem(
@@ -95,6 +108,9 @@ fun TrackWithMenu(
 fun PodcastEpisodeWithMenu(
     item: PodcastEpisode,
     viewMode: ViewMode = ViewMode.GRID,
+    titleMaxLines: Int = 2,
+    navigateToItem: ((AppMediaItem) -> Unit)? = null,
+    containerItem: AppMediaItem? = null,
     onPlayOption: PlayHandler<PodcastEpisode>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -108,6 +124,8 @@ fun PodcastEpisodeWithMenu(
             ViewMode.LIST -> Modifier.fillMaxWidth()
         },
         item = item,
+        navigateToItem = navigateToItem,
+        containerItem = containerItem,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
@@ -121,6 +139,7 @@ fun PodcastEpisodeWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> PodcastEpisodeGridItem(
@@ -139,6 +158,8 @@ fun PodcastEpisodeWithMenu(
 fun RadioWithMenu(
     item: RadioStation,
     viewMode: ViewMode = ViewMode.GRID,
+    navigateToItem: ((AppMediaItem) -> Unit)? = null,
+    titleMaxLines: Int = 2,
     onPlayOption: PlayHandler<RadioStation>,
     playlistActions: PlaylistActions? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
@@ -152,6 +173,7 @@ fun RadioWithMenu(
             ViewMode.LIST -> Modifier.fillMaxWidth()
         },
         item = item,
+        navigateToItem = navigateToItem,
         onPlayOption = onPlayOption,
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
@@ -165,6 +187,7 @@ fun RadioWithMenu(
                     onClick = onClick,
                     onLongClick = onLongClick,
                     providerIconFetcher = providerIconFetcher,
+                    titleMaxLines = titleMaxLines,
                 )
 
                 ViewMode.GRID -> LiveStreamGridItem(
@@ -180,13 +203,13 @@ fun RadioWithMenu(
 }
 
 @Composable
-fun AudioSourceWithMenu(
-    item: AudioSource,
+fun <T> LiveStreamWithMenu(
+    item: T,
     viewMode: ViewMode = ViewMode.GRID,
-    onPlayOption: PlayHandler<AudioSource>,
+    onPlayOption: PlayHandler<T>,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
-) {
+) where T : AppMediaItem, T : PlayableItem {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
             ViewMode.GRID -> Modifier
@@ -217,8 +240,14 @@ fun AudioSourceWithMenu(
     )
 }
 
+/** The state of a row while its screen is in multi-select mode. */
+private class SelectionMark(val selected: Boolean, val onToggle: () -> Unit)
+
 /**
  * Playable item with a long-press dropdown menu. Default click plays the item now.
+ * Where the screen provides an [ItemSelection] that can select the item, the menu starts with
+ * "Select multiple". While the selection is active, a tap toggles the item and a long press does
+ * nothing.
  */
 @Composable
 private fun <T> PlayableItemWithMenu(
@@ -252,6 +281,13 @@ private fun <T> PlayableItemWithMenu(
     val clickActionConfig = LocalClickActionConfig.current
     val effectiveDefault = clickActionConfig.effectiveActionFor(item)
 
+    // While a selection is active, a row that it cannot select ignores taps and long presses too.
+    val selection = LocalItemSelection.current
+    val onSelectMultiple = selection?.takeIf { it.canSelect(item) }?.let { { it.start(item) } }
+    val selectionMark = selection?.takeIf { it.isActive }?.let {
+        SelectionMark(selected = it.isSelected(item), onToggle = { it.toggle(item) })
+    }
+
     val actions = resolveLongClickActions(
         item = item,
         clickContext = clickActionConfig.context,
@@ -278,10 +314,25 @@ private fun <T> PlayableItemWithMenu(
     // Non-playable items keep the long-press menu (favorite, library, …) but can't be played:
     // dim them and route a tap to the menu instead of starting playback.
     val playable = item.isPlayable
+    val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
     // Android TV: this wrapper Box isn't itself the focusable node -- the real clickable target
     // is built several layers down by itemComposable (a different composable per media type/view
     // mode) -- so tvFocusRing needs trackDescendants to see focus land on any of them.
-    Box(modifier = modifier.tvFocusRing(trackDescendants = true)) {
+    Box(
+        modifier = modifier.tvFocusRing(trackDescendants = true).then(
+            selectionMark?.let { mark ->
+                Modifier
+                    .semantics { selected = mark.selected }
+                    .then(
+                        if (mark.selected) {
+                            Modifier.background(selectedBackground, RoundedCornerShape(SELECTED_CORNER))
+                        } else {
+                            Modifier
+                        },
+                    )
+            } ?: Modifier,
+        ),
+    ) {
         itemComposable(
             Modifier.align(Alignment.Center)
                 .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))
@@ -292,8 +343,9 @@ private fun <T> PlayableItemWithMenu(
                         Modifier
                     },
                 ),
-            { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
-            { expandedItemId = item.itemId },
+            selectionMark?.let { mark -> { _: T -> mark.onToggle() } }
+                ?: { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
+            selectionMark?.let { { _: T -> } } ?: { expandedItemId = item.itemId },
         )
         DropdownMenu(
             modifier = Modifier.semantics {
@@ -302,6 +354,18 @@ private fun <T> PlayableItemWithMenu(
             expanded = expandedItemId == item.itemId,
             onDismissRequest = { expandedItemId = null },
         ) {
+            onSelectMultiple?.let { select ->
+                val title = stringResource(Res.string.action_select_multiple)
+                DropdownMenuItem(
+                    text = { Text(title) },
+                    onClick = {
+                        expandedItemId = null
+                        select()
+                    },
+                    leadingIcon = { Icon(Icons.Default.Checklist, contentDescription = title) },
+                )
+                HorizontalDivider()
+            }
             ItemActionMenuItems(clickActionConfig.context, actions, defaultAction = effectiveDefault) { action ->
                 expandedItemId = null
                 when (action) {
@@ -362,3 +426,5 @@ private fun <T> PlayableItemWithMenu(
         }
     }
 }
+
+private val SELECTED_CORNER = 8.dp

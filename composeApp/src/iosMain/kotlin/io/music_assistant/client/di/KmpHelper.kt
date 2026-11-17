@@ -2,6 +2,7 @@
 
 package io.music_assistant.client.di
 
+import androidx.compose.ui.graphics.toArgb
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.Request
@@ -9,8 +10,12 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.api.fetchAllPages
 import io.music_assistant.client.auth.AuthenticationManager
 import io.music_assistant.client.auth.OAuthCallback
+import io.music_assistant.client.carplay.CarPlayAccent
+import io.music_assistant.client.carplay.CarPlayQueueRow
 import io.music_assistant.client.carplay.CarPlayStrings
+import io.music_assistant.client.carplay.toCarPlayQueueRow
 import io.music_assistant.client.data.MainDataSource
+import io.music_assistant.client.data.NowPlayingLike
 import io.music_assistant.client.data.NowPlayingModes
 import io.music_assistant.client.data.NowPlayingTrack
 import io.music_assistant.client.data.NowPlayingTransport
@@ -38,6 +43,8 @@ import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.fetchRecommendationFolders
+import io.music_assistant.client.discovery.IosMdnsBrowser
+import io.music_assistant.client.discovery.NativeServiceBrowser
 import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.imageloader.ArtworkToken
 import io.music_assistant.client.input.VolumeButtonService
@@ -48,8 +55,12 @@ import io.music_assistant.client.settings.carBulkActions
 import io.music_assistant.client.settings.carTapAction
 import io.music_assistant.client.settings.planCarItemDispatch
 import io.music_assistant.client.settings.toCarDispatch
+import io.music_assistant.client.ui.compose.home.buildDisplayRows
+import io.music_assistant.client.ui.compose.home.upNext
+import io.music_assistant.client.ui.compose.home.visibleHomeFolders
 import io.music_assistant.client.ui.compose.library.reconcileCarTabs
 import io.music_assistant.client.ui.compose.library.visibleCategories
+import io.music_assistant.client.ui.theme.accentPrimary
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.LocalNetworkPermissionProber
@@ -62,6 +73,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -105,6 +119,13 @@ object KmpHelper : KoinComponent {
 
     fun setLocalNetworkPermissionProber(prober: LocalNetworkPermissionProber) {
         localNetworkPermissionGate.setProber(prober)
+    }
+
+    private val mdnsBrowser: IosMdnsBrowser by inject()
+
+    /** Server discovery on the connect screen; Swift gives a new `NWBrowser` session for each browse. */
+    fun setServiceBrowserFactory(factory: () -> NativeServiceBrowser) {
+        mdnsBrowser.setFactory(factory)
     }
 
     // Provide a scope for Swift to launch coroutines if needed
@@ -154,6 +175,14 @@ object KmpHelper : KoinComponent {
 
     /** Whether the local player is enabled; CarPlay gates attachment on this. */
     fun isLocalPlayerEnabled(): Boolean = settingsRepository.sendspinEnabled.value
+
+    /** The accent primary for the CarPlay icon tint. CarPlay reads it on each connect. */
+    fun carPlayAccent(): CarPlayAccent = settingsRepository.accentColor.value.let { accent ->
+        CarPlayAccent(
+            lightArgb = accentPrimary(accent, darkTheme = false).toArgb(),
+            darkArgb = accentPrimary(accent, darkTheme = true).toArgb(),
+        )
+    }
 
     fun onExternalConsumerActive() = serviceClient.onExternalConsumerActive()
     fun onExternalConsumerInactive() = serviceClient.onExternalConsumerInactive()
@@ -274,6 +303,56 @@ object KmpHelper : KoinComponent {
         return Cancellable { job.cancel() }
     }
 
+    /** Subscribe to the like button state of the current item. Replays on subscribe. */
+    fun observeNowPlayingLike(onChanged: (NowPlayingLike) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.nowPlayingLike.collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /** A tap on the CarPlay like button. See [NowPlayingLike] for what it does. */
+    fun toggleNowPlayingLike() = mainDataSource.toggleNowPlayingLike()
+
+    // MARK: - CarPlay Up Next
+
+    /**
+     * Subscribe to the Up Next rows of the local player: the current item, the chapters of a
+     * current audiobook, then the next items, at most [limit] (`CPListTemplate.maximumItemCount`).
+     * Replays on subscribe. Empty without a local player or a queue. Fires only when a row
+     * changes, so a position tick does not rebuild the list.
+     */
+    fun observeCarPlayQueue(limit: Int, onChanged: (List<CarPlayQueueRow>) -> Unit): Cancellable {
+        val job = mainScope.launch {
+            mainDataSource.localPlayer
+                .map { data ->
+                    val currentId = data?.queueInfo?.currentItem?.id
+                    data?.queueItems.orEmpty()
+                        .buildDisplayRows(currentId)
+                        .upNext(currentId, limit)
+                        .mapNotNull { it.toCarPlayQueueRow(currentId) }
+                }
+                .distinctUntilChanged()
+                .flowOn(Dispatchers.Default)
+                .collect { onChanged(it) }
+        }
+        return Cancellable { job.cancel() }
+    }
+
+    /**
+     * A tap on an Up Next row ([CarPlayQueueRow.key]): a queue item plays, a chapter seeks.
+     * False when the row is gone (the queue changed after the list was drawn).
+     */
+    fun playCarPlayQueueRow(key: String): Boolean {
+        val data = mainDataSource.localPlayer.value ?: return false
+        val row = data.queueItems.orEmpty()
+            .buildDisplayRows(data.queueInfo?.currentItem?.id)
+            .find { it.key == key }
+            ?: return false
+        mainDataSource.selectQueueRow(data, row)
+        return true
+    }
+
     // MARK: - Swift Helpers for Data Fetching
     //
     // Every fetcher returns a nullable list. `null` means the round trip
@@ -330,11 +409,13 @@ object KmpHelper : KoinComponent {
         }
     }
 
+    /** The home rows the app shows: filtered and ordered by the user's Discover config. */
     fun fetchRecommendationFolders(
         completion: (List<RecommendationFolder>?) -> Unit,
     ) {
         launchFetch("recommendationFolders", completion) {
             mediaItemRepository.fetchRecommendationFolders().getOrNull()
+                ?.let { visibleHomeFolders(it, settingsRepository.homeRowsConfig.value) }
                 ?: emptyList()
         }
     }
@@ -443,12 +524,12 @@ object KmpHelper : KoinComponent {
         completion: (List<AppMediaItem>?) -> Unit,
     ) {
         launchFetch("tracksByAlbum:${album.itemId}", completion) {
-            mediaItemRepository.fetchMediaItems(
+            mediaItemRepository.fetchAllMediaItems(
                 Request.Album.getTracks(
                     itemId = album.itemId,
                     providerInstanceIdOrDomain = album.provider,
                 ),
-            ).getOrNull()
+            )
                 ?.filterIsInstance<Track>()
                 ?: emptyList()
         }
