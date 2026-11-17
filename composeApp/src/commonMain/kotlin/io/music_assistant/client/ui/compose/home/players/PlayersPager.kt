@@ -68,6 +68,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -217,6 +218,9 @@ fun PlayersPager(
     onExpandQueue: (Boolean) -> Unit,
     onSelectPlayer: () -> Unit,
     onGroupPlayer: (String) -> Unit,
+    // Android TV: an external caller (e.g. "DOWN from the sidebar reaches the player") attaches its
+    // own requester here; the current page hands it to its own first real control.
+    entryFocusRequester: FocusRequester? = null,
 ) {
     LaunchedEffect(actionsViewModel, toastState) {
         actionsViewModel.toasts.collect { toastState.showToast(it) }
@@ -482,6 +486,7 @@ fun PlayersPager(
                                 playerAction = playerAction1,
                                 chapterProgressEnabled = chapterProgressEnabled,
                                 livePositionFlow = livePositionFlow,
+                                entryFocusRequester = entryFocusRequester.takeIf { isCurrentPage },
                             )
                         } else {
                             ExpandedPlayerPage(
@@ -692,13 +697,16 @@ private fun ExpandedPlayerPage(
     val headerFocusLinks = remember(isQueueExpanded) {
         val downTarget = if (isQueueExpanded) "play" else "slider"
         mapOf(
-            "collapse" to TvFocusFlow.Links(right = "playerSelect", down = downTarget),
+            // left/right self-links on the two ends: this header sits inside a HorizontalPager
+            // page, so an unset edge would fall back to geometric search and can land on the
+            // next/previous player's page instead of staying put.
+            "collapse" to TvFocusFlow.Links(left = "collapse", right = "playerSelect", down = downTarget),
             "playerSelect" to TvFocusFlow.Links(
                 left = "collapse",
                 right = "more",
                 down = downTarget,
             ),
-            "more" to TvFocusFlow.Links(left = "playerSelect", down = downTarget),
+            "more" to TvFocusFlow.Links(left = "playerSelect", right = "more", down = downTarget),
         )
     }
     LaunchedEffect(isCurrentPage, isQueueExpanded) {
@@ -1382,8 +1390,14 @@ private fun CollapsedPlayerPage(
     // Server preference gate for chapter-based Next enablement and the chapter subtitle.
     chapterProgressEnabled: Boolean = true,
     livePositionFlow: Flow<Double>? = null,
+    entryFocusRequester: FocusRequester? = null,
 ) {
     val verticalBarArea = LocalDeviceChrome.current.verticalBarArea
+    // Android TV: without a flow, every button in this row falls back to Compose's geometric
+    // focus search, which can land on the next/previous HorizontalPager page instead of a
+    // sibling in this row — the collapsed bar is the default-focused surface on Home, so this is
+    // the most exposed case of that leak (see CompactPlayerItem's own focus-link comment).
+    val tvFocusFlow = rememberTvFocusFlow()
     CompactPlayerItem(
         modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
         item = player,
@@ -1392,11 +1406,13 @@ private fun CollapsedPlayerPage(
         // The vertical bar already carries the player selection.
         onSelectPlayer = if (isWideScreen && verticalBarArea == null) onSelectPlayer else null,
         sendSpinState = sendspinState,
+        tvFocusFlow = tvFocusFlow,
         chapterProgressEnabled = chapterProgressEnabled,
         livePositionFlow = livePositionFlow,
         transportOnBar = verticalBarArea != null,
         // The wide row has grouping in its player chip; the vertical bar keeps Play and Next.
         onGroup = onGroup.takeIf { verticalBarArea == null },
+        entryFocusRequester = entryFocusRequester,
     )
 }
 

@@ -28,7 +28,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
@@ -45,7 +44,6 @@ import androidx.compose.ui.unit.dp
 fun FloatingBar(
     expanded: Boolean = false,
     onExpand: (Boolean) -> Unit = {},
-    focusRequester: FocusRequester? = null,
     // Android TV: the bar's own content (player-select button, play/pause, etc.) has several
     // individually-focusable leaf nodes, so a plain FocusProperties.up declared on one of them
     // wouldn't cover D-pad UP from whichever one currently holds focus. Intercepting the key here,
@@ -61,7 +59,6 @@ fun FloatingBar(
     Surface(
         modifier = Modifier
             .testTag(FloatingBarSemantics.TAG)
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .then(
                 if (upFocusRequester != null) {
                     Modifier.onPreviewKeyEvent { event ->

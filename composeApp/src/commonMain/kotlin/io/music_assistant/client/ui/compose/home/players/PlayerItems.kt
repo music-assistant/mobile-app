@@ -42,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -91,6 +93,7 @@ import io.music_assistant.client.ui.compose.common.items.artistNavigation
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.rememberTvFocusFlow
 import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import io.music_assistant.client.ui.utils.fadingEdges
@@ -140,6 +143,11 @@ fun CompactPlayerItem(
     // Grouping goes into the player chip if there is one ([onSelectPlayer]), else before Play, in place of Next.
     // A player without grouping shows neither.
     onGroup: (() -> Unit)? = null,
+    // Android TV: a caller that redirects external D-pad focus here (e.g. "DOWN from the sidebar
+    // reaches the player") attaches its own requester, and this item hands it to whichever of its
+    // own controls actually renders first (group, power, transport row, or the player chip) so
+    // focus lands on a real, visibly-indicated button instead of a non-focusable container.
+    entryFocusRequester: FocusRequester? = null,
 ) {
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
@@ -151,6 +159,102 @@ fun CompactPlayerItem(
             item.takeIf { chapterProgressEnabled && !it.player.isPoweredOff }
                 ?.presentationChapter(positionState?.value ?: item.queueInfo?.elapsedTime)
                 ?.displayName
+        }
+    }
+
+    // Android TV: this row sits inside PlayersPager's HorizontalPager, so every outward-facing
+    // left/right edge must resolve to something in this row (or itself) — left unset, Compose's
+    // geometric fallback can jump straight into the next/previous page, which both moves focus
+    // AND switches the current player on a single D-pad press. The group button and the player-
+    // select chip are mutually exclusive (see their render conditions below), so each is always
+    // directly adjacent to whichever control area (power button or transport row) is present.
+    val groupShown = onGroup != null && onSelectPlayer == null && item.offersGrouping
+    val selectionShown = onSelectPlayer != null
+    val poweredOff = item.player.isPoweredOff
+    val controlsShown = !poweredOff && !transportOnBar
+    val controlsSequence = remember(controlsShown, showAdditionalControls, onGroup, onSelectPlayer) {
+        if (controlsShown) {
+            playerControlsSequence(
+                showAdditionalButtons = showAdditionalControls,
+                showSkip = onGroup == null || onSelectPlayer != null,
+                showSkipBack = onSelectPlayer != null,
+            )
+        } else {
+            emptyList()
+        }
+    }
+    // When the player chip is shown, it folds grouping into its own trailing button instead of the
+    // standalone one above (groupShown/selectionShown are mutually exclusive — see the comment
+    // above) — same id ("group"), a different button.
+    val chipGroupShown = selectionShown && onGroup != null && item.offersGrouping
+    // The left-to-right entry point of this item's own controls, for an external caller that
+    // redirects D-pad focus here (see entryFocusRequester above). A disabled IconButton (e.g. the
+    // transport row with an empty queue — "Nothing playing") is not a focus target at all, so
+    // requesting focus on it is silently dropped: prefer the chip's trailing group button next —
+    // never gated by playback state — before falling back to the chip's own leading button, whose
+    // external focus attachment isn't reliable (see PlayerSelectionButton's groupEntryFocusRequester).
+    val firstControlEnabled = remember(controlsSequence, item, chapterProgressEnabled) {
+        when (controlsSequence.firstOrNull()) {
+            "play" -> item.mainTransport().enabled
+            null -> false
+            else -> item.transportState(chapterProgressEnabled)
+                .let { it.playerEnabled && it.buttonsEnabled }
+        }
+    }
+    val entryTarget = when {
+        groupShown -> "group"
+        poweredOff -> "powerOn"
+        controlsSequence.isNotEmpty() && firstControlEnabled -> controlsSequence.first()
+        chipGroupShown -> "group"
+        selectionShown -> "playerSelect"
+        controlsSequence.isNotEmpty() -> controlsSequence.first()
+        else -> null
+    }
+    val compactFocusLinks = remember(
+        tvFocusFlow,
+        groupShown,
+        selectionShown,
+        chipGroupShown,
+        poweredOff,
+        controlsSequence,
+    ) {
+        buildMap {
+            if (groupShown) {
+                put(
+                    "group",
+                    TvFocusFlow.Links(
+                        left = "group",
+                        right = when {
+                            poweredOff -> "powerOn"
+                            else -> controlsSequence.firstOrNull() ?: "group"
+                        },
+                    ),
+                )
+            }
+            if (poweredOff) {
+                put(
+                    "powerOn",
+                    TvFocusFlow.Links(
+                        left = if (groupShown) "group" else "powerOn",
+                        right = if (selectionShown) "playerSelect" else "powerOn",
+                    ),
+                )
+            }
+            if (selectionShown) {
+                put(
+                    "playerSelect",
+                    TvFocusFlow.Links(
+                        left = when {
+                            poweredOff -> "powerOn"
+                            else -> controlsSequence.lastOrNull() ?: "playerSelect"
+                        },
+                        right = if (chipGroupShown) "group" else "playerSelect",
+                    ),
+                )
+                if (chipGroupShown) {
+                    put("group", TvFocusFlow.Links(left = "playerSelect", right = "group"))
+                }
+            }
         }
     }
 
@@ -200,7 +304,6 @@ fun CompactPlayerItem(
             }
 
             // Track info
-            val poweredOff = item.player.isPoweredOff
             val (trackName, trackContentDescription) = item.player.dormantLabel()
                 ?.let { it to it }
                 ?: trackNameAndContentDescription(currentMedia?.title)
@@ -259,13 +362,36 @@ fun CompactPlayerItem(
             }
         }
 
-        onGroup?.takeIf { onSelectPlayer == null && item.offersGrouping }?.let {
-            GroupButton(player = item, onClick = it, tint = colors.controlTint)
+        if (groupShown) {
+            GroupButton(
+                player = item,
+                onClick = onGroup,
+                tint = colors.controlTint,
+                modifier = Modifier.tvFocus(tvFocusFlow, compactFocusLinks, "group")
+                    .let {
+                        if (entryTarget == "group" && entryFocusRequester != null) {
+                            it.focusRequester(entryFocusRequester)
+                        } else {
+                            it
+                        }
+                    }
+                    .tvFocusRing(shape = CircleShape),
+            )
         }
 
-        if (item.player.isPoweredOff) {
+        if (poweredOff) {
             IconButton(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .tvFocus(tvFocusFlow, compactFocusLinks, "powerOn")
+                    .tvFocusRing(shape = CircleShape)
+                    .let {
+                        if (entryTarget == "powerOn" && entryFocusRequester != null) {
+                            it.focusRequester(entryFocusRequester)
+                        } else {
+                            it
+                        }
+                    },
                 onClick = { playerAction(item, PlayerAction.SetPower(true)) },
             ) {
                 Icon(
@@ -286,12 +412,15 @@ fun CompactPlayerItem(
                     tint = colors.controlTint,
                     tvFocusFlow = tvFocusFlow,
                     playUpTarget = "playerSelect",
+                    leftBoundaryTarget = "group".takeIf { groupShown },
+                    rightBoundaryTarget = "playerSelect".takeIf { selectionShown },
+                    entryFocusRequester = entryFocusRequester.takeIf { entryTarget == controlsSequence.firstOrNull() },
                     chapterProgressEnabled = chapterProgressEnabled,
                 )
             }
         }
 
-        if (onSelectPlayer != null) {
+        if (selectionShown) {
             Row(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
@@ -303,6 +432,10 @@ fun CompactPlayerItem(
                     sendSpinState = sendSpinState,
                     onSelectPlayer = onSelectPlayer,
                     onGroup = onGroup,
+                    tvFocusFlow = tvFocusFlow,
+                    tvFocusLinks = compactFocusLinks,
+                    entryFocusRequester = entryFocusRequester.takeIf { entryTarget == "playerSelect" },
+                    groupEntryFocusRequester = entryFocusRequester.takeIf { entryTarget == "group" && chipGroupShown },
                 )
             }
         }
@@ -362,8 +495,11 @@ fun FullPlayerItem(
     val playerFocusLinks = remember {
         mapOf(
             "slider" to TvFocusFlow.Links(up = "playerSelect", down = "play"),
-            "favorite" to TvFocusFlow.Links(right = "shuffle", down = "play"),
-            "lyrics" to TvFocusFlow.Links(left = "repeat", down = "play"),
+            // left/right self-links on the two true edges of this row: it sits inside a
+            // HorizontalPager page, so an unset edge falls back to geometric search and can land
+            // on the next/previous player's page instead of staying put.
+            "favorite" to TvFocusFlow.Links(left = "favorite", right = "shuffle", down = "play"),
+            "lyrics" to TvFocusFlow.Links(left = "repeat", right = "lyrics", down = "play"),
         )
     }
     // Across a horizontal fold the artwork ends above the crease, which leaves the controls, pushed
@@ -857,6 +993,7 @@ fun FullPlayerItem(
         // Favorite flag lives on the queue's current Track, not on the lightweight
         // `currentMedia`, so the heart reads from there.
         val currentTrack = item.queueInfo?.currentItem?.track as? AppMediaItem
+        val favoriteShown = canFavoriteStream || (currentTrack?.canBeFavorited == true && onFavoriteChange != null)
         val favoriteSlot = 48.dp // Material IconButton size; mirrored by the trailing spacer.
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = FULL_PLAYER_HORIZONTAL_PADDING),
@@ -868,7 +1005,9 @@ fun FullPlayerItem(
                 // flag is the station's, not the song's, so there is no "already favourited"
                 // state and the heart always renders un-filled.
                 IconButton(
-                    modifier = Modifier.size(favoriteSlot),
+                    modifier = Modifier
+                        .size(favoriteSlot)
+                        .tvFocus(playerTvFocusFlow, playerFocusLinks, "favorite"),
                     onClick = { onFavoriteStreamClick(item) },
                 ) {
                     Icon(
@@ -895,6 +1034,8 @@ fun FullPlayerItem(
                 mainButtonSize = 60.dp,
                 tint = controlTint,
                 tvFocusFlow = playerTvFocusFlow,
+                leftBoundaryTarget = "favorite".takeIf { favoriteShown },
+                rightBoundaryTarget = "lyrics".takeIf { lyricsAvailable },
                 chapterProgressEnabled = chapterProgressEnabled,
             )
             // Mirrors the heart slot: lyrics button when available, else a spacer

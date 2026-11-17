@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Forward30
 import androidx.compose.material.icons.rounded.Replay10
@@ -19,6 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,6 +50,7 @@ import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
 import io.music_assistant.client.ui.compose.common.icons.SmartShuffleIcon
 import io.music_assistant.client.ui.compose.common.icons.StopIcon
 import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_pause
 import musicassistantclient.composeapp.generated.resources.action_play
@@ -69,6 +73,18 @@ fun PlayerControls(
     tint: Color = MaterialTheme.colorScheme.primary,
     tvFocusFlow: TvFocusFlow? = null,
     playUpTarget: String = "slider",
+    // Android TV: what LEFT from the leftmost button / RIGHT from the rightmost button should
+    // reach — a sibling control outside this row (e.g. "group" or "playerSelect"). Null means
+    // there is no such sibling, so that edge links to itself: without an explicit link Compose's
+    // geometric fallback can jump straight into the next/previous HorizontalPager page (the
+    // neighbouring player), which moves focus AND flips the current player on a single press.
+    leftBoundaryTarget: String? = null,
+    rightBoundaryTarget: String? = null,
+    // Android TV: when a caller needs to land external D-pad focus directly on this row (e.g. "DOWN
+    // from the sidebar should reach the player"), it attaches its own requester here and this row
+    // hands it to whichever button actually renders first, so requesting focus lands on a real,
+    // visibly-indicated control instead of a non-focusable or hidden one.
+    entryFocusRequester: FocusRequester? = null,
     // Server audiobook_chapter_progress pref; gates chapter-based Next enablement.
     chapterProgressEnabled: Boolean = true,
 ) {
@@ -88,27 +104,40 @@ fun PlayerControls(
     // Links are built from the buttons actually rendered (which vary with showSkip/showSkipBack/
     // showAdditionalButtons), so a missing button never leaves a dead directional link. The
     // play/pause main button links up to the seek slider (declared by the hosting screen).
-    val focusLinks = remember(tvFocusFlow, showAdditionalButtons, showSkip, showSkipBack, playUpTarget) {
-        val sequence = buildList {
-            if (showAdditionalButtons) add("shuffle")
-            if (showSkipBack || showAdditionalButtons) add("prev")
-            add("play")
-            if (showSkip) add("next")
-            if (showAdditionalButtons) add("repeat")
-        }
+    val focusLinks = remember(
+        tvFocusFlow,
+        showAdditionalButtons,
+        showSkip,
+        showSkipBack,
+        playUpTarget,
+        leftBoundaryTarget,
+        rightBoundaryTarget,
+    ) {
+        val sequence = playerControlsSequence(showAdditionalButtons, showSkip, showSkipBack)
         buildMap {
             for (i in sequence.indices) {
+                val left = if (i > 0) sequence[i - 1] else leftBoundaryTarget ?: sequence[i]
+                val right = if (i < sequence.lastIndex) sequence[i + 1] else rightBoundaryTarget ?: sequence[i]
                 put(
                     sequence[i],
                     TvFocusFlow.Links(
-                        left = sequence.getOrNull(i - 1),
-                        right = sequence.getOrNull(i + 1),
+                        left = left,
+                        right = right,
                         up = if (sequence[i] == "play") playUpTarget else null,
                     ),
                 )
             }
         }
     }
+    val firstControlId = remember(showAdditionalButtons, showSkip, showSkipBack) {
+        playerControlsSequence(showAdditionalButtons, showSkip, showSkipBack).firstOrNull()
+    }
+    fun Modifier.entryFocusIfFirst(id: String): Modifier =
+        if (entryFocusRequester != null && id == firstControlId) {
+            focusRequester(entryFocusRequester)
+        } else {
+            this
+        }
     Row(
         modifier = modifier
             .wrapContentSize(),
@@ -123,7 +152,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled,
-                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle"),
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle").entryFocusIfFirst("shuffle"),
                     ) { playerAction(playerData, PlayerAction.SeekBy(-LongFormSeekDefaults.BACK_SECONDS)) }
                 } else {
                     // Like the web: smart shuffle shows only while shuffle is on.
@@ -137,7 +166,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled && !it.isDynamicPlaylist && !isLiveInput,
-                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle"),
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "shuffle").entryFocusIfFirst("shuffle"),
                         contentDescription = stringResource(
                             when {
                                 smart -> Res.string.cd_shuffle_smart
@@ -161,7 +190,7 @@ fun PlayerControls(
                 tint = tint,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled,
-                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "prev"),
+                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "prev").entryFocusIfFirst("prev"),
             ) { playerAction(playerData, PlayerAction.Previous) }
         }
 
@@ -169,6 +198,8 @@ fun PlayerControls(
             IconButton(
                 modifier = Modifier
                     .tvFocus(tvFocusFlow, focusLinks, "play")
+                    .entryFocusIfFirst("play")
+                    .tvFocusRing(shape = CircleShape)
                     .size(mainButtonSize),
                 onClick = { playerAction(playerData, PlayerAction.Pause) },
                 enabled = playerEnabled && buttonsEnabled,
@@ -190,7 +221,9 @@ fun PlayerControls(
                     size = mainButtonSize,
                     enabled = main.enabled,
                     contentDescription = stringResource(main.button.label),
-                    modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "play"),
+                    modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "play")
+                        .entryFocusIfFirst("play")
+                        .tvFocusRing(shape = CircleShape),
                 ) { playerAction(playerData, main.action) }
                 if (playerData.playRequestPending) {
                     CircularProgressIndicator(
@@ -208,7 +241,7 @@ fun PlayerControls(
                 tint = tint,
                 size = smallButtonSize,
                 enabled = playerEnabled && buttonsEnabled && skipForwardEnabled,
-                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "next"),
+                modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "next").entryFocusIfFirst("next"),
             ) { playerAction(playerData, PlayerAction.Next) }
         }
 
@@ -220,7 +253,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled,
-                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "repeat"),
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "repeat").entryFocusIfFirst("repeat"),
                     ) { playerAction(playerData, PlayerAction.SeekBy(LongFormSeekDefaults.FORWARD_SECONDS)) }
                 } else {
                     val repeatMode = it.repeatMode
@@ -235,7 +268,7 @@ fun PlayerControls(
                         tint = tint,
                         size = smallButtonSize,
                         enabled = playerEnabled && buttonsEnabled && repeatMode != null && !it.isDynamicPlaylist && !isLiveInput,
-                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "repeat"),
+                        modifier = Modifier.tvFocus(tvFocusFlow, focusLinks, "repeat").entryFocusIfFirst("repeat"),
                     ) {
                         repeatMode?.let {
                             playerAction(
@@ -250,6 +283,23 @@ fun PlayerControls(
     }
 }
 
+/**
+ * The transport row's buttons, left to right, for the combination of flags actually rendered.
+ * Shared with the hosting screen (e.g. [CompactPlayerItem]) so it can compute which of its own
+ * sibling controls (group button, player-select chip) the row's outer edges should link to.
+ */
+internal fun playerControlsSequence(
+    showAdditionalButtons: Boolean,
+    showSkip: Boolean,
+    showSkipBack: Boolean,
+): List<String> = buildList {
+    if (showAdditionalButtons) add("shuffle")
+    if (showSkipBack || showAdditionalButtons) add("prev")
+    add("play")
+    if (showSkip) add("next")
+    if (showAdditionalButtons) add("repeat")
+}
+
 @Composable
 private fun ActionButton(
     icon: ImageVector,
@@ -262,6 +312,7 @@ private fun ActionButton(
 ) {
     IconButton(
         modifier = modifier
+            .tvFocusRing(shape = CircleShape)
             .alphaOn(enabled)
             .size(size),
         onClick = onClick,

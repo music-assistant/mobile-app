@@ -227,9 +227,11 @@ fun MainNavigationRoot(
     // queue with the transport controls visible instead of the collapsed-controls view.
     var isQueueExpanded by remember { mutableStateOf(false) }
 
-    // TV: the collapsed FloatingBar Surface is the D-pad's entry point to the player.
-    // Expanding removes that focused Surface and the expanded layout grants no focus
-    // (remote goes dead), so restore focus on the bar when collapsing back.
+    // TV: this is the D-pad's entry point into the collapsed player — PlayersPager hands it to
+    // whichever of the current page's own controls renders first (group, power, transport row, or
+    // the player chip), so focus lands on a real, visibly-indicated button rather than the bar's
+    // outer (non-indicated) container. Expanding tears down that control and the expanded layout
+    // grants no focus (remote goes dead), so restore focus on it when collapsing back.
     val isTv = isTelevisionDevice()
     val floatingBarFocusRequester = remember { FocusRequester() }
     var wasPlayerExpanded by remember { mutableStateOf(false) }
@@ -254,16 +256,9 @@ fun MainNavigationRoot(
     // while in touch mode, so the request returns false every attempt. requestInputMode(Keyboard)
     // exits touch mode (requestFocusFromTouch() on Android) so the follow-up request can land.
     //
-    // KNOWN GAP from the upstream nav-module merge: selectedNavItemFocusRequester has no
-    // attachment point any more. The old AdaptiveNavigationBarLayout accepted it directly and
-    // wired it onto the selected NavigationRailItem/NavigationBarItem; the new nav-module version
-    // (WideNavigationRail + ModalNavigationDrawer, io.music_assistant.client.nav) builds its items
-    // internally and exposes no per-item modifier hook, so this requester (and the explicit
-    // nav-item<->floating-bar directional links the old AdaptiveNavigationBarLayout also built)
-    // currently targets nothing. The calls below are harmless no-ops (FocusRequester.requestFocus()
-    // on an unattached requester just returns false), not crashes, so cold-start focus landing on
-    // the nav rail/drawer is unverified-likely-broken on TV until a hook is added back to the nav
-    // module -- not something to silently paper over by deleting the mechanism.
+    // selectedNavItemFocusRequester is attached to the selected sidebar item by
+    // AdaptiveNavigationBarLayout's selectedItemFocusRequester param (nav module), which also
+    // reports focus changes back through onSelectedItemFocusChanged below.
     val navEntryLifecycleOwner = LocalLifecycleOwner.current
     val inputModeManager = LocalInputModeManager.current
     val selectedNavItemFocusRequester = remember { FocusRequester() }
@@ -521,6 +516,9 @@ fun MainNavigationRoot(
             menuLabel = stringResource(Res.string.nav_menu),
             moreLabel = stringResource(Res.string.cd_more),
             onEdited = libraryCategoriesViewModel::onSidebarEdited,
+            bottomFocusRequester = floatingBarFocusRequester,
+            selectedItemFocusRequester = selectedNavItemFocusRequester,
+            onSelectedItemFocusChanged = { selectedNavItemFocused.value = it },
             content = { scaffoldContentPadding, drawerOpen ->
                 FloatingBarLayout(
                     modifier = Modifier.padding(scaffoldContentPadding),
@@ -535,7 +533,6 @@ fun MainNavigationRoot(
                             FloatingBar(
                                 expanded = playerExpanded,
                                 onExpand = onExpandPlayer,
-                                focusRequester = floatingBarFocusRequester,
                                 upFocusRequester = selectedNavItemFocusRequester,
                                 content = { expanded, contentPadding ->
                                     PlayersPager(
@@ -563,6 +560,7 @@ fun MainNavigationRoot(
                                         },
                                         onSelectPlayer = { playerSheet = PlayerSheetStart.Players },
                                         onGroupPlayer = { playerSheet = PlayerSheetStart.Group(it) },
+                                        entryFocusRequester = floatingBarFocusRequester,
                                     )
                                 },
                             )
