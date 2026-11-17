@@ -37,7 +37,7 @@ class LyricsRepositoryTranscriptTest {
     private val transcript = Lyrics.Plain("Hello.")
 
     @Test
-    fun `a server without the command is not asked`() = runTest {
+    fun aServerWithoutTheCommandIsNotAsked() = runTest {
         val repository = GatedRepository()
         val client = FakeClient(EPISODE_TRANSCRIPT_MIN_SCHEMA - 1)
         val transcripts = LyricsRepository(repository, client, backgroundScope)
@@ -51,7 +51,7 @@ class LyricsRepositoryTranscriptTest {
     }
 
     @Test
-    fun `an episode whose provider reports no transcript is not asked`() = runTest {
+    fun anEpisodeWhoseProviderReportsNoTranscriptIsNotAsked() = runTest {
         val repository = GatedRepository()
         val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode(metadata = AppMediaItemFixtures.metadata(hasTranscript = false))
@@ -63,7 +63,7 @@ class LyricsRepositoryTranscriptTest {
     }
 
     @Test
-    fun `a transcript loads once and then stays`() = runTest {
+    fun aTranscriptLoadsOnceAndThenStays() = runTest {
         val repository = GatedRepository()
         val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode()
@@ -83,7 +83,7 @@ class LyricsRepositoryTranscriptTest {
     }
 
     @Test
-    fun `a server without a transcript gives no data`() = runTest {
+    fun aServerWithoutATranscriptGivesNoData() = runTest {
         val repository = GatedRepository()
         val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode()
@@ -100,7 +100,7 @@ class LyricsRepositoryTranscriptTest {
     }
 
     @Test
-    fun `a failed load is asked again on the next load`() = runTest {
+    fun aFailedLoadIsAskedAgainOnTheNextLoad() = runTest {
         val repository = GatedRepository()
         val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode()
@@ -121,7 +121,7 @@ class LyricsRepositoryTranscriptTest {
     }
 
     @Test
-    fun `the oldest settled transcript goes when the cache is full`() = runTest {
+    fun theOldestSettledTranscriptGoesWhenTheCacheIsFull() = runTest {
         val repository = GatedRepository()
         val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episodes = List(9) { AppMediaItemFixtures.episode(itemId = "ep-$it") }

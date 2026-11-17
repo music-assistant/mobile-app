@@ -294,20 +294,12 @@ actual class PlatformFeature {
   in `State.lyrics` and offers "Transcript" in the menu once it is loaded. The expanded player loads the
   transcript of the current episode and shows it behind the lyrics button. An episode whose provider reports
   `has_transcript` false is not asked. The page has no steppers and no hide-fully-played filter.
-- **Track lyrics**: the application-scoped Koin singleton `LyricsRepository` (`data/repository/`)
-  is injected into both `HomeScreenViewModel` and `ItemDetailsViewModel`. It handles track lyrics
-  and episode transcripts, sharing cached answers and in-flight requests across both screens.
-  Embedded track lyrics take priority; otherwise `load(track)` uses
-  `MediaItemRepository.fetchTrackLyrics` (`metadata/get_track_lyrics`) with the retained server track
-  DTO. External lyrics providers are resolved by the server. The expanded visible Now Playing page
-  starts the lookup and observes the result with `collectAsStateWithLifecycle`; the button and both
-  lyrics presentations use the same result. Item Details follows that same flow in a cancellable
-  collector. Keys include media type, provider and item ID, so late answers cannot replace another
-  item's lyrics. Track collections are recreated on identity or embedded-lyrics changes. The cache
-  keeps eight settled answers in insertion order (including absent lyrics), protects in-flight loads,
-  and retries errors on a later load. Requests survive screen changes in an application scope;
-  cancelling a UI collector does not cancel the shared lookup. Repository cancellation clears its
-  loading entry and propagates. Episode transcript schema/provider gates remain in `load(episode)`.
+- **Track lyrics**: `LyricsRepository` (`data/repository/`) provides track lyrics and episode transcripts.
+  Item Details and Now Playing use the same results and pending requests.
+  Use lyrics from track metadata when available. Otherwise, request lyrics from the server.
+  The server selects the lyrics provider. The expanded player shows the Lyrics button when lyrics are available.
+  A delayed response cannot replace lyrics for a different track.
+  Requests continue when the user changes screens. A failed request can be tried again.
 - **Seek bar waveform**: `audio_analysis/wave_form` gives 1800 RMS bins (0.0 to 1.0) for the whole track,
   or null if the server has no analysis. The command needs schema 36 (`supportsWaveform`). The request
   uses the stream ids (`StreamDetails.item_id` and `provider`), because the server stores the analysis

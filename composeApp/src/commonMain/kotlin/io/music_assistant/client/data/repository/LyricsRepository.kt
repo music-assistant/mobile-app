@@ -54,12 +54,13 @@ class LyricsRepository(
     }
 
     private fun load(key: Key, fetch: suspend () -> Result<Lyrics?>) {
-        while (true) {
-            val current = states.value
+        var started = false
+        states.update { current ->
             val state = current[key]
-            if (state != null && state !is DataState.Error) return
-            if (states.compareAndSet(current, current.appended(key, DataState.Loading()))) break
+            started = state == null || state is DataState.Error
+            if (started) current.appended(key, DataState.Loading()) else current
         }
+        if (!started) return
         scope.launch {
             try {
                 val state = fetch().fold(
