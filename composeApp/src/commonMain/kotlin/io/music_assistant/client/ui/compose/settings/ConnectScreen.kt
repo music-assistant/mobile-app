@@ -1,15 +1,21 @@
 package io.music_assistant.client.ui.compose.settings
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.Defaults
 import io.music_assistant.client.utils.DataConnectionState
@@ -17,6 +23,11 @@ import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
+import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.app_name
+import musicassistantclient.composeapp.generated.resources.mass
+import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -99,6 +110,15 @@ fun ConnectScreen(onConnect: () -> Unit) {
     }
 
     Column(Modifier.verticalScroll(rememberScrollState())) {
+        Column(
+            Modifier.align(Alignment.CenterHorizontally),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Image(painter = painterResource(Res.drawable.mass), contentDescription = null)
+            Text(stringResource(Res.string.app_name), style = MaterialTheme.typography.titleLarge)
+        }
+
         when (sessionState) {
             is SessionState.Disconnected -> {
                 LocalNetworkOnboardingCard(
