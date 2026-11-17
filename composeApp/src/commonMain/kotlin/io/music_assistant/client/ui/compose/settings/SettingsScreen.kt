@@ -76,6 +76,7 @@ import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import io.music_assistant.client.ui.compose.settings.sections.AboutSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.CarSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.ConnectionSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.InterfaceSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.MiscSettingsSection
@@ -86,7 +87,6 @@ import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.ui.theme.isDark
-import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
@@ -115,7 +115,6 @@ import musicassistantclient.composeapp.generated.resources.settings_connection_e
 import musicassistantclient.composeapp.generated.resources.settings_connection_method
 import musicassistantclient.composeapp.generated.resources.settings_connection_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_disconnect
-import musicassistantclient.composeapp.generated.resources.settings_exit_app
 import musicassistantclient.composeapp.generated.resources.settings_history_direct
 import musicassistantclient.composeapp.generated.resources.settings_history_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_no_saved_connections
@@ -145,18 +144,14 @@ import org.publicvalue.multiplatform.qrcode.CameraPosition
 import org.publicvalue.multiplatform.qrcode.CodeType
 import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
+fun SettingsScreen(goHome: () -> Unit) {
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
     val accent = themeViewModel.accentColor.collectAsStateWithLifecycle(AccentColor.DEFAULT)
     val viewModel = koinViewModel<SettingsViewModel>()
     val savedConnectionInfo by viewModel.savedConnectionInfo.collectAsStateWithLifecycle()
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
-    val connectionHistory by viewModel.connectionHistory.collectAsStateWithLifecycle()
-    val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
-    val isAuthenticated = dataConnection is DataConnectionState.Authenticated
     val sendspinViewModel = koinViewModel<SendspinSettingsViewModel>()
     val sendspinEnabled by sendspinViewModel.enabled.collectAsStateWithLifecycle()
     val sendspinDraft by sendspinViewModel.draft.collectAsStateWithLifecycle()
@@ -165,18 +160,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val isSendspinConfirmationPending by sendspinViewModel.isConfirmationPending.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
-    val localNetworkOnboardingShown by viewModel.localNetworkOnboardingShown
-        .collectAsStateWithLifecycle()
-    val localNetworkBlocked by viewModel.localNetworkBlocked.collectAsStateWithLifecycle()
-    val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
 
     // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
-        if (isAuthenticated) {
-            goHome()
-        } else {
-            exitApp()
-        }
+        goHome()
     }
 
     TopBarLayout(
@@ -192,13 +179,11 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 },
                 navigationIcon = {
-                    if (isAuthenticated) {
-                        IconButton(onClick = goHome) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                stringResource(Res.string.common_back),
-                            )
-                        }
+                    IconButton(onClick = goHome) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            stringResource(Res.string.common_back),
+                        )
                     }
                 },
             )
@@ -220,51 +205,32 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .windowInsetsPadding(WindowInsets.navigationBars),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                if (!isAuthenticated) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        OutlinedButton(onClick = exitApp) { Text(stringResource(Res.string.settings_exit_app)) }
-                    }
-                }
-
                 AboutSettingsSection(viewModel.appVersion)
 
-                if (sessionState is SessionState.Connected) {
-                    val connectedState = sessionState as SessionState.Connected
+                ConnectionSettingsSection(
+                    sessionState = sessionState,
+                    connectionInfo = savedConnectionInfo,
+                    onDisconnect = { viewModel.disconnect() },
+                )
 
-                    // Server Info Section (always shown when connected)
-                    ServerInfoSection(
-                        connectionInfo = savedConnectionInfo,
-                        serverInfo = connectedState.serverInfo,
-                        isWebRTC = connectedState is SessionState.Connected.WebRTC,
-                        onDisconnect = { viewModel.disconnect() },
-                    )
+                SendspinSettingsSection(
+                    enabled = sendspinEnabled,
+                    settings = sendspinDraft,
+                    isSavable = isSendspinSavable,
+                    isResettable = isSendspinResettable,
+                    isConfirmationPending = isSendspinConfirmationPending,
+                    onEnabledChange = sendspinViewModel::setEnabled,
+                    onSettingsChange = sendspinViewModel::update,
+                    onSave = sendspinViewModel::save,
+                    onReset = sendspinViewModel::reset,
+                    onConfirm = sendspinViewModel::confirm,
+                    onDismiss = sendspinViewModel::dismiss,
+                )
 
-                    LoginSection(connectedState.user)
-
-                    if (dataConnection is DataConnectionState.Authenticated) {
-                        SendspinSettingsSection(
-                            enabled = sendspinEnabled,
-                            settings = sendspinDraft,
-                            isSavable = isSendspinSavable,
-                            isResettable = isSendspinResettable,
-                            isConfirmationPending = isSendspinConfirmationPending,
-                            onEnabledChange = sendspinViewModel::setEnabled,
-                            onSettingsChange = sendspinViewModel::update,
-                            onSave = sendspinViewModel::save,
-                            onReset = sendspinViewModel::reset,
-                            onConfirm = sendspinViewModel::confirm,
-                            onDismiss = sendspinViewModel::dismiss,
-                        )
-
-                        // Car options route to the local player — only meaningful when
-                        // it's reachable (authenticated) and enabled.
-                        if (sendspinEnabled) {
-                            CarSettingsSection()
-                        }
-                    }
+                // Car options route to the local player — only meaningful when
+                // it's reachable (authenticated) and enabled.
+                if (sendspinEnabled) {
+                    CarSettingsSection()
                 }
 
                 InterfaceSettingsSection(

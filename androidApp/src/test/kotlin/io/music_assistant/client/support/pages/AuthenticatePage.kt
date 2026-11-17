@@ -24,7 +24,6 @@ class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
             hasTestTag(ScreenSemantics.TITLE_TAG).and(hasText(Res.string.app_name.get())),
         ).assertIsDisplayed()
         composeTestRule.onNodeWithText(Res.string.settings_server.get()).assertIsDisplayed()
-        composeTestRule.onNodeWithText("homeassistant.local:8095").assertIsDisplayed()
         composeTestRule.onNodeWithText(Res.string.auth_title.get()).assertIsDisplayed()
     }
 
