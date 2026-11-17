@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.Defaults
 import io.music_assistant.client.ui.compose.ScreenSemantics
+import io.music_assistant.client.ui.compose.settings.sections.ConnectionSettingsSection
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
@@ -195,17 +196,11 @@ fun ConnectScreen(onConnect: () -> Unit) {
             }
 
             is SessionState.Connected -> {
-                val connectedState = sessionState as SessionState.Connected
-
-                // Server Info Section (always shown when connected)
-                ServerInfoSection(
+                ConnectionSettingsSection(
+                    sessionState = sessionState,
                     connectionInfo = savedConnectionInfo,
-                    serverInfo = connectedState.serverInfo,
-                    isWebRTC = connectedState is SessionState.Connected.WebRTC,
                     onDisconnect = { viewModel.disconnect() },
                 )
-
-                LoginSection(connectedState.user)
             }
         }
     }
