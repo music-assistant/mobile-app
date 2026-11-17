@@ -32,6 +32,7 @@ import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
+import io.music_assistant.client.data.repository.TrackLyricsRepository
 import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.data.repository.favoriteAfter
@@ -126,6 +127,14 @@ class HomeScreenViewModel(
 
     /** The transcript of [episode], as [loadTranscript] loads it. */
     fun transcript(episode: PodcastEpisode): StateFlow<DataState<Lyrics>> = transcriptRepository.transcript(episode)
+
+    private val trackLyricsRepository = TrackLyricsRepository(mediaItemRepository, viewModelScope)
+
+    /** Loads missing lyrics once per track, independently of player updates and recomposition. */
+    fun loadTrackLyrics(track: Track) = trackLyricsRepository.load(track)
+
+    /** Embedded lyrics, or the server result shared by the player button and lyrics panel. */
+    fun trackLyrics(track: Track): StateFlow<DataState<Lyrics>> = trackLyricsRepository.lyrics(track)
 
     /**
      * Server-synced `audiobook_chapter_progress` gate for the chapter-relative timeline.

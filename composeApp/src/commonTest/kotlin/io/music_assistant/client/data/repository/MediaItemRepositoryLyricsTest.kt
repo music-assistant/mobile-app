@@ -7,6 +7,8 @@ import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
+import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.StubServiceClient
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.utils.myJson
@@ -17,6 +19,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -55,6 +58,33 @@ class MediaItemRepositoryLyricsTest {
         val request = client.requests.single()
         assertEquals(APICommands.METADATA_GET_TRACK_LYRICS, request.command)
         assertNotNull(request.args?.get("track"))
+    }
+
+    @Test
+    fun searchOnlyProviderTrackSendsLookupMetadataWithoutEmbeddedLyrics() = runTest {
+        val client = FakeClient("""["Found by server", null]""")
+        val factory = MediaItemFactory(client)
+        val source = ServerMediaItem(
+            itemId = "search-result",
+            provider = "glowmusic",
+            name = "Song",
+            mediaType = "track",
+            duration = 210.0,
+            providerMappings = emptyList(),
+            artists = listOf(ServerMediaItem("artist", "glowmusic", "Artist", mediaType = "artist")),
+            album = ServerMediaItem("album", "glowmusic", "Album", mediaType = "album"),
+        )
+        val track = assertIs<Track>(factory.create(source))
+        assertNull(track.lyrics)
+
+        val lyrics = ServiceClientMediaItemRepository(client, factory).fetchTrackLyrics(track).getOrThrow()
+        val sent = myJson.decodeFromJsonElement(
+            ServerMediaItem.serializer(),
+            client.requests.single().args!!["track"]!!,
+        )
+
+        assertEquals(source, sent)
+        assertEquals(Lyrics.Plain("Found by server"), lyrics)
     }
 
     @Test
