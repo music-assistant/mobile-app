@@ -7,12 +7,15 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import io.music_assistant.client.support.get
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.settings_connect
 import musicassistantclient.composeapp.generated.resources.settings_connect_saved
+import musicassistantclient.composeapp.generated.resources.settings_connection_method
 
 class ConnectPage(private val composeTestRule: ComposeTestRule, private val savedCredentials: Boolean = false) : Page {
     override fun assert() {
-        composeTestRule.onNodeWithText("Connection Method").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.app_name.get()).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.settings_connection_method.get()).assertIsDisplayed()
     }
 
     fun connect(): AuthenticatePage {
