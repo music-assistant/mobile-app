@@ -14,8 +14,11 @@ import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,14 +33,14 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class TranscriptRepositoryTest {
+class LyricsRepositoryTranscriptTest {
     private val transcript = Lyrics.Plain("Hello.")
 
     @Test
-    fun `a server without the command is not asked`() = runTest {
+    fun aServerWithoutTheCommandIsNotAsked() = runTest {
         val repository = GatedRepository()
         val client = FakeClient(EPISODE_TRANSCRIPT_MIN_SCHEMA - 1)
-        val transcripts = TranscriptRepository(repository, client, backgroundScope)
+        val transcripts = LyricsRepository(repository, client, backgroundScope)
         val episode = AppMediaItemFixtures.episode()
 
         transcripts.load(episode)
@@ -48,9 +51,9 @@ class TranscriptRepositoryTest {
     }
 
     @Test
-    fun `an episode whose provider reports no transcript is not asked`() = runTest {
+    fun anEpisodeWhoseProviderReportsNoTranscriptIsNotAsked() = runTest {
         val repository = GatedRepository()
-        val transcripts = TranscriptRepository(repository, FakeClient(), backgroundScope)
+        val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode(metadata = AppMediaItemFixtures.metadata(hasTranscript = false))
 
         transcripts.load(episode)
@@ -60,9 +63,9 @@ class TranscriptRepositoryTest {
     }
 
     @Test
-    fun `a transcript loads once and then stays`() = runTest {
+    fun aTranscriptLoadsOnceAndThenStays() = runTest {
         val repository = GatedRepository()
-        val transcripts = TranscriptRepository(repository, FakeClient(), backgroundScope)
+        val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode()
 
         transcripts.load(episode)
@@ -80,9 +83,9 @@ class TranscriptRepositoryTest {
     }
 
     @Test
-    fun `a server without a transcript gives no data`() = runTest {
+    fun aServerWithoutATranscriptGivesNoData() = runTest {
         val repository = GatedRepository()
-        val transcripts = TranscriptRepository(repository, FakeClient(), backgroundScope)
+        val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode()
 
         transcripts.load(episode)
@@ -97,9 +100,9 @@ class TranscriptRepositoryTest {
     }
 
     @Test
-    fun `a failed load is asked again on the next load`() = runTest {
+    fun aFailedLoadIsAskedAgainOnTheNextLoad() = runTest {
         val repository = GatedRepository()
-        val transcripts = TranscriptRepository(repository, FakeClient(), backgroundScope)
+        val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episode = AppMediaItemFixtures.episode()
 
         transcripts.load(episode)
@@ -118,9 +121,9 @@ class TranscriptRepositoryTest {
     }
 
     @Test
-    fun `the oldest settled transcript goes when the cache is full`() = runTest {
+    fun theOldestSettledTranscriptGoesWhenTheCacheIsFull() = runTest {
         val repository = GatedRepository()
-        val transcripts = TranscriptRepository(repository, FakeClient(), backgroundScope)
+        val transcripts = LyricsRepository(repository, FakeClient(), backgroundScope)
         val episodes = List(9) { AppMediaItemFixtures.episode(itemId = "ep-$it") }
 
         episodes.forEach { episode ->
@@ -133,6 +136,60 @@ class TranscriptRepositoryTest {
         assertIs<DataState.NoData<Lyrics>>(transcripts.transcript(episodes[0]).value)
         assertEquals(DataState.Data<Lyrics>(transcript), transcripts.transcript(episodes[1]).value)
         assertEquals(DataState.Data<Lyrics>(transcript), transcripts.transcript(episodes[8]).value)
+    }
+
+    @Test
+    fun trackAndEpisodeWithSameIdentityHaveSeparateSharedRequests() = runTest {
+        val repository = GatedRepository()
+        val lyrics = LyricsRepository(repository, FakeClient(), backgroundScope)
+        val episode = AppMediaItemFixtures.episode(itemId = "same")
+        val track = AppMediaItemFixtures.track(itemId = "same").copy(provider = episode.provider)
+        lyrics.load(track)
+        lyrics.load(episode)
+        lyrics.load(track)
+        lyrics.load(episode)
+        runCurrent()
+        assertEquals(2, repository.asked.size)
+        repository.answer(Result.success(Lyrics.Plain("Track")))
+        repository.answer(Result.success(transcript))
+        runCurrent()
+        assertEquals(Lyrics.Plain("Track"), lyrics.lyrics(track).value.dataOrNull)
+        assertEquals(transcript, lyrics.transcript(episode).value.dataOrNull)
+    }
+
+    @Test
+    fun episodeCancellationClearsLoadingAndAllowsRetry() = runTest {
+        val repository = GatedRepository()
+        val lyrics = LyricsRepository(repository, FakeClient(), backgroundScope)
+        val episode = AppMediaItemFixtures.episode()
+        lyrics.load(episode)
+        runCurrent()
+        repository.answer(Result.failure(CancellationException("cancelled")))
+        runCurrent()
+        assertIs<DataState.NoData<Lyrics>>(lyrics.transcript(episode).value)
+        lyrics.load(episode)
+        runCurrent()
+        repository.answer(Result.success(transcript))
+        runCurrent()
+        assertEquals(transcript, lyrics.transcript(episode).value.dataOrNull)
+    }
+
+    @Test
+    fun cancellingOwnerCancelsEpisodeRequest() = runTest {
+        val repository = GatedRepository()
+        val owner = Job()
+        val lyrics = LyricsRepository(
+            repository,
+            FakeClient(),
+            CoroutineScope(backgroundScope.coroutineContext + owner),
+        )
+        val episode = AppMediaItemFixtures.episode()
+        lyrics.load(episode)
+        runCurrent()
+        owner.cancel()
+        runCurrent()
+        assertTrue(owner.isCompleted)
+        assertIs<DataState.NoData<Lyrics>>(lyrics.transcript(episode).value)
     }
 
     private class FakeClient(schemaVersion: Int = EPISODE_TRANSCRIPT_MIN_SCHEMA) : StubServiceClient() {
@@ -167,9 +224,12 @@ class TranscriptRepositoryTest {
         override suspend fun fetchAllMediaItems(request: Request): List<AppMediaItem>? = unused()
         override suspend fun search(request: Request): Result<SearchResultData> = unused()
         override suspend fun fetchMediaItem(request: Request): Result<AppMediaItem?> = unused()
-        override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> = unused()
+        override suspend fun fetchTrackLyrics(track: Track): Result<Lyrics?> {
+            asked += track.itemId
+            return CompletableDeferred<Result<Lyrics?>>().also { pending.addLast(it) }.await()
+        }
         override fun publishLocalChange(change: MediaItemChange) = unused()
 
-        private fun unused(): Nothing = error("Not used by TranscriptRepository")
+        private fun unused(): Nothing = error("Not used by LyricsRepository")
     }
 }

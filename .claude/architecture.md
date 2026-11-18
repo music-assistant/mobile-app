@@ -287,13 +287,19 @@ actual class PlatformFeature {
   "Other episodes" tab (`ItemDetailsTab.OTHER_EPISODES`) lists the podcast episodes without the open one, with
   the sort of the podcast page. The menus reach the page with "Go to episode" (`navigationOptions`). The page
   shows the `description` as "About this episode". From schema 81 (`supportsEpisodeTranscript`, server 2.11),
-  `TranscriptRepository` (`data/repository/`) loads `music/podcasts/podcast_episode_transcript` once for each
+  `LyricsRepository` (`data/repository/`) loads `music/podcasts/podcast_episode_transcript` once for each
   episode in an app scope and keeps the last answers, because the page and the player ask for the same
   episode. The answer is a `[text, cues]` tuple, and `transcriptOf` (`model/client/Transcript.kt`) makes a
   `Lyrics` from it, so `LyricsSheet` shows a transcript with the lyrics timing and offset. The page keeps it
   in `State.lyrics` and offers "Transcript" in the menu once it is loaded. The expanded player loads the
   transcript of the current episode and shows it behind the lyrics button. An episode whose provider reports
   `has_transcript` false is not asked. The page has no steppers and no hide-fully-played filter.
+- **Track lyrics**: `LyricsRepository` (`data/repository/`) provides track lyrics and episode transcripts.
+  Item Details and Now Playing use the same results and pending requests.
+  Use lyrics from track metadata when available. Otherwise, request lyrics from the server.
+  The server selects the lyrics provider. The expanded player shows the Lyrics button when lyrics are available.
+  A delayed response cannot replace lyrics for a different track.
+  Requests continue when the user changes screens. A failed request can be tried again.
 - **Seek bar waveform**: `audio_analysis/wave_form` gives 1800 RMS bins (0.0 to 1.0) for the whole track,
   or null if the server has no analysis. The command needs schema 36 (`supportsWaveform`). The request
   uses the stream ids (`StreamDetails.item_id` and `provider`), because the server stores the analysis

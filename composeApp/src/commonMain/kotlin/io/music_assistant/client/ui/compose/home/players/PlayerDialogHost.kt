@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -175,7 +176,11 @@ private fun ResolvedLyrics(
 ) {
     val item = player.queueInfo?.currentItem?.track
     val lyrics = when (item) {
-        is Track -> item.lyrics
+        is Track -> key(item.provider, item.itemId, item.lyrics) {
+            remember { homeScreenViewModel.trackLyrics(item) }
+                .collectAsStateWithLifecycle().value.dataOrNull
+        }
+
         is PodcastEpisode -> remember(item.provider, item.itemId) { homeScreenViewModel.transcript(item) }
             .collectAsStateWithLifecycle().value.dataOrNull
 

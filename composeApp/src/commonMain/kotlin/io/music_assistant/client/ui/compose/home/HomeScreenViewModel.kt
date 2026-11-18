@@ -29,10 +29,10 @@ import io.music_assistant.client.data.model.server.supportsWaveform
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.data.repository.LyricsRepository
 import io.music_assistant.client.data.repository.MediaItemChange
 import io.music_assistant.client.data.repository.MediaItemRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
-import io.music_assistant.client.data.repository.TranscriptRepository
 import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.data.repository.favoriteAfter
 import io.music_assistant.client.data.repository.fetchRecommendationRowItems
@@ -99,7 +99,7 @@ class HomeScreenViewModel(
     private val settings: SettingsRepository,
     private val mediaItemRepository: MediaItemRepository,
     private val playDispatcher: PlayDispatcher,
-    private val transcriptRepository: TranscriptRepository,
+    private val lyricsRepository: LyricsRepository,
     private val sendspinDelays: SendspinDelayRepository,
     private val waveformRepository: WaveformRepository,
 ) : ViewModel() {
@@ -121,11 +121,17 @@ class HomeScreenViewModel(
     /** Live elapsed-time flow for the slider. Ticks at 500 ms only while playing + subscribed. */
     fun observePosition(queueId: String) = dataSource.positionTracker.observe(queueId)
 
-    /** Loads the transcript of [episode] once, for the lyrics sheet. See [TranscriptRepository]. */
-    fun loadTranscript(episode: PodcastEpisode) = transcriptRepository.load(episode)
+    /** Loads the transcript of [episode] once, for the lyrics sheet. See [LyricsRepository]. */
+    fun loadTranscript(episode: PodcastEpisode) = lyricsRepository.load(episode)
 
     /** The transcript of [episode], as [loadTranscript] loads it. */
-    fun transcript(episode: PodcastEpisode): StateFlow<DataState<Lyrics>> = transcriptRepository.transcript(episode)
+    fun transcript(episode: PodcastEpisode): StateFlow<DataState<Lyrics>> = lyricsRepository.transcript(episode)
+
+    /** Loads missing lyrics once per track, independently of player updates and recomposition. */
+    fun loadTrackLyrics(track: Track) = lyricsRepository.load(track)
+
+    /** Embedded lyrics, or the server result shared by the player button and lyrics panel. */
+    fun trackLyrics(track: Track): StateFlow<DataState<Lyrics>> = lyricsRepository.lyrics(track)
 
     /**
      * Server-synced `audiobook_chapter_progress` gate for the chapter-relative timeline.

@@ -60,6 +60,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -344,13 +345,24 @@ fun PlayersPager(
                 val playerId = player.playerId
                 val currentQueueItem = player.queueInfo?.currentItem
                 val currentTrack = currentQueueItem?.track as? Track
+                val isCurrentPage = page == playerPagerState.currentPage
+                val trackLyrics = currentTrack?.let { track ->
+                    // Recreate collection on identity/metadata changes: never retain another track's value.
+                    key(track.provider, track.itemId, track.lyrics) {
+                        if (expanded && isCurrentPage) {
+                            LaunchedEffect(Unit) { homeScreenViewModel.loadTrackLyrics(track) }
+                        }
+                        remember { homeScreenViewModel.trackLyrics(track) }
+                            .collectAsStateWithLifecycle().value.dataOrNull
+                    }
+                }
                 // The transcript of an episode loads once its page is expanded, like the web fullscreen player.
                 val transcript = (currentQueueItem?.track as? PodcastEpisode)?.takeIf { expanded }?.let { episode ->
                     LaunchedEffect(episode.provider, episode.itemId) { homeScreenViewModel.loadTranscript(episode) }
                     remember(episode.provider, episode.itemId) { homeScreenViewModel.transcript(episode) }
                         .collectAsStateWithLifecycle().value.dataOrNull
                 }
-                val lyrics = currentTrack?.lyrics ?: transcript
+                val lyrics = trackLyrics ?: transcript
                 // The waveform of a track loads once its page is expanded and the user turned it on.
                 val waveform = player.queueId?.takeIf { expanded && showWaveform }?.let { queueId ->
                     currentQueueItem?.waveformKey?.let { key ->
@@ -461,9 +473,6 @@ fun PlayersPager(
                                 null
                             }
                         }
-                        // Only the displayed page drives the shared lyrics VM, so the button
-                        // tracks the player currently on screen.
-                        val isCurrentPage = page == playerPagerState.currentPage
                         if (!expanded) {
                             CollapsedPlayerPage(
                                 isWideScreen = isWideScreen,
