@@ -1,5 +1,9 @@
 IPHONEOS_DEPLOYMENT_TARGET = 18.5
 
+// The app version name of both platforms. androidApp/build.gradle.kts reads the same file.
+#include "../../version.properties"
+MARKETING_VERSION = $(APP_VERSION_NAME)
+
 // Intel-simulator slice was removed from the KMP build (iosX64 dropped after CMP 1.11.0).
 // Without this exclusion, xcodebuild on CI builds a universal simulator slice and the
 // :composeApp:syncComposeResourcesForIos task fails with "Unknown iOS simulator arch: 'x86_64'".
