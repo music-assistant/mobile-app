@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">Music Assistant</string>
+    <string name="channel_playing">Now playing</string>
+
+    <string name="connecting">Connecting…</string>
+    <string name="reconnecting">Reconnecting…</string>
+    <string name="not_configured">No server configured</string>
+    <string name="unauthorized">Token rejected</string>
+    <string name="not_configured_hint">Set ma.host and ma.token in local.properties</string>
+    <string name="no_players">No players</string>
+    <string name="nothing_playing">Nothing playing</string>
+
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Next track</string>
+    <string name="cd_previous">Previous track</string>
+    <string name="cd_volume_up">Volume up</string>
+    <string name="cd_volume_down">Volume down</string>
+    <string name="cd_volume">Volume and output</string>
+    <string name="cd_queue">Queue</string>
+    <string name="cd_remove">Remove</string>
+
+    <string name="select_output">Select audio output</string>
+    <string name="output_current">Current</string>
+    <string name="output_hint">Players your Music Assistant server can reach.</string>
+    <string name="queue_title">Queue</string>
+    <string name="queue_empty">Queue is empty</string>
+    <string name="volume_percent">%1$d%%</string>
+
+    <plurals name="group_members">
+        <item quantity="one">%1$d player</item>
+        <item quantity="other">%1$d players</item>
+    </plurals>
+</resources>

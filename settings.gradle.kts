@@ -37,3 +37,4 @@ include(":nav")
 include(":ui-utils")
 
 include(":sendspin-kmp")
+include(":wearApp")

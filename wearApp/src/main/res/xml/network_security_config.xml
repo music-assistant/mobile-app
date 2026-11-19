@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Same policy as the phone app. A Music Assistant server is normally a box on the user's
+    own network reached over plain http, and a user-installed CA is how a self-hosted server
+    with its own certificate is trusted. Lint flags both; both are the point.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
