@@ -53,6 +53,7 @@ import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.wear.R
 import io.music_assistant.client.wear.data.WearPlayer
 import kotlin.math.abs
@@ -184,7 +185,6 @@ private fun TrackLabels(state: WearUiState, ambient: AmbientState) {
             // and never under the bezel. `fill = false` keeps a short title at its natural
             // width, so the badge and the title stay centred together as a pair.
             modifier = Modifier
-                .weight(1f, fill = false)
                 .scrollingTitle(enabled = !ambient.isAmbient),
         )
     }
@@ -266,15 +266,15 @@ private fun Modifier.scrollingTitle(enabled: Boolean): Modifier =
 @Composable
 private fun AppBadge() {
     Icon(
-        painter = painterResource(R.drawable.ic_launcher_foreground),
+        painter = painterResource(R.drawable.ic_badge),
         contentDescription = null,
         tint = MaterialTheme.colorScheme.primary,
+
         // The drawable keeps its glyph inside the adaptive icon's safe zone, which is 41% of
         // the canvas. Drawing it that much larger puts the glyph itself at the badge's size
         // instead of leaving most of the badge empty.
         modifier = Modifier
-            .size(BADGE_SIZE)
-            .scale(1f / LAUNCHER_SAFE_ZONE),
+            .size(BADGE_SIZE),
     )
 }
 
