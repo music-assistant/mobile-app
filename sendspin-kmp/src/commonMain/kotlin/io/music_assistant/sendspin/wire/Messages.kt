@@ -335,6 +335,15 @@ internal data class StreamStartPlayer(
 )
 
 @Serializable
+internal data class StreamEndMessage(
+    override val type: String = "stream/end",
+    val payload: StreamEndPayload = StreamEndPayload(),
+) : SendspinMessage
+
+@Serializable
+internal data class StreamEndPayload(val roles: List<String>? = null)
+
+@Serializable
 internal data class StreamClearMessage(
     override val type: String = "stream/clear",
     val payload: StreamClearPayload = StreamClearPayload(),

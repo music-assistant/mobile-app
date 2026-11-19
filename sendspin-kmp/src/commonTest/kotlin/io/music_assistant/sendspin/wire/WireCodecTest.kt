@@ -47,7 +47,11 @@ class WireCodecTest {
                     """"channels":2,"bit_depth":16,"codec_header":"aGVhZGVy"},"artwork":{}}}""",
             ),
         )
-        assertIs<ServerMessage.StreamEnd>(WireCodec.parse("""{"type":"stream/end"}"""))
+        assertEquals(ServerMessage.StreamEnd(null), WireCodec.parse("""{"type":"stream/end"}"""))
+        val end = WireCodec.parse("""{"type":"stream/end","payload":{"roles":["player","metadata"]}}""")
+        assertTrue((end as ServerMessage.StreamEnd).endsPlayer)
+        val otherEnd = WireCodec.parse("""{"type":"stream/end","payload":{"roles":["visualizer"]}}""")
+        assertFalse((otherEnd as ServerMessage.StreamEnd).endsPlayer)
         assertEquals(ServerMessage.StreamClear(null, null), WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
         assertEquals(ServerMessage.StreamClear(null, null), WireCodec.parse("""{"type":"stream/clear"}"""))
         val cut = WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["player"],"from_timestamp":42}}""")

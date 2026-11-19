@@ -15,14 +15,18 @@ internal sealed interface ServerMessage {
     data class State(val payload: JsonElement?) : ServerMessage
     data class Command(val player: PlayerCommandObject) : ServerMessage
     data class StreamStart(val player: StreamStartPlayer?) : ServerMessage
-    data object StreamEnd : ServerMessage
+
+    /** [roles] null means every role. */
+    data class StreamEnd(val roles: List<String>?) : ServerMessage {
+        val endsPlayer: Boolean get() = includesPlayer(roles)
+    }
 
     /**
      * [roles] null means every role. [fromTimestampMicros] keeps the buffered data before
      * that server time and clears only the data at or after it.
      */
     data class StreamClear(val roles: List<String>?, val fromTimestampMicros: Long?) : ServerMessage {
-        val clearsPlayer: Boolean get() = roles == null || VersionedRole.PLAYER_V1.role in roles
+        val clearsPlayer: Boolean get() = includesPlayer(roles)
     }
 
     data class StreamMetadata(val payload: StreamMetadataPayload) : ServerMessage
@@ -44,6 +48,9 @@ internal sealed interface ServerMessage {
     /** A valid envelope whose payload does not decode into this client's model. */
     data class Malformed(val cause: Throwable) : ServerMessage
 }
+
+private fun includesPlayer(roles: List<String>?): Boolean =
+    roles == null || VersionedRole.PLAYER_V1.role in roles
 
 internal object WireCodec {
     /**
@@ -82,7 +89,7 @@ internal object WireCodec {
         "server/state" -> ServerMessage.State(from<ServerStateMessage>(json).payload)
         "server/command" -> ServerMessage.Command(from<ServerCommandMessage>(json).payload.player)
         "stream/start" -> ServerMessage.StreamStart(from<StreamStartMessage>(json).payload.player)
-        "stream/end" -> ServerMessage.StreamEnd
+        "stream/end" -> ServerMessage.StreamEnd(from<StreamEndMessage>(json).payload.roles)
         "stream/clear" -> from<StreamClearMessage>(json).payload.let {
             ServerMessage.StreamClear(it.roles, it.fromTimestamp)
         }
