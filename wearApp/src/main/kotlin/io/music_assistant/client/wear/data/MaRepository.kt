@@ -162,6 +162,26 @@ class MaRepository(
         )
     }
 
+    /**
+     * Hands what the selected player is playing to [targetPlayerId], and follows it there.
+     *
+     * The server moves the queue, so there is nothing to reconcile locally; selecting the
+     * target is what keeps the next volume turn and the next tap pointed at the sound. A
+     * paused player stays paused on arrival, which is what the phone app does too.
+     */
+    fun transferPlayback(targetPlayerId: String) {
+        val source = selectedPlayer.value?.takeIf { it.id != targetPlayerId } ?: return
+        request(
+            APICommands.PLAYER_QUEUES_TRANSFER,
+            buildJsonObject {
+                put("source_queue_id", JsonPrimitive(source.queueId ?: source.id))
+                put("target_queue_id", JsonPrimitive(targetPlayerId))
+                put("auto_play", JsonPrimitive(source.isPlaying))
+            },
+        )
+        selectPlayer(targetPlayerId)
+    }
+
     private fun setVolume(player: WearPlayer, level: Int) {
         updatePlayer(player.id) { it.copy(volume = level) }
         val command = if (player.usesGroupVolume) {

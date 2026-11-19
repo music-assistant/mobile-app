@@ -7,11 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.CompareArrows
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -25,11 +26,14 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.RevealValue
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.SurfaceTransformation
+import androidx.wear.compose.material3.SwipeToReveal
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
+import androidx.wear.compose.material3.rememberRevealState
 import io.music_assistant.client.wear.R
 import io.music_assistant.client.wear.data.WearPlayer
 
@@ -40,11 +44,17 @@ import io.music_assistant.client.wear.data.WearPlayer
  * Only players the server can reach and does not hide are listed, which is the same set the
  * phone app offers. Picking one returns to the volume screen, because the volume the user
  * reaches for next is the volume of whatever they just picked.
+ *
+ * A swipe on a row reveals Transfer, which hands the playing queue to that player rather than
+ * only pointing the watch at it. It leaves the screen the same way picking one does: a revealed
+ * row stands in front of the player it belongs to, so the list has to be left and re-entered to
+ * read as a list again.
  */
 @Composable
 fun OutputScreen(
     state: WearUiState,
     onSelect: (String) -> Unit,
+    onTransfer: (String) -> Unit,
 ) {
     val listState = rememberTransformingLazyColumnState()
     val spec = rememberTransformationSpec()
@@ -71,14 +81,42 @@ fun OutputScreen(
                 }
             }
             items(state.selectablePlayers, key = { it.id }) { player ->
-                PlayerButton(
-                    player = player,
-                    isSelected = player.id == state.selected?.id,
-                    enabled = state.isConnected,
-                    onClick = { onSelect(player.id) },
+                val revealState = rememberRevealState()
+                // A revealed row centres its actions on the part of itself that still shows,
+                // so scrolling past it would leave them hanging off-centre: cover it again as
+                // soon as the list moves.
+                LaunchedEffect(listState.isScrollInProgress) {
+                    val revealed = revealState.currentValue != RevealValue.Covered
+                    if (listState.isScrollInProgress && revealed) {
+                        revealState.animateTo(RevealValue.Covered)
+                    }
+                }
+                SwipeToReveal(
                     modifier = Modifier.transformedHeight(this, spec),
-                    transformation = SurfaceTransformation(spec),
-                )
+                    revealState = revealState,
+                    primaryAction = {
+                        PrimaryActionButton(
+                            onClick = { onTransfer(player.id) },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.CompareArrows,
+                                    contentDescription = null,
+                                )
+                            },
+                            text = { Text(stringResource(R.string.cd_transfer)) },
+                        )
+                    },
+                    onSwipePrimaryAction = { onTransfer(player.id) },
+                ) {
+                    PlayerButton(
+                        player = player,
+                        isSelected = player.id == state.selected?.id,
+                        enabled = state.isConnected,
+                        onClick = { onSelect(player.id) },
+                        transformation = SurfaceTransformation(spec),
+                    )
+                }
             }
             if (state.selectablePlayers.isNotEmpty()) {
                 item {

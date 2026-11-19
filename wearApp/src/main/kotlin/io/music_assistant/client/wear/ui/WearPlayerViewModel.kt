@@ -82,6 +82,8 @@ class WearPlayerViewModel(
 
     fun selectPlayer(playerId: String) = repository.selectPlayer(playerId)
 
+    fun transferPlayback(playerId: String) = repository.transferPlayback(playerId)
+
     fun playQueueItem(itemId: String) = repository.playQueueItem(itemId)
 
     fun removeQueueItem(itemId: String) = repository.removeQueueItem(itemId)

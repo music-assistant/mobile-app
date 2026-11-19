@@ -15,6 +15,7 @@ object APICommands {
     const val PLAYER_QUEUES_ITEMS = "player_queues/items"
     const val PLAYER_QUEUES_PLAY_INDEX = "player_queues/play_index"
     const val PLAYER_QUEUES_DELETE_ITEM = "player_queues/delete_item"
+    const val PLAYER_QUEUES_TRANSFER = "player_queues/transfer"
 
     /** `players/cmd/<command>`: play_pause, next, previous. */
     fun playersCmd(command: String): String = "players/cmd/$command"

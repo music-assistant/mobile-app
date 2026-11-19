@@ -75,11 +75,16 @@ fun MaWearApp(viewModel: WearPlayerViewModel, ambient: AmbientState = AmbientSta
                     composable(Routes.OUTPUT) {
                         // Picking a player goes back to the volume screen: the volume there is
                         // the volume of whatever was just picked, which is usually the next thing
-                        // the user reaches for.
+                        // the user reaches for. A transfer lands in the same place, and for the
+                        // same reason - it moves the sound to that player as well.
                         OutputScreen(
                             state = state,
                             onSelect = {
                                 viewModel.selectPlayer(it)
+                                navController.popBackStack()
+                            },
+                            onTransfer = {
+                                viewModel.transferPlayback(it)
                                 navController.popBackStack()
                             },
                         )

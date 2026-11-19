@@ -19,6 +19,7 @@
     <string name="cd_volume">Volume and output</string>
     <string name="cd_queue">Queue</string>
     <string name="cd_remove">Remove</string>
+    <string name="cd_transfer">Transfer</string>
 
     <string name="select_output">Select audio output</string>
     <string name="output_current">Current</string>
