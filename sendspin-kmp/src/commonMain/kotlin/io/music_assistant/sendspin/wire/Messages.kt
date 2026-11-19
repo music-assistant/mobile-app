@@ -335,6 +335,18 @@ internal data class StreamStartPlayer(
 )
 
 @Serializable
+internal data class StreamClearMessage(
+    override val type: String = "stream/clear",
+    val payload: StreamClearPayload = StreamClearPayload(),
+) : SendspinMessage
+
+@Serializable
+internal data class StreamClearPayload(
+    val roles: List<String>? = null,
+    @SerialName("from_timestamp") val fromTimestamp: Long? = null,
+)
+
+@Serializable
 internal data class StreamMetadataMessage(
     override val type: String = "stream/metadata",
     val payload: StreamMetadataPayload,

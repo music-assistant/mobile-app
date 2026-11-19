@@ -7,8 +7,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class WireCodecTest {
     @Test
@@ -46,7 +48,13 @@ class WireCodecTest {
             ),
         )
         assertIs<ServerMessage.StreamEnd>(WireCodec.parse("""{"type":"stream/end"}"""))
-        assertIs<ServerMessage.StreamClear>(WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
+        assertEquals(ServerMessage.StreamClear(null, null), WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
+        assertEquals(ServerMessage.StreamClear(null, null), WireCodec.parse("""{"type":"stream/clear"}"""))
+        val cut = WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["player"],"from_timestamp":42}}""")
+        assertEquals(ServerMessage.StreamClear(listOf("player"), 42L), cut)
+        assertTrue((cut as ServerMessage.StreamClear).clearsPlayer)
+        val other = WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["visualizer"]}}""")
+        assertFalse((other as ServerMessage.StreamClear).clearsPlayer)
         assertEquals(
             ServerMessage.StreamMetadata(StreamMetadataPayload(title = "T")),
             WireCodec.parse("""{"type":"stream/metadata","payload":{"title":"T"}}"""),

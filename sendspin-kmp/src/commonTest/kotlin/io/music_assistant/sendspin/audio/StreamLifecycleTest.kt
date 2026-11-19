@@ -18,14 +18,13 @@ class StreamLifecycleTest {
             StreamAction.StartFresh(flac),
             StreamLifecycle.onStart(StreamPhase.Ended, flac, flac, newConnection = true),
         )
-        // Same format on the same connection while playing is a seek or skip: sink and decoder stay.
+        // A start on the same connection while playing updates the active stream in place.
         assertEquals(
-            StreamAction.Restart,
+            StreamAction.Continue(flac),
             StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = false),
         )
-        // A format change on the same connection still rebuilds.
         assertEquals(
-            StreamAction.StartFresh(opus),
+            StreamAction.Continue(opus),
             StreamLifecycle.onStart(StreamPhase.Playing, flac, opus, newConnection = false),
         )
         // Same format on a new connection while playing is a reconnect resume.
@@ -33,7 +32,7 @@ class StreamLifecycleTest {
             StreamAction.ResumeKeepBuffer,
             StreamLifecycle.onStart(StreamPhase.Playing, flac, flac, newConnection = true),
         )
-        // A format change is always fresh.
+        // A format change on a new connection is fresh.
         assertEquals(
             StreamAction.StartFresh(opus),
             StreamLifecycle.onStart(StreamPhase.Playing, flac, opus, newConnection = true),
@@ -45,8 +44,10 @@ class StreamLifecycleTest {
         assertEquals(StreamAction.End, StreamLifecycle.onEnd(StreamPhase.Playing))
         assertEquals(StreamAction.Ignore, StreamLifecycle.onEnd(StreamPhase.Idle))
         assertEquals(StreamAction.Ignore, StreamLifecycle.onEnd(StreamPhase.Ended))
-        assertEquals(StreamAction.Clear, StreamLifecycle.onClear(StreamPhase.Playing))
-        assertEquals(StreamAction.Clear, StreamLifecycle.onClear(StreamPhase.Ended))
-        assertEquals(StreamAction.Ignore, StreamLifecycle.onClear(StreamPhase.Idle))
+        assertEquals(StreamAction.Clear, StreamLifecycle.onClear(StreamPhase.Playing, null))
+        assertEquals(StreamAction.Clear, StreamLifecycle.onClear(StreamPhase.Ended, null))
+        assertEquals(StreamAction.Ignore, StreamLifecycle.onClear(StreamPhase.Idle, null))
+        assertEquals(StreamAction.ClearFrom(5), StreamLifecycle.onClear(StreamPhase.Playing, 5))
+        assertEquals(StreamAction.Ignore, StreamLifecycle.onClear(StreamPhase.Idle, 5))
     }
 }

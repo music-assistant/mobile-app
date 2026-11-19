@@ -11,8 +11,11 @@ internal sealed interface StreamAction {
     /** Same stream continues on a new connection: keep buffer, decoder, and sink. */
     data object ResumeKeepBuffer : StreamAction
 
-    /** Same format after a discontinuity: clear buffer and de-dup, flush the sink, reset the decoder; keep both. */
-    data object Restart : StreamAction
+    /**
+     * In-place configuration update of the active stream: keep the buffer, the de-dup, the
+     * decoder and the sink. Chunks received from now on are in [format].
+     */
+    data class Continue(val format: StreamStartPlayer) : StreamAction
 
     data object End : StreamAction
 
@@ -21,20 +24,24 @@ internal sealed interface StreamAction {
 
     data object Clear : StreamAction
 
+    /** Drop only the buffered chunks at or after [fromTimestampMicros]; playback continues. */
+    data class ClearFrom(val fromTimestampMicros: Long) : StreamAction
+
     data object Ignore : StreamAction
 }
 
 /**
  * Pure stream lifecycle decisions.
  *
- * The server sends `stream/clear` plus a same-format `stream/start` on every track
- * change, seek, and restart: a discontinuity, never a gapless boundary. While
- * playing, the same format keeps the sink and decoder (a fresh device stream
- * per skip costs hundreds of ms and the head of the track); a format change
- * rebuilds. From idle the sink is always rebuilt, because routing goes stale
- * while paused. The first `stream/start` of a new connection while the previous
- * connection's stream is still playing with the same format is a reconnect
- * resume, and the buffered audio must survive it.
+ * A `stream/start` while a stream is active is an in-place configuration update,
+ * not a discontinuity: the server continues the same timeline, never resends
+ * audio, and the chunks already buffered stay in the format they arrived in.
+ * Track changes in enqueue mode, and any format change, arrive this way. Seeks
+ * and skips arrive as `stream/clear`. From idle or after an end the sink is
+ * always rebuilt, because routing goes stale while paused. The first
+ * `stream/start` of a new connection while the previous connection's stream is
+ * still playing with the same format is a reconnect resume, and the buffered
+ * audio must survive it; a new connection with another format starts fresh.
  */
 internal object StreamLifecycle {
     fun onStart(
@@ -43,14 +50,17 @@ internal object StreamLifecycle {
         next: StreamStartPlayer,
         newConnection: Boolean,
     ): StreamAction = when {
-        phase != StreamPhase.Playing || next != current -> StreamAction.StartFresh(next)
+        phase != StreamPhase.Playing || (newConnection && next != current) -> StreamAction.StartFresh(next)
         newConnection -> StreamAction.ResumeKeepBuffer
-        else -> StreamAction.Restart
+        else -> StreamAction.Continue(next)
     }
 
     fun onEnd(phase: StreamPhase): StreamAction =
         if (phase == StreamPhase.Playing) StreamAction.End else StreamAction.Ignore
 
-    fun onClear(phase: StreamPhase): StreamAction =
-        if (phase == StreamPhase.Idle) StreamAction.Ignore else StreamAction.Clear
+    fun onClear(phase: StreamPhase, fromTimestampMicros: Long?): StreamAction = when {
+        phase == StreamPhase.Idle -> StreamAction.Ignore
+        fromTimestampMicros != null -> StreamAction.ClearFrom(fromTimestampMicros)
+        else -> StreamAction.Clear
+    }
 }

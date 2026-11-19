@@ -16,7 +16,15 @@ internal sealed interface ServerMessage {
     data class Command(val player: PlayerCommandObject) : ServerMessage
     data class StreamStart(val player: StreamStartPlayer?) : ServerMessage
     data object StreamEnd : ServerMessage
-    data object StreamClear : ServerMessage
+
+    /**
+     * [roles] null means every role. [fromTimestampMicros] keeps the buffered data before
+     * that server time and clears only the data at or after it.
+     */
+    data class StreamClear(val roles: List<String>?, val fromTimestampMicros: Long?) : ServerMessage {
+        val clearsPlayer: Boolean get() = roles == null || VersionedRole.PLAYER_V1.role in roles
+    }
+
     data class StreamMetadata(val payload: StreamMetadataPayload) : ServerMessage
     data class SessionUpdate(val payload: SessionUpdatePayload) : ServerMessage
     data class GroupUpdate(val payload: GroupUpdatePayload) : ServerMessage
@@ -75,7 +83,9 @@ internal object WireCodec {
         "server/command" -> ServerMessage.Command(from<ServerCommandMessage>(json).payload.player)
         "stream/start" -> ServerMessage.StreamStart(from<StreamStartMessage>(json).payload.player)
         "stream/end" -> ServerMessage.StreamEnd
-        "stream/clear" -> ServerMessage.StreamClear
+        "stream/clear" -> from<StreamClearMessage>(json).payload.let {
+            ServerMessage.StreamClear(it.roles, it.fromTimestamp)
+        }
         "stream/metadata" -> ServerMessage.StreamMetadata(from<StreamMetadataMessage>(json).payload)
         "session/update" -> ServerMessage.SessionUpdate(from<SessionUpdateMessage>(json).payload)
         "group/update" -> ServerMessage.GroupUpdate(from<GroupUpdateMessage>(json).payload)
