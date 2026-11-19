@@ -38,6 +38,7 @@ import kotlin.test.assertTrue
 class AudioPipelineTest {
     private val flac = StreamStartPlayer("flac", 48_000, 2, 16)
     private val ramp8k = StreamStartPlayer("flac", 8_000, 2, 16)
+    private val flacNextHeader = flac.copy(codecHeader = "AAAA")
     private val bytesPerFrame = 4
 
     private inner class Harness(val scope: TestScope, synced: Boolean = true) {
@@ -459,39 +460,89 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun aSameFormatStartWhilePlayingKeepsTheSinkAndTheDecoder() = pipelineTest { h ->
-        // MA sends stream/clear plus a same-format stream/start on every track change.
+    fun aSameFormatStartWhilePlayingKeepsEveryBufferedChunk() = pipelineTest { h ->
+        // An in-place stream/start continues the timeline: nothing buffered may be lost.
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()
-        h.feed(0)
+        h.feed(500, 510, 520)
         runCurrent()
-        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull())
         val action = StreamLifecycle.onStart(h.pipeline.phase, h.pipeline.stream.value.format, flac, false)
-        assertEquals(StreamAction.Restart, action)
+        assertEquals(StreamAction.Continue(flac), action)
         h.pipeline.apply(action)
+        h.feed(530)
+        advanceTimeBy(1_000)
         runCurrent()
-        assertEquals(1, h.sink.handles.size, "no device rebuild on a skip")
+        assertEquals(1, h.sink.handles.size)
         assertEquals(1, h.decoders.created.size)
-        assertEquals(1, h.decoders.created.single().resets, "the codec drops the discarded timeline")
-        assertEquals(1, h.handle.flushes)
-        assertTrue(h.pipeline.buffer.isEmpty)
-        h.feed(0) // the de-dup memory is reset with the timeline
-        runCurrent()
-        assertEquals(AudioEvent.Started, h.events.tryReceive().getOrNull(), "a fresh start for the app")
-        assertEquals(2, h.handle.writes.size)
+        assertEquals(4, h.decoders.created.single().decodes, "every chunk is played")
+        assertEquals(0, h.handle.flushes)
+        assertEquals(listOf<AudioEvent>(AudioEvent.Started), h.drainEvents())
     }
 
     @Test
-    fun aFormatChangeWhilePlayingStillRebuilds() = pipelineTest { h ->
+    fun aHeaderChangeSwitchesTheDecoderAtTheBoundaryAndKeepsTheSink() = pipelineTest { h ->
         h.pipeline.apply(StreamAction.StartFresh(flac))
         runCurrent()
-        val opus = StreamStartPlayer("pcm", 44_100, 2, 16)
-        val action = StreamLifecycle.onStart(h.pipeline.phase, h.pipeline.stream.value.format, opus, false)
-        assertEquals(StreamAction.StartFresh(opus), action)
-        h.pipeline.apply(action)
+        h.feed(500, 510)
+        h.pipeline.apply(StreamAction.Continue(flacNextHeader))
+        h.feed(520, 530)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(1, h.sink.handles.size, "decoded PCM in the same format needs no new sink")
+        assertEquals(listOf(2, 2), h.decoders.created.map { it.decodes }, "each chunk in the decoder of its format")
+        assertTrue(h.decoders.created.first().released)
+        assertEquals(listOf<AudioEvent>(AudioEvent.Started), h.drainEvents())
+    }
+
+    @Test
+    fun aRateChangeRebuildsTheSinkOnlyAfterTheOldAudioWasHeard() = pipelineTest { h ->
+        val pcm44 = StreamStartPlayer("pcm", 44_100, 2, 16)
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(500, 510)
+        h.pipeline.apply(StreamAction.Continue(pcm44))
+        h.feed(520, 530)
+        advanceTimeBy(519)
+        runCurrent()
+        assertEquals(1, h.sink.handles.size, "the old audio still plays")
+        assertEquals(2, h.decoders.created.first().decodes, "both old chunks went into the old sink")
+        advanceTimeBy(100)
         runCurrent()
         assertEquals(2, h.sink.handles.size)
-        assertEquals(2, h.decoders.created.size)
+        assertTrue(h.sink.handles.first().closed)
+        assertEquals(44_100, h.handle.format.sampleRate)
+        assertEquals(listOf(2, 2), h.decoders.created.map { it.decodes })
+        assertEquals(listOf<AudioEvent>(AudioEvent.Started), h.drainEvents(), "the track change is no new start")
+    }
+
+    @Test
+    fun clearFromKeepsTheAudioBeforeTheCutAndPlaysTheReplacement() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(500, 510, 520, 530)
+        runCurrent()
+        h.pipeline.apply(StreamLifecycle.onClear(h.pipeline.phase, 520_000))
+        assertEquals(2, h.pipeline.buffer.size)
+        h.feed(520)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(3, h.decoders.created.single().decodes)
+        assertEquals(0, h.handle.flushes, "playback continues through the cut")
+        assertEquals(listOf<AudioEvent>(AudioEvent.Started), h.drainEvents(), "no stop for the app")
+    }
+
+    @Test
+    fun aChunkResentAfterACutDecodesInTheLatestFormat() = pipelineTest { h ->
+        h.pipeline.apply(StreamAction.StartFresh(flac))
+        runCurrent()
+        h.feed(500, 510)
+        h.pipeline.apply(StreamAction.Continue(flacNextHeader))
+        h.feed(520)
+        h.pipeline.apply(StreamAction.ClearFrom(510_000))
+        h.feed(510) // before the old boundary, but sent after the newer stream/start
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(listOf(1, 1), h.decoders.created.map { it.decodes })
     }
 
     @Test

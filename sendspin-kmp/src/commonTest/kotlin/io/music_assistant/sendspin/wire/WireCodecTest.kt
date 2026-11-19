@@ -46,7 +46,23 @@ class WireCodecTest {
             ),
         )
         assertIs<ServerMessage.StreamEnd>(WireCodec.parse("""{"type":"stream/end"}"""))
-        assertIs<ServerMessage.StreamClear>(WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
+        assertIs<ServerMessage.StreamEnd>(
+            WireCodec.parse("""{"type":"stream/end","payload":{"roles":["player","metadata"]}}"""),
+        )
+        assertEquals(
+            ServerMessage.OtherRoles("stream/end"),
+            WireCodec.parse("""{"type":"stream/end","payload":{"roles":["visualizer"]}}"""),
+        )
+        assertEquals(ServerMessage.StreamClear(null), WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
+        assertEquals(ServerMessage.StreamClear(null), WireCodec.parse("""{"type":"stream/clear"}"""))
+        assertEquals(
+            ServerMessage.StreamClear(42L),
+            WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["player"],"from_timestamp":42}}"""),
+        )
+        assertEquals(
+            ServerMessage.OtherRoles("stream/clear"),
+            WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["visualizer"]}}"""),
+        )
         assertEquals(
             ServerMessage.StreamMetadata(StreamMetadataPayload(title = "T")),
             WireCodec.parse("""{"type":"stream/metadata","payload":{"title":"T"}}"""),

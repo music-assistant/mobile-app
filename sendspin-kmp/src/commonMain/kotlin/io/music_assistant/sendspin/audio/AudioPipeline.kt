@@ -46,6 +46,7 @@ internal class AudioPipeline(
 ) {
     internal data class StreamState(
         val phase: StreamPhase,
+        /** The format of the chunks that arrive now; each buffered chunk keeps its own. */
         val format: StreamStartPlayer?,
         /** Bumped on every fresh start: the scheduler rebuilds decoder and sink. */
         val generation: Int,
@@ -87,7 +88,8 @@ internal class AudioPipeline(
     fun onAudio(chunk: AudioChunk) {
         val state = stream.value
         if (state.phase != StreamPhase.Playing || state.held) return
-        if (buffer.offer(chunk) != JitterBuffer.Offer.Stale) wakeups.trySend(Unit)
+        val format = state.format ?: return
+        if (buffer.offer(chunk, format) != JitterBuffer.Offer.Stale) wakeups.trySend(Unit)
     }
 
     fun apply(action: StreamAction) {
@@ -100,13 +102,7 @@ internal class AudioPipeline(
                 }
                 wakeups.trySend(Unit)
             }
-            StreamAction.Restart -> {
-                // Same format: the sink and the decoder survive, only the timeline restarts.
-                logDiscontinuity("restart")
-                buffer.clear(resetDedup = true)
-                stream.update { it.copy(flushGeneration = it.flushGeneration + 1, changedAtMicros = clock.nowMicros()) }
-                wakeups.trySend(Unit)
-            }
+            is StreamAction.Continue -> continueWith(action.format)
 
             StreamAction.End, StreamAction.Abort -> {
                 stream.update { it.copy(phase = StreamPhase.Ended, flushGeneration = it.flushGeneration + 1) }
@@ -123,8 +119,30 @@ internal class AudioPipeline(
                 wakeups.trySend(Unit)
             }
 
+            is StreamAction.ClearFrom -> {
+                // The timeline continues: no flush, no decoder reset, and no stop for the app.
+                val dropped = buffer.clearFrom(action.fromTimestampMicros)
+                logger.i { "Stream clear from ${action.fromTimestampMicros}: discarded=$dropped chunks" }
+                wakeups.trySend(Unit)
+            }
+
             StreamAction.Ignore -> Unit
         }
+    }
+
+    /** The scheduler switches decoder, and sink if needed, at the first chunk in [format]. */
+    private fun continueWith(format: StreamStartPlayer) {
+        val previous = stream.value.format
+        if (format == previous) return
+        if (!decoderStage.supports(format.codec)) {
+            // The spec forbids an unlisted format; the chunks that follow cannot be decoded.
+            logger.w { "Ignoring in-place switch to unsupported codec ${format.codec}" }
+            emit(AudioEvent.UnsupportedFormat(format.codec))
+            return
+        }
+        logger.i { "Stream continue: $previous -> $format kept=${buffer.size} chunks" }
+        stream.update { it.copy(format = format) }
+        wakeups.trySend(Unit)
     }
 
     /**
