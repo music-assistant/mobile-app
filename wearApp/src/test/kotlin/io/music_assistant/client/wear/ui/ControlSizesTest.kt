@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertSame
 
 class ControlSizesTest {
-
     private val sizes = ControlSizes(
         playButton = 48.dp,
         ring = 68.dp,

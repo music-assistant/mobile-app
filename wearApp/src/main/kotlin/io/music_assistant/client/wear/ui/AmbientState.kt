@@ -17,7 +17,6 @@ import androidx.compose.runtime.compositionLocalOf
  * rim, and the always-on layout does both whatever the panel reports.
  */
 sealed interface AmbientState {
-
     /** The screen is awake: full brightness, animation allowed, touch reaches the app. */
     data object Interactive : AmbientState
 

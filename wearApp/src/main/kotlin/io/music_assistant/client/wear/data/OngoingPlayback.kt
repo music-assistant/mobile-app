@@ -27,7 +27,6 @@ import io.music_assistant.client.wear.R
  * stop.
  */
 class OngoingPlayback(private val context: Context) {
-
     private val manager = NotificationManagerCompat.from(context)
     private var channelReady = false
 

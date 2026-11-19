@@ -12,14 +12,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import io.music_assistant.client.wear.data.OngoingPlayback
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import androidx.wear.ambient.AmbientLifecycleObserver
+import io.music_assistant.client.wear.data.OngoingPlayback
 import io.music_assistant.client.wear.ui.AmbientState
 import io.music_assistant.client.wear.ui.MaWearApp
 import io.music_assistant.client.wear.ui.WearPlayerViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 /**
  * The watch has one activity. The server session follows the activity's visible lifetime:

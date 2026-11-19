@@ -70,7 +70,6 @@ data class ServerPlayerMediaDto(
     @SerialName("source_id") val sourceId: String? = null,
 )
 
-
 @Serializable
 data class ServerSourceList(
     @SerialName("id") val id: String? = null,

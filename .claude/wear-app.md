@@ -235,9 +235,13 @@ newer that every Wear OS 4+ watch runs. It is asked for once on first start, and
 costs the ambient screen past its first minute and nothing else — `OngoingPlayback` checks the
 permission and simply does not post, rather than letting the post fail silently.
 
-The other screens — volume, output, queue — are left as they are in ambient. They are static,
-unanimated lists with no artwork behind them, and the player is the screen that is actually
-worth looking at with the wrist down.
+**Ambient always shows the player.** The wrist drops wherever the user left it, and what then
+stays lit for hours should be the track, not a volume stepper or a list nobody can scroll. So
+entering ambient pops the back stack to the now-playing root (`MaWearApp`), and leaving
+ambient leaves the user there — the other screens are a step away and re-opening one is
+cheaper than guessing when to restore it. The `LaunchedEffect` that does it sits in
+`MaWearApp`'s own body, the scope the activity recomposes; inside a destination it would
+never see the state change, for the reason above.
 
 ## Colour from the cover
 

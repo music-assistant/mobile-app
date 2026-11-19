@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -32,14 +31,13 @@ import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.IconButtonShapes
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.OutlinedIconButton
+import io.music_assistant.client.ui.compose.common.icons.PauseIcon
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.wear.R
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
-
-import io.music_assistant.client.ui.compose.common.icons.PauseIcon
-import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 
 /**
  * The play/pause button with the track position drawn around it.

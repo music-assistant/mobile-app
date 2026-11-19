@@ -3,38 +3,38 @@
 
 package io.music_assistant.client.wear.ui
 
-import androidx.compose.foundation.MarqueeAnimationMode
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.layout.findRootCoordinates
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,27 +47,17 @@ import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.CompactButtonDefaults
 import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.IconButton
 import androidx.wear.compose.material3.MaterialTheme
-import androidx.wear.compose.material3.OutlinedIconButton
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
+import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
+import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
 import io.music_assistant.client.wear.R
+import io.music_assistant.client.wear.data.WearPlayer
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
-
-import io.music_assistant.client.ui.compose.common.icons.RepeatOffIcon
-import io.music_assistant.client.ui.compose.common.icons.RepeatOnIcon
-import io.music_assistant.client.ui.compose.common.icons.RepeatOneIcon
-import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
-import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
-import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
-import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
-import io.music_assistant.client.ui.compose.common.icons.SmartShuffleIcon
-import io.music_assistant.client.ui.compose.common.icons.StopIcon
-
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.wear.compose.material3.IconButton
 
 /**
  * The watch's main screen: cover art behind the transport controls, the track position drawn
@@ -155,6 +145,7 @@ private fun NowPlayingContent(
     ActionRow(
         enabled = state.isConnected,
         buttonSize = sizes.actionButton,
+        selectedPlayer = state.selected,
         onOpenVolume = onOpenVolume,
         onOpenQueue = onOpenQueue,
     )
@@ -346,11 +337,13 @@ private fun SkipButton(
         onClick = onClick,
         enabled = enabled,
         modifier = Modifier.size(sizes.sideButton),
-    ) { Icon(
+    ) {
+        Icon(
         imageVector = icon,
         contentDescription = stringResource(contentDescription),
         modifier = Modifier.size(sizes.sideIcon),
-    ) }
+    )
+    }
 }
 
 /**
@@ -374,6 +367,7 @@ private fun ActionRow(
     buttonSize: Dp,
     onOpenVolume: () -> Unit,
     onOpenQueue: () -> Unit,
+    selectedPlayer: WearPlayer?,
 ) {
     val colors = ButtonDefaults.outlinedButtonColors()
     RimRow(
@@ -401,7 +395,7 @@ private fun ActionRow(
             colors = colors,
             icon = {
                 Icon(
-                    imageVector = Icons.Rounded.Speaker,
+                    imageVector = if (selectedPlayer?.isGroup == true) Icons.Rounded.SpeakerGroup else Icons.Rounded.Speaker,
                     contentDescription = stringResource(R.string.cd_volume),
                     modifier = Modifier.size(CompactButtonDefaults.ExtraSmallIconSize),
                 )

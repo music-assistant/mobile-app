@@ -326,7 +326,12 @@ class MaRepository(
             queueId = dto.activeSource ?: dto.currentMedia?.sourceId,
             canSetVolume = members.isNotEmpty() ||
                 dto.supportedFeatures.contains(PlayerFeatures.VOLUME_SET),
-            canNextPrevious = dto.supportedFeatures.contains(PlayerFeatures.NEXT_PREVIOUS) || dto.sourceList?.firstOrNull {it.id == dto.activeSource}?.canNextPrevious ?: false,
+
+            // If the current player does not directly support it, the current source list might still support it.
+            canNextPrevious = dto.supportedFeatures.contains(PlayerFeatures.NEXT_PREVIOUS) || dto.sourceList?.firstOrNull {
+                it.id == dto.activeSource
+            }?.canNextPrevious ?: false,
+
             volume = (if (members.isNotEmpty()) dto.groupVolume else dto.volumeLevel)
                 ?.toInt()?.coerceIn(0, MAX_VOLUME),
             title = dto.currentMedia?.title,
