@@ -5,22 +5,18 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.wear.compose.foundation.AmbientMode
-import androidx.wear.compose.foundation.AmbientModeManager
-import androidx.wear.compose.foundation.rememberAmbientModeManager
 import io.music_assistant.client.wear.data.OngoingPlayback
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import androidx.wear.ambient.AmbientLifecycleObserver
 import io.music_assistant.client.wear.ui.AmbientState
 import io.music_assistant.client.wear.ui.MaWearApp
 import io.music_assistant.client.wear.ui.WearPlayerViewModel
@@ -61,8 +57,40 @@ class MainActivity : ComponentActivity() {
         Manifest.permission.POST_NOTIFICATIONS,
     ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
+    /**
+     * Registering the observer is what opts this activity into the always-on screen: without
+     * it the watch leaves the app when the screen dims. The callbacks arrive on the main
+     * thread. `onUpdateAmbient`, the once-a-minute beat, is not taken: nothing in the
+     * always-on layout goes stale between updates, and the shift for a panel that burns in
+     * is the system's to make, not ours.
+     */
+    private val ambientObserver by lazy {
+        AmbientLifecycleObserver(
+            this,
+            object : AmbientLifecycleObserver.AmbientLifecycleCallback {
+                override fun onEnterAmbient(
+                    ambientDetails: AmbientLifecycleObserver.AmbientDetails,
+                ) {
+                    ambient = AmbientState.Ambient(
+                        lowBitAmbient = ambientDetails.deviceHasLowBitAmbient,
+                    )
+                }
+
+                override fun onExitAmbient() {
+                    ambient = AmbientState.Interactive
+                    // Ambient ending after the activity stopped is the watch leaving for its
+                    // own face: the stop below was skipped, so it happens here instead.
+                    if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                        releaseWhileAway()
+                    }
+                }
+            },
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lifecycle.addObserver(ambientObserver)
         if (!canPostNotifications()) {
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -76,46 +104,7 @@ class MainActivity : ComponentActivity() {
                     .collect(ongoingPlayback::update)
             }
         }
-        setContent {
-            // Asking for the manager is what opts this activity into the always-on screen:
-            // without it the watch leaves the app when the display dims.
-            val ambientModeManager = rememberAmbientModeManager()
-            LaunchedEffect(ambientModeManager) { follow(ambientModeManager) }
-            MaWearApp(viewModel, ambient)
-        }
-    }
-
-    /**
-     * Mirrors the platform's ambient mode onto [ambient], and ends the session when the watch
-     * leaves for its own face.
-     *
-     * The collector runs on the activity's scope rather than the composition's. When the
-     * watch face comes forward the window stops getting frames, so anything tied to
-     * recomposition would miss the very transition that has to release the session — and the
-     * session would then be held open behind a screen nobody is looking at until the activity
-     * was destroyed. A snapshot flow needs only the snapshot write that the platform callback
-     * makes, which still happens.
-     */
-    private fun follow(ambientModeManager: AmbientModeManager) {
-        lifecycleScope.launch {
-            snapshotFlow { ambientModeManager.currentAmbientMode }
-                .distinctUntilChanged()
-                .collect { mode ->
-                    ambient = when (mode) {
-                        is AmbientMode.Ambient ->
-                            AmbientState.Ambient(lowBitAmbient = mode.isLowBitAmbientSupported)
-
-                        else -> AmbientState.Interactive
-                    }
-                    // Ambient ending after the activity stopped is the watch leaving for its
-                    // own face: the stop below was skipped, so it happens here instead.
-                    if (!ambient.isAmbient &&
-                        !lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-                    ) {
-                        releaseWhileAway()
-                    }
-                }
-        }
+        setContent { MaWearApp(viewModel, ambient) }
     }
 
     override fun onStart() {

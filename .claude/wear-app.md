@@ -165,22 +165,19 @@ Picking a player pops back to the volume screen, so the stepper is at once the n
 
 ## The always-on screen
 
-`AmbientState` (`ui/AmbientState.kt`) is what the platform told us, passed through rather than
-interpreted at the edge: for now, only whether the panel is low-bit. The platform side is
-`rememberAmbientModeManager` (Wear Compose foundation), and asking for the manager is what opts
-the app into the always-on screen at all. It replaced `androidx.wear:wear`'s
-`AmbientLifecycleObserver`, which is why that dependency is gone. Note that it goes through the
-Wear SDK (`com.google.wear.Sdk`) with no version guard and no catch, so it needs a watch new
-enough to have one — `minSdk` is 33, which is older than that. Measured on an API 37 emulator:
-the app holds the screen through the dim, past the 60 s eviction, and comes back on the wake.
+`AmbientState` (`ui/AmbientState.kt`) is what the platform told us through
+`AmbientLifecycleObserver`, passed through rather than interpreted at the edge: for now, only
+whether the panel is low-bit.
+`MainActivity` registers the observer — that registration is what opts the app into the
+always-on screen at all — and holds the state in a `mutableStateOf` that `setContent` reads.
 
-The screens keep reading our own `AmbientState` rather than `AmbientMode` directly, so the
-platform API is named in one file. `MainActivity` mirrors the mode onto a `mutableStateOf` that
-`setContent` reads, and does it from a `snapshotFlow` on `lifecycleScope`, not from the
-composition: when the watch face comes forward the window stops getting frames, so anything
-tied to recomposition would miss the transition that has to release the session, and the
-session would be held open behind a screen nobody is looking at until the activity was
-destroyed.
+Wear Compose's own `rememberAmbientModeManager` does the same job and would retire this
+dependency, and it was tried: on an API 37 emulator it held the screen through the dim, past
+the 60 s eviction, and back on the wake. It is not used, because `AmbientModeManagerImpl`
+calls `com.google.wear.Sdk.getWearManager` with no version guard and no catch. That needs a
+watch new enough to carry the Wear SDK, and this module's `minSdk` is 33, so an older watch
+would not lose the always-on screen gracefully — it would crash inside `setContent`. Revisit
+when `minSdk` moves.
 The server session is held against ambient rather than against `onStop` alone — which
 lifecycle callbacks a watch fires on the way into ambient is not worth relying on — and
 released on whichever of the two ends last, so the always-on screen keeps telling the truth
