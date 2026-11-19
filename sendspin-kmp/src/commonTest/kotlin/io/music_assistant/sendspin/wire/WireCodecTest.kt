@@ -7,10 +7,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class WireCodecTest {
     @Test
@@ -47,18 +45,24 @@ class WireCodecTest {
                     """"channels":2,"bit_depth":16,"codec_header":"aGVhZGVy"},"artwork":{}}}""",
             ),
         )
-        assertEquals(ServerMessage.StreamEnd(null), WireCodec.parse("""{"type":"stream/end"}"""))
-        val end = WireCodec.parse("""{"type":"stream/end","payload":{"roles":["player","metadata"]}}""")
-        assertTrue((end as ServerMessage.StreamEnd).endsPlayer)
-        val otherEnd = WireCodec.parse("""{"type":"stream/end","payload":{"roles":["visualizer"]}}""")
-        assertFalse((otherEnd as ServerMessage.StreamEnd).endsPlayer)
-        assertEquals(ServerMessage.StreamClear(null, null), WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
-        assertEquals(ServerMessage.StreamClear(null, null), WireCodec.parse("""{"type":"stream/clear"}"""))
-        val cut = WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["player"],"from_timestamp":42}}""")
-        assertEquals(ServerMessage.StreamClear(listOf("player"), 42L), cut)
-        assertTrue((cut as ServerMessage.StreamClear).clearsPlayer)
-        val other = WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["visualizer"]}}""")
-        assertFalse((other as ServerMessage.StreamClear).clearsPlayer)
+        assertIs<ServerMessage.StreamEnd>(WireCodec.parse("""{"type":"stream/end"}"""))
+        assertIs<ServerMessage.StreamEnd>(
+            WireCodec.parse("""{"type":"stream/end","payload":{"roles":["player","metadata"]}}"""),
+        )
+        assertEquals(
+            ServerMessage.OtherRoles("stream/end"),
+            WireCodec.parse("""{"type":"stream/end","payload":{"roles":["visualizer"]}}"""),
+        )
+        assertEquals(ServerMessage.StreamClear(null), WireCodec.parse("""{"type":"stream/clear","payload":{}}"""))
+        assertEquals(ServerMessage.StreamClear(null), WireCodec.parse("""{"type":"stream/clear"}"""))
+        assertEquals(
+            ServerMessage.StreamClear(42L),
+            WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["player"],"from_timestamp":42}}"""),
+        )
+        assertEquals(
+            ServerMessage.OtherRoles("stream/clear"),
+            WireCodec.parse("""{"type":"stream/clear","payload":{"roles":["visualizer"]}}"""),
+        )
         assertEquals(
             ServerMessage.StreamMetadata(StreamMetadataPayload(title = "T")),
             WireCodec.parse("""{"type":"stream/metadata","payload":{"title":"T"}}"""),

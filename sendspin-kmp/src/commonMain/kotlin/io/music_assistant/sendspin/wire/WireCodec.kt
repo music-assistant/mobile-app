@@ -15,19 +15,10 @@ internal sealed interface ServerMessage {
     data class State(val payload: JsonElement?) : ServerMessage
     data class Command(val player: PlayerCommandObject) : ServerMessage
     data class StreamStart(val player: StreamStartPlayer?) : ServerMessage
+    data object StreamEnd : ServerMessage
 
-    /** [roles] null means every role. */
-    data class StreamEnd(val roles: List<String>?) : ServerMessage {
-        val endsPlayer: Boolean get() = includesPlayer(roles)
-    }
-
-    /**
-     * [roles] null means every role. [fromTimestampMicros] keeps the buffered data before
-     * that server time and clears only the data at or after it.
-     */
-    data class StreamClear(val roles: List<String>?, val fromTimestampMicros: Long?) : ServerMessage {
-        val clearsPlayer: Boolean get() = includesPlayer(roles)
-    }
+    /** [fromTimestampMicros] keeps the buffered data before that server time and clears only the rest. */
+    data class StreamClear(val fromTimestampMicros: Long?) : ServerMessage
 
     data class StreamMetadata(val payload: StreamMetadataPayload) : ServerMessage
     data class SessionUpdate(val payload: SessionUpdatePayload) : ServerMessage
@@ -42,15 +33,15 @@ internal sealed interface ServerMessage {
 
     data class Unknown(val type: String) : ServerMessage
 
+    /** A stream message whose `roles` list leaves out the player role, the only role this client has. */
+    data class OtherRoles(val type: String) : ServerMessage
+
     /** Not a JSON object with a `type` string (and, when required, a `payload` object). */
     data class BadEnvelope(val reason: String) : ServerMessage
 
     /** A valid envelope whose payload does not decode into this client's model. */
     data class Malformed(val cause: Throwable) : ServerMessage
 }
-
-private fun includesPlayer(roles: List<String>?): Boolean =
-    roles == null || VersionedRole.PLAYER_V1.role in roles
 
 internal object WireCodec {
     /**
@@ -89,9 +80,9 @@ internal object WireCodec {
         "server/state" -> ServerMessage.State(from<ServerStateMessage>(json).payload)
         "server/command" -> ServerMessage.Command(from<ServerCommandMessage>(json).payload.player)
         "stream/start" -> ServerMessage.StreamStart(from<StreamStartMessage>(json).payload.player)
-        "stream/end" -> ServerMessage.StreamEnd(from<StreamEndMessage>(json).payload.roles)
+        "stream/end" -> forPlayer(type, from<StreamEndMessage>(json).payload.roles) { ServerMessage.StreamEnd }
         "stream/clear" -> from<StreamClearMessage>(json).payload.let {
-            ServerMessage.StreamClear(it.roles, it.fromTimestamp)
+            forPlayer(type, it.roles) { ServerMessage.StreamClear(it.fromTimestamp) }
         }
         "stream/metadata" -> ServerMessage.StreamMetadata(from<StreamMetadataMessage>(json).payload)
         "session/update" -> ServerMessage.SessionUpdate(from<SessionUpdateMessage>(json).payload)
@@ -106,6 +97,10 @@ internal object WireCodec {
             ServerMessage.Unknown(type)
         }
     }
+
+    /** [roles] null means every role. */
+    private inline fun forPlayer(type: String, roles: List<String>?, message: () -> ServerMessage): ServerMessage =
+        if (roles == null || VersionedRole.PLAYER_V1.role in roles) message() else ServerMessage.OtherRoles(type)
 
     private inline fun <reified T> from(json: JsonObject): T =
         SendspinJson.decodeFromJsonElement(json)

@@ -272,12 +272,9 @@ internal class SendspinPlayerImpl(
                     newConnection = false
                 }
 
-                is ServerMessage.StreamEnd -> if (message.endsPlayer) {
-                    pipeline.apply(StreamLifecycle.onEnd(pipeline.phase))
-                }
-                is ServerMessage.StreamClear -> if (message.clearsPlayer) {
+                is ServerMessage.StreamEnd -> pipeline.apply(StreamLifecycle.onEnd(pipeline.phase))
+                is ServerMessage.StreamClear ->
                     pipeline.apply(StreamLifecycle.onClear(pipeline.phase, message.fromTimestampMicros))
-                }
                 else -> logger.d { "Ignoring ${message::class.simpleName}" }
             }
         }
