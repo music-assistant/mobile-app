@@ -46,7 +46,6 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.CompactButtonDefaults
-import androidx.wear.compose.material3.FilledTonalIconButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.OutlinedIconButton
@@ -68,6 +67,7 @@ import io.music_assistant.client.ui.compose.common.icons.SmartShuffleIcon
 import io.music_assistant.client.ui.compose.common.icons.StopIcon
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.wear.compose.material3.IconButton
 
 /**
  * The watch's main screen: cover art behind the transport controls, the track position drawn
@@ -152,12 +152,9 @@ private fun NowPlayingContent(
             onPrevious = onPrevious,
         )
     }
-    // Touch does not reach the app while the screen is dimmed, so a pair of filled buttons
-    // at the rim would be lit for nothing.
     ActionRow(
         enabled = state.isConnected,
         buttonSize = sizes.actionButton,
-        ambient = ambient,
         onOpenVolume = onOpenVolume,
         onOpenQueue = onOpenQueue,
     )
@@ -313,7 +310,6 @@ private fun TransportControls(
             contentDescription = R.string.cd_previous,
             enabled = canSkip,
             sizes = sizes,
-            ambient = ambient,
             onClick = onPrevious,
         )
         PlayPauseButton(
@@ -330,7 +326,6 @@ private fun TransportControls(
             contentDescription = R.string.cd_next,
             enabled = canSkip,
             sizes = sizes,
-            ambient = ambient,
             onClick = onNext,
         )
     }
@@ -342,42 +337,31 @@ private fun SkipButton(
     contentDescription: Int,
     enabled: Boolean,
     sizes: ControlSizes,
-    ambient: AmbientState,
     onClick: () -> Unit,
 ) {
-    val glyph = @Composable {
-        Icon(
-            imageVector = icon,
-            contentDescription = stringResource(contentDescription),
-            modifier = Modifier.size(sizes.sideIcon),
-        )
-    }
     // Outlined rather than filled while dimmed: a filled button is a disc of lit pixels held
     // in one place, which is what burns a panel in. The size does not change, so the row does
     // not move when the screen dims.
-    if (ambient.isAmbient) {
-        OutlinedIconButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier.size(sizes.sideButton),
-        ) { glyph() }
-    } else {
-        FilledTonalIconButton(
-            onClick = onClick,
-            enabled = enabled,
-            modifier = Modifier.size(sizes.sideButton),
-        ) { glyph() }
-    }
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(sizes.sideButton),
+    ) { Icon(
+        imageVector = icon,
+        contentDescription = stringResource(contentDescription),
+        modifier = Modifier.size(sizes.sideIcon),
+    ) }
 }
 
 /**
  * The queue and the volume, set against the rim.
  *
  * They are the two ways off this screen, so they give their space to the controls and take
- * the edge the artwork was filling anyway. They stay on the always-on screen, outlined like
- * the transport buttons beside them: they are not tappable while the screen is dimmed, but
- * leaving a gap where a control was reads as the app having lost something, and an outline
- * is a ring of lit pixels rather than a disc of them.
+ * the edge the artwork was filling anyway. They are outlined rather than filled, on the lit
+ * screen as well as the dimmed one: they sit beside the outlined transport buttons, and a
+ * pair of discs at the rim would pull the eye away from the controls they frame. On the
+ * always-on screen they also stay rather than leave a gap where a control was, and an
+ * outline is a ring of lit pixels rather than a disc of them.
  *
  * On a round watch the bottom corners are not glass:
  * each button is placed so that its outer bottom corner rides a circle just inside the bezel,
@@ -388,16 +372,10 @@ private fun SkipButton(
 private fun ActionRow(
     enabled: Boolean,
     buttonSize: Dp,
-    ambient: AmbientState,
     onOpenVolume: () -> Unit,
     onOpenQueue: () -> Unit,
 ) {
-    val colors = if (ambient.isAmbient) {
-        ButtonDefaults.outlinedButtonColors()
-    } else {
-        ButtonDefaults.filledTonalButtonColors()
-    }
-    val border = ButtonDefaults.outlinedButtonBorder(enabled).takeIf { ambient.isAmbient }
+    val colors = ButtonDefaults.outlinedButtonColors()
     RimRow(
         spacing = 56.dp,
         bottomSlack = CompactButtonDefaults.TapTargetPadding.calculateBottomPadding(),
@@ -408,7 +386,6 @@ private fun ActionRow(
             enabled = enabled,
             modifier = Modifier.size(buttonSize),
             colors = colors,
-            border = border,
             icon = {
                 Icon(
                     imageVector = Icons.Rounded.Queue,
@@ -422,7 +399,6 @@ private fun ActionRow(
             enabled = enabled,
             modifier = Modifier.size(buttonSize),
             colors = colors,
-            border = border,
             icon = {
                 Icon(
                     imageVector = Icons.Rounded.Speaker,

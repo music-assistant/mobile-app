@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.IconButtonShapes
@@ -82,19 +83,25 @@ fun PlayPauseButton(
         }
         val glyph = @Composable {
             Icon(
-                imageVector =  if (isPlaying) PlayIcon else PauseIcon,
+                imageVector =  if (isPlaying) PauseIcon else PlayIcon,
                 contentDescription = stringResource(
                     if (isPlaying) R.string.cd_pause else R.string.cd_play,
                 ),
                 modifier = Modifier.size(buttonSize / 2),
             )
         }
-        // Outlined rather than filled while dimmed, for the same reason the ring goes.
+        // Outlined rather than filled while dimmed, for the same reason the ring goes. The
+        // outline is drawn at [RING_STROKE], the width of the ring it stands in for, so the
+        // dimmed button reads as the same weight of line the lit screen had around it.
         if (ambient) {
             OutlinedIconButton(
                 onClick = onClick,
                 enabled = enabled,
                 modifier = Modifier.size(buttonSize),
+                border = ButtonDefaults.outlinedButtonBorder(
+                    enabled = enabled,
+                    borderWidth = RING_STROKE,
+                ),
             ) { glyph() }
         } else {
             FilledIconButton(
