@@ -32,6 +32,9 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
+import io.music_assistant.client.ui.compose.common.icons.PauseIcon
+import io.music_assistant.client.ui.compose.common.icons.PlayIcon
+
 /**
  * The play/pause button with the track position drawn around it.
  *
@@ -79,9 +82,7 @@ fun PlayPauseButton(
         }
         val glyph = @Composable {
             Icon(
-                painter = painterResource(
-                    if (isPlaying) R.drawable.ic_pause else R.drawable.ic_play,
-                ),
+                imageVector =  if (isPlaying) PlayIcon else PauseIcon,
                 contentDescription = stringResource(
                     if (isPlaying) R.string.cd_pause else R.string.cd_play,
                 ),

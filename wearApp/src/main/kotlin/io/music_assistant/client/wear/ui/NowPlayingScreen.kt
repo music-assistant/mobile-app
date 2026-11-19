@@ -3,6 +3,9 @@
 
 package io.music_assistant.client.wear.ui
 
+import androidx.compose.foundation.MarqueeAnimationMode
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,10 +19,21 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Queue
+import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
@@ -35,7 +49,6 @@ import androidx.wear.compose.material3.CompactButton
 import androidx.wear.compose.material3.CompactButtonDefaults
 import androidx.wear.compose.material3.FilledTonalIconButton
 import androidx.wear.compose.material3.Icon
-import androidx.wear.compose.material3.IconButtonShapes
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.OutlinedIconButton
 import androidx.wear.compose.material3.ScreenScaffold
@@ -44,6 +57,18 @@ import io.music_assistant.client.wear.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+
+import io.music_assistant.client.ui.compose.common.icons.RepeatOffIcon
+import io.music_assistant.client.ui.compose.common.icons.RepeatOnIcon
+import io.music_assistant.client.ui.compose.common.icons.RepeatOneIcon
+import io.music_assistant.client.ui.compose.common.icons.ShuffleOffIcon
+import io.music_assistant.client.ui.compose.common.icons.ShuffleOnIcon
+import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
+import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
+import io.music_assistant.client.ui.compose.common.icons.SmartShuffleIcon
+import io.music_assistant.client.ui.compose.common.icons.StopIcon
+
+import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
  * The watch's main screen: cover art behind the transport controls, the track position drawn
@@ -54,8 +79,7 @@ import kotlin.math.sqrt
  * that moves under the thumb while the user reaches for pause is worse than one that fits.
  *
  * The always-on screen is this screen with everything an always-on screen must not do taken
- * out of it: no cover art, no ring, no ticker, no filled buttons, and the whole column
- * shifted a few dp each minute where the panel asks for it. The sizes do not change, so
+ * out of it: no cover art, no ring, no ticker and no filled buttons. The sizes do not change, so
  * dimming and waking do not reflow what the user was looking at.
  */
 @Composable
@@ -102,7 +126,6 @@ private fun NowPlayingContent(
     onOpenQueue: () -> Unit,
 ) {
     val sizes = controlSizes()
-    val shift = ambient.burnInOffset
     Column(
         // The top inset keeps the title clear of the clock, and covers the screen margin the
         // scaffold no longer adds: the column is centred in what is left, which on a small
@@ -112,7 +135,6 @@ private fun NowPlayingContent(
         // keeps the margin itself, and the transport row needs the whole width (see below).
         modifier = Modifier
             .fillMaxSize()
-            .offset(x = shift.x, y = shift.y)
             .padding(
                 top = sizes.topInset,
                 bottom = sizes.actionButton + sizes.spacing,
@@ -120,7 +142,7 @@ private fun NowPlayingContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        TrackLabels(state)
+        TrackLabels(state, ambient)
         Spacer(Modifier.height(sizes.spacing))
         TransportControls(
             state = state,
@@ -133,25 +155,24 @@ private fun NowPlayingContent(
     }
     // Touch does not reach the app while the screen is dimmed, so a pair of filled buttons
     // at the rim would be lit for nothing.
-    if (!ambient.isAmbient) {
-        ActionRow(
-            enabled = state.isConnected,
-            buttonSize = sizes.actionButton,
-            onOpenVolume = onOpenVolume,
-            onOpenQueue = onOpenQueue,
-        )
-    }
+    ActionRow(
+        enabled = state.isConnected,
+        buttonSize = sizes.actionButton,
+        ambient = ambient,
+        onOpenVolume = onOpenVolume,
+        onOpenQueue = onOpenQueue,
+    )
 }
 
 @Composable
-private fun TrackLabels(state: WearUiState) {
+private fun TrackLabels(state: WearUiState, ambient: AmbientState) {
     // A known track keeps the screen; the session status only fills an otherwise empty one,
     // so a brief reconnect does not wipe what the user was looking at.
     val title = state.nowPlaying?.title
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = SAFE_MARGIN),
+            .roundScreenPadding(),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -171,7 +192,13 @@ private fun TrackLabels(state: WearUiState) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f, fill = false),
+            // The weight caps the line at what is left of the row after the badge, inside the
+            // row's own screen margin, so a long title scrolls across the space it is allowed
+            // and never under the bezel. `fill = false` keeps a short title at its natural
+            // width, so the badge and the title stay centred together as a pair.
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .scrollingTitle(enabled = !ambient.isAmbient),
         )
     }
     val subtitle = state.nowPlaying?.artist ?: state.session.statusDetail()
@@ -185,10 +212,64 @@ private fun TrackLabels(state: WearUiState) {
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = SAFE_MARGIN),
+                .roundScreenPadding(),
         )
     }
 }
+
+/**
+ * Side padding that keeps a line inside a round screen at the height the line actually sits,
+ * instead of inside the rectangle that contains the screen.
+ *
+ * [SAFE_MARGIN] is a rectangular margin, and near the top of a circle the glass is narrower
+ * than the rectangle by a long way: on a 240 dp round screen the title line sits about 49 dp
+ * down, where the glass spans only 23 dp to 217 dp, so a 24 dp margin leaves the text running
+ * into the bezel. This measures where the line landed and insets it to the chord at its own
+ * furthest edge, never giving back less than [SAFE_MARGIN], and keeps [RIM_INSET] of air
+ * between the text and the glass — the same inset the rim buttons keep.
+ *
+ * Reading the position back is safe here: side padding does not move a one-line row up or
+ * down, so the measurement cannot chase itself. A square screen keeps the flat margin.
+ */
+@Composable
+private fun Modifier.roundScreenPadding(): Modifier {
+    val isRound = LocalConfiguration.current.isScreenRound
+    val density = LocalDensity.current
+    var inset by remember { mutableStateOf(SAFE_MARGIN) }
+    return this
+        .onGloballyPositioned { coordinates ->
+            if (!isRound) return@onGloballyPositioned
+            val root = coordinates.findRootCoordinates()
+            val width = root.size.width.toFloat()
+            val height = root.size.height.toFloat()
+            val radius = minOf(width, height) / 2f
+            val centerY = height / 2f
+            val top = coordinates.positionInRoot().y
+            // The corner that sticks out furthest from the middle is the one that decides how
+            // much room the line has.
+            val reach = maxOf(abs(top - centerY), abs(top + coordinates.size.height - centerY))
+            val halfChord = sqrt((radius * radius - reach * reach).coerceAtLeast(0f))
+            val chordInset = with(density) { (width / 2f - halfChord).toDp() } + RIM_INSET
+            inset = maxOf(chordInset, SAFE_MARGIN)
+        }
+        .padding(horizontal = inset)
+}
+
+/**
+ * Scrolls a line of text past its window when it does not fit, and leaves it alone when it
+ * does.
+ *
+ * The marquee measures the text unbounded and then clips it to the width the layout gave it,
+ * so only the title moves: the badge beside it is a sibling in the row and stays where it is,
+ * and the scroll happens inside the margin the row keeps from the glass. It repeats for as
+ * long as the screen is up, because a title that scrolls three times and then rests truncated
+ * reads as broken rather than as finished.
+ *
+ * Never on the always-on screen, which is meant to be still: there [enabled] is false and the
+ * line falls back to the ellipsis.
+ */
+private fun Modifier.scrollingTitle(enabled: Boolean): Modifier =
+    if (enabled) basicMarquee(iterations = Int.MAX_VALUE) else this
 
 /**
  * The app icon, small, in front of the track title. It is the launcher icon's monochrome
@@ -229,7 +310,7 @@ private fun TransportControls(
         horizontalArrangement = Arrangement.spacedBy(sizes.gap),
     ) {
         SkipButton(
-            icon = R.drawable.ic_skip_previous,
+            icon = SkipBackIcon,
             contentDescription = R.string.cd_previous,
             enabled = canSkip,
             sizes = sizes,
@@ -246,7 +327,7 @@ private fun TransportControls(
             onClick = onPlayPause,
         )
         SkipButton(
-            icon = R.drawable.ic_skip_next,
+            icon = SkipForwardIcon,
             contentDescription = R.string.cd_next,
             enabled = canSkip,
             sizes = sizes,
@@ -258,7 +339,7 @@ private fun TransportControls(
 
 @Composable
 private fun SkipButton(
-    icon: Int,
+    icon: ImageVector,
     contentDescription: Int,
     enabled: Boolean,
     sizes: ControlSizes,
@@ -267,7 +348,7 @@ private fun SkipButton(
 ) {
     val glyph = @Composable {
         Icon(
-            painter = painterResource(icon),
+            imageVector = icon,
             contentDescription = stringResource(contentDescription),
             modifier = Modifier.size(sizes.sideIcon),
         )
@@ -294,7 +375,12 @@ private fun SkipButton(
  * The queue and the volume, set against the rim.
  *
  * They are the two ways off this screen, so they give their space to the controls and take
- * the edge the artwork was filling anyway. On a round watch the bottom corners are not glass:
+ * the edge the artwork was filling anyway. They stay on the always-on screen, outlined like
+ * the transport buttons beside them: they are not tappable while the screen is dimmed, but
+ * leaving a gap where a control was reads as the app having lost something, and an outline
+ * is a ring of lit pixels rather than a disc of them.
+ *
+ * On a round watch the bottom corners are not glass:
  * each button is placed so that its outer bottom corner rides a circle just inside the bezel,
  * which puts the pair as low as the screen allows and lets a wider button ride higher instead
  * of running off the edge.
@@ -303,11 +389,18 @@ private fun SkipButton(
 private fun ActionRow(
     enabled: Boolean,
     buttonSize: Dp,
+    ambient: AmbientState,
     onOpenVolume: () -> Unit,
     onOpenQueue: () -> Unit,
 ) {
+    val colors = if (ambient.isAmbient) {
+        ButtonDefaults.outlinedButtonColors()
+    } else {
+        ButtonDefaults.filledTonalButtonColors()
+    }
+    val border = ButtonDefaults.outlinedButtonBorder(enabled).takeIf { ambient.isAmbient }
     RimRow(
-        spacing = 78.dp,
+        spacing = 56.dp,
         bottomSlack = CompactButtonDefaults.TapTargetPadding.calculateBottomPadding(),
         modifier = Modifier.fillMaxSize(),
     ) {
@@ -315,10 +408,11 @@ private fun ActionRow(
             onClick = onOpenQueue,
             enabled = enabled,
             modifier = Modifier.size(buttonSize),
-            colors = ButtonDefaults.filledTonalButtonColors(),
+            colors = colors,
+            border = border,
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_queue),
+                    imageVector = Icons.Rounded.Queue,
                     contentDescription = stringResource(R.string.cd_queue),
                     modifier = Modifier.size(buttonSize / 2),
                 )
@@ -328,10 +422,11 @@ private fun ActionRow(
             onClick = onOpenVolume,
             enabled = enabled,
             modifier = Modifier.size(buttonSize),
-            colors = ButtonDefaults.filledTonalButtonColors(),
+            colors = colors,
+            border = border,
             icon = {
                 Icon(
-                    painter = painterResource(R.drawable.ic_speaker),
+                    imageVector = Icons.Rounded.Speaker,
                     contentDescription = stringResource(R.string.cd_volume),
                     modifier = Modifier.size(CompactButtonDefaults.ExtraSmallIconSize),
                 )

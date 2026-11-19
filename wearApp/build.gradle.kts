@@ -92,6 +92,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(projects.composeApp)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
 
@@ -100,6 +102,9 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.lifecycle.runtime.compose.android)
     implementation(libs.androidx.lifecycle.viewmodel.compose.android)
+
+    implementation(libs.material.icons.core)
+    implementation(libs.material.icons.extended)
 
     implementation(libs.androidx.wear)
     implementation(libs.androidx.wear.ongoing)
