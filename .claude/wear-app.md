@@ -166,8 +166,8 @@ Picking a player pops back to the volume screen, so the stepper is at once the n
 ## The always-on screen
 
 `AmbientState` (`ui/AmbientState.kt`) is what the platform told us through
-`AmbientLifecycleObserver`, passed through rather than interpreted at the edge: whether the
-panel burns in, whether it is low-bit, and how many ambient updates have arrived.
+`AmbientLifecycleObserver`, passed through rather than interpreted at the edge: for now, only
+whether the panel is low-bit.
 `MainActivity` registers the observer — that registration is what opts the app into the
 always-on screen at all — and holds the state in a `mutableStateOf` that `setContent` reads.
 The server session is held against ambient rather than against `onStop` alone — which
@@ -194,11 +194,18 @@ keeps its space as a `Spacer`, so dimming and waking never reflow what the user 
 at. A low-bit panel also drops the artwork-seeded colour scheme, which it has too few colours
 to render as anything but dithering.
 
-Burn-in protection is `AmbientState.burnInOffset`: a four-step square walked one step per
-ambient update, 4 dp off centre, applied to the whole column and only on a panel that asks
-for it. Ambient updates arrive about once a minute and are the only beat the screen gets.
-`AmbientStateTest` holds the walk to a closed loop that averages to zero and stays inside the
-text margin.
+**Burn-in is the system's to handle, not ours.** On a panel that reports
+`burnInProtectionRequired` the platform shifts the display itself, and
+[the always-on guide](https://developer.android.com/training/wearables/apps/always-on) says in
+as many words not to shift UI in the app: two shifts move the content twice as far, which is
+both visible and liable to push something past the clip. So the flag is not carried on
+`AmbientState` at all. What it asks of an app is only to avoid solid bright areas and to keep
+anything that matters at least 10 px clear of the rim so the system's own shift cannot clip
+it — and the always-on layout does both whatever the panel reports: outlines rather than
+fills, no artwork, `RIM_INSET` (6 dp) on everything that touches the rim and `SAFE_MARGIN`
+(24 dp) on the text. An earlier version walked a 4 dp square per ambient update; it was wrong
+and is gone, along with the ambient update count that drove it. `onUpdateAmbient` is not taken
+either: nothing in the always-on layout goes stale between updates.
 
 **Staying on screen past the first minute.** Wear's `AmbientTaskStackManager` starts a
 60 000 ms timer on an ambient task whose log line reads `no-ongoing`, then moves it to the

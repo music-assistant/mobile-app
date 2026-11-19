@@ -60,8 +60,9 @@ class MainActivity : ComponentActivity() {
     /**
      * Registering the observer is what opts this activity into the always-on screen: without
      * it the watch leaves the app when the screen dims. The callbacks arrive on the main
-     * thread, and `onUpdateAmbient` about once a minute — the only beat ambient gets, and so
-     * the only thing that can move the content for burn-in.
+     * thread. `onUpdateAmbient`, the once-a-minute beat, is not taken: nothing in the
+     * always-on layout goes stale between updates, and the shift for a panel that burns in
+     * is the system's to make, not ours.
      */
     private val ambientObserver by lazy {
         AmbientLifecycleObserver(
@@ -71,15 +72,8 @@ class MainActivity : ComponentActivity() {
                     ambientDetails: AmbientLifecycleObserver.AmbientDetails,
                 ) {
                     ambient = AmbientState.Ambient(
-                        burnInProtectionRequired = ambientDetails.burnInProtectionRequired,
                         lowBitAmbient = ambientDetails.deviceHasLowBitAmbient,
                     )
-                }
-
-                override fun onUpdateAmbient() {
-                    (ambient as? AmbientState.Ambient)?.let {
-                        ambient = it.copy(updateCount = it.updateCount + 1)
-                    }
                 }
 
                 override fun onExitAmbient() {
