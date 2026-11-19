@@ -31,6 +31,11 @@
 - **cryptography-kotlin** (0.6.0) - Crypto primitives (JDK provider on Android, CryptoKit on iOS)
 - **BouncyCastle** (`bcprov-jdk18on` 1.85.2, `sendspin-kmp`) - X25519 and ChaCha20-Poly1305 on Android
 
+## Wear OS (`wearApp` only)
+- **androidx.wear-ongoing** (1.0.0) - `OngoingActivity`, the playing chip. Without one, Wear evicts an ambient app after 60 s.
+- **Wear Compose** (1.7.1) - `rememberAmbientModeManager` (the always-on screen; it replaced `androidx.wear:wear`'s `AmbientLifecycleObserver`, and goes through the Wear SDK, so it needs a watch that has one), `compose-material3` (Material 3 Expressive for watches), `compose-foundation` (`TransformingLazyColumn`, rotary), `compose-navigation` (`SwipeDismissableNavHost`). Pinned against the androidx Compose artifacts (1.12.1), not Compose Multiplatform: the watch module shares no UI with the phone app.
+- **material-color-utilities** (5.0.1) - The HCT/quantizer half of MaterialKolor, without its Compose Material3 surface. Seeds the watch's `androidx.wear.compose.material3.ColorScheme` from the cover art.
+
 ## Utilities
 - **Kermit** - Multiplatform logging
 - **QRose encoder** (`qrose-encoder-matrix` 1.3.1) - Makes the QR bit matrix of the party invite. It has no Compose dependency. `QrCode` draws the matrix.
