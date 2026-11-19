@@ -27,7 +27,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.Defaults
 import io.music_assistant.client.ui.compose.ScreenSemantics
 import io.music_assistant.client.ui.compose.settings.sections.ConnectionSettingsSection
-import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidBasePath
@@ -41,7 +40,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun ConnectScreen(onConnect: () -> Unit, onExitApp: () -> Unit) {
+fun ConnectScreen(onExitApp: () -> Unit) {
     val viewModel = koinViewModel<SettingsViewModel>()
     val savedConnectionInfo by viewModel.savedConnectionInfo.collectAsStateWithLifecycle()
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
@@ -57,13 +56,6 @@ fun ConnectScreen(onConnect: () -> Unit, onExitApp: () -> Unit) {
     var port by remember { mutableStateOf(Defaults.PORT.toString()) }
     var isTls by remember { mutableStateOf(false) }
     var basePath by remember { mutableStateOf("") }
-
-    LaunchedEffect(sessionState) {
-        val s = sessionState
-        if (s is SessionState.Connected && s.dataConnectionState is DataConnectionState.Authenticated) {
-            onConnect()
-        }
-    }
 
     LaunchedEffect(savedConnectionInfo) {
         savedConnectionInfo?.let {

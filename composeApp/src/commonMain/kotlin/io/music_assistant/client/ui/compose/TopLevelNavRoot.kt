@@ -5,7 +5,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,7 +39,6 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val serviceClient: ServiceClient = koinInject()
@@ -139,14 +137,14 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
                 when {
                     // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
-                    connState is DataConnectionState.Authenticated && connectedState.wasAutoLogin -> {
+                    connState is DataConnectionState.Authenticated -> {
                         if (backStack.last() !is Nav.Main) {
                             backStack.clear()
                             backStack.add(Nav.Main)
                         }
                     }
 
-                    connState !is DataConnectionState.Authenticated -> {
+                    else -> {
                         if (backStack.last() !is Nav.Connect) {
                             backStack.clear()
                             backStack.add(Nav.Connect)
@@ -187,10 +185,6 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             entryProvider = entryProvider {
                 entry<Nav.Connect> {
                     ConnectScreen(
-                        onConnect = {
-                            backStack.clear()
-                            backStack.add(Nav.Main)
-                        },
                         onExitApp = {
                             exitApp()
                         },
