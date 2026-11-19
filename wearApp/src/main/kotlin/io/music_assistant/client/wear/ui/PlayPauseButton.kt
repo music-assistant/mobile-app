@@ -11,15 +11,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.FilledIconButton
@@ -43,6 +48,9 @@ import io.music_assistant.client.ui.compose.common.icons.PlayIcon
  * moves next to the one thing the user presses, and leaves the screen edge to the system.
  * The ring is scalloped so that it reads as part of the control instead of as a stray arc,
  * and so the played part is still tellable apart from the rest without relying on colour.
+ *
+ * The button carries the same wave (see [WavyButtonShape]), so the two are one control with a
+ * gap in it rather than a round button with a scalloped ring loose around it.
  *
  * [progress] is null for anything without a known length — a radio stream — and then only
  * the track is drawn.
@@ -98,6 +106,7 @@ fun PlayPauseButton(
                 onClick = onClick,
                 enabled = enabled,
                 modifier = Modifier.size(buttonSize),
+                shapes = IconButtonShapes(WavyButtonShape),
                 border = ButtonDefaults.outlinedButtonBorder(
                     enabled = enabled,
                     borderWidth = RING_STROKE,
@@ -108,17 +117,41 @@ fun PlayPauseButton(
                 onClick = onClick,
                 enabled = enabled,
                 modifier = Modifier.size(buttonSize),
+                shapes = IconButtonShapes(WavyButtonShape),
             ) { glyph() }
         }
     }
 }
 
 /**
- * Draws [sweepDegrees] of a wave that runs around the centre, starting at twelve o'clock.
+ * The play button's own outline: the ring's wave, inscribed in the button's bounds.
  *
- * The wave count is whole, so the crest at the start of the circle is also the crest at its
- * end and the ring closes without a seam.
+ * It is built from [wavyPath] like the ring is, with the ring's amplitude and the ring's
+ * phase, so the distance from the button's edge to the ring is the same the whole way round
+ * and the button reads as the inside edge of the ring. The crests sit on the bounds, so the
+ * size of the gap is whatever `ControlSizes` leaves between `playButton` and `ring`.
+ *
+ * The outline is a path rather than a corner shape, so the button cannot cast a shadow. It
+ * does not: a Wear icon button is a tonal surface.
  */
+private object WavyButtonShape : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density,
+    ): Outline {
+        val amplitude = with(density) { WAVE_AMPLITUDE.toPx() }
+        val path = wavyPath(
+            center = Offset(size.width / 2f, size.height / 2f),
+            radius = size.minDimension / 2f - amplitude,
+            amplitude = amplitude,
+            sweepDegrees = FULL_CIRCLE,
+        ).apply { close() }
+        return Outline.Generic(path)
+    }
+}
+
+/** Strokes [sweepDegrees] of the wave that [wavyPath] traces, starting at twelve o'clock. */
 private fun DrawScope.drawWavyArc(
     radius: Float,
     amplitude: Float,
@@ -127,6 +160,33 @@ private fun DrawScope.drawWavyArc(
     strokeWidth: Float,
 ) {
     if (sweepDegrees <= 0f) return
+    drawPath(
+        path = wavyPath(center, radius, amplitude, sweepDegrees),
+        color = color,
+        style = Stroke(
+            width = strokeWidth,
+            cap = StrokeCap.Round,
+            join = StrokeJoin.Round,
+        ),
+    )
+}
+
+/**
+ * Traces [sweepDegrees] of a wave that runs around [center], starting at twelve o'clock.
+ *
+ * The path swings [amplitude] either side of [radius], so a crest reaches [radius] +
+ * [amplitude]. The wave count is whole, so the crest at the start of the circle is also the
+ * crest at its end and the ring closes without a seam.
+ *
+ * Both the ring and the button under it are traced here, which is what keeps their twelve
+ * crests in the same twelve places.
+ */
+private fun wavyPath(
+    center: Offset,
+    radius: Float,
+    amplitude: Float,
+    sweepDegrees: Float,
+): Path {
     val steps = (sweepDegrees / DEGREES_PER_STEP).roundToInt().coerceAtLeast(2)
     val path = Path()
     for (step in 0..steps) {
@@ -138,15 +198,7 @@ private fun DrawScope.drawWavyArc(
         )
         if (step == 0) path.moveTo(point.x, point.y) else path.lineTo(point.x, point.y)
     }
-    drawPath(
-        path = path,
-        color = color,
-        style = Stroke(
-            width = strokeWidth,
-            cap = StrokeCap.Round,
-            join = StrokeJoin.Round,
-        ),
-    )
+    return path
 }
 
 private val RING_STROKE = 3.5.dp
