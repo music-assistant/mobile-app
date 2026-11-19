@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -195,7 +198,7 @@ private fun OutputButton(
         colors = ButtonDefaults.buttonColors(),
         icon = {
             Icon(
-                painter = painterResource(R.drawable.ic_speaker),
+                imageVector = if (player?.isGroup == true) Icons.Rounded.SpeakerGroup else Icons.Rounded.Speaker,
                 contentDescription = null,
                 modifier = Modifier.size(ButtonDefaults.IconSize),
             )

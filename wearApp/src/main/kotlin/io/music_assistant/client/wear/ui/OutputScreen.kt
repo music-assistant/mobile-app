@@ -6,6 +6,9 @@ package io.music_assistant.client.wear.ui
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Speaker
+import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -116,7 +119,7 @@ private fun PlayerButton(
         },
         icon = {
             Icon(
-                painter = painterResource(R.drawable.ic_speaker),
+                imageVector = if (player.isGroup) Icons.Rounded.SpeakerGroup else Icons.Rounded.Speaker,
                 contentDescription = null,
                 modifier = Modifier.size(ButtonDefaults.IconSize),
             )
