@@ -4,6 +4,7 @@ import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerMedia
+import io.music_assistant.client.data.model.client.PlayerSource
 import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.data.model.client.SongTiming
 import io.music_assistant.client.data.model.server.PlayerFeature
@@ -52,9 +53,17 @@ class PlayerFactory(
             currentMedia = currentMedia?.let(::createPlayerMedia),
             sleepTimerExpiresAt = sleepTimerExpiresAt,
             sleepTimerMode = sleepTimerMode,
-            // A queue id is a player id. Only an input of the audio source framework is a uri.
-            liveInputUri = activeSource?.takeIf { URI_MARK in it },
-            canPauseLiveInput = sourceList.any { it.id == activeSource && URI_MARK in it.id && it.canPlayPause },
+            activeSource = activeSource,
+            sources = sourceList.map {
+                PlayerSource(
+                    id = it.id,
+                    name = it.name,
+                    passive = it.passive,
+                    canPlayPause = it.canPlayPause,
+                    canSeek = it.canSeek,
+                    canNextPrevious = it.canNextPrevious,
+                )
+            },
         )
     }
 
@@ -89,6 +98,5 @@ class PlayerFactory(
 
     private companion object {
         const val PLAYER_CONTROL_NONE = "none"
-        const val URI_MARK = "://"
     }
 }

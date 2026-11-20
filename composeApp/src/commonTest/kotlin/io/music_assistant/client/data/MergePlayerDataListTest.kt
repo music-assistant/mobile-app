@@ -169,7 +169,7 @@ class MergePlayerDataListTest {
     fun `a live input replaces the queue of the player and a later queue comes back`() {
         val kitchen = playerData(queueId = "kitchen").let { it.copy(player = it.player.copy(id = "kitchen")) }
         val queueInfo = requireNotNull(kitchen.queueInfo)
-        val onInput = kitchen.player.copy(queueId = INPUT_URI, liveInputUri = INPUT_URI)
+        val onInput = kitchen.player.copy(queueId = INPUT_URI, activeSource = INPUT_URI)
 
         fun merge(player: Player, old: List<PlayerData>) = mergePlayerDataList(
             localPlayerId = LOCAL_ID,

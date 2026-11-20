@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Input
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.SwapHoriz
@@ -94,6 +95,7 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueue
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.toQueueTrack
+import io.music_assistant.client.data.model.client.PlayerSource
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.model.client.chapterSeekSeconds
 import io.music_assistant.client.data.model.client.items.AppMediaItem
@@ -166,6 +168,7 @@ import musicassistantclient.composeapp.generated.resources.player_power_on
 import musicassistantclient.composeapp.generated.resources.players_dsp_settings
 import musicassistantclient.composeapp.generated.resources.players_loading
 import musicassistantclient.composeapp.generated.resources.players_none_available
+import musicassistantclient.composeapp.generated.resources.players_select_source
 import musicassistantclient.composeapp.generated.resources.queue_clear
 import musicassistantclient.composeapp.generated.resources.queue_label
 import musicassistantclient.composeapp.generated.resources.queue_no_other_players
@@ -799,6 +802,10 @@ private fun ExpandedPlayerPage(
                         onAnnounce = onAnnounceButton,
                         onAmbientSound = onAmbientSoundButton,
                         deviceAudioOption = deviceAudioOption,
+                        // The device audio share owns the source of its target.
+                        sourceChoices = player.player.sourceChoices
+                            .takeUnless { player.isLocal || playsDeviceAudio }
+                            .orEmpty(),
                         onAddToPlaylist = onAddToPlaylist,
                         showWaveformToggle = waveformToggleAvailable,
                         queueDjMenu = queueDjMenu,
@@ -1125,12 +1132,15 @@ private fun PlayerOverflowMenu(
     onAnnounce: (() -> Unit)?,
     onAmbientSound: (() -> Unit)?,
     deviceAudioOption: OverflowMenuOption? = null,
+    // The sources that the user can select; empty hides the entry.
+    sourceChoices: List<PlayerSource> = emptyList(),
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     showWaveformToggle: Boolean = false,
     queueDjMenu: QueueDjMenu? = null,
     onQueueDjSelected: (queueId: String, hostId: String?) -> Unit = { _, _ -> },
 ) {
     var transferMenuExpanded by remember { mutableStateOf(false) }
+    var sourceMenuExpanded by remember { mutableStateOf(false) }
     var queueDjMenuExpanded by remember { mutableStateOf(false) }
     val currentTrack = currentPlayer.queueInfo?.currentItem?.track as? Track
 
@@ -1231,6 +1241,32 @@ private fun PlayerOverflowMenu(
         }
     }.orEmpty()
 
+    val sourceOptions = sourceChoices.takeIf { it.isNotEmpty() }?.let { choices ->
+        Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
+            OverflowMenu(
+                expanded = sourceMenuExpanded,
+                onClose = { sourceMenuExpanded = false },
+                options = choices.map { source ->
+                    val active = currentPlayer.player.isActive(source)
+                    OverflowMenuOption(
+                        title = source.name,
+                        trailingIcon = Icons.Default.Check.takeIf { active },
+                        enabled = !active,
+                        onClick = { playerAction(PlayerAction.SelectSource(source.id)) },
+                    )
+                },
+            )
+        }
+        listOf(
+            OverflowMenuOption(
+                title = stringResource(Res.string.players_select_source),
+                icon = Icons.Default.Input,
+                trailingIcon = Icons.AutoMirrored.Default.ArrowRight,
+                onClick = { sourceMenuExpanded = true },
+            ),
+        )
+    }.orEmpty()
+
     // Power sits at the very top of the menu, ahead of queue/player/navigation options.
     val powerOption = if (currentPlayer.player.canPower) {
         // Reads the dormant state, not the raw flag: an unreachable player reports itself
@@ -1295,7 +1331,7 @@ private fun PlayerOverflowMenu(
             add(waveformMenuOption())
         }
     }
-    val playerActions = powerOption + queueOptions + queueDjOptions + displayOptions
+    val playerActions = powerOption + sourceOptions + queueOptions + queueDjOptions + displayOptions
 
     // Track actions (bottom group): add-to-playlist, play link + navigation (go to artist/album).
     val currentMedia = currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem

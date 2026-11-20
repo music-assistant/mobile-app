@@ -421,6 +421,7 @@
   <string name="players_none_available">No players available</string>
   <string name="players_nothing">Nothing playing</string>
   <string name="players_remote_volume_hint">Volume buttons only work for the local player</string>
+  <string name="players_select_source">Select source</string>
   <string name="players_swipe_hint">Swipe left or right to switch between players</string>
   <string name="players_title">Players</string>
   <string name="playlist_access_collaborative">Collaborative</string>

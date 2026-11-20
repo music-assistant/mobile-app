@@ -127,7 +127,7 @@ fun PlayerControls(
                 icon = SkipBackIcon,
                 tint = tint,
                 size = smallButtonSize,
-                enabled = playerEnabled && buttonsEnabled,
+                enabled = playerEnabled && transport.skipBackEnabled,
             ) { playerAction(playerData, PlayerAction.Previous) }
         }
 
@@ -171,7 +171,7 @@ fun PlayerControls(
                 icon = SkipForwardIcon,
                 tint = tint,
                 size = smallButtonSize,
-                enabled = playerEnabled && buttonsEnabled && skipForwardEnabled,
+                enabled = playerEnabled && skipForwardEnabled,
             ) { playerAction(playerData, PlayerAction.Next) }
         }
 
@@ -273,10 +273,24 @@ internal class TransportState(
     val buttonsEnabled: Boolean,
     // Like the web app, Stop stays available while playing even if the item is not playable.
     val showStop: Boolean,
+    val skipBackEnabled: Boolean,
     val skipForwardEnabled: Boolean,
 )
 
 internal fun PlayerData.transportState(chapterProgressEnabled: Boolean): TransportState {
+    val playerEnabled = player.canPlay && !player.isAnnouncing
+    val showStop = player.isPlaying && !canPauseContent
+    // A source in place of the queue has no queue item: its own flags tell what it accepts.
+    externalSource?.let { source ->
+        return TransportState(
+            playerEnabled = playerEnabled,
+            // The server selects a stopped source again on Play, also one that cannot pause.
+            buttonsEnabled = source.canPlayPause || (!source.passive && !player.isPlaying),
+            showStop = showStop,
+            skipBackEnabled = source.canNextPrevious,
+            skipForwardEnabled = source.canNextPrevious,
+        )
+    }
     val queue = queueInfo
     val itemsCount = queueItems?.size ?: 0
     // Next is a chapter jump when navigation applies (PlayerRequestFactory), so it stays
@@ -291,11 +305,13 @@ internal fun PlayerData.transportState(chapterProgressEnabled: Boolean): Transpo
         (queue?.currentItem?.track as? Audiobook)?.let { it.fullyPlayed == false } == true -> true
         else -> false
     }
+    val buttonsEnabled = queue?.currentItem?.isPlayable == true
     return TransportState(
-        playerEnabled = player.canPlay && !player.isAnnouncing,
-        buttonsEnabled = queue?.currentItem?.isPlayable == true,
-        showStop = player.isPlaying && !canPauseContent,
-        skipForwardEnabled = skipForwardEnabled,
+        playerEnabled = playerEnabled,
+        buttonsEnabled = buttonsEnabled,
+        showStop = showStop,
+        skipBackEnabled = buttonsEnabled,
+        skipForwardEnabled = buttonsEnabled && skipForwardEnabled,
     )
 }
 

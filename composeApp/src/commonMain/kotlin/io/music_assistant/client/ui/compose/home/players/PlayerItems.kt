@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
@@ -409,7 +408,10 @@ fun FullPlayerItem(
         val poweredOff = item.player.isPoweredOff
         val (trackName, trackContentDescription) = item.player.dormantLabel()
             ?.let { it to it }
-            ?: trackNameAndContentDescription(currentMedia?.title)
+            // An input of the device, such as a TV input, can report no title: name the source.
+            ?: trackNameAndContentDescription(
+                currentMedia?.title ?: item.externalSource?.name?.takeIf { it.isNotBlank() },
+            )
 
         // Powered off: present the "no media" state — disabled slider, empty time labels.
         val duration = if (poweredOff) null else currentMedia?.duration?.takeIf { it > 0 }?.toFloat()
@@ -434,7 +436,7 @@ fun FullPlayerItem(
         val timelinePosition =
             currentChapter?.relativeSec(displayPosition.toDouble())?.toFloat() ?: displayPosition
         // A radio stream cannot seek, not even in a song whose length it reports.
-        val seekable = timelineDuration != null && currentMedia?.mediaType != MediaType.RADIO
+        val seekable = timelineDuration != null && item.canSeekContent
 
         val titleTrack = (item.queueInfo?.currentItem?.track as? Track)?.takeIf { !poweredOff }
         // The title does the overflow's "Go to track".

@@ -13,6 +13,9 @@ sealed interface PlayerAction {
     data object Previous : PlayerAction
     data object VolumeUp : PlayerAction
     data class SetPower(val powered: Boolean) : PlayerAction
+
+    /** Makes a source of the player the active one. The player id selects its queue again. */
+    data class SelectSource(val sourceId: String) : PlayerAction
     data object VolumeDown : PlayerAction
     data class VolumeSet(val level: Double) : PlayerAction
     data class ToggleMute(val isMutedNow: Boolean) : PlayerAction

@@ -79,8 +79,8 @@ actual class PlatformFeature {
 - **Input sources**: a live input from a server plugin is `MediaType.AUDIO_SOURCE` (`AudioSource`). The server
   puts the sources that a client can start at the `music/browse` root, from server 2.9.0. Play the source `uri`
   with `play_media`. A source never ends, so the long-press menu has "Play now" only. A source has no favorite
-  state. Native player inputs (`source_list`, `players/cmd/select_source`) are a different feature, and the
-  client does not show them.
+  state. The sources of a player (`source_list`, `players/cmd/select_source`) are a different feature. See
+  "Player sources".
 - **Ambient sound overlay**: the server mixes a looping `sound_effect` item into the queue stream, so all
   players on the stream hear it. `QueueOverlayRepository` (`data/repository/`) sends `player_queues/overlay`
   and loads the sounds with `music/sound_effects`. The command goes to the server for every player and is never
@@ -332,14 +332,27 @@ actual class PlatformFeature {
   2.11. It is null on an older server, for a single track and for a live stream. The stream details
   dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to
   `opensItemDetails` when `ItemDetailsViewModel.getItemById` loads it.
-- **Live input as the active source**: a newer server plays a live input through `select_source`. The
-  `active_source` of the player is then the uri of the input, not a queue id, and the queue has no item for it.
-  `Player.liveInputUri` holds that uri (an active source with `://`). `mergePlayerDataList` gives such a player no
-  queue, also not the queue of before the input. `PlayerData.canPauseContent` follows `can_play_pause` of the input
-  in the `source_list` of the player (`Player.canPauseLiveInput`), like the web frontend. So Spotify Connect keeps
-  Pause, and the device audio source gets Stop. An input that the server does not list gets Stop. The other
-  transport buttons are disabled because the player has no current item. An older server makes the
-  input the current queue item (`AudioSource`), and that path does not change.
+- **Player sources**: a player can play a source that is not its queue: a live input (Spotify Connect, AirPlay,
+  the device audio source) or an input of the device (a TV input). `Player.sources` holds the `source_list` of
+  the server, and `Player.activeSource` holds the id of the active source. The queue of the player is the entry
+  with the player id. `Player.externalSource` is the active entry if it is not the queue. A sync child names the
+  queue of its leader, which is not in its own list, so it has no external source. A uri that the server does
+  not list becomes a passive entry with no controls, so the player offers Stop only.
+
+  A player on an external source has no queue. `mergePlayerDataList` gives it no queue, also not the queue of
+  before the source. The controls follow the flags of the source, like the web frontend. `transportState` and
+  `mainTransport` (`PlayerControls.kt`) are the one place for the buttons: `canPlayPause` gives Pause or Stop,
+  and `canNextPrevious` gives the skip buttons. A stopped source that is not passive accepts Play, because the
+  server selects it again. `PlayerData.canSeekContent` gives the seek rule to the timeline and to the Android
+  media session. The page shows the source name as the title if the media has no title. The position of an
+  external source is not tracked, so its timeline stays at the start.
+
+  The menu of the expanded player has "Select source" (`Player.sourceChoices`): the entries that are not
+  passive and the active entry, sorted by name. The entry shows only if the list has more than one choice and
+  the player is not a sync child. The local player and the target of a device audio share get no entry. A
+  choice sends `PlayerAction.SelectSource`, which is `players/cmd/select_source`. The player id selects the
+  queue again. The car surfaces have no picker. An older server makes a live input the current queue item
+  (`AudioSource`), and that path does not change.
 - **Queue end**: when a queue plays to its end, the server keeps `current_index` and `current_item` on
   the last item and sets `ended` (every server 2.x that the app supports). `QueueInfo.activeItemId` gives
   null for an ended queue. The queue list marks every row as played and shows "Playback finished". Use

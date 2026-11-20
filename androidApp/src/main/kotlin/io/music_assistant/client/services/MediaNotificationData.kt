@@ -121,7 +121,8 @@ data class MediaNotificationData(
                 ?.takeIf { it.mediaType == MediaType.RADIO }
                 ?.displayName
                 ?.takeIf { it.isNotBlank() },
-            isSeekable = currentQueueTrack?.mediaType != MediaType.RADIO,
+            isSeekable = currentQueueTrack?.mediaType != MediaType.RADIO &&
+                playerData.externalSource?.canSeek != false,
             )
         }
 

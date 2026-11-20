@@ -53,6 +53,9 @@ class PlayerRequestFactory(
             is PlayerAction.SetPower ->
                 Request.Player.setPower(playerId = data.playerId, powered = action.powered)
 
+            is PlayerAction.SelectSource ->
+                Request.Player.selectSource(playerId = data.playerId, source = action.sourceId)
+
             is PlayerAction.SeekTo -> {
                 Request.Player.seek(queueId = data.playerId, position = action.position)
             }
