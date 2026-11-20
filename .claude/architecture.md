@@ -316,6 +316,12 @@ actual class PlatformFeature {
   2.11. It is null on an older server, for a single track and for a live stream. The stream details
   dialog shows it. It opens the container only if `opensItemDetails` is true. Add a type to
   `opensItemDetails` when `ItemDetailsViewModel.getItemById` loads it.
+- **Live input as the active source**: a newer server plays a live input through `select_source`. The
+  `active_source` of the player is then the uri of the input, not a queue id, and the queue has no item for it.
+  `Player.liveInputUri` holds that uri (an active source with `://`). `mergePlayerDataList` gives such a player no
+  queue, also not the queue of before the input. `PlayerData.canPauseContent` is false, so the main button is Stop,
+  and the other transport buttons are disabled because the player has no current item. An older server makes the
+  input the current queue item (`AudioSource`), and that path does not change.
 - **Queue end**: when a queue plays to its end, the server keeps `current_index` and `current_item` on
   the last item and sets `ended` (every server 2.x that the app supports). `QueueInfo.activeItemId` gives
   null for an ended queue. The queue list marks every row as played and shows "Playback finished". Use

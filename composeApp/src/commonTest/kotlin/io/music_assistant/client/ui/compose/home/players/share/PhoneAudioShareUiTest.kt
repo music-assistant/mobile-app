@@ -68,7 +68,16 @@ class PhoneAudioShareUiTest {
     }
 
     @Test
-    fun `an active share has no mark until a queue plays the source`() {
+    fun `an active share has no mark until a player plays the source`() {
         assertNull(ui(PhoneAudioShareState.Active).target)
+    }
+
+    @Test
+    fun `an active share marks the player whose active source is the phone`() {
+        val onPhone = kitchen.copy(player = kitchen.player.copy(liveInputUri = "sendspin://audio_source/phone"))
+        val onOtherInput = kitchen.copy(player = kitchen.player.copy(liveInputUri = "vban://audio_source/desk"))
+
+        assertEquals(onPhone.playerId, ui(PhoneAudioShareState.Active, listOf(phone, onPhone)).target?.playerId)
+        assertNull(ui(PhoneAudioShareState.Active, listOf(phone, onOtherInput)).target)
     }
 }

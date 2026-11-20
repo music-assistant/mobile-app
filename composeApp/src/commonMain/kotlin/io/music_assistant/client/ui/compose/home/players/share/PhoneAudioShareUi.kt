@@ -51,8 +51,10 @@ data class PhoneAudioShareUi(
             )
         }
 
+        /** The server names the input as the active source, or, on an older server, as the queue item. */
         private fun PlayerData.plays(sourceUri: String?): Boolean =
-            sourceUri != null && (queueInfo?.currentItem?.track as? AudioSource)?.uri == sourceUri
+            sourceUri != null &&
+                (player.liveInputUri == sourceUri || (queueInfo?.currentItem?.track as? AudioSource)?.uri == sourceUri)
     }
 }
 

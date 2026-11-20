@@ -1,10 +1,13 @@
 package io.music_assistant.client.data
 
 import io.music_assistant.client.data.MainDataSource.Companion.mergePlayerDataList
+import io.music_assistant.client.data.model.client.Player
+import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.player
 import io.music_assistant.client.data.model.client.PlayerDataFixtures.playerData
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -162,7 +165,31 @@ class MergePlayerDataListTest {
         assertEquals(listOf("leader"), list.map { it.playerId })
     }
 
+    @Test
+    fun `a live input replaces the queue of the player and a later queue comes back`() {
+        val kitchen = playerData(queueId = "kitchen").let { it.copy(player = it.player.copy(id = "kitchen")) }
+        val queueInfo = requireNotNull(kitchen.queueInfo)
+        val onInput = kitchen.player.copy(queueId = INPUT_URI, liveInputUri = INPUT_URI)
+
+        fun merge(player: Player, old: List<PlayerData>) = mergePlayerDataList(
+            localPlayerId = LOCAL_ID,
+            serverPlayers = listOf(player),
+            sortedIds = null,
+            queues = listOf(queueInfo),
+            localData = null,
+            oldPlayers = old,
+        )
+
+        val withInput = merge(onInput, listOf(kitchen))
+        assertNull(withInput.single().queueInfo, "the queue of before the input must not show")
+        assertFalse(withInput.single().canPauseContent, "a live input can only stop")
+
+        val after = merge(kitchen.player, withInput)
+        assertEquals("kitchen", after.single().queueInfo?.id)
+    }
+
     private companion object {
+        const val INPUT_URI = "sendspin://audio_source/phone"
         const val LOCAL_ID = "phone"
     }
 }

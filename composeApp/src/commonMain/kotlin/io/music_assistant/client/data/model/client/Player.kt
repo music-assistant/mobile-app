@@ -40,6 +40,12 @@ data class Player(
      * end-of-content mode, [sleepTimerExpiresAt] is an estimate, and null while paused.
      */
     val sleepTimerMode: SleepTimerMode? = null,
+    /**
+     * The uri of the live input that the player plays in place of a queue, or null. The server
+     * then names the input, not a queue, as the active source of the player. Such a player has
+     * no queue to show, and a live input can only stop.
+     */
+    val liveInputUri: String? = null,
 ) {
     /**
      * The player is there but asleep. Two server states look identical to the user — a

@@ -52,6 +52,8 @@ class PlayerFactory(
             currentMedia = currentMedia?.let(::createPlayerMedia),
             sleepTimerExpiresAt = sleepTimerExpiresAt,
             sleepTimerMode = sleepTimerMode,
+            // A queue id is a player id. Only an input of the audio source framework is a uri.
+            liveInputUri = activeSource?.takeIf { URI_MARK in it },
         )
     }
 
@@ -86,5 +88,6 @@ class PlayerFactory(
 
     private companion object {
         const val PLAYER_CONTROL_NONE = "none"
+        const val URI_MARK = "://"
     }
 }

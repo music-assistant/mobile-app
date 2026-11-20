@@ -30,7 +30,7 @@ data class PlayerData(
     val canPauseContent: Boolean
         get() = when (val track = queueInfo?.currentItem?.track) {
             is AudioSource -> track.canPlayPause
-            else -> player.currentMedia?.mediaType != MediaType.RADIO
+            else -> player.liveInputUri == null && player.currentMedia?.mediaType != MediaType.RADIO
         }
 
     fun updateFrom(other: PlayerData): PlayerData {
