@@ -54,6 +54,8 @@ public class SendspinDeps(
     /** Reported as `device_info` in `client/hello`. */
     public val deviceInfo: DeviceInfo,
     public val clock: MonotonicClock = SystemMonotonicClock,
+    /** Encoders for the source role. Without a factory, or without a FLAC encoder, the source sends PCM. */
+    public val encoders: EncoderFactory? = null,
 )
 
 /**

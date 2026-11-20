@@ -34,7 +34,6 @@ import io.music_assistant.sendspin.wire.PairAbortPayload
 import io.music_assistant.sendspin.wire.ServerActivatePayload
 import io.music_assistant.sendspin.wire.ServerMessage
 import io.music_assistant.sendspin.wire.UnpairedAccess
-import io.music_assistant.sendspin.wire.VersionedRole
 import io.music_assistant.sendspin.wire.WireCodec
 import io.music_assistant.sendspin.wire.pairMethods
 import io.music_assistant.sendspin.wire.truncateUtf8
@@ -108,15 +107,19 @@ internal class NoiseSession(
      * Application send. Suspends until the session is activated; quiesces
      * through pairing and re-handshakes. Throws once the session is over.
      */
-    suspend fun send(json: String) {
-        val payload = json.encodeToByteArray()
+    suspend fun send(json: String) = sendGated(NoiseFraming.TYPE_JSON, json.encodeToByteArray())
+
+    /** Application send of a binary message of [type], gated like [send]. */
+    suspend fun sendBinary(type: Int, payload: ByteArray) = sendGated(type, payload)
+
+    private suspend fun sendGated(type: Int, payload: ByteArray) {
         while (true) {
             gate.first { it != Gate.CLOSED }
             // Re-check under the mutex: the reader closes the gate and swaps keys
             // while holding it, so a woken sender cannot encrypt under stale keys.
             sendMutex.withLock {
                 when (gate.value) {
-                    Gate.OPEN -> return sendFrameLocked(NoiseFraming.TYPE_JSON, payload)
+                    Gate.OPEN -> return sendFrameLocked(type, payload)
                     Gate.FAILED -> error("session closed")
                     Gate.CLOSED -> Unit // Raced a gate transition; wait again.
                 }
@@ -321,13 +324,14 @@ internal class NoiseSession(
         name = config.deviceName.truncateUtf8(MAX_HELLO_TEXT_BYTES),
         deviceInfo = config.deviceInfo?.capped(),
         trustLevel = trustLevel.wire.takeIf { config.wire == WireVersion.LEGACY_9 },
-        supportedRoles = listOf(VersionedRole.PLAYER_V1),
+        supportedRoles = config.roles,
         playerV1Support = config.playerSupport?.let { support ->
             when (config.wire) {
                 WireVersion.LEGACY_9 -> support
                 WireVersion.SPEC_1_0 -> support.copy(supportedCommands = null)
             }
         },
+        sourceV1Support = config.sourceSupport,
         supportedPairMethods = pairMethods(
             config.wire,
             listOfNotNull(ActivationPolicy.PAIR_METHOD_PSK.takeIf { pairingPskOffered }),

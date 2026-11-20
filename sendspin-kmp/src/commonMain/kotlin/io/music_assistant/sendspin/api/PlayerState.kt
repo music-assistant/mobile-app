@@ -10,6 +10,7 @@ public sealed interface PlayerState {
         val serverName: String,
         val clock: ClockQuality,
         val audio: AudioStatus,
+        val source: SourceStatus = SourceStatus.Off,
     ) : PlayerState
 
     /** Connection lost; retry scheduled. [nextRetryAtMs] is null while waiting for the network. */

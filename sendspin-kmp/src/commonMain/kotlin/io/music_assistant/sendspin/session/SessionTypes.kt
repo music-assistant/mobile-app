@@ -6,6 +6,8 @@ import io.music_assistant.sendspin.wire.AudioChunk
 import io.music_assistant.sendspin.wire.EncryptedDeviceInfo
 import io.music_assistant.sendspin.wire.PlayerSupport
 import io.music_assistant.sendspin.wire.ServerMessage
+import io.music_assistant.sendspin.wire.SourceSupport
+import io.music_assistant.sendspin.wire.VersionedRole
 import kotlinx.coroutines.CopyableThrowable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
@@ -28,6 +30,9 @@ internal class SessionConfig(
     val deviceName: String,
     val playerSupport: PlayerSupport?,
     val deviceInfo: EncryptedDeviceInfo?,
+    /** The `supported_roles` of `client/hello`. */
+    val roles: List<VersionedRole> = listOf(VersionedRole.PLAYER_V1),
+    val sourceSupport: SourceSupport? = null,
     /** Bound on a pairing attempt from its first message; the spec recommends 2 min. */
     val pairingAttemptTimeoutMillis: Long = 120_000,
     /** Bound on each establishment step. */

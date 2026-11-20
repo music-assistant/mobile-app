@@ -8,6 +8,7 @@ import io.music_assistant.sendspin.SendspinPlayer
 import io.music_assistant.sendspin.api.AudioCodec
 import io.music_assistant.sendspin.api.AudioPhase
 import io.music_assistant.sendspin.api.DeviceInfo
+import io.music_assistant.sendspin.api.EncoderFactory
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.FailureCause
 import io.music_assistant.sendspin.api.LocalPlayerConfig
@@ -15,6 +16,7 @@ import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinDeps
+import io.music_assistant.sendspin.api.SourceConfig
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.api.WarningCode
 import io.music_assistant.sendspin.api.WireVersion
@@ -73,6 +75,8 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
         val scope: TestScope,
         private val unpairedAccess: Boolean,
         private val sharedPsk: ByteArray?,
+        source: SourceConfig?,
+        private val encoders: EncoderFactory?,
         private val create: Harness.(StateFlow<LocalPlayerConfig?>, SendspinDeps, CoroutineScope) -> SendspinPlayerApi,
     ) {
         val crypto = CryptographyKotlinNoiseCrypto()
@@ -94,6 +98,7 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
                 listOf(AudioCodec.FLAC),
                 bufferSeconds = 30,
                 userDelayMs = 0,
+                source = source,
             ),
         )
         val online = MutableStateFlow(true)
@@ -120,6 +125,7 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
                 audioDispatcher = StandardTestDispatcher(scope.testScheduler),
                 deviceInfo = DeviceInfo(productName = "Test", manufacturer = "Tests", softwareVersion = "1.2.3"),
                 clock = clock,
+                encoders = encoders,
             )
             player = create(config, deps, scope.backgroundScope)
             scope.backgroundScope.launch { player.events.collect { events.trySend(it) } }
@@ -135,11 +141,13 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
             psk: ByteArray = SendspinPsk.SENTINEL_PSK,
             serverClockOffsetMicros: Long = 0L,
             silent: Boolean = false,
+            activities: String = """["playback"]""",
+            activeRoles: String = """["player@v1"]""",
         ): FakeNoiseServer {
             val server = FakeNoiseServer(crypto, nextTransport(), serverStatic, psk = psk, wire = wire)
             server.serverClockOffsetMicros = serverClockOffsetMicros
             server.silent = silent
-            server.bringUp()
+            server.bringUp(activities, activeRoles)
             server.serve(scope.backgroundScope)
             // Let the first probe burst complete so the clock is synced before streaming.
             scope.advanceTimeBy(1_500)
@@ -181,11 +189,13 @@ internal abstract class SendspinPlayerScenarios(protected val wire: WireVersion)
     protected fun playerTest(
         unpairedAccess: Boolean = true,
         sharedPsk: ByteArray? = null,
+        source: SourceConfig? = null,
+        encoders: EncoderFactory? = null,
         create: Harness.(StateFlow<LocalPlayerConfig?>, SendspinDeps, CoroutineScope) -> SendspinPlayerApi =
             { config, deps, scope -> SendspinPlayer(config, deps, scope) },
         block: suspend TestScope.(Harness) -> Unit,
     ) = runTest {
-        val h = Harness(this, unpairedAccess, sharedPsk, create)
+        val h = Harness(this, unpairedAccess, sharedPsk, source, encoders, create)
         h.start()
         block(h)
     }

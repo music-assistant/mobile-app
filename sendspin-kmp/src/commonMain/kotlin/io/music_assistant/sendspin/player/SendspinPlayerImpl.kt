@@ -12,6 +12,9 @@ import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinDeps
 import io.music_assistant.sendspin.api.SendspinPlayer
+import io.music_assistant.sendspin.api.SourceConfig
+import io.music_assistant.sendspin.api.SourceDialect
+import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.api.WarningCode
 import io.music_assistant.sendspin.api.WireVersion
@@ -34,6 +37,9 @@ import io.music_assistant.sendspin.session.NoiseSession
 import io.music_assistant.sendspin.session.SessionConfig
 import io.music_assistant.sendspin.session.SessionHandler
 import io.music_assistant.sendspin.session.SessionInfo
+import io.music_assistant.sendspin.session.TrustLevel
+import io.music_assistant.sendspin.source.SourceCodecHealth
+import io.music_assistant.sendspin.source.SourceStreamer
 import io.music_assistant.sendspin.transport.TransportConnector
 import io.music_assistant.sendspin.wire.AudioChunk
 import io.music_assistant.sendspin.wire.ClientStateMessage
@@ -44,10 +50,15 @@ import io.music_assistant.sendspin.wire.PlayerStateObject
 import io.music_assistant.sendspin.wire.PlayerStateValue
 import io.music_assistant.sendspin.wire.PlayerSupport
 import io.music_assistant.sendspin.wire.ServerMessage
+import io.music_assistant.sendspin.wire.SourceFeatures
+import io.music_assistant.sendspin.wire.SourceStateObject
+import io.music_assistant.sendspin.wire.SourceSupport
+import io.music_assistant.sendspin.wire.VersionedRole
 import io.music_assistant.sendspin.wire.WireAudioFormat
 import io.music_assistant.sendspin.wire.WireCodec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -59,6 +70,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -123,6 +136,7 @@ internal class SendspinPlayerImpl(
         val codecs: List<AudioCodec>,
         val bitDepth: Int,
         val bufferSeconds: Int,
+        val source: SourceConfig?,
     ) {
         fun formats(supports: (AudioCodec) -> Boolean) = advertisedFormats(codecs, bitDepth, supports)
     }
@@ -187,6 +201,7 @@ internal class SendspinPlayerImpl(
             connectionChecks = connectionChecks,
         )
         val session = Session(pipeline, clockSync, trustStore, supervisor)
+        val sourceHealth = SourceCodecHealth()
         launch(deps.audioDispatcher) { pipeline.run() }
         launch {
             config.filterNotNull().collect {
@@ -199,10 +214,23 @@ internal class SendspinPlayerImpl(
         launch { session.watchStarvation() }
         try {
             config.filterNotNull()
-                .map { ConnectionKey(it.endpoint, it.deviceName, it.codecPreference, it.bitDepth, it.bufferSeconds) }
+                .map {
+                    ConnectionKey(
+                        it.endpoint,
+                        it.deviceName,
+                        it.codecPreference,
+                        it.bitDepth,
+                        it.bufferSeconds,
+                        // The 9.x wire has a different, older source role.
+                        it.source.takeIf { _ -> it.endpoint.wire == WireVersion.SPEC_1_0 },
+                    )
+                }
                 .distinctUntilChanged()
                 .collectLatest { key ->
                     pipeline.capacityBytes = key.capacityBytes()
+                    session.source.value = key.source?.let { source ->
+                        SourceStreamer(source, deps.encoders, clockSync, deps.clock, deps.audioDispatcher, sourceHealth)
+                    }
                     supervisor.run(
                         endpoint = key.endpoint,
                         sessionConfig = session.sessionConfig(key),
@@ -235,6 +263,9 @@ internal class SendspinPlayerImpl(
         /** True until the first stream/start of a new connection: that one may resume. */
         private var newConnection = false
 
+        /** The source role of the current connection key, set before its supervisor runs. */
+        val source = MutableStateFlow<SourceStreamer?>(null)
+
         fun sessionConfig(key: ConnectionKey) = SessionConfig(
             wire = key.endpoint.wire,
             deviceName = key.deviceName,
@@ -250,14 +281,24 @@ internal class SendspinPlayerImpl(
                     softwareVersion = softwareVersion,
                 )
             },
+            roles = listOfNotNull(VersionedRole.PLAYER_V1, VersionedRole.SOURCE_V1.takeIf { key.source != null }),
+            sourceSupport = key.source?.dialect?.let(::sourceSupportFor),
         )
+
+        /** Spec 1.0.0-rc1 activates the role only with this object; the current spec forbids it. */
+        private fun sourceSupportFor(dialect: SourceDialect): SourceSupport? = when (dialect) {
+            SourceDialect.SPEC -> null
+            SourceDialect.RC1 -> SourceSupport(SourceFeatures(lineSense = true))
+        }
 
         override fun onReady(info: SessionInfo) {
             serverName = info.serverName
             newConnection = true
+            source.value?.onReady(trusted = info.trustLevel == TrustLevel.USER)
         }
 
         override fun onActivated(activation: Activation) {
+            source.value?.onActivated(activation)
             _events.tryEmit(PlayerEvent.ServerRefreshNeeded)
         }
 
@@ -275,6 +316,8 @@ internal class SendspinPlayerImpl(
                 is ServerMessage.StreamEnd -> pipeline.apply(StreamLifecycle.onEnd(pipeline.phase))
                 is ServerMessage.StreamClear ->
                     pipeline.apply(StreamLifecycle.onClear(pipeline.phase, message.fromTimestampMicros))
+                is ServerMessage.Command -> message.source?.let { command -> source.value?.onCommand(command) }
+                    ?: logger.d { "Ignoring a command for the player role" }
                 else -> logger.d { "Ignoring ${message::class.simpleName}" }
             }
         }
@@ -286,6 +329,7 @@ internal class SendspinPlayerImpl(
             scope.launch { ClockProbe(clockSync, deps.clock, connectionChecks) { session.send(it) }.run() }
             scope.launch { reportState(session) }
             scope.launch { watchClockQuality() }
+            source.value?.let { streamer -> scope.launch { streamer.run(session) } }
         }
 
         private suspend fun reportState(session: NoiseSession) = when (session.wire) {
@@ -328,11 +372,13 @@ internal class SendspinPlayerImpl(
                                     requiredLeadTimeMs = REQUIRED_LEAD_TIME_MS,
                                     minBufferMs = MIN_BUFFER_MS,
                                 ),
+                                source = SourceStateObject.PRESENT.takeIf { source.value != null },
                                 available = true,
                             ),
                         ),
                     ),
                 )
+                source.value?.onStateReported()
             }
         }
 
@@ -353,12 +399,15 @@ internal class SendspinPlayerImpl(
             }
         }
 
+        @OptIn(ExperimentalCoroutinesApi::class)
         suspend fun publishState() {
-            combine(supervisor.state, pipeline.status) { connection, audio ->
+            val sourceStatus = source.flatMapLatest { it?.status ?: flowOf(SourceStatus.Off) }
+            combine(supervisor.state, pipeline.status, sourceStatus) { connection, audio, source ->
                 when (connection) {
                     ConnectionState.Idle -> PlayerState.Connecting(0)
                     is ConnectionState.Connecting -> PlayerState.Connecting(connection.attempt)
-                    is ConnectionState.Active -> PlayerState.Connected(playerId, serverName, clockSync.quality(), audio)
+                    is ConnectionState.Active ->
+                        PlayerState.Connected(playerId, serverName, clockSync.quality(), audio, source)
                     is ConnectionState.Backoff -> PlayerState.Reconnecting(
                         connection.attempt,
                         connection.retryAtMicros / 1_000,

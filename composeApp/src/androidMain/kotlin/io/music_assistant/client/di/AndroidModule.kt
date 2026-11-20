@@ -17,9 +17,11 @@ import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.sendspinClock
 import io.music_assistant.sendspin.android.AndroidDecoderFactory
+import io.music_assistant.sendspin.android.AndroidEncoderFactory
 import io.music_assistant.sendspin.android.AudioTrackSink
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
+import io.music_assistant.sendspin.api.EncoderFactory
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -28,6 +30,7 @@ fun androidModule() = module {
     single { PlatformContext(androidContext()) }
     single<AudioSink> { AudioTrackSink(androidContext(), sendspinClock) }
     single<DecoderFactory> { AndroidDecoderFactory() }
+    single<EncoderFactory> { AndroidEncoderFactory() }
     single<MicrophoneCapture> { AudioRecordCapture() }
     single<FileSharer> { AndroidFileSharer(androidContext()) }
     single<BackgroundUsageGuard> { AndroidBackgroundUsageGuard(androidContext()) }

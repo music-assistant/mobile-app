@@ -9,6 +9,7 @@ import io.music_assistant.sendspin.SendspinPlayer
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import io.music_assistant.sendspin.api.DeviceInfo
+import io.music_assistant.sendspin.api.EncoderFactory
 import io.music_assistant.sendspin.api.LocalPlayerConfig
 import io.music_assistant.sendspin.api.SendspinDeps
 import io.music_assistant.sendspin.api.SendspinKeyStore
@@ -33,6 +34,8 @@ fun interface LocalPlayerFactory {
 class SendspinLocalPlayerFactory(
     private val sink: AudioSink,
     private val decoders: DecoderFactory,
+    /** For the source role; null on a platform that cannot share its audio. */
+    private val encoders: EncoderFactory?,
     private val keyStore: SendspinKeyStore,
     private val networkMonitor: NetworkMonitor,
     private val httpClientFactory: HttpClientFactory,
@@ -58,6 +61,7 @@ class SendspinLocalPlayerFactory(
                 softwareVersion = appVersion.name,
             ),
             clock = sendspinClock,
+            encoders = encoders,
         ),
         scope = scope,
     )

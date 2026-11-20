@@ -38,6 +38,9 @@ internal object BinaryFrames {
     const val TIMESTAMP_BYTES = 8
     const val SEND_AHEAD_BYTES = 4
     private const val TYPE_AUDIO_CHUNK = 4
+
+    /** Source-role audio, client to server. */
+    const val TYPE_SOURCE_AUDIO_CHUNK = 12
     private const val BYTE_MASK = 0xFFL
     private const val BITS_PER_BYTE = 8
 
@@ -45,6 +48,19 @@ internal object BinaryFrames {
     fun headerBytes(wire: WireVersion): Int = when (wire) {
         WireVersion.LEGACY_9 -> TIMESTAMP_BYTES
         WireVersion.SPEC_1_0 -> TIMESTAMP_BYTES + SEND_AHEAD_BYTES
+    }
+
+    /**
+     * The body of a source-role audio message: an 8 byte big-endian int64, the server
+     * time of the first sample in microseconds, then the encoded audio.
+     */
+    fun sourceChunk(serverTimeMicros: Long, audio: ByteArray): ByteArray {
+        val body = ByteArray(TIMESTAMP_BYTES + audio.size)
+        for (i in 0 until TIMESTAMP_BYTES) {
+            body[i] = (serverTimeMicros ushr (BITS_PER_BYTE * (TIMESTAMP_BYTES - 1 - i))).toByte()
+        }
+        audio.copyInto(body, TIMESTAMP_BYTES)
+        return body
     }
 
     fun parse(wire: WireVersion, type: Int, body: ByteArray): BinaryFrame {

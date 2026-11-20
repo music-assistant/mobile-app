@@ -1970,7 +1970,10 @@ class MainDataSource(
             }
             // Preserve loaded queue items from previous state
             return (listOfNotNull(local) + remote).map { fresh ->
-                oldPlayers.firstOrNull { it.player.id == fresh.player.id }?.updateFrom(fresh)
+                // A live input replaces the queue: do not keep the queue of before it.
+                oldPlayers.firstOrNull { it.player.id == fresh.player.id }
+                    ?.takeIf { fresh.player.liveInputUri == null }
+                    ?.updateFrom(fresh)
                     ?: fresh
             }
         }

@@ -28,9 +28,13 @@ data class PlayerData(
      * the player then offers Stop instead of Pause.
      */
     val canPauseContent: Boolean
-        get() = when (val track = queueInfo?.currentItem?.track) {
-            is AudioSource -> track.canPlayPause
-            else -> player.currentMedia?.mediaType != MediaType.RADIO
+        get() {
+            val track = queueInfo?.currentItem?.track
+            return when {
+                track is AudioSource -> track.canPlayPause
+                player.liveInputUri != null -> player.canPauseLiveInput
+                else -> player.currentMedia?.mediaType != MediaType.RADIO
+            }
         }
 
     fun updateFrom(other: PlayerData): PlayerData {

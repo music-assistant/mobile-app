@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.nextMovesQueue
 import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
+import io.music_assistant.client.data.share.DeviceAudioSource
 import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -76,7 +77,8 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  * queue, and reconciliation of the server events the MA API forwards.
  *
  * [MainDataSource] depends on this one-way. The control plane stays on the MA
- * REST API: Sendspin is an audio endpoint (player@v1), not a controller.
+ * REST API: Sendspin is an audio endpoint (player@v1), not a controller. While the device audio
+ * is shared, the same connection also offers the source role ([DeviceAudioSource]).
  *
  * The audio link lives with the process: it stays up while the MA session is torn down in
  * the background, so the server can start a stream on the phone at any time, and
@@ -98,6 +100,7 @@ class LocalPlayerAdapter(
     private val errorBus: ErrorMessageBus,
     private val endpoints: LocalPlayerEndpoints,
     playerFactory: LocalPlayerFactory,
+    deviceAudioSource: DeviceAudioSource,
 ) : CoroutineScope {
     private val log = Logger.withTag("Sendspin.LocalPlayerAdapter")
     private val supervisorJob = SupervisorJob()
@@ -115,15 +118,6 @@ class LocalPlayerAdapter(
     /** The now-playing surfaces read `player.currentMedia`; fall back to the queued track before the first Play. */
     val localPlayerData: StateFlow<PlayerData?> = localState.mapState { it.data?.withNowPlayingFallback() }
 
-    /**
-     * True while the local player plays, or while a local pause is not yet confirmed by the
-     * server. The hold is that pause: the server still streams until the queued pause lands,
-     * so the MA session must keep reconnecting instead of being torn down in the background.
-     * A stop forced by an empty buffer during an outage is such a pause, like a user's.
-     */
-    val wantsSession: StateFlow<Boolean> =
-        localState.mapState { state -> state.data?.let { it.player.isPlaying || state.held } == true }
-
     private inline fun updateData(transform: (PlayerData?) -> PlayerData?) {
         localState.update { it.copy(data = transform(it.data)) }
     }
@@ -140,7 +134,8 @@ class LocalPlayerAdapter(
         endpoints.endpoint,
         settings.sendspinPlayerSettings,
         settings.sendspinStaticDelayMs,
-    ) { enabled, endpoint, playerSettings, staticDelayMs ->
+        deviceAudioSource.config,
+    ) { enabled, endpoint, playerSettings, staticDelayMs, source ->
         localPlayerConfig(
             enabled = enabled,
             endpoint = endpoint,
@@ -149,8 +144,22 @@ class LocalPlayerAdapter(
             bitDepth = playerSettings.effectiveBitDepth(),
             bufferSeconds = playerSettings.bufferSeconds,
             staticDelayMs = staticDelayMs,
-        )
+        )?.copy(source = source)
     }.stateIn(this, SharingStarted.Eagerly, null)
+
+    /**
+     * True while the local player plays, or while a local pause is not yet confirmed by the
+     * server. The hold is that pause: the server still streams until the queued pause lands,
+     * so the MA session must keep reconnecting instead of being torn down in the background.
+     * A stop forced by an empty buffer during an outage is such a pause, like a user's.
+     *
+     * Also true while the device audio is shared. The user is then in the app that plays, not
+     * in this one, and the share needs the session: for the play request that starts it, for
+     * the stop that ends it, and for the audio channel of a remote connection.
+     */
+    val wantsSession: StateFlow<Boolean> = localState.combineState(config) { state, config ->
+        state.data?.let { it.player.isPlaying || state.held } == true || config?.source != null
+    }
 
     val player: SendspinPlayerApi = playerFactory.create(config, ::approvePairing, this)
 

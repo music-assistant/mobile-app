@@ -22,6 +22,7 @@ internal data class VersionedRole(
 
     companion object {
         val PLAYER_V1 = VersionedRole("player", "v1")
+        val SOURCE_V1 = VersionedRole("source", "v1")
     }
 
     override fun equals(other: Any?): Boolean {
