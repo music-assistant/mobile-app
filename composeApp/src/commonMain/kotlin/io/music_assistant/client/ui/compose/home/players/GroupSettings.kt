@@ -72,6 +72,8 @@ import io.music_assistant.client.ui.ONE
 import io.music_assistant.client.ui.TEN
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.common.icons.SpeakerMutedIcon
+import io.music_assistant.client.ui.compose.common.icons.SpeakerVolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import musicassistantclient.composeapp.generated.resources.Res
@@ -117,6 +119,7 @@ fun GroupSettings(
     playerDelays: Map<String, PlayerDelay> = emptyMap(),
     onAdjustPlayerDelay: (String, Int) -> Unit = { _, _ -> },
     canLeaveGroup: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     var openPanel by remember { mutableStateOf<OpenPanel?>(null) }
 
@@ -127,6 +130,7 @@ fun GroupSettings(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, false),
+            contentPadding = contentPadding,
         ) {
             // Pivot first, then children (bound before unbound).
             item {
@@ -342,8 +346,9 @@ private fun GroupPlayerRow(
                 )
             }
             volume?.let {
+                // A speaker, not the bare mute glyph: the button opens the volume panel.
                 PanelButton(
-                    imageVector = if (it.isMuted == true) VolumeMutedIcon else VolumeIcon,
+                    imageVector = if (it.isMuted == true) SpeakerMutedIcon else SpeakerVolumeIcon,
                     contentDescription = stringResource(Res.string.cd_player_volume, name),
                     enabled = it.enabled,
                     selected = openPanel == PanelKind.VOLUME,

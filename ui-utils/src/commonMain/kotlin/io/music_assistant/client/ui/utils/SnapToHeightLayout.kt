@@ -12,7 +12,9 @@ import androidx.compose.ui.layout.SubcomposeLayout
  * height.
  *
  * The layout height will only ever grow and never shrink. This prevents shorter content from
- * repositioning the layout.
+ * repositioning the layout. It never exceeds the current max height: a sheet measures this
+ * layout taller while it opens, before its top inset applies, and a height kept from that pass
+ * pushes the content bottom out of the sheet.
  */
 @Composable
 fun SnapToHeightLayout(thresholdRatio: Double, content: @Composable () -> Unit) {
@@ -26,9 +28,7 @@ fun SnapToHeightLayout(thresholdRatio: Double, content: @Composable () -> Unit) 
             contentPlaceable.height
         }
 
-        if (newHeight > maxHeight) {
-            maxHeight = newHeight
-        }
+        maxHeight = maxOf(maxHeight, newHeight).coerceAtMost(constraints.maxHeight)
 
         layout(constraints.maxWidth, maxHeight) {
             contentPlaceable.place(0, 0)
