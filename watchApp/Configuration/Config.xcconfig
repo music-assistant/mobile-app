@@ -1,0 +1,20 @@
+// Signing and identity for the watch app.
+//
+// The defaults build under the same team as the iOS app. To build under your own Apple
+// developer account, set the MA_* values as environment variables for xcodebuild, or in a
+// git-ignored Local.xcconfig next to this file (Xcode does not see shell variables).
+//
+//   MA_TEAM_ID           Apple developer team id
+//   MA_WATCH_BUNDLE_ID   bundle identifier, for example com.example.music-assistant.watchkitapp
+TEAM_ID = $(MA_TEAM_ID:default=GUYFAK8DC6)
+DEVELOPMENT_TEAM = $(TEAM_ID)
+
+// A watch-only app can carry any identifier. It keeps the phone app's `.watchkitapp` suffix
+// so that pairing it to the iOS app later is a build-setting change and not a new app record.
+PRODUCT_BUNDLE_IDENTIFIER = $(MA_WATCH_BUNDLE_ID:default=io.music-assistant.mobile-client.watchkitapp)
+
+// :watchShared builds arm64_32 and arm64 for the watch and arm64 for the simulator, which
+// is every slice an Apple silicon Mac and a real Apple Watch need. Without this exclusion
+// xcodebuild still asks for a universal simulator slice and the Kotlin framework step stops
+// on the missing watchos_x64 target. The iOS app drops its Intel simulator slice the same way.
+EXCLUDED_ARCHS[sdk=watchsimulator*] = x86_64
