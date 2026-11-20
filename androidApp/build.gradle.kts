@@ -6,6 +6,14 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// The app version name of both platforms. iosApp/Configuration/Config.xcconfig includes the same file.
+val appVersionName: String = providers
+    .fileContents(rootProject.layout.projectDirectory.file("version.properties"))
+    .asText.get()
+    .let { text -> Properties().apply { load(text.reader()) } }
+    .getProperty("APP_VERSION_NAME")
+    ?: error("APP_VERSION_NAME is missing in version.properties")
+
 android {
     namespace = "io.music_assistant.client"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -15,7 +23,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 19
-        versionName = "0.18.0"
+        versionName = appVersionName
     }
     packaging {
         resources {

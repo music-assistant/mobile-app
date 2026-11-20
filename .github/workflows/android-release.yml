@@ -35,7 +35,7 @@ jobs:
       - name: Extract version
         id: version
         run: |
-          VERSION_NAME=$(grep 'versionName' androidApp/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_NAME=$(sed -n 's/^APP_VERSION_NAME *= *//p' version.properties)
           VERSION_CODE=$(grep 'versionCode' androidApp/build.gradle.kts | sed 's/[^0-9]*//g')
           echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "code=$VERSION_CODE" >> $GITHUB_OUTPUT
@@ -235,9 +235,9 @@ jobs:
           git checkout -b "${{ steps.next.outputs.branch }}" origin/main
 
           sed -i "s/versionCode = ${{ steps.version.outputs.code }}/versionCode = ${{ steps.next.outputs.code }}/" androidApp/build.gradle.kts
-          sed -i "s/versionName = \"${{ steps.version.outputs.name }}\"/versionName = \"${{ steps.next.outputs.version }}\"/" androidApp/build.gradle.kts
+          sed -i "s/^APP_VERSION_NAME = .*/APP_VERSION_NAME = ${{ steps.next.outputs.version }}/" version.properties
 
-          git add androidApp/build.gradle.kts
+          git add androidApp/build.gradle.kts version.properties
           git commit -m "chore: bump Android version to ${{ steps.next.outputs.version }} (${{ steps.next.outputs.code }})"
           git push origin "${{ steps.next.outputs.branch }}"
 

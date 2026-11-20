@@ -80,7 +80,7 @@ jobs:
       - name: Extract current version
         id: version
         run: |
-          VERSION_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" iosApp/iosApp/Info.plist)
+          VERSION_NAME=$(sed -n 's/^APP_VERSION_NAME *= *//p' version.properties)
           BUILD_NUM=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" iosApp/iosApp/Info.plist)
           echo "Shipping iOS $VERSION_NAME ($BUILD_NUM)"
           echo "name=$VERSION_NAME" >> "$GITHUB_OUTPUT"
