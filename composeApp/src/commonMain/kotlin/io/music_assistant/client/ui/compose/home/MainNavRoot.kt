@@ -449,7 +449,7 @@ fun MainNavigationRoot(
                     label = stringResource(main.button.label),
                 ),
                 PlaybackItem(
-                    enabled = transport.playerEnabled && transport.buttonsEnabled && transport.skipForwardEnabled,
+                    enabled = transport.playerEnabled && transport.skipForwardEnabled,
                     onClick = { homeScreenViewModel.playerAction(player, PlayerAction.Next) },
                     icon = SkipForwardIcon,
                     label = stringResource(Res.string.media_action_next),

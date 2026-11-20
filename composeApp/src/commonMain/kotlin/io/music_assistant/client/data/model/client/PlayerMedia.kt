@@ -18,6 +18,8 @@ data class PlayerMedia(
     val uri: String?,
     // Where a radio stream is in the song it plays, when the stream knows.
     val songTiming: SongTiming? = null,
+    // Where the player is in the media, when the server reports it. Any media type.
+    val timing: SongTiming? = null,
 ) {
     val subtitle = listOfNotNull(artist, album)
         .takeIf { it.isNotEmpty() }?.joinToString(" • ")

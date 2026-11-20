@@ -74,8 +74,8 @@ class DeviceAudioShareUiTest {
 
     @Test
     fun `an active share marks the player whose active source is the device`() {
-        val onPhone = kitchen.copy(player = kitchen.player.copy(liveInputUri = "sendspin://audio_source/device"))
-        val onOtherInput = kitchen.copy(player = kitchen.player.copy(liveInputUri = "vban://audio_source/desk"))
+        val onPhone = kitchen.copy(player = kitchen.player.copy(activeSource = "sendspin://audio_source/device"))
+        val onOtherInput = kitchen.copy(player = kitchen.player.copy(activeSource = "vban://audio_source/desk"))
 
         assertEquals(onPhone.playerId, ui(DeviceAudioShareState.Active, listOf(device, onPhone)).target?.playerId)
         assertNull(ui(DeviceAudioShareState.Active, listOf(device, onOtherInput)).target)

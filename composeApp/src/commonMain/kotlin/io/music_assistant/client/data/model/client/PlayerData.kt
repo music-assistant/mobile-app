@@ -23,19 +23,30 @@ data class PlayerData(
     val usesGroupVolume: Boolean
         get() = childrenBinds.any { it.isBound }
 
+    /** The source that plays in place of the queue, or null while a queue plays. */
+    val externalSource: PlayerSource? get() = player.externalSource
+
+    /** The key of the playback position in `PlayerPositionTracker`: the queue, or the external source. */
+    val positionKey: String? get() = queueId ?: externalSource?.let { player.sourcePositionKey }
+
     /**
-     * False for a live input without pause support and for a radio stream, like the web app:
+     * False for a source without pause support and for a radio stream, like the web app:
      * the player then offers Stop instead of Pause.
      */
     val canPauseContent: Boolean
         get() {
             val track = queueInfo?.currentItem?.track
+            val source = externalSource
             return when {
                 track is AudioSource -> track.canPlayPause
-                player.liveInputUri != null -> player.canPauseLiveInput
+                source != null -> source.canPlayPause
                 else -> player.currentMedia?.mediaType != MediaType.RADIO
             }
         }
+
+    /** False for a radio stream, and for a source in place of the queue that cannot seek. */
+    val canSeekContent: Boolean
+        get() = externalSource?.canSeek ?: (player.currentMedia?.mediaType != MediaType.RADIO)
 
     fun updateFrom(other: PlayerData): PlayerData {
         return PlayerData(

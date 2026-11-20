@@ -1,6 +1,12 @@
 # Player sources plan
 
-Status: plan only. No code exists for it.
+Status: built on 2026-11-20 on the branch `player-sources`, as one change. See "Player sources" in `architecture.md`.
+
+Not built:
+
+- The iOS lock screen commands (`NowPlayingCoordinator.swift`).
+- The skip actions of the Android media session. Only its seek action follows the source.
+- A Robolectric test that selects a source.
 Written on 2026-11-20. Written to ASD-STE100 rules.
 
 ## Read this first

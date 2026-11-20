@@ -127,6 +127,17 @@ internal fun radioSongTimings(
             }
     }
 
+/**
+ * Where each player is in the media of its external source, or null; see
+ * [PlayerPositionTracker.setSource]. A queue has its own position.
+ */
+internal fun externalSourceTimings(players: List<Player>): Map<String, Pair<SongTiming, Boolean>?> =
+    players.associate { player ->
+        player.sourcePositionKey to player.currentMedia?.timing
+            ?.takeIf { player.externalSource != null }
+            ?.let { it to player.isPlaying }
+    }
+
 /** Preserve newer event/optimistic state when a delayed full snapshot arrives. */
 internal fun mergeFullQueueSnapshot(
     retained: List<QueueInfo>,
@@ -486,8 +497,8 @@ class MainDataSource(
                 .mapNotNull { (it as? DataState.Data)?.data }
                 .collect { list ->
                     list.forEach { pd ->
-                        pd.queueInfo?.id?.let { queueId ->
-                            positionTracker.setPlaying(queueId, pd.player.isPlaying)
+                        pd.positionKey?.let { key ->
+                            positionTracker.setPlaying(key, pd.player.isPlaying)
                         }
                     }
                 }
@@ -508,6 +519,9 @@ class MainDataSource(
                     // Before the players publish, so every reader of a new song also reads its position.
                     input.players.dataOrNull?.let { radioSongTimings(it, input.queues) }
                         ?.forEach { (queueId, timing) -> positionTracker.setSong(queueId, timing) }
+                    input.players.dataOrNull?.let(::externalSourceTimings)?.forEach { (key, report) ->
+                        positionTracker.setSource(key, report?.first, isPlaying = report?.second == true)
+                    }
                     _playersData.update { oldValues ->
                         fun build(serverPlayers: List<Player>) = DataState.Data(
                             buildPlayerDataList(
@@ -1970,9 +1984,9 @@ class MainDataSource(
             }
             // Preserve loaded queue items from previous state
             return (listOfNotNull(local) + remote).map { fresh ->
-                // A live input replaces the queue: do not keep the queue of before it.
+                // An external source replaces the queue: do not keep the queue of before it.
                 oldPlayers.firstOrNull { it.player.id == fresh.player.id }
-                    ?.takeIf { fresh.player.liveInputUri == null }
+                    ?.takeIf { fresh.player.externalSource == null }
                     ?.updateFrom(fresh)
                     ?: fresh
             }

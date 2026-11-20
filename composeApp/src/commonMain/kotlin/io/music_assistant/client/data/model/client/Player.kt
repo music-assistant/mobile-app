@@ -40,18 +40,38 @@ data class Player(
      * end-of-content mode, [sleepTimerExpiresAt] is an estimate, and null while paused.
      */
     val sleepTimerMode: SleepTimerMode? = null,
-    /**
-     * The uri of the live input that the player plays in place of a queue, or null. The server
-     * then names the input, not a queue, as the active source of the player. Such a player has
-     * no queue to show.
-     */
-    val liveInputUri: String? = null,
-    /**
-     * The live input accepts pause and play, from its entry in the source list of the player.
-     * False for an input that the server does not list: the input can then only stop.
-     */
-    val canPauseLiveInput: Boolean = false,
+    /** The id that the server names as the active source: a queue id, or the id of one of the [sources]. */
+    val activeSource: String? = null,
+    /** The sources of the player. The queue of the player is the entry with the player id. */
+    val sources: List<PlayerSource> = emptyList(),
 ) {
+    /**
+     * The source that plays in place of a queue, or null while a queue plays. Such a player has
+     * no queue to show, and its controls follow the flags of the source. A sync child names the
+     * queue of its leader, which is not in its own list, so it has no external source.
+     */
+    val externalSource: PlayerSource? = activeSource?.takeIf { it != id }?.let { active ->
+        sources.firstOrNull { it.id == active }
+            // A live input that the server does not list: it can only stop.
+            ?: active.takeIf { URI_MARK in it }?.let { PlayerSource(id = it, passive = true) }
+    }
+
+    /** The key of the position of the external source in `PlayerPositionTracker`. Not a queue id. */
+    val sourcePositionKey: String get() = "source:$id"
+
+    /**
+     * The sources of the source menu, like the web frontend: the sources that the user can select
+     * and the active one, sorted by name. Empty if there is no choice, and for a sync child.
+     */
+    val sourceChoices: List<PlayerSource>
+        get() = sources
+            .filter { !it.passive || isActive(it) }
+            .takeIf { syncedTo == null && it.size > 1 }
+            ?.sortedBy { it.name.uppercase() }
+            .orEmpty()
+
+    fun isActive(source: PlayerSource): Boolean = source.id == (activeSource ?: id)
+
     /**
      * The player is there but asleep. Two server states look identical to the user — a
      * device that is switched off, and one the server cannot reach any more (a speaker that
@@ -128,5 +148,10 @@ data class Player(
             isPlaying = isPlaying,
             isGroup = isGroup,
         )
+    }
+
+    private companion object {
+        // A queue id is a player id. Only an input of the audio source framework is a uri.
+        const val URI_MARK = "://"
     }
 }

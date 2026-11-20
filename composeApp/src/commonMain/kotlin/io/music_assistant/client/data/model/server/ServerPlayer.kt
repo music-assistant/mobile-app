@@ -103,9 +103,9 @@ data class ServerPlayerMedia(
 @Serializable
 data class ServerPlayerSource(
     @SerialName("id") val id: String,
-    // @SerialName("name") val name: String,
-    // @SerialName("passive") val passive: Boolean,
+    @SerialName("name") val name: String = "",
+    @SerialName("passive") val passive: Boolean = false,
     @SerialName("can_play_pause") val canPlayPause: Boolean = false,
-    // @SerialName("can_seek") val canSeek: Boolean,
-    // @SerialName("can_next_previous") val canNextPrevious: Boolean
+    @SerialName("can_seek") val canSeek: Boolean = false,
+    @SerialName("can_next_previous") val canNextPrevious: Boolean = false,
 )

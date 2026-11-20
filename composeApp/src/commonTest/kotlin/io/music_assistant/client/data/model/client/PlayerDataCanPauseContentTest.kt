@@ -52,12 +52,36 @@ class PlayerDataCanPauseContentTest {
     }
 
     @Test
-    fun aLiveInputFollowsTheFlagOfItsSourceEntry() {
+    fun anExternalSourceFollowsItsOwnFlag() {
+        val uri = "spotify://audio_source/1"
         fun onInput(canPause: Boolean) = playerData(mediaType = MediaType.TRACK).let {
-            it.copy(player = it.player.copy(liveInputUri = "spotify://audio_source/1", canPauseLiveInput = canPause))
+            it.copy(
+                player = it.player.copy(
+                    activeSource = uri,
+                    sources = listOf(PlayerSource(id = uri, canPlayPause = canPause)),
+                ),
+            )
         }
 
         assertTrue(onInput(canPause = true).canPauseContent)
         assertFalse(onInput(canPause = false).canPauseContent)
+    }
+
+    @Test
+    fun seekFollowsTheExternalSourceAndIsOffForRadio() {
+        val uri = "spotify://audio_source/1"
+        fun onInput(canSeek: Boolean) = playerData(mediaType = MediaType.TRACK).let {
+            it.copy(
+                player = it.player.copy(
+                    activeSource = uri,
+                    sources = listOf(PlayerSource(id = uri, canSeek = canSeek)),
+                ),
+            )
+        }
+
+        assertTrue(onInput(canSeek = true).canSeekContent)
+        assertFalse(onInput(canSeek = false).canSeekContent)
+        assertTrue(playerData(testTrack(), MediaType.TRACK).canSeekContent)
+        assertFalse(playerData(testRadio(), MediaType.RADIO).canSeekContent)
     }
 }
