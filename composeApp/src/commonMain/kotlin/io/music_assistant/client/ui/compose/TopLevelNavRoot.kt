@@ -5,7 +5,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import io.music_assistant.client.ui.compose.common.AutoLoginSplash
 import io.music_assistant.client.ui.compose.common.ConnectionStatusOverlay
 import io.music_assistant.client.ui.compose.home.MainNavigationRoot
 import io.music_assistant.client.ui.compose.nav.exitApp
+import io.music_assistant.client.ui.compose.settings.ConnectScreen
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.BottomSheetSceneStrategy
@@ -39,7 +39,6 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val serviceClient: ServiceClient = koinInject()
@@ -93,7 +92,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 DataConnectionState.Authenticated -> Nav.Main
 
         authManager.willAutoLoginOnLaunch -> Nav.Main
-        else -> Nav.Settings
+        else -> Nav.Connect
     }
 
     val backStack = rememberNavBackStack(
@@ -104,6 +103,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                     polymorphic(NavKey::class) {
                         subclass(Nav.Main::class, Nav.Main.serializer())
                         subclass(Nav.Settings::class, Nav.Settings.serializer())
+                        subclass(Nav.Connect::class, Nav.Connect.serializer())
                     }
                 }
             },
@@ -124,9 +124,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 } else {
                     // Navigate to Settings for all other disconnected states
                     // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
-                    if (backStack.last() !is Nav.Settings) {
+                    if (backStack.last() !is Nav.Connect) {
                         backStack.clear()
-                        backStack.add(Nav.Settings)
+                        backStack.add(Nav.Connect)
                     }
                 }
             }
@@ -137,20 +137,17 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
                 when {
                     // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
-                    connState is DataConnectionState.Authenticated && connectedState.wasAutoLogin -> {
+                    connState is DataConnectionState.Authenticated -> {
                         if (backStack.last() !is Nav.Main) {
                             backStack.clear()
                             backStack.add(Nav.Main)
                         }
                     }
 
-                    // Transport is up but auth was rejected (disabled user, expired/invalid token).
-                    // Necessary because initial screen is biased to Main on auto-login launches;
-                    // without this, the splash would dismiss and reveal Main behind a failed auth.
-                    connectedState.authProcessState is AuthProcessState.Failed -> {
-                        if (backStack.last() !is Nav.Settings) {
+                    else -> {
+                        if (backStack.last() !is Nav.Connect) {
                             backStack.clear()
-                            backStack.add(Nav.Settings)
+                            backStack.add(Nav.Connect)
                         }
                     }
                 }
@@ -186,6 +183,14 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             entryProvider = entryProvider {
+                entry<Nav.Connect> {
+                    ConnectScreen(
+                        onExitApp = {
+                            exitApp()
+                        },
+                    )
+                }
+
                 entry<Nav.Main> {
                     MainNavigationRoot(
                         goToSettings = { backStack.add(Nav.Settings) },
@@ -195,11 +200,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 entry<Nav.Settings> {
                     SettingsScreen(
                         goHome = {
-                            ->
                             backStack.clear()
                             backStack.add(Nav.Main)
                         },
-                        exitApp = { exitApp() },
                     )
                 }
             },
@@ -230,4 +233,7 @@ private sealed interface Nav : NavKey {
 
     @Serializable
     data object Settings : Nav
+
+    @Serializable
+    data object Connect : Nav
 }
