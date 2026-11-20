@@ -8,7 +8,7 @@ private const val SENDSPIN_DOMAIN = "sendspin"
 private const val AUDIO_SOURCE_FEATURE = "audio_source"
 
 /**
- * The provider instance that lists this phone as a live input, or null if the server has none.
+ * The provider instance that lists this device as a live input, or null if the server has none.
  * The commits that added the feature did not change the schema version, so the provider list
  * is the only sign of it.
  */

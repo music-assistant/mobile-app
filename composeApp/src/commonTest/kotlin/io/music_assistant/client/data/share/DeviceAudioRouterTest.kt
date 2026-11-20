@@ -29,13 +29,13 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class PhoneAudioRouterTest {
+class DeviceAudioRouterTest {
     private object Capture : AudioCapture {
         override val format = CaptureFormat(sampleRate = 48_000, channels = 2, bitDepth = 16)
         override fun frames(): Flow<CapturedAudio> = emptyFlow()
     }
 
-    private class FakeShare(override val isSupported: Boolean = true) : PhoneAudioShare {
+    private class FakeShare(override val isSupported: Boolean = true) : DeviceAudioShare {
         override val capture = MutableStateFlow<AudioCapture?>(null)
         override var endedBySystem = false
         var stops = 0
@@ -53,18 +53,24 @@ class PhoneAudioRouterTest {
 
     private class Harness(scope: TestScope, wire: WireVersion = WireVersion.SPEC_1_0, instanceId: String? = "sendspin") {
         val share = FakeShare()
-        val source = PhoneAudioSource(share, MutableStateFlow(instanceId))
+        val source = DeviceAudioSource(share, MutableStateFlow(instanceId))
         val player = MutableStateFlow<PlayerState>(connected(SourceStatus.Off))
         val plays = mutableListOf<PlayRequest>()
-        val stoppedPlayers = mutableListOf<String>()
+
+        /** What the server answers when asked for the source uri; null is a server that cannot tell. */
+        var listed: Boolean? = true
+
+        /** Each released player, with whether it was told to stop first. */
+        val released = mutableListOf<Pair<String, Boolean>>()
         val errors = ErrorMessageBus()
-        val router = PhoneAudioRouter(
+        val router = DeviceAudioRouter(
             share = share,
             source = source,
             playerState = player,
             endpoint = MutableStateFlow(Endpoint.WebSocket("ws://server/sendspin", wire)),
+            isListed = { listed },
             play = { plays += it },
-            stopPlayer = { stoppedPlayers += it },
+            releasePlayer = { playerId, stop -> released += playerId to stop },
             errorBus = errors,
             scope = scope.backgroundScope,
             describe = { it.key },
@@ -83,7 +89,45 @@ class PhoneAudioRouterTest {
 
     private companion object {
         fun connected(source: SourceStatus) =
-            PlayerState.Connected("phone", "Server", ClockQuality.Good, AudioStatus.IDLE, source)
+            PlayerState.Connected("device", "Server", ClockQuality.Good, AudioStatus.IDLE, source)
+    }
+
+    @Test
+    fun `the play request waits until the server lists the source`() = runTest {
+        val h = Harness(this)
+        h.listed = false
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertTrue(h.plays.isEmpty(), "the server rejects a source that it does not list")
+
+        h.listed = true
+        advanceTimeBy(300)
+        runCurrent()
+        assertEquals(1, h.plays.size)
+    }
+
+    @Test
+    fun `a source that the server never lists ends the share without a play request`() = runTest {
+        val h = Harness(this)
+        h.listed = false
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        advanceTimeBy(6_000)
+        runCurrent()
+        assertTrue(h.plays.isEmpty())
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+    }
+
+    @Test
+    fun `a server that cannot tell gets the play request at once`() = runTest {
+        val h = Harness(this)
+        h.listed = null
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        assertEquals(1, h.plays.size)
     }
 
     @Test
@@ -94,19 +138,19 @@ class PhoneAudioRouterTest {
 
         h.startShare()
         runCurrent()
-        assertEquals(PhoneAudioShareState.Starting("kitchen"), h.router.state.value)
+        assertEquals(DeviceAudioShareState.Starting("kitchen"), h.router.state.value)
         assertTrue(h.plays.isEmpty(), "only an accepted source can play")
 
         h.status(SourceStatus.Ready)
         runCurrent()
         assertEquals(
-            listOf(PlayRequest("kitchen", listOf("sendspin://audio_source/phone"), QueueOption.REPLACE)),
+            listOf(PlayRequest("kitchen", listOf("sendspin://audio_source/device"), QueueOption.REPLACE)),
             h.plays,
         )
 
         h.status(SourceStatus.Streaming)
         runCurrent()
-        assertEquals(PhoneAudioShareState.Active, h.router.state.value)
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value)
         assertEquals(SourceDialect.SPEC, h.source.dialect.value)
     }
 
@@ -141,11 +185,11 @@ class PhoneAudioRouterTest {
         h.status(SourceStatus.Refused)
         runCurrent()
 
-        assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
         assertEquals(1, h.share.stops)
         assertNull(h.share.capture.value)
         assertEquals(SourceDialect.SPEC, h.source.dialect.value)
-        assertEquals("phone_audio_end_refused", h.errors.messages.first())
+        assertEquals("device_audio_end_refused", h.errors.messages.first())
     }
 
     @Test
@@ -155,8 +199,8 @@ class PhoneAudioRouterTest {
         advanceTimeBy(15_001)
         runCurrent()
 
-        assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
-        assertEquals("phone_audio_end_timeout", h.errors.messages.first())
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_timeout", h.errors.messages.first())
     }
 
     @Test
@@ -170,9 +214,9 @@ class PhoneAudioRouterTest {
         h.status(SourceStatus.Ready)
         runCurrent()
 
-        assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
-        assertEquals("phone_audio_end_server_stopped", h.errors.messages.first())
-        assertTrue(h.stoppedPlayers.isEmpty(), "the server stopped the player already")
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_server_stopped", h.errors.messages.first())
+        assertEquals(listOf("kitchen" to false), h.released, "no stop: the server stopped the player already")
     }
 
     @Test
@@ -186,9 +230,9 @@ class PhoneAudioRouterTest {
         h.player.value = PlayerState.Reconnecting(0, null, AudioStatus.IDLE)
         runCurrent()
 
-        assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
-        assertEquals("phone_audio_end_connection_lost", h.errors.messages.first())
-        assertEquals(listOf("kitchen"), h.stoppedPlayers)
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_connection_lost", h.errors.messages.first())
+        assertEquals(listOf("kitchen" to true), h.released)
     }
 
     @Test
@@ -199,9 +243,9 @@ class PhoneAudioRouterTest {
         h.share.revoke()
         runCurrent()
 
-        assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
-        assertEquals("phone_audio_end_revoked", h.errors.messages.first())
-        assertTrue(h.stoppedPlayers.isEmpty(), "no play request went out, so no player plays the phone")
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_revoked", h.errors.messages.first())
+        assertTrue(h.released.isEmpty(), "no play request went out, so no player plays the device")
     }
 
     @Test
@@ -215,9 +259,9 @@ class PhoneAudioRouterTest {
         h.status(SourceStatus.Off)
         runCurrent()
 
-        assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
         assertEquals(1, h.share.stops)
-        assertEquals(listOf("kitchen"), h.stoppedPlayers, "the player must not wait in silence for the source")
+        assertEquals(listOf("kitchen" to true), h.released, "the player must not wait in silence for the source")
         h.errors.emit("end of messages")
         assertEquals("end of messages", h.errors.messages.first())
     }

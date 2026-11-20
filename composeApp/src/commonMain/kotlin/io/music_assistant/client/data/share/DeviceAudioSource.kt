@@ -9,11 +9,11 @@ import kotlinx.coroutines.flow.combine
 
 /**
  * What the local player offers the server as a source. The local player reads [config], and
- * [PhoneAudioRouter] selects the [dialect]. It has no dependency on either, so both can hold it.
+ * [DeviceAudioRouter] selects the [dialect]. It has no dependency on either, so both can hold it.
  */
-class PhoneAudioSource(
-    share: PhoneAudioShare,
-    /** The provider instance that lists this phone as a live input; null if the server has none. */
+class DeviceAudioSource(
+    share: DeviceAudioShare,
+    /** The provider instance that lists this device as a live input; null if the server has none. */
     val instanceId: StateFlow<String?>,
 ) {
     /** The handshake does not tell the revision of the source role, so the router finds it by a retry. */

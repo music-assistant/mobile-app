@@ -6,7 +6,7 @@ import android.content.Intent
 import android.media.projection.MediaProjection
 import android.os.Build
 import androidx.annotation.RequiresApi
-import io.music_assistant.client.data.share.PhoneAudioShare
+import io.music_assistant.client.data.share.DeviceAudioShare
 import io.music_assistant.client.utils.sendspinClock
 import io.music_assistant.sendspin.api.AudioCapture
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,10 +18,10 @@ import kotlin.concurrent.Volatile
  * because Android ends a projection without one. [serviceClass] is that service; it lives in
  * the application module, with the manifest and the notification resources.
  */
-class AndroidPhoneAudioShare(
+class AndroidDeviceAudioShare(
     private val context: Context,
     private val serviceClass: Class<out Service>,
-) : PhoneAudioShare {
+) : DeviceAudioShare {
     /** `AudioPlaybackCaptureConfiguration` is from Android 10. */
     override val isSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 

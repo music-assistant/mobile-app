@@ -5,47 +5,47 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.items.AudioSource
-import io.music_assistant.client.data.share.PhoneAudioRouter
-import io.music_assistant.client.data.share.PhoneAudioShareState
+import io.music_assistant.client.data.share.DeviceAudioRouter
+import io.music_assistant.client.data.share.DeviceAudioShareState
 import org.koin.compose.koinInject
 
-/** What the player surfaces show about the share of the phone audio. */
-data class PhoneAudioShareUi(
+/** What the player surfaces show about the share of the device audio. */
+data class DeviceAudioShareUi(
     /** A share can start: the platform, the server and the local player all support it. */
     val available: Boolean = false,
     val sharing: Boolean = false,
     /** The local player plays, or is about to. A share restarts its audio link, so it must stop first. */
     val blockedByLocalPlayback: Boolean = false,
-    /** The player that plays the phone audio, or that is about to. Null until the server reports it. */
+    /** The player that plays the device audio, or that is about to. Null until the server reports it. */
     val target: PlayerData? = null,
     private val localPlayer: PlayerData? = null,
 ) {
-    /** The phone itself, and a group that has it, would play its own input late. */
+    /** The device itself, and a group that has it, would play its own input late. */
     fun canStartOn(player: PlayerData): Boolean =
         available && !sharing && !player.isLocal && !player.groupsWith(localPlayer)
 
     private fun PlayerData.groupsWith(local: PlayerData?): Boolean =
-        local?.let { phone ->
-            phone.parentBind?.id == playerId || childrenBinds.any { it.isBound && it.id == phone.playerId }
+        local?.let { device ->
+            device.parentBind?.id == playerId || childrenBinds.any { it.isBound && it.id == device.playerId }
         } == true
 
     companion object {
         fun of(
             available: Boolean,
-            state: PhoneAudioShareState,
+            state: DeviceAudioShareState,
             sourceUri: String?,
             players: List<PlayerData>,
-        ): PhoneAudioShareUi {
+        ): DeviceAudioShareUi {
             val local = players.firstOrNull { it.isLocal }
-            return PhoneAudioShareUi(
+            return DeviceAudioShareUi(
                 available = available,
-                sharing = state != PhoneAudioShareState.Idle,
+                sharing = state != DeviceAudioShareState.Idle,
                 blockedByLocalPlayback = local?.let { it.player.isPlaying || it.playRequestPending } == true,
                 target = when (state) {
-                    PhoneAudioShareState.Idle -> null
-                    is PhoneAudioShareState.Starting -> players.firstOrNull { it.queueOrPlayerId == state.queueId }
+                    DeviceAudioShareState.Idle -> null
+                    is DeviceAudioShareState.Starting -> players.firstOrNull { it.queueOrPlayerId == state.queueId }
                     // The server queues tell, so the mark follows a move from another client.
-                    PhoneAudioShareState.Active -> players.firstOrNull { it.plays(sourceUri) }
+                    DeviceAudioShareState.Active -> players.firstOrNull { it.plays(sourceUri) }
                 },
                 localPlayer = local,
             )
@@ -59,12 +59,12 @@ data class PhoneAudioShareUi(
 }
 
 @Composable
-fun rememberPhoneAudioShareUi(
+fun rememberDeviceAudioShareUi(
     players: List<PlayerData>,
-    router: PhoneAudioRouter = koinInject(),
-): PhoneAudioShareUi {
+    router: DeviceAudioRouter = koinInject(),
+): DeviceAudioShareUi {
     val available by router.isAvailable.collectAsStateWithLifecycle()
     val state by router.state.collectAsStateWithLifecycle()
     val sourceUri by router.sourceUri.collectAsStateWithLifecycle()
-    return PhoneAudioShareUi.of(available, state, sourceUri, players)
+    return DeviceAudioShareUi.of(available, state, sourceUri, players)
 }

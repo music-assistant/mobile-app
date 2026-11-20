@@ -37,10 +37,10 @@ import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
 import io.music_assistant.client.data.repository.WaveformRepository
-import io.music_assistant.client.data.share.PhoneAudioRouter
-import io.music_assistant.client.data.share.PhoneAudioShare
-import io.music_assistant.client.data.share.PhoneAudioSource
-import io.music_assistant.client.data.share.UnsupportedPhoneAudioShare
+import io.music_assistant.client.data.share.DeviceAudioRouter
+import io.music_assistant.client.data.share.DeviceAudioShare
+import io.music_assistant.client.data.share.DeviceAudioSource
+import io.music_assistant.client.data.share.UnsupportedDeviceAudioShare
 import io.music_assistant.client.imageloader.ArtworkDiskStore
 import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.imageloader.ArtworkTransport
@@ -173,8 +173,8 @@ fun sharedModule(
         single {                            // What the local player offers as a Sendspin source
             val providers = get<ProviderRepository>().providers
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-            PhoneAudioSource(
-                share = phoneAudioShare(),
+            DeviceAudioSource(
+                share = deviceAudioShare(),
                 instanceId = providers
                     .map { state -> (state as? DataState.Data)?.data?.let(::sendspinSourceInstanceId) }
                     .stateIn(scope, SharingStarted.Eagerly, null),
@@ -223,18 +223,25 @@ fun sharedModule(
                 beforeSend = get<LocalPlayerAdapter>()::prepareQueue,
             )
         }
-        single {                            // Phone audio to a player; a share outlives the screen
+        single {                            // Device audio to a player; a share outlives the screen
             val localPlayer = get<LocalPlayerAdapter>()
             val apiClient = get<ServiceClient>()
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-            PhoneAudioRouter(
-                share = phoneAudioShare(),
+            DeviceAudioRouter(
+                share = deviceAudioShare(),
                 source = get(),
                 playerState = localPlayer.player.state,
                 endpoint = get<LocalPlayerEndpoints>().endpoint,
+                isListed = { uri ->
+                    apiClient.sendRequest(Request.Library.verifyItemUri(uri)).getOrNull()?.resultAs<Boolean>()
+                },
                 play = get<PlayDispatcher>()::play,
-                stopPlayer = { playerId ->
-                    scope.launch { apiClient.sendRequest(Request.Player.simpleCommand(playerId, STOP_COMMAND)) }
+                releasePlayer = { playerId, stop ->
+                    scope.launch {
+                        if (stop) apiClient.sendRequest(Request.Player.simpleCommand(playerId, STOP_COMMAND))
+                        // The id of a player is the id of its queue.
+                        apiClient.sendRequest(Request.Player.selectSource(playerId, source = playerId))
+                    }
                 },
                 errorBus = get(),
                 scope = scope,
@@ -343,7 +350,7 @@ fun cleanupSingletons() {
 }
 
 /** The platform binds the capture where it has one (Android, in the application module). */
-private fun Scope.phoneAudioShare(): PhoneAudioShare = getOrNull() ?: UnsupportedPhoneAudioShare()
+private fun Scope.deviceAudioShare(): DeviceAudioShare = getOrNull() ?: UnsupportedDeviceAudioShare()
 
 /** The `players/cmd` command that ends playback. */
 private const val STOP_COMMAND = "stop"

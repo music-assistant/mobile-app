@@ -68,6 +68,7 @@ internal class PlaybackCapture(
             check(record.state == AudioRecord.STATE_INITIALIZED) { "The playback capture did not start" }
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             record.startRecording()
+            log.i { "Playback capture started: recording=${record.recordingState == AudioRecord.RECORDSTATE_RECORDING}" }
             val timeline = CaptureTimeline()
             while (currentCoroutineContext().isActive) {
                 val block = ByteArray(blockBytes)
@@ -115,15 +116,19 @@ internal class PlaybackCapture(
             return (anchor + micros(framesRead)).also { framesRead += frames }
         }
 
-        /** Where frame 0 is on the clock, as this read sees it. */
+        /**
+         * Where frame 0 is on the clock, as this read sees it. The read time is always right
+         * within a block. The audio timestamp is more exact, but a device can report one that
+         * does not fit the frames that were read, and such a time makes the player drop every
+         * chunk as too old. So the timestamp counts only while it agrees with the read time.
+         */
         private fun observedAnchor(record: AudioRecord, frames: Int): Long {
-            val hasTimestamp =
-                record.getTimestamp(timestamp, AudioTimestamp.TIMEBASE_BOOTTIME) == AudioRecord.SUCCESS
-            return if (hasTimestamp) {
-                timestamp.nanoTime / NANOS_PER_MICRO - micros(timestamp.framePosition)
-            } else {
-                clock.nowMicros() - micros(framesRead + frames)
-            }
+            val byReadTime = clock.nowMicros() - micros(framesRead + frames)
+            val byTimestamp = timestamp
+                .takeIf { record.getTimestamp(it, AudioTimestamp.TIMEBASE_BOOTTIME) == AudioRecord.SUCCESS }
+                ?.let { it.nanoTime / NANOS_PER_MICRO - micros(it.framePosition) }
+                ?.takeIf { abs(it - byReadTime) <= RE_ANCHOR_MICROS }
+            return byTimestamp ?: byReadTime
         }
 
         private fun micros(frames: Long): Long = frames * MICROS_PER_SECOND / SAMPLE_RATE

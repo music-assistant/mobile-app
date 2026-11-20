@@ -11,36 +11,36 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import io.music_assistant.client.data.share.PhoneAudioShare
-import io.music_assistant.client.share.AndroidPhoneAudioShare
+import io.music_assistant.client.data.share.DeviceAudioShare
+import io.music_assistant.client.share.AndroidDeviceAudioShare
 import io.music_assistant.client.share.ShareNotificationText
 import io.music_assistant.client.ui.compose.home.players.announcement.MicrophonePermission
 import io.music_assistant.client.ui.compose.home.players.announcement.rememberMicrophonePermission
 import kotlinx.coroutines.CompletableDeferred
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.phone_audio_notification_text
-import musicassistantclient.composeapp.generated.resources.phone_audio_notification_title
-import musicassistantclient.composeapp.generated.resources.phone_audio_stop
+import musicassistantclient.composeapp.generated.resources.device_audio_notification_text
+import musicassistantclient.composeapp.generated.resources.device_audio_notification_title
+import musicassistantclient.composeapp.generated.resources.device_audio_stop
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
 @Composable
-actual fun rememberPhoneAudioShareLauncher(): PhoneAudioShareLauncher {
+actual fun rememberDeviceAudioShareLauncher(): DeviceAudioShareLauncher {
     val context = LocalContext.current
-    val share = koinInject<PhoneAudioShare>()
+    val share = koinInject<DeviceAudioShare>()
     val microphone = rememberMicrophonePermission()
     val consent = remember { PendingConsent() }
     val contract = ActivityResultContracts.StartActivityForResult()
     val projection = rememberLauncherForActivityResult(contract, consent::complete)
     val notification = ShareNotificationText(
-        title = stringResource(Res.string.phone_audio_notification_title),
-        text = stringResource(Res.string.phone_audio_notification_text),
-        stopLabel = stringResource(Res.string.phone_audio_stop),
+        title = stringResource(Res.string.device_audio_notification_title),
+        text = stringResource(Res.string.device_audio_notification_text),
+        stopLabel = stringResource(Res.string.device_audio_stop),
     )
     return remember(context, share, microphone, projection, notification) {
-        AndroidPhoneAudioShareLauncher(
+        AndroidDeviceAudioShareLauncher(
             context = context,
-            share = share as? AndroidPhoneAudioShare,
+            share = share as? AndroidDeviceAudioShare,
             microphone = microphone,
             projection = projection,
             consent = consent,
@@ -65,14 +65,14 @@ private class PendingConsent {
  * Playback capture needs the record permission and, for each share, the consent of the user to
  * a media projection. The service starts only with both, so a refusal starts nothing.
  */
-private class AndroidPhoneAudioShareLauncher(
+private class AndroidDeviceAudioShareLauncher(
     private val context: Context,
-    private val share: AndroidPhoneAudioShare?,
+    private val share: AndroidDeviceAudioShare?,
     private val microphone: MicrophonePermission,
     private val projection: ActivityResultLauncher<Intent>,
     private val consent: PendingConsent,
     private val notification: ShareNotificationText,
-) : PhoneAudioShareLauncher {
+) : DeviceAudioShareLauncher {
     override suspend fun launch(): Boolean {
         val target = share?.takeIf { it.isSupported } ?: return false
         if (!microphone.request()) return false

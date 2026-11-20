@@ -24,9 +24,10 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.update
@@ -52,7 +53,17 @@ internal class SourceStreamer(
 ) {
     private val logger = Logger.withTag("Sendspin.Source")
     private val _status = MutableStateFlow(SourceStatus.Off)
-    val status: StateFlow<SourceStatus> = _status
+
+    /** True after this connection sent the `client/state` that carries the source. */
+    private val reported = MutableStateFlow(false)
+
+    /**
+     * [SourceStatus.Ready] only after the state report: a server lists a client as a
+     * source from its first `client/state`, and rejects a play request before it.
+     */
+    val status: Flow<SourceStatus> = combine(_status, reported) { status, reported ->
+        if (status == SourceStatus.Ready && !reported) SourceStatus.Off else status
+    }.distinctUntilChanged()
 
     /**
      * The number of the `start` in effect, or null while stopped. Each start gets a new
@@ -76,7 +87,13 @@ internal class SourceStreamer(
         roleActive = false
         playback = false
         authorized.value = null
+        reported.value = false
         _status.value = SourceStatus.Off
+    }
+
+    /** The connection sent its `client/state`. */
+    fun onStateReported() {
+        reported.value = true
     }
 
     fun onActivated(activation: Activation) {
@@ -97,11 +114,18 @@ internal class SourceStreamer(
         when (command.command) {
             SourceCommandObject.START -> when {
                 !canStream -> logger.i { "Ignoring source start: role=$roleActive playback=$playback" }
-                authorized.value == null -> authorized.value = ++starts
+                authorized.value == null -> {
+                    logger.i { "Source start accepted" }
+                    authorized.value = ++starts
+                }
+
                 else -> Unit // A duplicate start has no effect.
             }
 
-            SourceCommandObject.STOP -> authorized.value = null
+            SourceCommandObject.STOP -> {
+                logger.i { "Source stop" }
+                authorized.value = null
+            }
             else -> logger.d { "Ignoring source command ${command.command}" }
         }
     }
@@ -118,18 +142,27 @@ internal class SourceStreamer(
     private suspend fun stream(session: NoiseSession, start: Int) {
         var announced: SourceStreamFormat? = null
         var inputEnded = false
+        // A stream that sends nothing looks like a dead source to the server: say why.
+        var dropped = 0
         try {
             encoded()
                 .flowOn(encodeDispatcher)
                 .buffer(BACKLOG_CHUNKS, BufferOverflow.DROP_OLDEST)
                 .collect { chunk ->
                     // After a stalled link, live audio is worth more than the backlog.
-                    val late = clock.nowMicros() - chunk.audio.captureTimeMicros > MAX_BACKLOG_MICROS
+                    val ageMicros = clock.nowMicros() - chunk.audio.captureTimeMicros
+                    val late = ageMicros > MAX_BACKLOG_MICROS
                     val serverMicros = clockSync.toServerMicros(chunk.audio.captureTimeMicros)?.takeUnless { late }
-                        ?: return@collect
+                        ?: run {
+                            if (dropped++ % DROP_LOG_INTERVAL == 0) {
+                                logger.w { "Dropping source audio: ageUs=$ageMicros synced=${clockSync.isSynced} n=$dropped" }
+                            }
+                            return@collect
+                        }
                     if (chunk.format !== announced) {
                         // Also replaces the format of the open stream, when FLAC gives way to PCM.
                         session.send(WireCodec.encode(chunk.format.startMessage()))
+                        logger.i { "Source stream open: ${chunk.format} ageUs=$ageMicros" }
                         announced = chunk.format
                         _status.value = SourceStatus.Streaming
                     }
@@ -189,5 +222,6 @@ internal class SourceStreamer(
         const val BACKLOG_CHUNKS = 32
         const val MAX_BACKLOG_MICROS = 500_000L
         const val END_TIMEOUT_MILLIS = 1_000L
+        const val DROP_LOG_INTERVAL = 50
     }
 }

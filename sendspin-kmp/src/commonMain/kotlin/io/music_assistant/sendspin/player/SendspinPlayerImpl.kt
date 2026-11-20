@@ -378,6 +378,7 @@ internal class SendspinPlayerImpl(
                         ),
                     ),
                 )
+                source.value?.onStateReported()
             }
         }
 

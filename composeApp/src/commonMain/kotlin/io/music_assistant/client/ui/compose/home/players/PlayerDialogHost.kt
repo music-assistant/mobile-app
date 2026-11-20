@@ -23,7 +23,7 @@ import io.music_assistant.client.ui.compose.common.items.ChooseArtistDialog
 import io.music_assistant.client.ui.compose.common.items.PlaylistActions
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.players.announcement.AnnouncementDialog
-import io.music_assistant.client.ui.compose.home.players.share.PhoneAudioShareDialog
+import io.music_assistant.client.ui.compose.home.players.share.DeviceAudioShareDialog
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.utils.DeviceChrome
 import kotlinx.coroutines.flow.Flow
@@ -123,7 +123,7 @@ fun PlayerDialogHost(
             onDismissRequest = onDismiss,
         )
 
-        is PlayerDialogRequest.PhoneAudio -> PhoneAudioShareDialog(
+        is PlayerDialogRequest.DeviceAudio -> DeviceAudioShareDialog(
             player = player,
             onDismissRequest = onDismiss,
         )

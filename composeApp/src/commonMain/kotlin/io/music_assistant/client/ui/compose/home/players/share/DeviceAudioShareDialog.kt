@@ -27,15 +27,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.PlayerData
-import io.music_assistant.client.data.share.PhoneAudioRouter
+import io.music_assistant.client.data.share.DeviceAudioRouter
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_cancel
-import musicassistantclient.composeapp.generated.resources.phone_audio_intro_body
-import musicassistantclient.composeapp.generated.resources.phone_audio_intro_continue
-import musicassistantclient.composeapp.generated.resources.phone_audio_intro_muted
-import musicassistantclient.composeapp.generated.resources.phone_audio_intro_title
-import musicassistantclient.composeapp.generated.resources.phone_audio_permission_denied
+import musicassistantclient.composeapp.generated.resources.device_audio_intro_body
+import musicassistantclient.composeapp.generated.resources.device_audio_intro_continue
+import musicassistantclient.composeapp.generated.resources.device_audio_intro_muted
+import musicassistantclient.composeapp.generated.resources.device_audio_intro_title
+import musicassistantclient.composeapp.generated.resources.device_audio_permission_denied
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -45,25 +45,25 @@ import org.koin.compose.koinInject
  * A refusal ends here: no capture starts, and the audio link of the local player stays as it is.
  */
 @Composable
-fun PhoneAudioShareDialog(
+fun DeviceAudioShareDialog(
     player: PlayerData,
     onDismissRequest: () -> Unit,
-    router: PhoneAudioRouter = koinInject(),
+    router: DeviceAudioRouter = koinInject(),
     errorBus: ErrorMessageBus = koinInject(),
 ) {
-    val launcher = rememberPhoneAudioShareLauncher()
+    val launcher = rememberDeviceAudioShareLauncher()
     val scope = rememberCoroutineScope()
-    val refused = stringResource(Res.string.phone_audio_permission_denied)
+    val refused = stringResource(Res.string.device_audio_permission_denied)
     // The system dialogs are open: the dialog stays, so the launch is not cancelled with it.
     var launching by remember { mutableStateOf(false) }
     val queueId = player.queueOrPlayerId
 
     AlertDialog(
         onDismissRequest = { if (!launching) onDismissRequest() },
-        title = { Text(stringResource(Res.string.phone_audio_intro_title, player.player.name)) },
+        title = { Text(stringResource(Res.string.device_audio_intro_title, player.player.name)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(Res.string.phone_audio_intro_body))
+                Text(stringResource(Res.string.device_audio_intro_body))
                 MutedNotice()
             }
         },
@@ -77,7 +77,7 @@ fun PhoneAudioShareDialog(
                         onDismissRequest()
                     }
                 },
-            ) { Text(stringResource(Res.string.phone_audio_intro_continue)) }
+            ) { Text(stringResource(Res.string.device_audio_intro_continue)) }
         },
         dismissButton = {
             TextButton(enabled = !launching, onClick = onDismissRequest) {
@@ -87,13 +87,13 @@ fun PhoneAudioShareDialog(
     )
 }
 
-/** Set apart from the body: a phone that goes silent with no warning looks broken. */
+/** Set apart from the body: a device that goes silent with no warning looks broken. */
 @Composable
 private fun MutedNotice() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("PhoneAudioMutedNotice")
+            .testTag("DeviceAudioMutedNotice")
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.tertiaryContainer)
             .padding(12.dp),
@@ -106,7 +106,7 @@ private fun MutedNotice() {
             tint = MaterialTheme.colorScheme.onTertiaryContainer,
         )
         Text(
-            text = stringResource(Res.string.phone_audio_intro_muted),
+            text = stringResource(Res.string.device_audio_intro_muted),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onTertiaryContainer,
         )

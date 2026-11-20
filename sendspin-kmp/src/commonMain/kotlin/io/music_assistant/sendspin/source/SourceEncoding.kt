@@ -18,6 +18,9 @@ internal class SourceStreamFormat(
     private val capture: CaptureFormat,
     private val header: ByteArray?,
 ) {
+    override fun toString(): String =
+        "${codec.name} ${capture.sampleRate} Hz ${capture.channels} ch ${capture.bitDepth} bit"
+
     fun startMessage() = ClientStreamStartMessage(
         payload = ClientStreamStartPayload(
             ClientStreamSource(

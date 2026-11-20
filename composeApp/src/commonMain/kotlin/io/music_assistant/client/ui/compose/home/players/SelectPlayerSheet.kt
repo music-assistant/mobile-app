@@ -21,7 +21,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
@@ -70,7 +69,6 @@ import io.music_assistant.client.ui.utils.SnapToHeightLayout
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_close
 import musicassistantclient.composeapp.generated.resources.cd_more
-import musicassistantclient.composeapp.generated.resources.phone_audio_badge
 import musicassistantclient.composeapp.generated.resources.player_unavailable
 import musicassistantclient.composeapp.generated.resources.players_group_settings
 import musicassistantclient.composeapp.generated.resources.players_hide_unavailable
@@ -119,8 +117,6 @@ fun SelectPlayerSheet(
     onAdjustPlayerDelay: (String, Int) -> Unit = { _, _ -> },
     canLeaveGroup: Boolean = false,
     start: PlayerSheetStart = PlayerSheetStart.Players,
-    /** The player that plays the audio of this phone; its row gets a mark. */
-    phoneAudioPlayerId: String? = null,
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
@@ -151,7 +147,6 @@ fun SelectPlayerSheet(
             } else {
                 PlayerLayout(
                     players = players,
-                    phoneAudioPlayerId = phoneAudioPlayerId,
                     selectedPlayer = selectedPlayer,
                     onDismissRequest = onDismissRequest,
                     onMoveToPlayer = onMoveToPlayer,
@@ -169,7 +164,6 @@ fun SelectPlayerSheet(
 @Composable
 private fun PlayerLayout(
     players: List<PlayerData>,
-    phoneAudioPlayerId: String?,
     selectedPlayer: PlayerData,
     onDismissRequest: () -> Unit,
     onMoveToPlayer: (String) -> Unit,
@@ -224,7 +218,6 @@ private fun PlayerLayout(
         Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
             PlayerSelection(
                 players = shownPlayers,
-                phoneAudioPlayerId = phoneAudioPlayerId,
                 selectedPlayer = selectedPlayer,
                 onDismissRequest = onDismissRequest,
                 onSelectPlayer = onMoveToPlayer,
@@ -299,7 +292,6 @@ private fun SheetHandle(onClose: () -> Unit) {
 @Composable
 private fun PlayerSelection(
     players: List<PlayerData>,
-    phoneAudioPlayerId: String?,
     selectedPlayer: PlayerData,
     onDismissRequest: () -> Unit,
     onSelectPlayer: (String) -> Unit,
@@ -417,15 +409,6 @@ private fun PlayerSelection(
                             modifier = Modifier.basicMarquee().alpha(0.6f),
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
-                        )
-                    }
-
-                    if (item.playerId == phoneAudioPlayerId) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ScreenShare,
-                            contentDescription = stringResource(Res.string.phone_audio_badge),
-                            modifier = Modifier.padding(start = 8.dp).size(16.dp).testTag("PhoneAudioMark"),
-                            tint = MaterialTheme.colorScheme.tertiary,
                         )
                     }
 

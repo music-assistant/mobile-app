@@ -20,21 +20,21 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.IntentCompat
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.R
-import io.music_assistant.client.share.AndroidPhoneAudioShare
+import io.music_assistant.client.share.AndroidDeviceAudioShare
 import org.koin.android.ext.android.inject
 
 /**
- * Holds the media projection of a phone audio share. Android ends a projection that has no
+ * Holds the media projection of a device audio share. Android ends a projection that has no
  * foreground service of type `mediaProjection`, and wants the service in the foreground
  * before the projection exists.
  *
- * The service only holds the projection. [AndroidPhoneAudioShare] publishes the capture, and
+ * The service only holds the projection. [AndroidDeviceAudioShare] publishes the capture, and
  * the Sendspin player records from it while the server wants the stream.
  */
 @RequiresApi(Build.VERSION_CODES.Q)
-class PhoneAudioShareService : Service() {
-    private val logger = Logger.withTag("PhoneAudioShareService")
-    private val share: AndroidPhoneAudioShare by inject()
+class DeviceAudioShareService : Service() {
+    private val logger = Logger.withTag("DeviceAudioShareService")
+    private val share: AndroidDeviceAudioShare by inject()
     private var projection: MediaProjection? = null
 
     /** This service muted the media stream, so it must give the sound back. */
@@ -62,10 +62,10 @@ class PhoneAudioShareService : Service() {
         startForeground(NOTIFICATION_ID, notification(intent), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
         if (projection != null) return
         val consent = intent?.let {
-            IntentCompat.getParcelableExtra(it, AndroidPhoneAudioShare.EXTRA_CONSENT, Intent::class.java)
+            IntentCompat.getParcelableExtra(it, AndroidDeviceAudioShare.EXTRA_CONSENT, Intent::class.java)
         }
         val granted = consent?.let { data ->
-            val resultCode = intent.getIntExtra(AndroidPhoneAudioShare.EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
+            val resultCode = intent.getIntExtra(AndroidDeviceAudioShare.EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
             getSystemService(MediaProjectionManager::class.java).getMediaProjection(resultCode, data)
         } ?: run {
             logger.w { "No capture consent: stopping" }
@@ -80,7 +80,7 @@ class PhoneAudioShareService : Service() {
     }
 
     /**
-     * The capture copies the audio and the phone still plays it, about 2 seconds before the
+     * The capture copies the audio and the device still plays it, about 2 seconds before the
      * player: an echo. So the media stream is silent for the share. The capture does not depend
      * on the stream volume. A mute, not a volume of zero: if the process dies, a volume key
      * brings the sound back at its old level. A stream that the user muted stays muted after.
@@ -115,28 +115,28 @@ class PhoneAudioShareService : Service() {
     }
 
     private fun notification(intent: Intent?): Notification {
-        val title = intent.text(AndroidPhoneAudioShare.EXTRA_TITLE)
+        val title = intent.text(AndroidDeviceAudioShare.EXTRA_TITLE)
         getSystemService(NotificationManager::class.java)
             .createNotificationChannel(NotificationChannel(CHANNEL_ID, title, NotificationManager.IMPORTANCE_LOW))
         val stop = PendingIntent.getService(
             this,
             0,
-            Intent(this, PhoneAudioShareService::class.java).setAction(ACTION_STOP),
+            Intent(this, DeviceAudioShareService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(title)
-            .setContentText(intent.text(AndroidPhoneAudioShare.EXTRA_TEXT))
+            .setContentText(intent.text(AndroidDeviceAudioShare.EXTRA_TEXT))
             .setOngoing(true)
-            .addAction(0, intent.text(AndroidPhoneAudioShare.EXTRA_STOP_LABEL), stop)
+            .addAction(0, intent.text(AndroidDeviceAudioShare.EXTRA_STOP_LABEL), stop)
             .build()
     }
 
     private fun Intent?.text(key: String): String = this?.getStringExtra(key).orEmpty()
 
     private companion object {
-        const val CHANNEL_ID = "phone_audio_share"
+        const val CHANNEL_ID = "device_audio_share"
         const val NOTIFICATION_ID = 2
         const val ACTION_STOP = "io.music_assistant.client.action.STOP_PHONE_AUDIO_SHARE"
     }

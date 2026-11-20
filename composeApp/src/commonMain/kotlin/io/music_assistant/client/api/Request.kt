@@ -71,6 +71,18 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
             },
         )
 
+        /** [source] is a source of the player, or the id of a queue to make the queue the source again. */
+        fun selectSource(
+            playerId: String,
+            source: String,
+        ) = Request(
+            command = APICommands.playersCmd("select_source"),
+            args = buildJsonObject {
+                put("player_id", JsonPrimitive(playerId))
+                put("source", JsonPrimitive(source))
+            },
+        )
+
         fun setPower(
             playerId: String,
             powered: Boolean,
@@ -1125,6 +1137,14 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
 
         fun itemByUri(uri: String) = Request(
             command = APICommands.MUSIC_ITEM_BY_URI,
+            args = buildJsonObject {
+                put("uri", JsonPrimitive(uri))
+            },
+        )
+
+        /** True if the uri names an item that the server can find. The answer is never an error. */
+        fun verifyItemUri(uri: String) = Request(
+            command = APICommands.MUSIC_VERIFY_ITEM_URI,
             args = buildJsonObject {
                 put("uri", JsonPrimitive(uri))
             },

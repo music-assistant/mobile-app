@@ -333,31 +333,43 @@ actual class PlatformFeature {
   `message`. Voice has no upload endpoint: raw s16le PCM streams live over `/live_announcement`
   (WebSocket) or the `live_announcement` data channel (WebRTC). Closing the link ends the clip, so
   never cancel a session early. The platform microphone is the `MicrophoneCapture` Koin binding.
-- **Phone audio source**: on Android 10 and newer, the app sends the audio of other apps to the server, and the
-  server plays it on a player. The phone is then a live input: the local player offers the Sendspin `source@v1` role on
-  its own connection, only while a share runs. `PhoneAudioShare` (`data/share/`) is the platform capture, and
-  `PhoneAudioSource` gives its `SourceConfig` to `LocalPlayerAdapter`. iOS has no playback capture.
+- **Device audio source**: on Android 10 and newer, the app sends the audio of other apps to the server, and the
+  server plays it on a player. The device is then a live input: the local player offers the Sendspin `source@v1` role
+  on its own connection, only while a share runs. `DeviceAudioShare` (`data/share/`) is the platform capture, and
+  `DeviceAudioSource` gives its `SourceConfig` to `LocalPlayerAdapter`. iOS has no playback capture.
 
-  `PhoneAudioRouter` owns a share. Only the server starts the stream. So the router waits until the server accepts the
-  source, then sends a `PlayRequest` for the source uri (`sendspinSourceUri`) through `PlayDispatcher`. The handshake
-  does not give the revision of the role. The router starts with `SourceDialect.SPEC`, and tries `RC1` if the status is
-  `Refused`. That restarts the audio link one time. A share ends when the user stops it, when the system ends the
-  capture, when the server stops the stream, or when the audio link drops. The roles go in `client/hello`, so the
-  start and the end of a share restart the audio link.
+  `DeviceAudioRouter` owns a share. Only the server starts the stream. So the router waits until the server accepts the
+  source, then sends a `PlayRequest` for the source uri (`sendspinSourceUri`) through `PlayDispatcher`. The server
+  lists a client as a source only after the first `client/state` of the client. Before that, the server cannot find
+  the source uri and rejects the play request. So `SourceStatus.Ready` comes only after the module sent that report.
+  The report and the play request use different connections, so the router also asks the server with
+  `music/verify_item_uri`. It sends the play request only after the answer is true. If the answer stays false for
+  5 s, the share ends.
+  The handshake does not give the revision of the role. The router starts with `SourceDialect.SPEC`, and tries `RC1`
+  if the status is `Refused`. That restarts the audio link one time. A share ends when the user stops it, when the
+  system ends the capture, when the server stops the stream, or when the audio link drops. The roles go in
+  `client/hello`, so the start and the end of a share restart the audio link.
+
+  The server keeps the device as the active source of the target after a stop. So the end of a share sends
+  `players/cmd/select_source` with the id of the target, and the target gets its queue again. While a share runs,
+  `LocalPlayerAdapter.wantsSession` is true, because the user is then in the app that plays, and the share needs
+  the MA session.
 
   Find the feature from the provider list (`sendspinSourceInstanceId`), not from the schema: the `sendspin_source`
   plugin, or a `sendspin` provider with the `audio_source` feature. The role needs `WireVersion.SPEC_1_0`.
 
-  On Android, `PhoneAudioShareService` (type `mediaProjection`) holds the projection, and `PlaybackCapture` records
+  On Android, `DeviceAudioShareService` (type `mediaProjection`) holds the projection, and `PlaybackCapture` records
   with `excludeUid` of the app, so the local player never feeds the source. The service mutes the media stream for the
-  share, because the phone plays the audio about 2 seconds before the player, and it unmutes the stream at the end. The start needs the record permission and
-  the capture consent for each share (`rememberPhoneAudioShareLauncher`). `PhoneAudioShareDialog` tells the user first.
-  A refusal starts nothing.
+  share, because the device plays the audio about 2 seconds before the player. It unmutes the stream at the end. The
+  start needs the record permission and the capture consent for each share (`rememberDeviceAudioShareLauncher`).
+  `DeviceAudioShareDialog` tells the user first. A refusal starts nothing.
 
-  `PhoneAudioShareUi` gives the UI rules. The menu of the expanded player has "Play phone audio here". The phone and a
-  group that has it are not a target. The entry is disabled while the local player plays. While a share runs,
-  `PhoneAudioStrip` shows above the pager, `SharedPhoneInfo` covers the local player page, and the target has a badge.
-  The target comes from the server queues: the queue whose current item is the `AudioSource` with the source uri.
+  `DeviceAudioShareUi` gives the UI rules. The menu of the expanded player has "Play device audio here". The device
+  and a group that has it are not a target. The entry is disabled while the local player plays. While a share runs,
+  the menu has "Stop device audio", and `SharedDeviceInfo` covers the local player page. The artwork of the
+  target shows `DeviceAudioIcon` instead of the type icon. The target comes from the server:
+  the player whose
+  active source is the source uri, or the queue whose current item is the `AudioSource` with that uri.
 - **AI Radio**: The client supports server schema 88 and higher only (`supportsAiRadio`). Both gates,
   `MainDataSource.aiRadioAvailable` and `aiRadioQueueDjAvailable`, need it. A station is a finite
   Radio item (`ai_radio://radio/<station_id>`, `ServerAiRadioStation.uri`). Play it through
@@ -562,7 +574,7 @@ The built-in player is the `:sendspin-kmp` Gradle module (`io.music_assistant.se
 - `data/LocalPlayerAdapter` owns the player and everything about the MA player model: optimistic UI, the offline command queue, and server event reconciliation. `LocalPlayerFactory` builds the player from the platform ports (sink, decoders, key store), so a test gives the adapter a fake player (`LocalPlayerAdapterTest`).
 - `data/LocalPlayerEndpoints` derives the endpoint from the MA session. A WebRTC session gets the data channel. A direct session gets the proxied WebSocket at `<wsUrl>/sendspin`, or the custom Sendspin server from settings. The proxy needs the `auth` message before `client/init`, so the endpoint carries the MA token. The custom connection sends the token only while "Sign in through Music Assistant" is on (`SendspinConnectionAuth`). Turn it off for a plain Sendspin server, because the spec does not let a client send a message before `client/init`. A reconnecting or backgrounded MA session keeps the last endpoint. Each Sendspin connection attempt needs a new data channel. From server schema 49 (`LABEL_ROUTED_CHANNELS_SCHEMA`), the app opens it in-band on the live peer, so the MA session continues. On an older server, or if the new channel does not open, the app renegotiates the peer connection.
 - Sinks and decoders: Android uses `AudioTrackSink` and `AndroidDecoderFactory` from the module. On iOS, `player/local/` holds `AudioQueueSink` and pass-through `IosDecoderFactory` (the native player decodes).
-- The control plane stays on the MA REST API. Sendspin carries audio only: role `player@v1`, and role `source@v1` while the phone audio is shared.
+- The control plane stays on the MA REST API. Sendspin carries audio only: role `player@v1`, and role `source@v1` while the device audio is shared.
 - Spec 1.0.0-rc1 says that every client offers the Pairing PSK method. On `SPEC_1_0`, `NoiseSession` offers and accepts the pairing PSK always. The stored `pairing_psk_enabled` flag of a 9.x `management/set-pairing-config` applies to `LEGACY_9` only.
 - Only the Noise-encrypted protocol is supported. `supportsEncryptedSendspin(schemaVersion)` requires MA schema 45 or newer. A known lower schema produces `Endpoint.Unsupported`, and the player fails without opening a transport. A missing schema is inconclusive: endpoint selection permits a handshake rather than rejecting the server. An explicit unsupported wire version, and a `server/error` for an unsupported version or suite, fail terminally; network failures and handshake timeouts still retry.
 - The module speaks two wire dialects, `WireVersion` (`api`). `LEGACY_9` is aiosendspin 9.x (server 2.10.6 and older). `SPEC_1_0` is Sendspin spec 1.0.0-rc1, aiosendspin 10.x (server 2.10.7 and 2.11). `sendspinWireFor(schemaVersion, serverVersion)` selects `SPEC_1_0` from `SERVER_2_11_SCHEMA`, or from a 2.10 `server_version` with patch 7 or higher, because 2.10.7 keeps the 2.10 schema. All other servers get `LEGACY_9`, which includes an unknown server and a source build (`0.0.0`). The handshake does not give the server version: `server/init` has `version` 1 on both wires. `LocalPlayerEndpoints` puts the wire on the `Endpoint`, so a wire change restarts the connection. A 10.x server accepts the 9.x wire only while its hidden setting `allow_legacy_clients` is on, and it logs a "non-compliant client" warning for it. The differences on `SPEC_1_0`: Noise message 1 carries `psk_category`, and the client matches the PSK by id and category. On a miss in the initial handshake, the client completes with the Sentinel PSK, so the server can offer re-pairing. `client/hello` has no `trust_level`, no `supported_commands`, and `supported_pair_methods` is an object keyed by method. `client/state` carries `output_delay_ms`, `required_lead_time_ms`, `min_buffer_ms` and `supported_commands`. The player sends it after the clock converges and again when the delay changes, never periodically. An audio chunk header has 4 more bytes, `send_ahead`, which the client skips. Fragments use type 1 with a flags byte. A re-handshake has no hello exchange, and an activate without `active_roles` keeps the roles. The Pairing PSK flow sends `client/pair-init` with the pairing index before `client/pair-finalize`. `SendspinJson` omits null fields on both wires. `SendspinDeps.deviceInfo` (`DeviceInfo`) gives the product name, the manufacturer and the app version that the server names in its logs.

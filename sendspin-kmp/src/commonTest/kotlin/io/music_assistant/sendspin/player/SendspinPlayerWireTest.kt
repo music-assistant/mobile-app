@@ -143,6 +143,18 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     private fun Harness.sourceStatus(): SourceStatus = (player.state.value as PlayerState.Connected).source
 
     @Test
+    fun theSourceIsNotReadyBeforeTheStateReport() = sourceTest { h, _ ->
+        val server = h.connectServer(psk = SHARED_PSK, activeRoles = """["player@v1","source@v1"]""")
+        assertEquals(SourceStatus.Off, h.awaitConnected().source, "the server lists no source before client/state")
+        assertTrue(server.clientStates.isEmpty())
+
+        advanceTimeBy(1_000)
+        runCurrent()
+        assertEquals(1, server.clientStates.size)
+        assertEquals(SourceStatus.Ready, h.sourceStatus())
+    }
+
+    @Test
     fun theSourceRoleIsOfferedWithoutASupportObjectAndWaitsForAStart() = sourceTest { h, capture ->
         val server = connectSource(h)
         val hello = server.helloPayload()

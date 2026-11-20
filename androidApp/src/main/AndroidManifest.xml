@@ -129,7 +129,7 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
         <service
-            android:name=".services.PhoneAudioShareService"
+            android:name=".services.DeviceAudioShareService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
         <provider

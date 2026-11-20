@@ -4,4 +4,4 @@ import androidx.compose.runtime.Composable
 
 /** iOS has no playback capture, and the share action never shows there. */
 @Composable
-actual fun rememberPhoneAudioShareLauncher(): PhoneAudioShareLauncher = PhoneAudioShareLauncher { false }
+actual fun rememberDeviceAudioShareLauncher(): DeviceAudioShareLauncher = DeviceAudioShareLauncher { false }

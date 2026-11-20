@@ -132,6 +132,7 @@ object APICommands {
     // Items
     const val MUSIC_ITEM = "music/item"
     const val MUSIC_ITEM_BY_URI = "music/item_by_uri"
+    const val MUSIC_VERIFY_ITEM_URI = "music/verify_item_uri"
     const val MUSIC_REFRESH_ITEM = "music/refresh_item"
 
     // Auth commands

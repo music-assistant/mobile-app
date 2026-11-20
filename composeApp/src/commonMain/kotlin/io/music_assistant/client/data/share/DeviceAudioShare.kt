@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The capture of the audio that other apps play on this device. The platform starts it from
- * the UI, because it needs the consent of the user (`rememberPhoneAudioShareLauncher`).
+ * the UI, because it needs the consent of the user (`rememberDeviceAudioShareLauncher`).
  */
-interface PhoneAudioShare {
+interface DeviceAudioShare {
     /** False on a platform, or on a system version, that cannot capture playback. */
     val isSupported: Boolean
 
@@ -26,7 +26,7 @@ interface PhoneAudioShare {
 }
 
 /** A platform without playback capture. */
-class UnsupportedPhoneAudioShare : PhoneAudioShare {
+class UnsupportedDeviceAudioShare : DeviceAudioShare {
     override val isSupported = false
     override val capture: StateFlow<AudioCapture?> = MutableStateFlow(null)
     override val endedBySystem = false
