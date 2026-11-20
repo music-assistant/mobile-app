@@ -23,7 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
@@ -42,7 +41,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,7 +50,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,7 +58,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.window.core.layout.WindowSizeClass
 import coil3.compose.AsyncImage
-import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
 import io.music_assistant.client.data.model.client.ImageType
 import io.music_assistant.client.data.model.client.ItemDescription
@@ -85,6 +81,7 @@ import io.music_assistant.client.ui.compose.common.OverflowMenuButton
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.PlayerColors
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
+import io.music_assistant.client.ui.compose.common.copyPlayLinkMenuOption
 import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.Badges
@@ -99,16 +96,13 @@ import io.music_assistant.client.ui.compose.common.items.rememberArtistNavigatio
 import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowActions
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
-import io.music_assistant.client.ui.compose.common.plainTextClipEntry
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.search.SearchInput
 import io.music_assistant.client.ui.contentColorByLuminance
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.ui.utils.fadingEdges
-import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
-import musicassistantclient.composeapp.generated.resources.action_copy_play_link
 import musicassistantclient.composeapp.generated.resources.action_export_playlist
 import musicassistantclient.composeapp.generated.resources.action_find_on_music_services
 import musicassistantclient.composeapp.generated.resources.action_go_to_artist
@@ -402,18 +396,7 @@ private fun ItemOverflow(
         },
     )
 
-    // A shareable link that plays the item from outside the app (Shortcuts, NFC, automations).
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
-    val copyPlayLink = listOfNotNull(
-        item.mediaUri?.takeIf { item.isPlayable }?.let { uri ->
-            OverflowMenuOption(
-                title = stringResource(Res.string.action_copy_play_link),
-                icon = Icons.Default.Link,
-                onClick = { scope.launch { clipboard.setClipEntry(plainTextClipEntry(DeepLinkBus.playLink(uri))) } },
-            )
-        },
-    )
+    val copyPlayLink = listOfNotNull(item.mediaUri?.takeIf { item.isPlayable }?.let { copyPlayLinkMenuOption(it) })
 
     val canonical = resolveDetailOverflowActions(
         item = item,

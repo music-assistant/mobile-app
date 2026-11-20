@@ -86,4 +86,16 @@ class DeepLinkBusTest {
         assertTrue(link.startsWith("https://www.music-assistant.io/app/play?uri="))
         assertEquals(DeepLinkDestination.Play(uri), parse(link))
     }
+
+    @Test
+    fun playLinkCarriesPlayer() {
+        assertEquals(
+            DeepLinkDestination.Play("library://radio/12", "Living Room"),
+            parse(DeepLinkBus.playLink("library://radio/12", "Living Room")),
+        )
+        assertEquals(
+            DeepLinkDestination.Play("library://radio/12", DeepLinkBus.LOCAL_PLAYER),
+            parse(DeepLinkBus.playLink("library://radio/12", DeepLinkBus.LOCAL_PLAYER)),
+        )
+    }
 }

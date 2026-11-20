@@ -117,13 +117,15 @@ class DeepLinkBus {
         const val LOCAL_PLAYER = "local"
 
         /**
-         * The shareable App/Universal Link that plays [mediaUri] on the player selected when it opens.
+         * The shareable App/Universal Link that plays [mediaUri] on [player] (an id, a name or
+         * [LOCAL_PLAYER]), or on the player selected when it opens if null.
          * The app claims the `www` host only.
          */
-        fun playLink(mediaUri: String): String =
+        fun playLink(mediaUri: String, player: String? = null): String =
             URLBuilder("https://www.music-assistant.io").apply {
                 appendPathSegments("app", "play")
                 parameters.append("uri", mediaUri)
+                player?.let { parameters.append("player", it) }
             }.buildString()
 
         /**

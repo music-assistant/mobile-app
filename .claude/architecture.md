@@ -128,8 +128,10 @@ actual class PlatformFeature {
   `replace_next`). The default is `replace` ("Play now"). `DeepLinkBus` ignores a link without a uri or with an
   unknown option. `HomeScreenViewModel.playDeepLink` waits up to 10 s for the player, then selects it and sends
   the request through `PlayDispatcher`. If the player does not come, the app shows a toast and plays nothing.
-  A server error shows the usual error toast. "Copy play link" in the menu of the item page copies the
-  link (`DeepLinkBus.playLink`).
+  A server error shows the usual error toast. "Copy play link" (`copyPlayLinkMenuOption`) copies the link
+  (`DeepLinkBus.playLink`). In the menu of the item page, the link has no player. In the menu of the expanded
+  player, the link plays the current item on that player. It names the built-in player as `local`, because its
+  id is different on each install, and it names every other player by its id.
 - **App and Universal Links**: the app claims `https://www.music-assistant.io/app/*` only. The apex domain
   redirects to `www`, and Android and iOS do not follow a redirect when they get the association file. So do not
   add the apex domain to the manifest or the entitlements, because the check of that host fails. Before
