@@ -36,12 +36,12 @@ stays on screen applies it once.
 | Route | `DeepLinkDestination` | Action in `MainNavRoot` |
 |---|---|---|
 | none, `home` | `Home` | Selects back stack 0 (`MainNav.Landing`) and resets it. |
-| `library` | `Library(null)` | The same as `Home`. |
+| `library` | `Library(null)` | Selects and resets back stack 0, collapses the players pager, and opens the drawer. The wide layout has no drawer, because its rail shows the sidebar. |
 | `library/<category>` | `Library(mediaType)` | Also pushes `MainNav.LibraryList(mediaType)` on back stack 0. |
 | `search` | `Search` | Selects back stack 1 (`MainNav.Search`) and resets it. |
 
-`MainNavRoot` has two back stacks only, `Landing` and `Search`. `MainNav.Library` has no `entry`, so `library`
-without a category has no page of its own.
+`MainNavRoot` has two back stacks only, `Landing` and `Search`. The library has no page of its own, because the
+sidebar holds the library categories. `MainNavRoot` gives its `DrawerState` to `AdaptiveNavigationBarLayout`.
 | `players[?player=]` | `Players` | Expands the players pager. `HomeScreenViewModel.selectPlayerByIdOrName` selects the player. |
 | `play?uri=[&player=][&option=]` | `Play` | `HomeScreenViewModel.playDeepLink`. Does not expand the pager. |
 
@@ -53,14 +53,12 @@ URI, an unknown `option`) is ignored, and the app does not go to a different pag
 
 - `findByIdOrName` uses the selectable players only. It compares without case, and an id match wins over a name
   match.
-- `findPlayTarget` (play link) also takes `local` (`DeepLinkBus.LOCAL_PLAYER`) for the built-in player, and
-  null for the selected player.
+- `findPlayTarget` also takes `local` (`DeepLinkBus.LOCAL_PLAYER`) for the built-in player, and null for the
+  selected player. The play link and the players link (`selectPlayerByIdOrName`) both use it.
 - The lookup waits up to `DEEP_LINK_PLAYER_TIMEOUT` (10 s) for the player list. A failed play link goes to
   `deepLinkPlayFailures`, and `MainNavRoot` shows a toast (`deep_link_no_player_selected` or
   `deep_link_player_not_found`).
 - A play request goes through `PlayDispatcher`, like every other `play_media`.
-- `players?player=local` does not select the built-in player, because `selectPlayerByIdOrName` does not know
-  `local`.
 
 ## Copy Play Link
 

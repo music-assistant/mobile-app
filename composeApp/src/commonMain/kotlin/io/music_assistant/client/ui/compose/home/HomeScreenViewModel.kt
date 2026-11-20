@@ -97,7 +97,7 @@ internal fun List<Player>.findByIdOrName(query: String): Player? =
             ?: candidates.find { it.name.equals(query, ignoreCase = true) }
     }
 
-// Play deep-link target: null = the selected player, `local` = this device's built-in player.
+// Deep-link target (play and players links): null = the selected player, `local` = this device's built-in player.
 internal fun List<PlayerData>.findPlayTarget(query: String?, selectedId: String?): PlayerData? = when {
     query == null -> selectedId?.let { id -> find { it.playerId == id } }
     query.equals(DeepLinkBus.LOCAL_PLAYER, ignoreCase = true) -> find { it.isLocal }
@@ -567,7 +567,7 @@ class HomeScreenViewModel(
         deepLinkPlayerJob = viewModelScope.launch {
             withTimeoutOrNull(DEEP_LINK_PLAYER_TIMEOUT) {
                 dataSource.playersData
-                    .mapNotNull { state -> state.dataOrNull?.map { it.player }?.findByIdOrName(query) }
+                    .mapNotNull { state -> state.dataOrNull?.findPlayTarget(query, selectedId = null)?.player }
                     .first()
             }?.let(dataSource::selectPlayer)
                 ?: Logger.withTag("HomeScreenVM").w { "Deep link: no selectable player '$query'" }
