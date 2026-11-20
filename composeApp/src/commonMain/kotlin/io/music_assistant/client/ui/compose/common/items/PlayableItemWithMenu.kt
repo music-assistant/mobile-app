@@ -21,6 +21,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -40,6 +42,7 @@ import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.RemoveFromLibraryConfirmationDialog
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.action_remove
 import musicassistantclient.composeapp.generated.resources.action_select_multiple
@@ -62,6 +65,7 @@ fun TrackWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -75,6 +79,7 @@ fun TrackWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
         itemComposable = { mod, onClick, onLongClick ->
             when (viewMode) {
                 ViewMode.LIST -> TrackRowItem(
@@ -160,6 +165,7 @@ fun RadioWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     providerIconFetcher: ProviderIconFetcher?,
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     PlayableItemWithMenu(
         modifier = when (viewMode) {
@@ -172,6 +178,7 @@ fun RadioWithMenu(
         playlistActions = playlistActions,
         onRemoveFromPlaylist = onRemoveFromPlaylist,
         libraryActions = libraryActions,
+        firstItemFocusRequester = firstItemFocusRequester,
         itemComposable = { mod, onClick, onLongClick ->
             when (viewMode) {
                 ViewMode.LIST -> LiveStreamRowItem(
@@ -253,6 +260,10 @@ private fun <T> PlayableItemWithMenu(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
+    // Android TV: attached to the actual focusable leaf built by itemComposable, not the outer
+    // wrapper Box above -- that Box isn't focusable itself, so a requester there can't be used to
+    // requestFocus() into this item (verified live: it silently does nothing). See CategoryRow.kt.
+    firstItemFocusRequester: FocusRequester? = null,
     itemComposable: @Composable (
         modifier: Modifier,
         onClick: (T) -> Unit,
@@ -304,8 +315,11 @@ private fun <T> PlayableItemWithMenu(
     // dim them and route a tap to the menu instead of starting playback.
     val playable = item.isPlayable
     val selectedBackground = MaterialTheme.colorScheme.secondaryContainer
+    // Android TV: this wrapper Box isn't itself the focusable node -- the real clickable target
+    // is built several layers down by itemComposable (a different composable per media type/view
+    // mode) -- so tvFocusRing needs trackDescendants to see focus land on any of them.
     Box(
-        modifier = modifier.then(
+        modifier = modifier.tvFocusRing(trackDescendants = true).then(
             selectionMark?.let { mark ->
                 Modifier
                     .semantics { selected = mark.selected }
@@ -321,7 +335,14 @@ private fun <T> PlayableItemWithMenu(
     ) {
         itemComposable(
             Modifier.align(Alignment.Center)
-                .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA)),
+                .then(if (playable) Modifier else Modifier.alpha(DISABLED_ITEM_ALPHA))
+                .then(
+                    if (firstItemFocusRequester != null) {
+                        Modifier.focusRequester(firstItemFocusRequester)
+                    } else {
+                        Modifier
+                    },
+                ),
             selectionMark?.let { mark -> { _: T -> mark.onToggle() } }
                 ?: { effectiveDefault?.let(runPlayAction) ?: run { expandedItemId = item.itemId } },
             selectionMark?.let { { _: T -> } } ?: { expandedItemId = item.itemId },

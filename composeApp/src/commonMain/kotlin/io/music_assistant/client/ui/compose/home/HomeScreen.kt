@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,7 @@ import io.music_assistant.client.ui.compose.common.items.lazyListKey
 import io.music_assistant.client.ui.compose.common.moveToEnabledBoundary
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
 import io.music_assistant.client.ui.compose.common.toDisplayString
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +87,9 @@ fun HomeScreen(
     actionsViewModel: ActionsViewModel,
     state: HomeScreenState,
     onOpenSettings: () -> Unit,
+    // Android TV: routes D-pad DOWN out of the last row to the persistent mini-player, which
+    // otherwise isn't reachable via D-pad (it's a separate overlay, not an ordinary sibling).
+    floatingBarFocusRequester: FocusRequester? = null,
 ) {
     val homeScreenState by homeScreenViewModel.state.collectAsStateWithLifecycle()
     val unsupportedInstallServerId by homeScreenViewModel.unsupportedInstallServerId.collectAsStateWithLifecycle()
@@ -149,6 +154,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.error,
             )
         } else {
+            val lastRowKey = displayedData.lastOrNull()?.category?.lazyListKey
             val rowContent: @Composable (HomeRow) -> Unit = { row ->
                 CategoryRow(
                     data = if (row.loading) DataState.Loading() else DataState.Data(row.category),
@@ -159,6 +165,11 @@ fun HomeScreen(
                     libraryActions = actionsViewModel,
                     progressActions = actionsViewModel,
                     providerIconFetcher = providerIconFetcher,
+                    bottomFocusRequester = if (row.category.lazyListKey == lastRowKey) {
+                        floatingBarFocusRequester
+                    } else {
+                        null
+                    },
                 )
             }
 
@@ -329,7 +340,7 @@ private fun LandingPageTopBar(
             )
         },
         actions = {
-            IconButton(onClick = onToggleEditMode) {
+            IconButton(modifier = Modifier.tvFocusRing(), onClick = onToggleEditMode) {
                 Icon(
                     imageVector = if (editMode) Icons.Default.Done else Icons.Default.Edit,
                     contentDescription = stringResource(
@@ -339,7 +350,7 @@ private fun LandingPageTopBar(
             }
 
             if (!editMode) {
-                IconButton(onClick = onRefresh) {
+                IconButton(modifier = Modifier.tvFocusRing(), onClick = onRefresh) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = stringResource(Res.string.refresh),

@@ -11,11 +11,15 @@ import io.music_assistant.client.di.cleanupSingletons
 import io.music_assistant.client.di.initKoin
 import io.music_assistant.client.logging.InMemoryLogWriter
 import io.music_assistant.client.services.MediaNotificationManager
+import io.music_assistant.client.services.WatchNextManager
+import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.stopKoin
 import java.io.File
 
 class MyApplication : Application() {
+    private val watchNextManager: WatchNextManager by inject()
+
     override fun onCreate() {
         super.onCreate()
         val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -25,6 +29,7 @@ class MyApplication : Application() {
         createNotificationChannel(this)
         cleanupStaleLogFile()
         installCrashHandler()
+        watchNextManager.start()
     }
 
     private fun cleanupStaleLogFile() {

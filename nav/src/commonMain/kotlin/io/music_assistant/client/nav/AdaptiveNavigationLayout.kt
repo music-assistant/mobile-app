@@ -60,8 +60,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
@@ -105,6 +113,17 @@ fun AdaptiveNavigationBarLayout(
     // The overflow button of the vertical bar, which the nav module has no string resources for.
     moreLabel: String,
     onEdited: ((SidebarEdit) -> Unit)? = null,
+    // Android TV: D-pad DOWN from the last sidebar item has no in-sidebar meaning, so it is
+    // redirected unconditionally to this requester (the player bar) instead of falling back to
+    // geometric search, which does not reliably cross from this component into the caller's
+    // content (confirmed dead on this hardware — see SettingsTvFocusLinks.kt for the same
+    // rationale applied elsewhere in this app).
+    bottomFocusRequester: FocusRequester? = null,
+    // Android TV: attached to the currently-selected sidebar item so a caller can return D-pad
+    // focus to "wherever navigation currently is" (e.g. from the player bar's UP) instead of a
+    // fixed/arbitrary item.
+    selectedItemFocusRequester: FocusRequester? = null,
+    onSelectedItemFocusChanged: ((Boolean) -> Unit)? = null,
     content: @Composable BoxScope.(contentPadding: PaddingValues, drawerOpen: Boolean) -> Unit,
 ) {
     // Keyed on the ids and the flags only: the items get new click lambdas on each recomposition, and a
@@ -130,6 +149,9 @@ fun AdaptiveNavigationBarLayout(
             editState = editState,
             maxNavigationBarItems = maxNavigationBarItems,
             moreLabel = moreLabel,
+            bottomFocusRequester = bottomFocusRequester,
+            selectedItemFocusRequester = selectedItemFocusRequester,
+            onSelectedItemFocusChanged = onSelectedItemFocusChanged,
             content = content,
         )
     } else {
@@ -145,6 +167,9 @@ fun AdaptiveNavigationBarLayout(
             maxNavigationBarItems = maxNavigationBarItems,
             drawInitiallyOpen = drawInitiallyOpen,
             editState = editState,
+            bottomFocusRequester = bottomFocusRequester,
+            selectedItemFocusRequester = selectedItemFocusRequester,
+            onSelectedItemFocusChanged = onSelectedItemFocusChanged,
             content = content,
         )
     }
@@ -160,6 +185,9 @@ private fun RailLayout(
     editState: EditableListState?,
     maxNavigationBarItems: Int,
     moreLabel: String,
+    bottomFocusRequester: FocusRequester? = null,
+    selectedItemFocusRequester: FocusRequester? = null,
+    onSelectedItemFocusChanged: ((Boolean) -> Unit)? = null,
     content: @Composable (BoxScope.(PaddingValues, Boolean) -> Unit),
 ) {
     // Across a vertical fold the rail takes the left page and the content the right one.
@@ -183,6 +211,9 @@ private fun RailLayout(
                         sections = sections,
                         itemOnClick = { it.onClick() },
                         editState = editState,
+                        bottomFocusRequester = bottomFocusRequester,
+                        selectedItemFocusRequester = selectedItemFocusRequester,
+                        onSelectedItemFocusChanged = onSelectedItemFocusChanged,
                     )
                 }
                 if (fold != null) {
@@ -230,6 +261,9 @@ private fun BarWithDrawerLayout(
     maxNavigationBarItems: Int,
     drawInitiallyOpen: Boolean,
     editState: EditableListState?,
+    bottomFocusRequester: FocusRequester? = null,
+    selectedItemFocusRequester: FocusRequester? = null,
+    onSelectedItemFocusChanged: ((Boolean) -> Unit)? = null,
     content: @Composable (BoxScope.(PaddingValues, Boolean) -> Unit),
 ) {
     val scope = rememberCoroutineScope()
@@ -276,6 +310,9 @@ private fun BarWithDrawerLayout(
                         }
                     },
                     editState = editState,
+                    bottomFocusRequester = bottomFocusRequester,
+                    selectedItemFocusRequester = selectedItemFocusRequester,
+                    onSelectedItemFocusChanged = onSelectedItemFocusChanged,
                 )
             }
         },
@@ -386,9 +423,20 @@ private fun SidebarSections(
     sections: List<Section>,
     itemOnClick: (NavigationItem) -> Unit,
     editState: EditableListState?,
+    bottomFocusRequester: FocusRequester? = null,
+    selectedItemFocusRequester: FocusRequester? = null,
+    onSelectedItemFocusChanged: ((Boolean) -> Unit)? = null,
 ) {
     // A checkbox of a fixed item lines up with the checkboxes of the reorderable items.
     val reserveHandle = sections.any { it.reorderable }
+    // Android TV: the D-pad hooks below apply to the plain (non-editing) rendering only — edit
+    // mode is a touch-oriented reordering UI, not a D-pad navigation target. The last visible,
+    // non-editing item across every section is DOWN's target handoff point.
+    val lastVisibleId = sections.flatMap { section ->
+        val itemsById = section.items.associateBy { it.id }
+        val orderedIds = editState?.ordered(section.items.map { it.id }) ?: section.items.map { it.id }
+        orderedIds.mapNotNull { itemsById[it] }.filter { it.enabled }
+    }.lastOrNull()?.id
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
@@ -426,7 +474,14 @@ private fun SidebarSections(
             } else {
                 orderedIds.mapNotNull { itemsById[it] }.forEach { item ->
                     if (item.enabled || editState?.isEditing == true) {
-                        SidebarItem(item, itemOnClick, editState) {
+                        SidebarItem(
+                            item = item,
+                            onClick = itemOnClick,
+                            editState = editState,
+                            bottomFocusRequester = bottomFocusRequester.takeIf { item.id == lastVisibleId },
+                            selectedItemFocusRequester = selectedItemFocusRequester.takeIf { item.selected },
+                            onSelectedItemFocusChanged = onSelectedItemFocusChanged.takeIf { item.selected },
+                        ) {
                             if (reserveHandle && item.editable && editState?.isEditing == true) {
                                 Spacer(Modifier.size(DragHandleSize))
                             }
@@ -443,9 +498,40 @@ private fun SidebarItem(
     item: NavigationItem,
     onClick: (NavigationItem) -> Unit,
     editState: EditableListState?,
+    bottomFocusRequester: FocusRequester? = null,
+    selectedItemFocusRequester: FocusRequester? = null,
+    onSelectedItemFocusChanged: ((Boolean) -> Unit)? = null,
     dragHandle: @Composable () -> Unit = {},
 ) {
     NavigationDrawerItem(
+        modifier = Modifier
+            .then(
+                selectedItemFocusRequester?.let { Modifier.focusRequester(it) } ?: Modifier,
+            )
+            .then(
+                onSelectedItemFocusChanged?.let { onChanged ->
+                    Modifier.onFocusChanged { onChanged(it.isFocused) }
+                } ?: Modifier,
+            )
+            .then(
+                if (bottomFocusRequester != null) {
+                    // Android TV: this is the last item in the sidebar, so DOWN never has an
+                    // in-sidebar meaning — safe to unconditionally redirect it. onPreviewKeyEvent
+                    // intercepts the key regardless of which descendant currently holds focus; a
+                    // plain FocusProperties.down here would only apply if this exact node were
+                    // focused, not a focused descendant (see CategoryRow's RowWithTitle for the
+                    // same pattern used elsewhere in this app).
+                    Modifier.onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                            bottomFocusRequester.requestFocus()
+                        } else {
+                            false
+                        }
+                    }
+                } else {
+                    Modifier
+                },
+            ),
         label = {
             Row(
                 modifier = Modifier.fillMaxWidth(),

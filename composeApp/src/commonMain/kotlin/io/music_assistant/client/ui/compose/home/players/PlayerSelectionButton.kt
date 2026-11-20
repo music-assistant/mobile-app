@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -20,6 +21,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -28,6 +31,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.data.model.client.PlayerDataFixtures
+import io.music_assistant.client.ui.compose.common.TvFocusFlow
+import io.music_assistant.client.ui.compose.common.tvFocus
+import io.music_assistant.client.ui.compose.common.tvFocusRing
 import io.music_assistant.sendspin.api.PlayerState
 import org.jetbrains.compose.resources.painterResource
 
@@ -43,13 +49,27 @@ fun PlayerSelectionButton(
     sendSpinState: PlayerState?,
     onSelectPlayer: () -> Unit = {},
     onGroup: (() -> Unit)? = null,
+    tvFocusFlow: TvFocusFlow? = null,
+    tvFocusLinks: Map<String, TvFocusFlow.Links> = emptyMap(),
+    // Android TV: set by a caller that wants external D-pad focus (e.g. "DOWN from the sidebar")
+    // to land directly on this button when it is the entry point into the player's controls.
+    entryFocusRequester: FocusRequester? = null,
+    // Same, but for the trailing (grouping) section when it is the entry point instead — e.g. when
+    // the leading section's content is otherwise disabled/gated. Unlike the single-section
+    // OutlinedButton below, SplitButtonDefaults.OutlinedLeadingButton does not forward an external
+    // FocusRequester to a real focus target (requestFocus() on it silently no-ops), so the trailing
+    // button — a plain Button that does forward it — is the reliable entry point whenever grouping
+    // is offered.
+    groupEntryFocusRequester: FocusRequester? = null,
 ) {
     val dotColor = player.statusDotColor(sendSpinState)
 
     val playerContentDescription = player.contentDescription()
     val mainModifier = Modifier.clearAndSetSemantics {
         contentDescription = playerContentDescription
-    }
+    }.tvFocus(tvFocusFlow, tvFocusLinks, "playerSelect")
+        .let { if (entryFocusRequester != null) it.focusRequester(entryFocusRequester) else it }
+        .tvFocusRing(shape = RoundedCornerShape(50))
 
     onGroup?.takeIf { player.offersGrouping }?.let { group ->
         // A Row, not SplitButtonLayout: that layout gives the main section the full width
@@ -62,6 +82,9 @@ fun PlayerSelectionButton(
                 PlayerButtonContent(player = player, controlTint = controlTint, dotColor = dotColor)
             }
             SplitButtonDefaults.TrailingButton(
+                modifier = Modifier.tvFocus(tvFocusFlow, tvFocusLinks, "group")
+                    .let { if (groupEntryFocusRequester != null) it.focusRequester(groupEntryFocusRequester) else it }
+                    .tvFocusRing(shape = CircleShape),
                 onClick = group,
                 colors = ButtonDefaults.outlinedButtonColors(),
                 elevation = null,

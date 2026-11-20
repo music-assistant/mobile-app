@@ -40,7 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -88,6 +94,7 @@ fun <T, U> CategoryRow(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
+    bottomFocusRequester: FocusRequester? = null,
     viewAllColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (data is DataState.Data) {
@@ -102,6 +109,7 @@ fun <T, U> CategoryRow(
             libraryActions = libraryActions,
             progressActions = progressActions,
             providerIconFetcher = providerIconFetcher,
+            bottomFocusRequester = bottomFocusRequester,
             viewAllColor = viewAllColor,
         )
     } else if (data is DataState.Loading) {
@@ -119,6 +127,7 @@ fun <T, U> CategoryRow(
                 PlaceHolderText(Modifier.widthIn(gridItemMinSize()), placeholderColor, LocalTextStyle.current)
             },
             actions = {},
+            bottomFocusRequester = bottomFocusRequester,
             row = {
                 repeat(PLACEHOLDER_ITEMS) {
                     item {
@@ -142,6 +151,7 @@ fun <T> CategoryRow(
     libraryActions: LibraryActions,
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
+    bottomFocusRequester: FocusRequester? = null,
     viewAllColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     if (itemCategory.items.isEmpty() && itemCategory.filter == null) {
@@ -181,6 +191,7 @@ fun <T> CategoryRow(
         progressActions = progressActions,
         providerIconFetcher = providerIconFetcher,
         rowTag = itemCategory.tag,
+        bottomFocusRequester = bottomFocusRequester,
     )
 }
 
@@ -197,6 +208,14 @@ fun CategoryRow(
     progressActions: ProgressActions? = null,
     providerIconFetcher: ProviderIconFetcher,
     rowTag: String? = null,
+    // Android TV: set by a caller only on its last visible row, to route D-pad DOWN out of this
+    // row's LazyRow to a fixed element below the scrolling content (e.g. the persistent
+    // mini-player), since that element isn't a normal sibling default focus search can reach.
+    bottomFocusRequester: FocusRequester? = null,
+    // Android TV: set by a caller that needs to land D-pad focus on this row's first item
+    // programmatically (e.g. once async search results appear, when nothing upstream is a
+    // reliable relative-focus anchor -- see SearchScreen.kt). Only applied to the first item.
+    firstItemFocusRequester: FocusRequester? = null,
 ) {
     val modifier = if (rowTag != null) {
         Modifier.testTag(rowTag)
@@ -214,7 +233,7 @@ fun CategoryRow(
     }
 
     // Stacked list items keep one title line, so both items of a column have the same height.
-    val tile: @Composable (AppMediaItem, ViewMode) -> Unit = { item, viewMode ->
+    val tile: @Composable (AppMediaItem, ViewMode, FocusRequester?) -> Unit = { item, viewMode, itemFocusRequester ->
         when (item) {
             is Artist -> ArtistWithMenu(
                 item = item,
@@ -222,6 +241,7 @@ fun CategoryRow(
                 onPlayOption = onPlayClick,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             is Album -> AlbumWithMenu(
@@ -235,6 +255,7 @@ fun CategoryRow(
                 providerIconFetcher = providerIconFetcher,
                 // Inside an artist the artist name repeats on every album, so show the year.
                 subtitle = if (containerItem is Artist) AlbumSubtitle.YEAR else AlbumSubtitle.ARTISTS,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             is Playlist -> PlaylistWithMenu(
@@ -243,6 +264,7 @@ fun CategoryRow(
                 onPlayOption = onPlayClick,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             is Podcast -> PodcastWithMenu(
@@ -251,6 +273,7 @@ fun CategoryRow(
                 onPlayOption = onPlayClick,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             is Track -> TrackWithMenu(
@@ -263,6 +286,7 @@ fun CategoryRow(
                 playlistActions = playlistActions,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             is PodcastEpisode -> PodcastEpisodeWithMenu(
@@ -286,6 +310,7 @@ fun CategoryRow(
                 libraryActions = libraryActions,
                 progressActions = progressActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             // Audiobookshelf "Continue series" / "Recent series" rows.
@@ -304,6 +329,7 @@ fun CategoryRow(
                 playlistActions = playlistActions,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             is Genre -> GenreWithMenu(
@@ -312,6 +338,7 @@ fun CategoryRow(
                 onPlayOption = onPlayClick,
                 libraryActions = libraryActions,
                 providerIconFetcher = providerIconFetcher,
+                firstItemFocusRequester = itemFocusRequester,
             )
 
             else -> {}
@@ -328,23 +355,28 @@ fun CategoryRow(
                 Text(title)
             },
             actions = actions,
+            bottomFocusRequester = bottomFocusRequester,
         ) {
             stackedPairs?.let { pairs ->
                 itemsIndexed(
                     items = pairs,
                     key = { index, _ -> itemKeys[index * 2] },
                     contentType = { _, _ -> "PlayablePair" },
-                ) { _, pair ->
+                ) { index, pair ->
                     // The next column shows at the edge, and a wide window gets several columns.
                     Column(
                         modifier = Modifier.width(stackedColumnWidth),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         val cardColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        pair.forEach {
+                        pair.forEachIndexed { pairIndex, item ->
                             // The card shape matches the ripple shape of RowItem.
                             Box(Modifier.clip(RoundedCornerShape(8.dp)).background(cardColor)) {
-                                tile(it, ViewMode.LIST)
+                                tile(
+                                    item,
+                                    ViewMode.LIST,
+                                    if (index == 0 && pairIndex == 0) firstItemFocusRequester else null,
+                                )
                             }
                         }
                     }
@@ -367,7 +399,7 @@ fun CategoryRow(
                         else -> "Unknown"
                     }
                 },
-            ) { _, item -> tile(item, ViewMode.GRID) }
+            ) { index, item -> tile(item, ViewMode.GRID, if (index == 0) firstItemFocusRequester else null) }
         }
     }
 }
@@ -377,6 +409,7 @@ private fun RowWithTitle(
     modifier: Modifier = Modifier,
     title: @Composable () -> Unit,
     actions: @Composable () -> Unit,
+    bottomFocusRequester: FocusRequester? = null,
     row: LazyListScope.() -> Unit,
 ) {
     Column(modifier) {
@@ -401,6 +434,22 @@ private fun RowWithTitle(
 
         val rowListState = rememberLazyListState()
         LazyRow(
+            modifier = if (bottomFocusRequester != null) {
+                // Android TV: this is a single horizontal row, so DOWN never has an in-row
+                // meaning — safe to unconditionally redirect it. onPreviewKeyEvent intercepts
+                // the key regardless of which card inside currently holds focus; a plain
+                // FocusProperties.down on this container would only apply if the container
+                // itself were focused, not a focused descendant card.
+                Modifier.onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
+                        bottomFocusRequester.requestFocus()
+                    } else {
+                        false
+                    }
+                }
+            } else {
+                Modifier
+            },
             state = rowListState,
             contentPadding = PaddingValues(horizontal = ROW_PADDING),
             horizontalArrangement = Arrangement.spacedBy(4.dp),

@@ -70,6 +70,8 @@ class PlayersPagerPageSplitTest {
                         contentPadding = PaddingValues(),
                         toastState = rememberToastState(),
                         navigateToItem = {},
+                        isQueueExpanded = false,
+                        onExpandQueue = {},
                         onSelectPlayer = {},
                         onGroupPlayer = {},
                     )
