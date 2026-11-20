@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.APICommands
+import io.music_assistant.client.api.DeepLinkBus
+import io.music_assistant.client.api.DeepLinkDestination
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.data.MainDataSource
@@ -53,7 +55,9 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -66,6 +70,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -92,6 +97,13 @@ internal fun List<Player>.findByIdOrName(query: String): Player? =
             ?: candidates.find { it.name.equals(query, ignoreCase = true) }
     }
 
+// Play deep-link target: null = the selected player, `local` = this device's built-in player.
+internal fun List<PlayerData>.findPlayTarget(query: String?, selectedId: String?): PlayerData? = when {
+    query == null -> selectedId?.let { id -> find { it.playerId == id } }
+    query.equals(DeepLinkBus.LOCAL_PLAYER, ignoreCase = true) -> find { it.isLocal }
+    else -> map { it.player }.findByIdOrName(query)?.let { match -> find { it.playerId == match.id } }
+}
+
 @OptIn(FlowPreview::class)
 class HomeScreenViewModel(
     private val apiClient: ServiceClient,
@@ -106,6 +118,10 @@ class HomeScreenViewModel(
     private val jobs = mutableListOf<Job>()
     private var loadDataJob: Job? = null
     private var deepLinkPlayerJob: Job? = null
+    private val _deepLinkPlayFailures = Channel<DeepLinkDestination.Play>(Channel.BUFFERED)
+
+    /** A play deep link whose player did not show up in time; nothing was played. */
+    val deepLinkPlayFailures: Flow<DeepLinkDestination.Play> = _deepLinkPlayFailures.receiveAsFlow()
 
     // Local (Sendspin) player identity — the group sheet shows it with the phone icon.
     val localPlayerId: String
@@ -555,6 +571,31 @@ class HomeScreenViewModel(
                     .first()
             }?.let(dataSource::selectPlayer)
                 ?: Logger.withTag("HomeScreenVM").w { "Deep link: no selectable player '$query'" }
+        }
+    }
+
+    /**
+     * Plays a deep-linked media uri on the player it names, and selects that player. Waits for the
+     * player list (cold launch) like [selectPlayerByIdOrName]; no match in that time plays nothing.
+     */
+    fun playDeepLink(link: DeepLinkDestination.Play) {
+        deepLinkPlayerJob?.cancel()
+        deepLinkPlayerJob = viewModelScope.launch {
+            val target = withTimeoutOrNull(DEEP_LINK_PLAYER_TIMEOUT) {
+                combine(dataSource.playersData, dataSource.selectedPlayerId) { state, selectedId ->
+                    state.dataOrNull?.findPlayTarget(link.playerIdOrName, selectedId)
+                }.mapNotNull { it }.first()
+            } ?: run {
+                Logger.withTag("HomeScreenVM").w { "Deep link: no player for $link" }
+                _deepLinkPlayFailures.trySend(link)
+                return@launch
+            }
+            dataSource.selectPlayer(target.player)
+            Logger.withTag("Session.PlayDispatch")
+                .i { "Deep link: uri=${link.uri} option=${link.option} queue=${target.queueOrPlayerId}" }
+            playDispatcher.play(
+                PlayRequest(queueOrPlayerId = target.queueOrPlayerId, media = listOf(link.uri), option = link.option),
+            )
         }
     }
     fun playerAction(playerId: String, action: PlayerAction) =

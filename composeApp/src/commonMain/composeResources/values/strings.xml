@@ -17,6 +17,7 @@
   <string name="action_add_to_queue">Add to queue</string>
   <string name="action_browse">Browse</string>
   <string name="action_choose_artist">Choose artist</string>
+  <string name="action_copy_play_link">Copy play link</string>
   <string name="action_customize">Customize…</string>
   <string name="action_dislike">Dislike</string>
   <string name="action_export_playlist">Export playlist</string>
@@ -238,6 +239,8 @@
   <string name="common_done">Done</string>
   <string name="common_save">Save</string>
   <string name="connection_lost">Disconnected — reconnecting…</string>
+  <string name="deep_link_no_player_selected">No player is selected, so the link played nothing</string>
+  <string name="deep_link_player_not_found">Player %1$s not found, so the link played nothing</string>
   <string name="default_click_dialog_save">Save</string>
   <string name="default_click_dialog_title">Default click action</string>
   <string name="dialog_interrupting_playback">Interrupting Playback</string>

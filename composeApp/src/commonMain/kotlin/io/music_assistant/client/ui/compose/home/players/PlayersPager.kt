@@ -86,6 +86,7 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.data.announcement.AnnouncementRepository
 import io.music_assistant.client.data.hasFavoritableStreamTrack
 import io.music_assistant.client.data.model.client.AppMediaItemFixtures
@@ -115,6 +116,7 @@ import io.music_assistant.client.ui.compose.common.ToastState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.bufferIndicatorMenuOption
+import io.music_assistant.client.ui.compose.common.copyPlayLinkMenuOption
 import io.music_assistant.client.ui.compose.common.dynamicColorsMenuOption
 import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
@@ -1247,12 +1249,16 @@ private fun PlayerOverflowMenu(
     }
     val playerActions = powerOption + queueOptions + queueDjOptions + displayOptions
 
-    // Track actions (bottom group): add-to-playlist + navigation (go to artist/album).
-    val navigationOptions =
-        (currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem)?.navigationOptions(
-            navigateToItem,
+    // Track actions (bottom group): add-to-playlist, play link + navigation (go to artist/album).
+    val currentMedia = currentPlayer.queueInfo?.currentItem?.track as? AppMediaItem
+    val navigationOptions = currentMedia?.navigationOptions(navigateToItem) ?: emptyList()
+    // The link names this player; the built-in one as `local`, because its id differs per install.
+    val copyPlayLink = currentMedia?.takeIf { it.isPlayable }?.mediaUri?.let { uri ->
+        copyPlayLinkMenuOption(
+            mediaUri = uri,
+            player = if (currentPlayer.isLocal) DeepLinkBus.LOCAL_PLAYER else currentPlayer.playerId,
         )
-            ?: emptyList()
+    }
     val trackActions = buildList {
         currentTrack?.takeIf { onAddToPlaylist != null }?.let { track ->
             add(
@@ -1263,6 +1269,7 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        copyPlayLink?.let(::add)
         addAll(navigationOptions)
     }
 

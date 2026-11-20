@@ -1,7 +1,11 @@
 package io.music_assistant.client.api
 
+import io.ktor.http.Parameters
+import io.ktor.http.URLBuilder
 import io.ktor.http.Url
+import io.ktor.http.appendPathSegments
 import io.music_assistant.client.data.model.client.MediaType
+import io.music_assistant.client.data.model.client.QueueOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,6 +26,17 @@ sealed interface DeepLinkDestination {
      * (`?player=<id|name>`) = also select that player.
      */
     data class Players(val playerIdOrName: String? = null) : DeepLinkDestination
+
+    /**
+     * Play the media item [uri] (`/play?uri=<uri>`). [playerIdOrName] (`&player=<id|name|local>`)
+     * names the target, null = the selected player. [option] (`&option=<queue option>`) defaults
+     * to "Play now".
+     */
+    data class Play(
+        val uri: String,
+        val playerIdOrName: String? = null,
+        val option: QueueOption = QueueOption.REPLACE,
+    ) : DeepLinkDestination
 }
 
 /**
@@ -74,8 +89,15 @@ class DeepLinkBus {
                 )
             }
             "search" -> DeepLinkDestination.Search
-            "players" -> DeepLinkDestination.Players(
-                playerIdOrName = url.parameters["player"]?.trim()?.takeIf { it.isNotEmpty() },
+            "players" -> DeepLinkDestination.Players(playerIdOrName = url.parameters.nonBlank("player"))
+            "play" -> DeepLinkDestination.Play(
+                // Only a Music Assistant media uri (`<provider>://<type>/<id>`) is playable.
+                uri = url.parameters.nonBlank("uri")?.takeIf { "://" in it } ?: return,
+                playerIdOrName = url.parameters.nonBlank("player"),
+                // A present-but-unknown option rejects the link rather than guessing.
+                option = url.parameters.nonBlank("option")
+                    ?.let { value -> QueueOption.entries.find { it.serverValue == value } ?: return }
+                    ?: QueueOption.REPLACE,
             )
             else -> return
         }
@@ -87,7 +109,25 @@ class DeepLinkBus {
         _pending.compareAndSet(dest, null)
     }
 
+    private fun Parameters.nonBlank(name: String) =
+        get(name)?.trim()?.takeIf { it.isNotEmpty() }
+
     companion object {
+        /** `player` value that names this device's built-in (local) player. */
+        const val LOCAL_PLAYER = "local"
+
+        /**
+         * The shareable App/Universal Link that plays [mediaUri] on [player] (an id, a name or
+         * [LOCAL_PLAYER]), or on the player selected when it opens if null.
+         * The app claims the `www` host only.
+         */
+        fun playLink(mediaUri: String, player: String? = null): String =
+            URLBuilder("https://www.music-assistant.io").apply {
+                appendPathSegments("app", "play")
+                parameters.append("uri", mediaUri)
+                player?.let { parameters.append("player", it) }
+            }.buildString()
+
         /**
          * Deep-link contract for `/library/<category>` segments. Intentionally
          * an explicit table (not derived from a UI enum) so this layer stays

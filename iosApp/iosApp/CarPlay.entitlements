@@ -5,7 +5,6 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:www.music-assistant.io</string>
-		<string>applinks:music-assistant.io</string>
 	</array>
 	<key>com.apple.developer.carplay-audio</key>
 	<true/>
