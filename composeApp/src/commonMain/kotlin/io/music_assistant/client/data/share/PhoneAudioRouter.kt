@@ -59,7 +59,7 @@ enum class PhoneAudioShareEnd(val message: StringResource) {
  * waits until the server accepts the source and then sends an ordinary play request for the
  * source uri through [play]. A share ends when the user stops it, when the system ends the
  * capture, when the server stops the stream, or when the audio link drops: a start command
- * does not survive a reconnect.
+ * does not survive a reconnect. The end of a share stops the player that played it.
  */
 class PhoneAudioRouter(
     private val share: PhoneAudioShare,
@@ -69,6 +69,8 @@ class PhoneAudioRouter(
     endpoint: StateFlow<Endpoint?>,
     /** `PlayDispatcher.play`. */
     private val play: (PlayRequest) -> Unit,
+    /** Sends a stop command to a player. */
+    private val stopPlayer: (playerId: String) -> Unit,
     private val errorBus: ErrorMessageBus,
     private val scope: CoroutineScope,
     /** The text of an end cause; a test has no resources. */
@@ -78,6 +80,9 @@ class PhoneAudioRouter(
     private val _state = MutableStateFlow<PhoneAudioShareState>(PhoneAudioShareState.Idle)
     val state: StateFlow<PhoneAudioShareState> = _state
     private var job: Job? = null
+
+    /** The queue that got the play request of this share; null before the request and after the end. */
+    private var playedQueueId: String? = null
 
     /**
      * True when a share can start: the platform captures playback, the server lists Sendspin
@@ -117,6 +122,7 @@ class PhoneAudioRouter(
         job = scope.launch {
             val uri = awaitAccepted() ?: return@launch
             play(PlayRequest(queueOrPlayerId = queueId, media = listOf(uri), option = QueueOption.REPLACE))
+            playedQueueId = queueId
             withTimeoutOrNull(STREAM_WAIT_MS) { sourceStatus.first { it == SourceStatus.Streaming } }
                 ?: return@launch end(PhoneAudioShareEnd.Timeout)
             _state.value = PhoneAudioShareState.Active
@@ -163,6 +169,10 @@ class PhoneAudioRouter(
         if (_state.value == PhoneAudioShareState.Idle && share.capture.value == null) return
         log.i { "Share ended: ${cause ?: "stopped by the user"}" }
         _state.value = PhoneAudioShareState.Idle
+        // The server waits a minute for a source that went away, and the player gives silence
+        // for that time. So the player stops with the share, but not if the server stopped it.
+        playedQueueId?.takeIf { cause != PhoneAudioShareEnd.ServerStopped }?.let(stopPlayer)
+        playedQueueId = null
         share.stop()
         cause?.let { scope.launch { errorBus.emit(describe(it.message)) } }
         job?.cancel()

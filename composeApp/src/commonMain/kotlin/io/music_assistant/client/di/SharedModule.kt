@@ -3,6 +3,7 @@ package io.music_assistant.client.di
 import io.music_assistant.client.api.DeepLinkBus
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.api.KtorServiceClient
+import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
 import io.music_assistant.client.auth.AuthCoordinator
 import io.music_assistant.client.auth.AuthenticationManager
@@ -93,6 +94,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -223,14 +225,19 @@ fun sharedModule(
         }
         single {                            // Phone audio to a player; a share outlives the screen
             val localPlayer = get<LocalPlayerAdapter>()
+            val apiClient = get<ServiceClient>()
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             PhoneAudioRouter(
                 share = phoneAudioShare(),
                 source = get(),
                 playerState = localPlayer.player.state,
                 endpoint = get<LocalPlayerEndpoints>().endpoint,
                 play = get<PlayDispatcher>()::play,
+                stopPlayer = { playerId ->
+                    scope.launch { apiClient.sendRequest(Request.Player.simpleCommand(playerId, STOP_COMMAND)) }
+                },
                 errorBus = get(),
-                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+                scope = scope,
             )
         }
         single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }
@@ -337,3 +344,6 @@ fun cleanupSingletons() {
 
 /** The platform binds the capture where it has one (Android, in the application module). */
 private fun Scope.phoneAudioShare(): PhoneAudioShare = getOrNull() ?: UnsupportedPhoneAudioShare()
+
+/** The `players/cmd` command that ends playback. */
+private const val STOP_COMMAND = "stop"

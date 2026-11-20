@@ -56,6 +56,7 @@ class PhoneAudioRouterTest {
         val source = PhoneAudioSource(share, MutableStateFlow(instanceId))
         val player = MutableStateFlow<PlayerState>(connected(SourceStatus.Off))
         val plays = mutableListOf<PlayRequest>()
+        val stoppedPlayers = mutableListOf<String>()
         val errors = ErrorMessageBus()
         val router = PhoneAudioRouter(
             share = share,
@@ -63,6 +64,7 @@ class PhoneAudioRouterTest {
             playerState = player,
             endpoint = MutableStateFlow(Endpoint.WebSocket("ws://server/sendspin", wire)),
             play = { plays += it },
+            stopPlayer = { stoppedPlayers += it },
             errorBus = errors,
             scope = scope.backgroundScope,
             describe = { it.key },
@@ -170,6 +172,7 @@ class PhoneAudioRouterTest {
 
         assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
         assertEquals("phone_audio_end_server_stopped", h.errors.messages.first())
+        assertTrue(h.stoppedPlayers.isEmpty(), "the server stopped the player already")
     }
 
     @Test
@@ -185,6 +188,7 @@ class PhoneAudioRouterTest {
 
         assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
         assertEquals("phone_audio_end_connection_lost", h.errors.messages.first())
+        assertEquals(listOf("kitchen"), h.stoppedPlayers)
     }
 
     @Test
@@ -197,6 +201,7 @@ class PhoneAudioRouterTest {
 
         assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
         assertEquals("phone_audio_end_revoked", h.errors.messages.first())
+        assertTrue(h.stoppedPlayers.isEmpty(), "no play request went out, so no player plays the phone")
     }
 
     @Test
@@ -212,6 +217,7 @@ class PhoneAudioRouterTest {
 
         assertEquals(PhoneAudioShareState.Idle, h.router.state.value)
         assertEquals(1, h.share.stops)
+        assertEquals(listOf("kitchen"), h.stoppedPlayers, "the player must not wait in silence for the source")
         h.errors.emit("end of messages")
         assertEquals("end of messages", h.errors.messages.first())
     }
