@@ -50,7 +50,7 @@
                     android:host="auth"
                     android:path="/callback" />
             </intent-filter>
-            <!-- In-app page deep links: musicassistant://app/home|library|search|players[?player=<id|name>] -->
+            <!-- In-app deep links: musicassistant://app/home|library|search|players[?player=<id|name>]|play?uri=<uri>[&player=<id|name|local>][&option=<queue option>] -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -60,7 +60,7 @@
                     android:host="app" />
             </intent-filter>
             <!--
-                App Links: https://(www.)music-assistant.io/app/<page>. autoVerify
+                App Links: https://www.music-assistant.io/app/<page>. autoVerify
                 attempts Digital Asset Links verification against
                 /.well-known/assetlinks.json on the host. If that file can't be
                 hosted (domain not under our control) verification fails silently
@@ -72,6 +72,10 @@
                 stay with the browser. assetlinks.json can't express paths — it is
                 a host-level grant — so this manifest scoping is what keeps the app
                 from shadowing the rest of the site.
+
+                The www host only: the apex 301-redirects to www, and verification
+                does not follow a redirect. Before Android 12 one failed host
+                leaves every host of the filter unverified.
             -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -79,7 +83,6 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" />
                 <data android:host="www.music-assistant.io" />
-                <data android:host="music-assistant.io" />
                 <data android:path="/app" />
                 <data android:pathPrefix="/app/" />
             </intent-filter>

@@ -141,7 +141,7 @@ class MainActivity : ComponentActivity() {
     /**
      * Single dispatch point for incoming deep-link URIs. The OAuth callback is
      * peeled off explicitly; everything else (musicassistant://app/<page> and
-     * the https App Link https://music-assistant.io/app/<page>) is forwarded to
+     * the https App Link https://www.music-assistant.io/app/<page>) is forwarded to
      * [DeepLinkBus], which self-filters and ignores anything it doesn't
      * recognize. Only URIs matching a manifest intent-filter ever reach here.
      */
