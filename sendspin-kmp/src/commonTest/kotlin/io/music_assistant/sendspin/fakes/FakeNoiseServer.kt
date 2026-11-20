@@ -67,6 +67,12 @@ internal class FakeNoiseServer(
     /** `client/state` payloads received by [serve], in order. */
     val clientStates = mutableListOf<JsonObject>()
 
+    /** The `source` object of every `client-stream/start` received by [serve], in order. */
+    val clientStreamStarts = mutableListOf<JsonObject>()
+
+    /** Source-role audio received by [serve]: the timestamp and the encoded bytes. */
+    val sourceChunks = mutableListOf<Pair<Long, ByteArray>>()
+
     private suspend fun clientText(): String =
         assertIs<Frame.Text>(withTimeout(AWAIT_MILLIS) { transport.outbound.receive() }).text
 
@@ -240,20 +246,25 @@ internal class FakeNoiseServer(
         private set
 
     /** Establishment, hello, and a playback activation in one go. */
-    suspend fun bringUp() {
+    suspend fun bringUp(activities: String = """["playback"]""", activeRoles: String? = """["player@v1"]""") {
         establish()
         clientHello = completeHelloExchange()
-        activate()
+        activate(activities, activeRoles)
     }
 
     /**
      * Answers `client/time` probes instantly with a server clock shifted by
      * [serverClockOffsetMicros] (unless [silent]) and records every other client
-     * message. Runs until cancelled or the transport closes.
+     * message, source-role audio included. Runs until cancelled or the transport closes.
      */
     fun serve(scope: CoroutineScope): Job = scope.launch {
         while (true) {
-            val root = runCatching { parse(receiveJson()) }.getOrNull() ?: return@launch
+            val received = runCatching { receiveMessage() }.getOrNull() ?: return@launch
+            if (received.type != NoiseFraming.TYPE_JSON) {
+                if (received.type == TYPE_SOURCE_AUDIO) sourceChunks += sourceChunk(received.payload)
+                continue
+            }
+            val root = parse(received.payload.decodeToString())
             val type = root.getValue("type").jsonPrimitive.content
             if (type == "client/time") {
                 if (silent) continue
@@ -274,6 +285,8 @@ internal class FakeNoiseServer(
                         goodbyeReasons += root["payload"]?.jsonObject?.get("reason")?.jsonPrimitive?.contentOrNull
 
                     "client/state" -> clientStates += root.getValue("payload").jsonObject
+                    "client-stream/start" ->
+                        clientStreamStarts += root.getValue("payload").jsonObject.getValue("source").jsonObject
                 }
             }
         }
@@ -299,6 +312,16 @@ internal class FakeNoiseServer(
 
     suspend fun unpair() = sendJson(message("server/unpair") {})
 
+    /** A `server/command` for the source role: `start` or `stop`. */
+    suspend fun sourceCommand(command: String) =
+        sendJson(message("server/command") { putJsonObject("source") { put("command", command) } })
+
+    private fun sourceChunk(body: ByteArray): Pair<Long, ByteArray> {
+        var timestamp = 0L
+        for (i in 0 until TIMESTAMP_BYTES) timestamp = (timestamp shl Byte.SIZE_BITS) or (body[i].toLong() and 0xFF)
+        return timestamp to body.copyOfRange(TIMESTAMP_BYTES, body.size)
+    }
+
     private fun message(type: String, payload: JsonObjectBuilder.() -> Unit): String = buildJsonObject {
         put("type", type)
         putJsonObject("payload", payload)
@@ -317,6 +340,7 @@ internal class FakeNoiseServer(
         const val AWAIT_MILLIS = 5_000L
         const val TIMESTAMP_BYTES = 8
         const val SEND_AHEAD_BYTES = 4
+        const val TYPE_SOURCE_AUDIO = 12
         const val SAMPLE_RATE = 48_000
         const val BIT_DEPTH = 16
     }

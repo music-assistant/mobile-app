@@ -84,6 +84,8 @@ internal data class EncryptedClientHelloPayload(
     @SerialName("trust_level") val trustLevel: String? = null,
     @SerialName("supported_roles") val supportedRoles: List<VersionedRole>,
     @SerialName("player@v1_support") val playerV1Support: PlayerSupport? = null,
+    /** Spec 1.0.0-rc1 only; later spec revisions have no source support object in `client/hello`. */
+    @SerialName("source@v1_support") val sourceV1Support: SourceSupport? = null,
     /** Built by [pairMethods]: an array of descriptors on 9.x, an object keyed by method on spec 1.0.0-rc1. */
     @SerialName("supported_pair_methods") val supportedPairMethods: JsonElement,
     @SerialName("unpaired_access") val unpairedAccess: UnpairedAccess,
@@ -170,6 +172,12 @@ internal data class PlayerSupport(
     /** 9.x wire only; spec 1.0.0-rc1 reports commands in `client/state`. */
     @SerialName("supported_commands") val supportedCommands: List<PlayerCommand>? = null,
 )
+
+@Serializable
+internal data class SourceSupport(val features: SourceFeatures)
+
+@Serializable
+internal data class SourceFeatures(@SerialName("line_sense") val lineSense: Boolean)
 
 @Serializable
 internal data class EncryptedServerHelloMessage(
@@ -284,7 +292,16 @@ internal data class ClientStatePayload(
     val player: PlayerStateObject? = null,
     /** Every state message carries it on both wires. */
     val available: Boolean,
+    val source: SourceStateObject? = null,
 )
+
+/** [signal] says whether the input has audio to offer; the server may start the source on a change to present. */
+@Serializable
+internal data class SourceStateObject(val signal: String) {
+    companion object {
+        val PRESENT = SourceStateObject("present")
+    }
+}
 
 /** Fields of both wires; build it with [legacy] or [spec] so a message never mixes them. */
 @Serializable
@@ -420,7 +437,19 @@ internal data class ServerCommandMessage(
 ) : SendspinMessage
 
 @Serializable
-internal data class ServerCommandPayload(val player: PlayerCommandObject)
+internal data class ServerCommandPayload(
+    val player: PlayerCommandObject? = null,
+    val source: SourceCommandObject? = null,
+)
+
+/** `start` authorizes one client-to-server stream; `stop` ends it. */
+@Serializable
+internal data class SourceCommandObject(val command: String) {
+    companion object {
+        const val START = "start"
+        const val STOP = "stop"
+    }
+}
 
 @Serializable
 internal data class PlayerCommandObject(
@@ -428,6 +457,37 @@ internal data class PlayerCommandObject(
     val volume: Int? = null,
     val mute: Boolean? = null,
 )
+
+// MARK: - Client-to-server stream (source role)
+
+@Serializable
+internal data class ClientStreamStartMessage(
+    override val type: String = "client-stream/start",
+    val payload: ClientStreamStartPayload,
+) : SendspinMessage
+
+@Serializable
+internal data class ClientStreamStartPayload(val source: ClientStreamSource)
+
+@Serializable
+internal data class ClientStreamSource(
+    val codec: String,
+    val channels: Int,
+    @SerialName("sample_rate") val sampleRate: Int,
+    @SerialName("bit_depth") val bitDepth: Int,
+    /** Standard Base64 with padding. FLAC only: the `fLaC` marker and the STREAMINFO block. */
+    @SerialName("codec_header") val codecHeader: String? = null,
+)
+
+/** Without `roles`, it ends every client-to-server stream of the connection. */
+@Serializable
+internal data class ClientStreamEndMessage(
+    override val type: String = "client-stream/end",
+    val payload: ClientStreamEndPayload = ClientStreamEndPayload(),
+) : SendspinMessage
+
+@Serializable
+internal data class ClientStreamEndPayload(val roles: List<String>? = null)
 
 // MARK: - Goodbye
 

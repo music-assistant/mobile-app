@@ -13,7 +13,7 @@ internal sealed interface ServerMessage {
     data class Activate(val payload: ServerActivatePayload) : ServerMessage
     data class Time(val payload: ServerTimePayload) : ServerMessage
     data class State(val payload: JsonElement?) : ServerMessage
-    data class Command(val player: PlayerCommandObject) : ServerMessage
+    data class Command(val player: PlayerCommandObject?, val source: SourceCommandObject? = null) : ServerMessage
     data class StreamStart(val player: StreamStartPlayer?) : ServerMessage
     data object StreamEnd : ServerMessage
 
@@ -78,7 +78,7 @@ internal object WireCodec {
         "server/activate" -> ServerMessage.Activate(from<ServerActivateMessage>(json).payload)
         "server/time" -> ServerMessage.Time(from<ServerTimeMessage>(json).payload)
         "server/state" -> ServerMessage.State(from<ServerStateMessage>(json).payload)
-        "server/command" -> ServerMessage.Command(from<ServerCommandMessage>(json).payload.player)
+        "server/command" -> from<ServerCommandMessage>(json).payload.let { ServerMessage.Command(it.player, it.source) }
         "stream/start" -> ServerMessage.StreamStart(from<StreamStartMessage>(json).payload.player)
         "stream/end" -> forPlayer(type, from<StreamEndMessage>(json).payload.roles) { ServerMessage.StreamEnd }
         "stream/clear" -> from<StreamClearMessage>(json).payload.let {

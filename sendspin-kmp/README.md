@@ -3,7 +3,8 @@
 The `:sendspin-kmp` module is a Sendspin client for the `player@v1` role. It connects to a Sendspin
 server, keeps an encrypted session, and follows the server clock. It plays the audio stream in
 time with the other players in a group. The connection is always encrypted: there is no
-plaintext session.
+plaintext session. The same connection can also offer the `source@v1` role, which sends an audio
+input of the device to the server. See [Source role](#source-role).
 
 The module is a pure Kotlin Multiplatform leaf. It depends on no other Gradle project. It
 contains no Compose code and no Koin code. Each platform difference is an interface that the
@@ -29,7 +30,7 @@ The module does this work:
 The module does not do this work:
 
 - **No control plane.** Play, pause, seek, and queue commands go over the control API of the
-  server, in the application. The module sends `player@v1` messages only.
+  server, in the application. The module sends `player@v1` and `source@v1` messages only.
 - **No WebRTC.** For a data-channel connection the application supplies
   `Endpoint.WebRtc(openChannel)`, and the module calls it once per attempt.
 - **No iOS audio.** `AudioSink` and `DecoderFactory` are ports. The module includes Android
@@ -255,6 +256,7 @@ fields of `SendspinDeps`.
 | `online` | `connectivityOnline(context, scope)` |
 | `audioDispatcher` | `sendspinAudioDispatcher()` |
 | `clock` | `ElapsedRealtimeClock` |
+| `encoders` | `AndroidEncoderFactory()`: MediaCodec for FLAC. Optional, for the source role only. |
 
 Give the same clock to `AudioTrackSink` and to `SendspinDeps.clock`. The application supplies
 `httpClient`, `approvePairing`, and `deviceInfo`. The module depends on `ktor-client-core` only,
@@ -297,7 +299,7 @@ An application that pairs by the code supplies an `approvePairing` that does not
 | --- | --- |
 | `Disabled` | The config is `null`. |
 | `Connecting(attempt)` | An attempt is in progress. |
-| `Connected(...)` | The session is up. Carries the player id, the server name, the clock quality, and the audio status. |
+| `Connected(...)` | The session is up. Carries the player id, the server name, the clock quality, the audio status, and the source status. |
 | `Reconnecting(...)` | The connection dropped and a retry is scheduled. `nextRetryAtMs` is `null` while the module waits for the network. |
 | `Failed(cause)` | The module gave up. It leaves this state only on a config change. |
 
@@ -310,6 +312,47 @@ An application that pairs by the code supplies an `approvePairing` that does not
 | `ServerRefreshNeeded` | Refetch the player list. The server assigned or changed the player id. |
 | `FocusRegained` | Resume playback if the user wants it. |
 | `Warning(code)` | Show a notice. The module already recovered or degraded. |
+
+## Source role
+
+The source role sends an audio input of the device to the server, and the server plays it on
+its players. The module does not record audio. The application supplies the input as an
+`AudioCapture` port.
+
+Set `LocalPlayerConfig.source` to a `SourceConfig` to offer the role. Set it to `null` to remove
+the role. The roles go to the server in `client/hello`, so each change restarts the connection.
+The role is available on `WireVersion.SPEC_1_0` only.
+
+| Type | Purpose |
+| --- | --- |
+| `AudioCapture` | The input. `frames()` is a cold flow of PCM blocks. The player collects it only while the server wants the stream. |
+| `CapturedAudio` | One PCM block and the time of its first sample, on `SendspinDeps.clock`. |
+| `SourceDialect` | The revision of the role that the server has. See below. |
+| `EncoderFactory` | Optional, in `SendspinDeps.encoders`. It gives the FLAC encoder. |
+| `SourceStatus` | `Off`, `Refused`, `Ready`, or `Streaming`, in `PlayerState.Connected.source`. |
+
+Only the server starts a stream. The application starts playback of the source through the
+control plane of the server. The server then sends a `start` command, and the player starts
+the capture. A `stop` command, the loss of the role, or the end of the input stops the capture.
+
+The server accepts the source only on a paired session. `Refused` means that a paired server
+activated the connection without the role.
+
+**Dialects.** The handshake does not give the revision of the role. `SourceDialect.SPEC` is the
+current specification: `client/hello` has no source object, and a `start` needs the `playback`
+activity. `SourceDialect.RC1` is specification 1.0.0-rc1, which aiosendspin 10.3 and older
+have: `client/hello` has the `source@v1_support` object, and a `start` needs no activity. An
+rc1 server does not activate the role for the `SPEC` dialect. So start with `SPEC`, and change
+to `RC1` if the status is `Refused`.
+
+**Codec.** The stream is FLAC if the `EncoderFactory` gives an encoder. The stream is PCM if
+there is no factory, if the encoder fails, or if the encoder gives no codec header in 2 seconds
+of audio. After a failure, the player uses PCM until the application disables it. A PCM chunk
+is 20 ms. `AndroidEncoderFactory` gives a `MediaCodec` FLAC encoder for 16-bit input.
+
+**Time.** Each chunk has the server time of its first sample. The player converts the capture
+time with the clock filter. If the link stalls, the player drops the audio that is older than
+500 ms.
 
 ## Connection lifecycle
 
@@ -352,6 +395,8 @@ already buffered keeps playing, and a stream that resumes in the same format is 
 - **Stereo at two rates.** The player advertises stereo at 48 kHz first. FLAC and PCM also get
   44.1 kHz, so the server can send 44.1 kHz audio without a resample. The server selects the rate.
   FLAC and PCM can be 16-bit or 24-bit. Opus is always 16-bit and 48 kHz.
+- **A source stream does not continue after a reconnect.** A `start` command applies to one
+  connection. After a reconnect, the server must send it again.
 - **No server discovery.** The module does not find servers on the network. The application
   supplies the endpoint.
 - **Kotlin API only.** The public API uses coroutines, `StateFlow`, and sealed types. The module

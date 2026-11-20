@@ -92,7 +92,7 @@ publishing {
     publications.withType<MavenPublication>().configureEach {
         pom {
             name.set("sendspin-kmp")
-            description.set("Kotlin Multiplatform Sendspin client for the player@v1 role")
+            description.set("Kotlin Multiplatform Sendspin client for the player@v1 and source@v1 roles")
             url.set("https://github.com/music-assistant/mobile-app")
             licenses {
                 license {

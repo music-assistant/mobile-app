@@ -69,6 +69,30 @@ final enum class io.music_assistant.sendspin.api/SinkEvent : kotlin/Enum<io.musi
     final fun values(): kotlin/Array<io.music_assistant.sendspin.api/SinkEvent> // io.music_assistant.sendspin.api/SinkEvent.values|values#static(){}[0]
 }
 
+final enum class io.music_assistant.sendspin.api/SourceDialect : kotlin/Enum<io.music_assistant.sendspin.api/SourceDialect> { // io.music_assistant.sendspin.api/SourceDialect|null[0]
+    enum entry RC1 // io.music_assistant.sendspin.api/SourceDialect.RC1|null[0]
+    enum entry SPEC // io.music_assistant.sendspin.api/SourceDialect.SPEC|null[0]
+
+    final val entries // io.music_assistant.sendspin.api/SourceDialect.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.music_assistant.sendspin.api/SourceDialect> // io.music_assistant.sendspin.api/SourceDialect.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): io.music_assistant.sendspin.api/SourceDialect // io.music_assistant.sendspin.api/SourceDialect.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.music_assistant.sendspin.api/SourceDialect> // io.music_assistant.sendspin.api/SourceDialect.values|values#static(){}[0]
+}
+
+final enum class io.music_assistant.sendspin.api/SourceStatus : kotlin/Enum<io.music_assistant.sendspin.api/SourceStatus> { // io.music_assistant.sendspin.api/SourceStatus|null[0]
+    enum entry Off // io.music_assistant.sendspin.api/SourceStatus.Off|null[0]
+    enum entry Ready // io.music_assistant.sendspin.api/SourceStatus.Ready|null[0]
+    enum entry Refused // io.music_assistant.sendspin.api/SourceStatus.Refused|null[0]
+    enum entry Streaming // io.music_assistant.sendspin.api/SourceStatus.Streaming|null[0]
+
+    final val entries // io.music_assistant.sendspin.api/SourceStatus.entries|#static{}entries[0]
+        final fun <get-entries>(): kotlin.enums/EnumEntries<io.music_assistant.sendspin.api/SourceStatus> // io.music_assistant.sendspin.api/SourceStatus.entries.<get-entries>|<get-entries>#static(){}[0]
+
+    final fun valueOf(kotlin/String): io.music_assistant.sendspin.api/SourceStatus // io.music_assistant.sendspin.api/SourceStatus.valueOf|valueOf#static(kotlin.String){}[0]
+    final fun values(): kotlin/Array<io.music_assistant.sendspin.api/SourceStatus> // io.music_assistant.sendspin.api/SourceStatus.values|values#static(){}[0]
+}
+
 final enum class io.music_assistant.sendspin.api/StopCause : kotlin/Enum<io.music_assistant.sendspin.api/StopCause> { // io.music_assistant.sendspin.api/StopCause|null[0]
     enum entry Cleared // io.music_assistant.sendspin.api/StopCause.Cleared|null[0]
     enum entry Disabled // io.music_assistant.sendspin.api/StopCause.Disabled|null[0]
@@ -99,6 +123,13 @@ abstract fun interface io.music_assistant.sendspin.api/MonotonicClock { // io.mu
     abstract fun nowMicros(): kotlin/Long // io.music_assistant.sendspin.api/MonotonicClock.nowMicros|nowMicros(){}[0]
 }
 
+abstract interface io.music_assistant.sendspin.api/AudioCapture { // io.music_assistant.sendspin.api/AudioCapture|null[0]
+    abstract val format // io.music_assistant.sendspin.api/AudioCapture.format|{}format[0]
+        abstract fun <get-format>(): io.music_assistant.sendspin.api/CaptureFormat // io.music_assistant.sendspin.api/AudioCapture.format.<get-format>|<get-format>(){}[0]
+
+    abstract fun frames(): kotlinx.coroutines.flow/Flow<io.music_assistant.sendspin.api/CapturedAudio> // io.music_assistant.sendspin.api/AudioCapture.frames|frames(){}[0]
+}
+
 abstract interface io.music_assistant.sendspin.api/AudioDecoder { // io.music_assistant.sendspin.api/AudioDecoder|null[0]
     abstract val outputBitDepth // io.music_assistant.sendspin.api/AudioDecoder.outputBitDepth|{}outputBitDepth[0]
         abstract fun <get-outputBitDepth>(): kotlin/Int // io.music_assistant.sendspin.api/AudioDecoder.outputBitDepth.<get-outputBitDepth>|<get-outputBitDepth>(){}[0]
@@ -111,6 +142,14 @@ abstract interface io.music_assistant.sendspin.api/AudioDecoder { // io.music_as
     abstract fun reset() // io.music_assistant.sendspin.api/AudioDecoder.reset|reset(){}[0]
 }
 
+abstract interface io.music_assistant.sendspin.api/AudioEncoder { // io.music_assistant.sendspin.api/AudioEncoder|null[0]
+    abstract val header // io.music_assistant.sendspin.api/AudioEncoder.header|{}header[0]
+        abstract fun <get-header>(): kotlin/ByteArray? // io.music_assistant.sendspin.api/AudioEncoder.header.<get-header>|<get-header>(){}[0]
+
+    abstract fun encode(io.music_assistant.sendspin.api/CapturedAudio): kotlin.collections/List<io.music_assistant.sendspin.api/EncodedAudio> // io.music_assistant.sendspin.api/AudioEncoder.encode|encode(io.music_assistant.sendspin.api.CapturedAudio){}[0]
+    abstract fun release() // io.music_assistant.sendspin.api/AudioEncoder.release|release(){}[0]
+}
+
 abstract interface io.music_assistant.sendspin.api/AudioSink { // io.music_assistant.sendspin.api/AudioSink|null[0]
     abstract fun open(io.music_assistant.sendspin.api/SinkFormat): io.music_assistant.sendspin.api/SinkHandle // io.music_assistant.sendspin.api/AudioSink.open|open(io.music_assistant.sendspin.api.SinkFormat){}[0]
 }
@@ -118,6 +157,10 @@ abstract interface io.music_assistant.sendspin.api/AudioSink { // io.music_assis
 abstract interface io.music_assistant.sendspin.api/DecoderFactory { // io.music_assistant.sendspin.api/DecoderFactory|null[0]
     abstract fun create(io.music_assistant.sendspin.api/AudioCodec): io.music_assistant.sendspin.api/AudioDecoder // io.music_assistant.sendspin.api/DecoderFactory.create|create(io.music_assistant.sendspin.api.AudioCodec){}[0]
     abstract fun supports(io.music_assistant.sendspin.api/AudioCodec): kotlin/Boolean // io.music_assistant.sendspin.api/DecoderFactory.supports|supports(io.music_assistant.sendspin.api.AudioCodec){}[0]
+}
+
+abstract interface io.music_assistant.sendspin.api/EncoderFactory { // io.music_assistant.sendspin.api/EncoderFactory|null[0]
+    abstract fun create(io.music_assistant.sendspin.api/AudioCodec, io.music_assistant.sendspin.api/CaptureFormat): io.music_assistant.sendspin.api/AudioEncoder? // io.music_assistant.sendspin.api/EncoderFactory.create|create(io.music_assistant.sendspin.api.AudioCodec;io.music_assistant.sendspin.api.CaptureFormat){}[0]
 }
 
 abstract interface io.music_assistant.sendspin.api/SendspinKeyStore { // io.music_assistant.sendspin.api/SendspinKeyStore|null[0]
@@ -291,7 +334,7 @@ sealed interface io.music_assistant.sendspin.api/PlayerEvent { // io.music_assis
 
 sealed interface io.music_assistant.sendspin.api/PlayerState { // io.music_assistant.sendspin.api/PlayerState|null[0]
     final class Connected : io.music_assistant.sendspin.api/PlayerState { // io.music_assistant.sendspin.api/PlayerState.Connected|null[0]
-        constructor <init>(kotlin/String, kotlin/String, io.music_assistant.sendspin.api/ClockQuality, io.music_assistant.sendspin.api/AudioStatus) // io.music_assistant.sendspin.api/PlayerState.Connected.<init>|<init>(kotlin.String;kotlin.String;io.music_assistant.sendspin.api.ClockQuality;io.music_assistant.sendspin.api.AudioStatus){}[0]
+        constructor <init>(kotlin/String, kotlin/String, io.music_assistant.sendspin.api/ClockQuality, io.music_assistant.sendspin.api/AudioStatus, io.music_assistant.sendspin.api/SourceStatus = ...) // io.music_assistant.sendspin.api/PlayerState.Connected.<init>|<init>(kotlin.String;kotlin.String;io.music_assistant.sendspin.api.ClockQuality;io.music_assistant.sendspin.api.AudioStatus;io.music_assistant.sendspin.api.SourceStatus){}[0]
 
         final val audio // io.music_assistant.sendspin.api/PlayerState.Connected.audio|{}audio[0]
             final fun <get-audio>(): io.music_assistant.sendspin.api/AudioStatus // io.music_assistant.sendspin.api/PlayerState.Connected.audio.<get-audio>|<get-audio>(){}[0]
@@ -301,12 +344,15 @@ sealed interface io.music_assistant.sendspin.api/PlayerState { // io.music_assis
             final fun <get-playerId>(): kotlin/String // io.music_assistant.sendspin.api/PlayerState.Connected.playerId.<get-playerId>|<get-playerId>(){}[0]
         final val serverName // io.music_assistant.sendspin.api/PlayerState.Connected.serverName|{}serverName[0]
             final fun <get-serverName>(): kotlin/String // io.music_assistant.sendspin.api/PlayerState.Connected.serverName.<get-serverName>|<get-serverName>(){}[0]
+        final val source // io.music_assistant.sendspin.api/PlayerState.Connected.source|{}source[0]
+            final fun <get-source>(): io.music_assistant.sendspin.api/SourceStatus // io.music_assistant.sendspin.api/PlayerState.Connected.source.<get-source>|<get-source>(){}[0]
 
         final fun component1(): kotlin/String // io.music_assistant.sendspin.api/PlayerState.Connected.component1|component1(){}[0]
         final fun component2(): kotlin/String // io.music_assistant.sendspin.api/PlayerState.Connected.component2|component2(){}[0]
         final fun component3(): io.music_assistant.sendspin.api/ClockQuality // io.music_assistant.sendspin.api/PlayerState.Connected.component3|component3(){}[0]
         final fun component4(): io.music_assistant.sendspin.api/AudioStatus // io.music_assistant.sendspin.api/PlayerState.Connected.component4|component4(){}[0]
-        final fun copy(kotlin/String = ..., kotlin/String = ..., io.music_assistant.sendspin.api/ClockQuality = ..., io.music_assistant.sendspin.api/AudioStatus = ...): io.music_assistant.sendspin.api/PlayerState.Connected // io.music_assistant.sendspin.api/PlayerState.Connected.copy|copy(kotlin.String;kotlin.String;io.music_assistant.sendspin.api.ClockQuality;io.music_assistant.sendspin.api.AudioStatus){}[0]
+        final fun component5(): io.music_assistant.sendspin.api/SourceStatus // io.music_assistant.sendspin.api/PlayerState.Connected.component5|component5(){}[0]
+        final fun copy(kotlin/String = ..., kotlin/String = ..., io.music_assistant.sendspin.api/ClockQuality = ..., io.music_assistant.sendspin.api/AudioStatus = ..., io.music_assistant.sendspin.api/SourceStatus = ...): io.music_assistant.sendspin.api/PlayerState.Connected // io.music_assistant.sendspin.api/PlayerState.Connected.copy|copy(kotlin.String;kotlin.String;io.music_assistant.sendspin.api.ClockQuality;io.music_assistant.sendspin.api.AudioStatus;io.music_assistant.sendspin.api.SourceStatus){}[0]
         final fun equals(kotlin/Any?): kotlin/Boolean // io.music_assistant.sendspin.api/PlayerState.Connected.equals|equals(kotlin.Any?){}[0]
         final fun hashCode(): kotlin/Int // io.music_assistant.sendspin.api/PlayerState.Connected.hashCode|hashCode(){}[0]
         final fun toString(): kotlin/String // io.music_assistant.sendspin.api/PlayerState.Connected.toString|toString(){}[0]
@@ -444,6 +490,36 @@ final class io.music_assistant.sendspin.api/AudioStatus { // io.music_assistant.
     }
 }
 
+final class io.music_assistant.sendspin.api/CaptureFormat { // io.music_assistant.sendspin.api/CaptureFormat|null[0]
+    constructor <init>(kotlin/Int, kotlin/Int, kotlin/Int) // io.music_assistant.sendspin.api/CaptureFormat.<init>|<init>(kotlin.Int;kotlin.Int;kotlin.Int){}[0]
+
+    final val bitDepth // io.music_assistant.sendspin.api/CaptureFormat.bitDepth|{}bitDepth[0]
+        final fun <get-bitDepth>(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.bitDepth.<get-bitDepth>|<get-bitDepth>(){}[0]
+    final val bytesPerFrame // io.music_assistant.sendspin.api/CaptureFormat.bytesPerFrame|{}bytesPerFrame[0]
+        final fun <get-bytesPerFrame>(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.bytesPerFrame.<get-bytesPerFrame>|<get-bytesPerFrame>(){}[0]
+    final val channels // io.music_assistant.sendspin.api/CaptureFormat.channels|{}channels[0]
+        final fun <get-channels>(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.channels.<get-channels>|<get-channels>(){}[0]
+    final val sampleRate // io.music_assistant.sendspin.api/CaptureFormat.sampleRate|{}sampleRate[0]
+        final fun <get-sampleRate>(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.sampleRate.<get-sampleRate>|<get-sampleRate>(){}[0]
+
+    final fun component1(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.component1|component1(){}[0]
+    final fun component2(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.component2|component2(){}[0]
+    final fun component3(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.component3|component3(){}[0]
+    final fun copy(kotlin/Int = ..., kotlin/Int = ..., kotlin/Int = ...): io.music_assistant.sendspin.api/CaptureFormat // io.music_assistant.sendspin.api/CaptureFormat.copy|copy(kotlin.Int;kotlin.Int;kotlin.Int){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // io.music_assistant.sendspin.api/CaptureFormat.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // io.music_assistant.sendspin.api/CaptureFormat.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // io.music_assistant.sendspin.api/CaptureFormat.toString|toString(){}[0]
+}
+
+final class io.music_assistant.sendspin.api/CapturedAudio { // io.music_assistant.sendspin.api/CapturedAudio|null[0]
+    constructor <init>(kotlin/ByteArray, kotlin/Long) // io.music_assistant.sendspin.api/CapturedAudio.<init>|<init>(kotlin.ByteArray;kotlin.Long){}[0]
+
+    final val captureTimeMicros // io.music_assistant.sendspin.api/CapturedAudio.captureTimeMicros|{}captureTimeMicros[0]
+        final fun <get-captureTimeMicros>(): kotlin/Long // io.music_assistant.sendspin.api/CapturedAudio.captureTimeMicros.<get-captureTimeMicros>|<get-captureTimeMicros>(){}[0]
+    final val pcm // io.music_assistant.sendspin.api/CapturedAudio.pcm|{}pcm[0]
+        final fun <get-pcm>(): kotlin/ByteArray // io.music_assistant.sendspin.api/CapturedAudio.pcm.<get-pcm>|<get-pcm>(){}[0]
+}
+
 final class io.music_assistant.sendspin.api/DeviceInfo { // io.music_assistant.sendspin.api/DeviceInfo|null[0]
     constructor <init>(kotlin/String, kotlin/String, kotlin/String) // io.music_assistant.sendspin.api/DeviceInfo.<init>|<init>(kotlin.String;kotlin.String;kotlin.String){}[0]
 
@@ -463,8 +539,17 @@ final class io.music_assistant.sendspin.api/DeviceInfo { // io.music_assistant.s
     final fun toString(): kotlin/String // io.music_assistant.sendspin.api/DeviceInfo.toString|toString(){}[0]
 }
 
+final class io.music_assistant.sendspin.api/EncodedAudio { // io.music_assistant.sendspin.api/EncodedAudio|null[0]
+    constructor <init>(kotlin/ByteArray, kotlin/Long) // io.music_assistant.sendspin.api/EncodedAudio.<init>|<init>(kotlin.ByteArray;kotlin.Long){}[0]
+
+    final val captureTimeMicros // io.music_assistant.sendspin.api/EncodedAudio.captureTimeMicros|{}captureTimeMicros[0]
+        final fun <get-captureTimeMicros>(): kotlin/Long // io.music_assistant.sendspin.api/EncodedAudio.captureTimeMicros.<get-captureTimeMicros>|<get-captureTimeMicros>(){}[0]
+    final val data // io.music_assistant.sendspin.api/EncodedAudio.data|{}data[0]
+        final fun <get-data>(): kotlin/ByteArray // io.music_assistant.sendspin.api/EncodedAudio.data.<get-data>|<get-data>(){}[0]
+}
+
 final class io.music_assistant.sendspin.api/LocalPlayerConfig { // io.music_assistant.sendspin.api/LocalPlayerConfig|null[0]
-    constructor <init>(io.music_assistant.sendspin.api/Endpoint, kotlin/String, kotlin.collections/List<io.music_assistant.sendspin.api/AudioCodec>, kotlin/Int = ..., kotlin/Int, kotlin/Int) // io.music_assistant.sendspin.api/LocalPlayerConfig.<init>|<init>(io.music_assistant.sendspin.api.Endpoint;kotlin.String;kotlin.collections.List<io.music_assistant.sendspin.api.AudioCodec>;kotlin.Int;kotlin.Int;kotlin.Int){}[0]
+    constructor <init>(io.music_assistant.sendspin.api/Endpoint, kotlin/String, kotlin.collections/List<io.music_assistant.sendspin.api/AudioCodec>, kotlin/Int = ..., kotlin/Int, kotlin/Int, io.music_assistant.sendspin.api/SourceConfig? = ...) // io.music_assistant.sendspin.api/LocalPlayerConfig.<init>|<init>(io.music_assistant.sendspin.api.Endpoint;kotlin.String;kotlin.collections.List<io.music_assistant.sendspin.api.AudioCodec>;kotlin.Int;kotlin.Int;kotlin.Int;io.music_assistant.sendspin.api.SourceConfig?){}[0]
 
     final val bitDepth // io.music_assistant.sendspin.api/LocalPlayerConfig.bitDepth|{}bitDepth[0]
         final fun <get-bitDepth>(): kotlin/Int // io.music_assistant.sendspin.api/LocalPlayerConfig.bitDepth.<get-bitDepth>|<get-bitDepth>(){}[0]
@@ -476,6 +561,8 @@ final class io.music_assistant.sendspin.api/LocalPlayerConfig { // io.music_assi
         final fun <get-deviceName>(): kotlin/String // io.music_assistant.sendspin.api/LocalPlayerConfig.deviceName.<get-deviceName>|<get-deviceName>(){}[0]
     final val endpoint // io.music_assistant.sendspin.api/LocalPlayerConfig.endpoint|{}endpoint[0]
         final fun <get-endpoint>(): io.music_assistant.sendspin.api/Endpoint // io.music_assistant.sendspin.api/LocalPlayerConfig.endpoint.<get-endpoint>|<get-endpoint>(){}[0]
+    final val source // io.music_assistant.sendspin.api/LocalPlayerConfig.source|{}source[0]
+        final fun <get-source>(): io.music_assistant.sendspin.api/SourceConfig? // io.music_assistant.sendspin.api/LocalPlayerConfig.source.<get-source>|<get-source>(){}[0]
     final val userDelayMs // io.music_assistant.sendspin.api/LocalPlayerConfig.userDelayMs|{}userDelayMs[0]
         final fun <get-userDelayMs>(): kotlin/Int // io.music_assistant.sendspin.api/LocalPlayerConfig.userDelayMs.<get-userDelayMs>|<get-userDelayMs>(){}[0]
 
@@ -485,7 +572,8 @@ final class io.music_assistant.sendspin.api/LocalPlayerConfig { // io.music_assi
     final fun component4(): kotlin/Int // io.music_assistant.sendspin.api/LocalPlayerConfig.component4|component4(){}[0]
     final fun component5(): kotlin/Int // io.music_assistant.sendspin.api/LocalPlayerConfig.component5|component5(){}[0]
     final fun component6(): kotlin/Int // io.music_assistant.sendspin.api/LocalPlayerConfig.component6|component6(){}[0]
-    final fun copy(io.music_assistant.sendspin.api/Endpoint = ..., kotlin/String = ..., kotlin.collections/List<io.music_assistant.sendspin.api/AudioCodec> = ..., kotlin/Int = ..., kotlin/Int = ..., kotlin/Int = ...): io.music_assistant.sendspin.api/LocalPlayerConfig // io.music_assistant.sendspin.api/LocalPlayerConfig.copy|copy(io.music_assistant.sendspin.api.Endpoint;kotlin.String;kotlin.collections.List<io.music_assistant.sendspin.api.AudioCodec>;kotlin.Int;kotlin.Int;kotlin.Int){}[0]
+    final fun component7(): io.music_assistant.sendspin.api/SourceConfig? // io.music_assistant.sendspin.api/LocalPlayerConfig.component7|component7(){}[0]
+    final fun copy(io.music_assistant.sendspin.api/Endpoint = ..., kotlin/String = ..., kotlin.collections/List<io.music_assistant.sendspin.api/AudioCodec> = ..., kotlin/Int = ..., kotlin/Int = ..., kotlin/Int = ..., io.music_assistant.sendspin.api/SourceConfig? = ...): io.music_assistant.sendspin.api/LocalPlayerConfig // io.music_assistant.sendspin.api/LocalPlayerConfig.copy|copy(io.music_assistant.sendspin.api.Endpoint;kotlin.String;kotlin.collections.List<io.music_assistant.sendspin.api.AudioCodec>;kotlin.Int;kotlin.Int;kotlin.Int;io.music_assistant.sendspin.api.SourceConfig?){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.music_assistant.sendspin.api/LocalPlayerConfig.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.music_assistant.sendspin.api/LocalPlayerConfig.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.music_assistant.sendspin.api/LocalPlayerConfig.toString|toString(){}[0]
@@ -499,7 +587,7 @@ final class io.music_assistant.sendspin.api/MonotonicFrameCounter { // io.music_
 }
 
 final class io.music_assistant.sendspin.api/SendspinDeps { // io.music_assistant.sendspin.api/SendspinDeps|null[0]
-    constructor <init>(io.music_assistant.sendspin.api/AudioSink, io.music_assistant.sendspin.api/DecoderFactory, io.music_assistant.sendspin.api/SendspinKeyStore, io.ktor.client/HttpClient, kotlinx.coroutines.flow/StateFlow<kotlin/Boolean>, kotlin.coroutines/SuspendFunction1<kotlin/String, kotlin/Unit>, kotlinx.coroutines/CoroutineDispatcher, io.music_assistant.sendspin.api/DeviceInfo, io.music_assistant.sendspin.api/MonotonicClock = ...) // io.music_assistant.sendspin.api/SendspinDeps.<init>|<init>(io.music_assistant.sendspin.api.AudioSink;io.music_assistant.sendspin.api.DecoderFactory;io.music_assistant.sendspin.api.SendspinKeyStore;io.ktor.client.HttpClient;kotlinx.coroutines.flow.StateFlow<kotlin.Boolean>;kotlin.coroutines.SuspendFunction1<kotlin.String,kotlin.Unit>;kotlinx.coroutines.CoroutineDispatcher;io.music_assistant.sendspin.api.DeviceInfo;io.music_assistant.sendspin.api.MonotonicClock){}[0]
+    constructor <init>(io.music_assistant.sendspin.api/AudioSink, io.music_assistant.sendspin.api/DecoderFactory, io.music_assistant.sendspin.api/SendspinKeyStore, io.ktor.client/HttpClient, kotlinx.coroutines.flow/StateFlow<kotlin/Boolean>, kotlin.coroutines/SuspendFunction1<kotlin/String, kotlin/Unit>, kotlinx.coroutines/CoroutineDispatcher, io.music_assistant.sendspin.api/DeviceInfo, io.music_assistant.sendspin.api/MonotonicClock = ..., io.music_assistant.sendspin.api/EncoderFactory? = ...) // io.music_assistant.sendspin.api/SendspinDeps.<init>|<init>(io.music_assistant.sendspin.api.AudioSink;io.music_assistant.sendspin.api.DecoderFactory;io.music_assistant.sendspin.api.SendspinKeyStore;io.ktor.client.HttpClient;kotlinx.coroutines.flow.StateFlow<kotlin.Boolean>;kotlin.coroutines.SuspendFunction1<kotlin.String,kotlin.Unit>;kotlinx.coroutines.CoroutineDispatcher;io.music_assistant.sendspin.api.DeviceInfo;io.music_assistant.sendspin.api.MonotonicClock;io.music_assistant.sendspin.api.EncoderFactory?){}[0]
 
     final val approvePairing // io.music_assistant.sendspin.api/SendspinDeps.approvePairing|{}approvePairing[0]
         final fun <get-approvePairing>(): kotlin.coroutines/SuspendFunction1<kotlin/String, kotlin/Unit> // io.music_assistant.sendspin.api/SendspinDeps.approvePairing.<get-approvePairing>|<get-approvePairing>(){}[0]
@@ -511,6 +599,8 @@ final class io.music_assistant.sendspin.api/SendspinDeps { // io.music_assistant
         final fun <get-decoders>(): io.music_assistant.sendspin.api/DecoderFactory // io.music_assistant.sendspin.api/SendspinDeps.decoders.<get-decoders>|<get-decoders>(){}[0]
     final val deviceInfo // io.music_assistant.sendspin.api/SendspinDeps.deviceInfo|{}deviceInfo[0]
         final fun <get-deviceInfo>(): io.music_assistant.sendspin.api/DeviceInfo // io.music_assistant.sendspin.api/SendspinDeps.deviceInfo.<get-deviceInfo>|<get-deviceInfo>(){}[0]
+    final val encoders // io.music_assistant.sendspin.api/SendspinDeps.encoders|{}encoders[0]
+        final fun <get-encoders>(): io.music_assistant.sendspin.api/EncoderFactory? // io.music_assistant.sendspin.api/SendspinDeps.encoders.<get-encoders>|<get-encoders>(){}[0]
     final val httpClient // io.music_assistant.sendspin.api/SendspinDeps.httpClient|{}httpClient[0]
         final fun <get-httpClient>(): io.ktor.client/HttpClient // io.music_assistant.sendspin.api/SendspinDeps.httpClient.<get-httpClient>|<get-httpClient>(){}[0]
     final val keyStore // io.music_assistant.sendspin.api/SendspinDeps.keyStore|{}keyStore[0]
@@ -564,6 +654,22 @@ final class io.music_assistant.sendspin.api/SinkPosition { // io.music_assistant
     final fun equals(kotlin/Any?): kotlin/Boolean // io.music_assistant.sendspin.api/SinkPosition.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.music_assistant.sendspin.api/SinkPosition.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.music_assistant.sendspin.api/SinkPosition.toString|toString(){}[0]
+}
+
+final class io.music_assistant.sendspin.api/SourceConfig { // io.music_assistant.sendspin.api/SourceConfig|null[0]
+    constructor <init>(io.music_assistant.sendspin.api/AudioCapture, io.music_assistant.sendspin.api/SourceDialect = ...) // io.music_assistant.sendspin.api/SourceConfig.<init>|<init>(io.music_assistant.sendspin.api.AudioCapture;io.music_assistant.sendspin.api.SourceDialect){}[0]
+
+    final val capture // io.music_assistant.sendspin.api/SourceConfig.capture|{}capture[0]
+        final fun <get-capture>(): io.music_assistant.sendspin.api/AudioCapture // io.music_assistant.sendspin.api/SourceConfig.capture.<get-capture>|<get-capture>(){}[0]
+    final val dialect // io.music_assistant.sendspin.api/SourceConfig.dialect|{}dialect[0]
+        final fun <get-dialect>(): io.music_assistant.sendspin.api/SourceDialect // io.music_assistant.sendspin.api/SourceConfig.dialect.<get-dialect>|<get-dialect>(){}[0]
+
+    final fun component1(): io.music_assistant.sendspin.api/AudioCapture // io.music_assistant.sendspin.api/SourceConfig.component1|component1(){}[0]
+    final fun component2(): io.music_assistant.sendspin.api/SourceDialect // io.music_assistant.sendspin.api/SourceConfig.component2|component2(){}[0]
+    final fun copy(io.music_assistant.sendspin.api/AudioCapture = ..., io.music_assistant.sendspin.api/SourceDialect = ...): io.music_assistant.sendspin.api/SourceConfig // io.music_assistant.sendspin.api/SourceConfig.copy|copy(io.music_assistant.sendspin.api.AudioCapture;io.music_assistant.sendspin.api.SourceDialect){}[0]
+    final fun equals(kotlin/Any?): kotlin/Boolean // io.music_assistant.sendspin.api/SourceConfig.equals|equals(kotlin.Any?){}[0]
+    final fun hashCode(): kotlin/Int // io.music_assistant.sendspin.api/SourceConfig.hashCode|hashCode(){}[0]
+    final fun toString(): kotlin/String // io.music_assistant.sendspin.api/SourceConfig.toString|toString(){}[0]
 }
 
 final class io.music_assistant.sendspin.api/SteppedHeadTracker { // io.music_assistant.sendspin.api/SteppedHeadTracker|null[0]
