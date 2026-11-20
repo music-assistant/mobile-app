@@ -1,1 +1,2 @@
-docker run -v $(PWD)/.server:/data -p 8095:8095 ghcr.io/music-assistant/server
+#!/bin/sh
+docker run -v "$PWD/.server:/data" -p 8095:8095 ghcr.io/music-assistant/server

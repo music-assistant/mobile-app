@@ -18,7 +18,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -116,6 +118,7 @@ import io.music_assistant.client.ui.compose.search.GlobalSearchRequest
 import io.music_assistant.client.ui.compose.search.SearchScreen
 import io.music_assistant.client.ui.compose.search.SearchScreenState
 import io.music_assistant.client.ui.compose.search.SearchViewModel
+import io.music_assistant.client.ui.utils.WindowClass
 import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.delay
@@ -224,6 +227,9 @@ fun MainNavigationRoot(
     // instance that stays on screen applies and clears it.
     val connectionState by homeScreenViewModel.connectionState.collectAsStateWithLifecycle()
     val pendingDeepLink by deepLinkBus.pending.collectAsStateWithLifecycle()
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    // The wide layout shows the sidebar as a rail and has no drawer to open.
+    val isWide by rememberUpdatedState(WindowClass.isWide())
     LaunchedEffect(pendingDeepLink, connectionState) {
         val dest = pendingDeepLink ?: return@LaunchedEffect
         val authenticated = (connectionState as? SessionState.Connected)
@@ -238,8 +244,13 @@ fun MainNavigationRoot(
             is DeepLinkDestination.Library -> {
                 multiBackStack.currentBackStack = 0
                 multiBackStack.resetCurrentBackStack()
-                // /library/<category> → push the category list onto the Library tab.
+                // /library/<category> → push the category list; bare /library → show the sidebar,
+                // which holds the library categories.
                 dest.mediaType?.let { multiBackStack.add(MainNav.LibraryList(it)) }
+                    ?: run {
+                        playerExpanded = false
+                        if (!isWide) drawerState.open()
+                    }
             }
 
             DeepLinkDestination.Search -> {
@@ -453,6 +464,7 @@ fun MainNavigationRoot(
             trailingItem = playSelectionItem.takeUnless { playerExpanded },
             playbackItems = if (playerExpanded) emptyList() else playbackItems,
             showNavigation = !playerExpanded,
+            drawerState = drawerState,
             menuLabel = stringResource(Res.string.nav_menu),
             moreLabel = stringResource(Res.string.cd_more),
             onEdited = libraryCategoriesViewModel::onSidebarEdited,
@@ -912,9 +924,6 @@ private sealed interface MainNav : NavKey {
     data object Landing : MainNav
 
     @Serializable
-    data object Library : MainNav
-
-    @Serializable
     data class LibraryList(val mediaType: MediaType) : MainNav
 
     /** Stations of the optional `ai_radio` plugin. Not a media type, hence its own route. */
@@ -965,7 +974,6 @@ private fun rememberMainNavBackStack(bottom: MainNav) = rememberNavBackStack(
             serializersModule = SerializersModule {
                 polymorphic(NavKey::class) {
                     subclass(MainNav.Landing::class, MainNav.Landing.serializer())
-                    subclass(MainNav.Library::class, MainNav.Library.serializer())
                     subclass(MainNav.LibraryList::class, MainNav.LibraryList.serializer())
                     subclass(MainNav.AiRadio::class, MainNav.AiRadio.serializer())
                     subclass(MainNav.Browse::class, MainNav.Browse.serializer())

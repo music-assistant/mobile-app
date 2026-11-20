@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -98,7 +99,8 @@ fun AdaptiveNavigationBarLayout(
     trailingItem: NavigationItem? = null,
     playbackItems: List<PlaybackItem> = emptyList(),
     showNavigation: Boolean = true,
-    drawInitiallyOpen: Boolean = false,
+    // The drawer of the narrow layout. The wide layout shows the rail and ignores it.
+    drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed),
     navigationBarHeight: Dp = 64.dp,
     maxNavigationBarItems: Int = 2,
     menuLabel: String,
@@ -143,7 +145,7 @@ fun AdaptiveNavigationBarLayout(
             menuLabel = menuLabel,
             moreLabel = moreLabel,
             maxNavigationBarItems = maxNavigationBarItems,
-            drawInitiallyOpen = drawInitiallyOpen,
+            drawerState = drawerState,
             editState = editState,
             content = content,
         )
@@ -228,18 +230,11 @@ private fun BarWithDrawerLayout(
     menuLabel: String,
     moreLabel: String,
     maxNavigationBarItems: Int,
-    drawInitiallyOpen: Boolean,
+    drawerState: DrawerState,
     editState: EditableListState?,
     content: @Composable (BoxScope.(PaddingValues, Boolean) -> Unit),
 ) {
     val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(
-        initialValue = if (drawInitiallyOpen) {
-            DrawerValue.Open
-        } else {
-            DrawerValue.Closed
-        },
-    )
 
     val drawerIsOpeningOrOpen = drawerState.targetValue == DrawerValue.Open || drawerState.isOpen
     BackHandler(enabled = drawerIsOpeningOrOpen) {
@@ -762,7 +757,7 @@ fun PreviewAdaptiveNavigationBarLayout(drawerOpen: Boolean = false) {
                 ),
             ),
         ),
-        drawInitiallyOpen = drawerOpen,
+        drawerState = rememberDrawerState(if (drawerOpen) DrawerValue.Open else DrawerValue.Closed),
         menuLabel = "Menu",
         moreLabel = "More",
     ) { contentPadding, _ ->

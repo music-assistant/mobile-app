@@ -22,7 +22,7 @@ Use the `www` host. The app does not claim `music-assistant.io` without `www`.
 | Path | Result |
 |---|---|
 | `/app` or `/app/home` | Opens the Home page. |
-| `/app/library` | Opens the Home page. |
+| `/app/library` | Opens the Home page and the sidebar with the library categories. |
 | `/app/library/<category>` | Opens one library list, for example Albums. |
 | `/app/search` | Opens Search. |
 | `/app/players` | Opens the players pager over the current tab. |
@@ -32,7 +32,7 @@ Use the `www` host. The app does not claim `music-assistant.io` without `www`.
 The library categories are `artists`, `albums`, `tracks`, `playlists`, `audiobooks`, `podcasts`, `radios` and
 `genres`. The app ignores a link with a different category.
 
-The `player` value is the player id or the player name. The app compares the value without case. If an id and a
+The `player` value is the player id, the player name, or `local` for the built-in player of this device. The app compares the value without case. If an id and a
 name match, the app uses the id. The app uses only the players that it shows in the players pager.
 
 ## Play a Media Item
