@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ScreenShare
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -25,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
@@ -33,6 +35,7 @@ import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.client.sleepTimerEndMode
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.icons.CrossfadeIcon
+import io.music_assistant.client.ui.compose.home.players.share.PhoneAudioShareUi
 import io.music_assistant.client.ui.contentColorByLuminance
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_off
@@ -40,6 +43,7 @@ import musicassistantclient.composeapp.generated.resources.cd_autoplay_on
 import musicassistantclient.composeapp.generated.resources.cd_autoplay_repeat_locked
 import musicassistantclient.composeapp.generated.resources.cd_crossfade_off
 import musicassistantclient.composeapp.generated.resources.cd_crossfade_on
+import musicassistantclient.composeapp.generated.resources.phone_audio_badge
 import musicassistantclient.composeapp.generated.resources.player_autoplay
 import musicassistantclient.composeapp.generated.resources.player_crossfade
 import org.jetbrains.compose.resources.stringResource
@@ -75,6 +79,8 @@ fun PlayerBadgesRow(
     onToggleAutoplay: (current: Boolean) -> Unit,
     onToggleCrossfade: (current: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** This player plays the audio of this phone ([PhoneAudioShareUi.target]). */
+    playsPhoneAudio: Boolean = false,
 ) {
     Row(
         modifier = modifier
@@ -83,6 +89,22 @@ fun PlayerBadgesRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (playsPhoneAudio) {
+            BadgePill(
+                contentDescription = stringResource(Res.string.phone_audio_badge),
+                tint = tint,
+                on = true,
+                onClick = null,
+                modifier = Modifier.testTag("PhoneAudioBadge"),
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ScreenShare,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+
         // Shown for the whole time the feature is supported, so the row does not shuffle
         // as a timer starts and stops; "no timer" is a state of the badge, not its absence.
         val sleepRemaining = rememberSleepTimerRemaining(player.player.sleepTimerExpiresAt)

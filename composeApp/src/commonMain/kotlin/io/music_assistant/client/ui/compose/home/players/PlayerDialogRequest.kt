@@ -38,6 +38,9 @@ sealed interface PlayerDialogRequest {
 
     data class AmbientSound(override val playerId: String) : PlayerDialogRequest
 
+    /** The intro of a phone audio share on this player, before the system asks for consent. */
+    data class PhoneAudio(override val playerId: String) : PlayerDialogRequest
+
     /**
      * Carries the item itself: the add-to-playlist target is a snapshot taken at click time
      * (a queue row the user long-pressed), not something to re-derive from the player.

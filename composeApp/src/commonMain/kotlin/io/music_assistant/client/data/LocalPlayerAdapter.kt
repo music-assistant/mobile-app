@@ -18,6 +18,7 @@ import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.data.model.client.nextMovesQueue
 import io.music_assistant.client.data.model.client.presentationChapter
 import io.music_assistant.client.data.model.client.toAbsoluteSeekSeconds
+import io.music_assistant.client.data.share.PhoneAudioSource
 import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
@@ -76,7 +77,8 @@ import io.music_assistant.sendspin.api.SendspinPlayer as SendspinPlayerApi
  * queue, and reconciliation of the server events the MA API forwards.
  *
  * [MainDataSource] depends on this one-way. The control plane stays on the MA
- * REST API: Sendspin is an audio endpoint (player@v1), not a controller.
+ * REST API: Sendspin is an audio endpoint (player@v1), not a controller. While the phone audio
+ * is shared, the same connection also offers the source role ([PhoneAudioSource]).
  *
  * The audio link lives with the process: it stays up while the MA session is torn down in
  * the background, so the server can start a stream on the phone at any time, and
@@ -98,6 +100,7 @@ class LocalPlayerAdapter(
     private val errorBus: ErrorMessageBus,
     private val endpoints: LocalPlayerEndpoints,
     playerFactory: LocalPlayerFactory,
+    phoneAudioSource: PhoneAudioSource,
 ) : CoroutineScope {
     private val log = Logger.withTag("Sendspin.LocalPlayerAdapter")
     private val supervisorJob = SupervisorJob()
@@ -140,7 +143,8 @@ class LocalPlayerAdapter(
         endpoints.endpoint,
         settings.sendspinPlayerSettings,
         settings.sendspinStaticDelayMs,
-    ) { enabled, endpoint, playerSettings, staticDelayMs ->
+        phoneAudioSource.config,
+    ) { enabled, endpoint, playerSettings, staticDelayMs, source ->
         localPlayerConfig(
             enabled = enabled,
             endpoint = endpoint,
@@ -149,7 +153,7 @@ class LocalPlayerAdapter(
             bitDepth = playerSettings.effectiveBitDepth(),
             bufferSeconds = playerSettings.bufferSeconds,
             staticDelayMs = staticDelayMs,
-        )
+        )?.copy(source = source)
     }.stateIn(this, SharingStarted.Eagerly, null)
 
     val player: SendspinPlayerApi = playerFactory.create(config, ::approvePairing, this)

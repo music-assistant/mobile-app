@@ -22,6 +22,7 @@ import io.music_assistant.client.data.announcement.AnnouncementRepository
 import io.music_assistant.client.data.factory.MediaItemFactory
 import io.music_assistant.client.data.factory.PlayerFactory
 import io.music_assistant.client.data.factory.QueueFactory
+import io.music_assistant.client.data.model.server.sendspinSourceInstanceId
 import io.music_assistant.client.data.play.PlayDispatcher
 import io.music_assistant.client.data.repository.AiRadioRepository
 import io.music_assistant.client.data.repository.ItemRefresher
@@ -35,6 +36,10 @@ import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
 import io.music_assistant.client.data.repository.WaveformRepository
+import io.music_assistant.client.data.share.PhoneAudioRouter
+import io.music_assistant.client.data.share.PhoneAudioShare
+import io.music_assistant.client.data.share.PhoneAudioSource
+import io.music_assistant.client.data.share.UnsupportedPhoneAudioShare
 import io.music_assistant.client.imageloader.ArtworkDiskStore
 import io.music_assistant.client.imageloader.ArtworkRepository
 import io.music_assistant.client.imageloader.ArtworkTransport
@@ -52,6 +57,7 @@ import io.music_assistant.client.settings.provideSettings
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.SchemaVersionWarningViewModel
 import io.music_assistant.client.ui.compose.auth.AuthenticationViewModel
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.DominantColorViewModel
 import io.music_assistant.client.ui.compose.common.providers.MdiCodepoints
 import io.music_assistant.client.ui.compose.common.viewmodel.ActionsViewModel
@@ -84,10 +90,14 @@ import io.music_assistant.sendspin.api.SendspinKeyStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
+import org.koin.core.scope.Scope
 import org.koin.dsl.module
 
 /**
@@ -157,7 +167,17 @@ fun sharedModule(
         single { UserPreferences(get()) }   // Server-synced `auth/me` preferences
         singleOf(::PlayerRequestFactory)    // Pure PlayerAction → Request mapper
         single { LocalPlayerEndpoints(get(), get(), CoroutineScope(SupervisorJob() + Dispatchers.Default)) }
-        single<LocalPlayerFactory> { SendspinLocalPlayerFactory(get(), get(), get(), get(), get(), get()) }
+        single<LocalPlayerFactory> { SendspinLocalPlayerFactory(get(), get(), getOrNull(), get(), get(), get(), get()) }
+        single {                            // What the local player offers as a Sendspin source
+            val providers = get<ProviderRepository>().providers
+            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+            PhoneAudioSource(
+                share = phoneAudioShare(),
+                instanceId = providers
+                    .map { state -> (state as? DataState.Data)?.data?.let(::sendspinSourceInstanceId) }
+                    .stateIn(scope, SharingStarted.Eagerly, null),
+            )
+        }
         singleOf(::LocalPlayerAdapter)      // Local player: app side of the Sendspin module
         singleOf(::MediaItemFactory)        // Stateless DTO → domain mapper
         singleOf(::PlayerFactory)           // Stateless DTO → domain mapper
@@ -199,6 +219,18 @@ fun sharedModule(
                 apiClient = get(),
                 scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
                 beforeSend = get<LocalPlayerAdapter>()::prepareQueue,
+            )
+        }
+        single {                            // Phone audio to a player; a share outlives the screen
+            val localPlayer = get<LocalPlayerAdapter>()
+            PhoneAudioRouter(
+                share = phoneAudioShare(),
+                source = get(),
+                playerState = localPlayer.player.state,
+                endpoint = get<LocalPlayerEndpoints>().endpoint,
+                play = get<PlayDispatcher>()::play,
+                errorBus = get(),
+                scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             )
         }
         single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }
@@ -302,3 +334,6 @@ fun sharedModule(
 fun cleanupSingletons() {
     // Cleanup is handled by individual components' lifecycle
 }
+
+/** The platform binds the capture where it has one (Android, in the application module). */
+private fun Scope.phoneAudioShare(): PhoneAudioShare = getOrNull() ?: UnsupportedPhoneAudioShare()

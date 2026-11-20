@@ -40,6 +40,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowRight
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.automirrored.filled.ScreenShare
+import androidx.compose.material.icons.automirrored.filled.StopScreenShare
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Check
@@ -101,6 +103,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.waveformKey
 import io.music_assistant.client.data.play.PlayMode
 import io.music_assistant.client.data.repository.QueueOverlayRepository
+import io.music_assistant.client.data.share.PhoneAudioRouter
 import io.music_assistant.client.ui.alphaOn
 import io.music_assistant.client.ui.compose.common.CenteredThreeSlotRow
 import io.music_assistant.client.ui.compose.common.DataState
@@ -129,6 +132,9 @@ import io.music_assistant.client.ui.compose.home.CollapsibleQueue
 import io.music_assistant.client.ui.compose.home.HomeScreenViewModel
 import io.music_assistant.client.ui.compose.home.HorizontalPagerIndicator
 import io.music_assistant.client.ui.compose.home.Queue
+import io.music_assistant.client.ui.compose.home.players.share.PhoneAudioStrip
+import io.music_assistant.client.ui.compose.home.players.share.SharedPhoneInfo
+import io.music_assistant.client.ui.compose.home.players.share.rememberPhoneAudioShareUi
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.inactive
 import io.music_assistant.client.ui.utils.FoldRegion
@@ -151,6 +157,9 @@ import musicassistantclient.composeapp.generated.resources.bound_player_playing_
 import musicassistantclient.composeapp.generated.resources.cd_more
 import musicassistantclient.composeapp.generated.resources.cd_mute
 import musicassistantclient.composeapp.generated.resources.cd_unmute
+import musicassistantclient.composeapp.generated.resources.phone_audio_blocked_local_playing
+import musicassistantclient.composeapp.generated.resources.phone_audio_play_here
+import musicassistantclient.composeapp.generated.resources.phone_audio_stop
 import musicassistantclient.composeapp.generated.resources.player_power_off
 import musicassistantclient.composeapp.generated.resources.player_power_on
 import musicassistantclient.composeapp.generated.resources.players_dsp_settings
@@ -246,6 +255,8 @@ fun PlayersPager(
             .collectAsStateWithLifecycle()
         // Write actions the user's role cannot run stay hidden.
         val grantedScopes = LocalGrantedScopes.current
+        val phoneAudioRouter = koinInject<PhoneAudioRouter>()
+        val phoneAudio = rememberPhoneAudioShareUi(state.playerData, phoneAudioRouter)
 
         val playerAction1 =
             { data: PlayerData, action: PlayerAction ->
@@ -309,6 +320,13 @@ fun PlayersPager(
             onGloballyPositioned { pagerStart = with(density) { it.positionInWindow().x.toDp() } }
         }
         Column(modifier = modifier) {
+            if (phoneAudio.sharing) {
+                PhoneAudioStrip(
+                    targetName = phoneAudio.target?.player?.name,
+                    onOpenTarget = { phoneAudio.target?.let { moveToPlayer(it.playerId) } },
+                    onStop = phoneAudioRouter::stop,
+                )
+            }
             if (playerDataList.size > 1) {
                 // Over the player's own page, not over the queue beside it.
                 val split = pageSplitOrNull(
@@ -393,6 +411,25 @@ fun PlayersPager(
                     {
                         dialogRequest = PlayerDialogRequest.AmbientSound(playerId)
                     }
+                }
+                val phoneAudioOption = when {
+                    phoneAudio.sharing -> OverflowMenuOption(
+                        title = stringResource(Res.string.phone_audio_stop),
+                        icon = Icons.AutoMirrored.Filled.StopScreenShare,
+                        onClick = phoneAudioRouter::stop,
+                    )
+
+                    phoneAudio.canStartOn(player) -> OverflowMenuOption(
+                        title = stringResource(Res.string.phone_audio_play_here),
+                        // The share restarts the audio link of the phone, which would break its playback.
+                        subtitle = stringResource(Res.string.phone_audio_blocked_local_playing)
+                            .takeIf { phoneAudio.blockedByLocalPlayback },
+                        icon = Icons.AutoMirrored.Filled.ScreenShare,
+                        enabled = !phoneAudio.blockedByLocalPlayback,
+                        onClick = { dialogRequest = PlayerDialogRequest.PhoneAudio(playerId) },
+                    )
+
+                    else -> null
                 }
                 val onLyricsClick: () -> Unit = remember(playerId, lyricsItemId) {
                     {
@@ -504,6 +541,8 @@ fun PlayersPager(
                                 onAmbientSoundButton = onAmbientSoundButton.takeIf {
                                     overlayAvailable && player.queueInfo?.overlay != null
                                 },
+                                phoneAudioOption = phoneAudioOption,
+                                playsPhoneAudio = phoneAudio.target?.playerId == playerId,
                                 playerAction = playerAction1,
                                 onAddToPlaylist = onAddToPlaylist.takeIf { grantedScopes.canEditLibrary },
                                 onStartEndlessMix = onStartEndlessMix,
@@ -561,6 +600,14 @@ fun PlayersPager(
                             playerName = player.player.name,
                             parent = it,
                             moveToPlayer = moveToPlayer,
+                        )
+                    }
+                    // The phone does not play while its audio is shared.
+                    if (player.isLocal && phoneAudio.sharing) {
+                        SharedPhoneInfo(
+                            modifier = Modifier.matchParentSize(),
+                            targetName = phoneAudio.target?.player?.name,
+                            onOpenTarget = { phoneAudio.target?.let { moveToPlayer(it.playerId) } },
                         )
                     }
                 }
@@ -624,6 +671,9 @@ private fun ExpandedPlayerPage(
     repeatLocksAutoplay: Boolean,
     onAnnounceButton: (() -> Unit)?,
     onAmbientSoundButton: (() -> Unit)?,
+    // Starts or stops the share of the phone audio; null where neither applies.
+    phoneAudioOption: OverflowMenuOption? = null,
+    playsPhoneAudio: Boolean = false,
     playerAction: (PlayerData, PlayerAction) -> Unit,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     onStartEndlessMix: ((AppMediaItem) -> Unit)? = null,
@@ -753,6 +803,7 @@ private fun ExpandedPlayerPage(
                         onOpenDsp = onDspButton,
                         onAnnounce = onAnnounceButton,
                         onAmbientSound = onAmbientSoundButton,
+                        phoneAudioOption = phoneAudioOption,
                         onAddToPlaylist = onAddToPlaylist,
                         showWaveformToggle = waveformToggleAvailable,
                         queueDjMenu = queueDjMenu,
@@ -775,6 +826,7 @@ private fun ExpandedPlayerPage(
                 onToggleCrossfade = { current ->
                     playerAction(player, PlayerAction.ToggleCrossfade(current = current))
                 },
+                playsPhoneAudio = playsPhoneAudio,
             )
 
             AnimatedVisibility(
@@ -1076,6 +1128,7 @@ private fun PlayerOverflowMenu(
     onOpenDsp: (() -> Unit)?,
     onAnnounce: (() -> Unit)?,
     onAmbientSound: (() -> Unit)?,
+    phoneAudioOption: OverflowMenuOption? = null,
     onAddToPlaylist: ((AppMediaItem) -> Unit)? = null,
     showWaveformToggle: Boolean = false,
     queueDjMenu: QueueDjMenu? = null,
@@ -1212,6 +1265,7 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        phoneAudioOption?.let(::add)
         onAmbientSound?.let {
             val overlay = currentPlayer.queueInfo?.overlay
             add(

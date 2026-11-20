@@ -91,6 +91,7 @@ import io.music_assistant.client.ui.compose.home.players.mainTransport
 import io.music_assistant.client.ui.compose.home.players.overflowLabel
 import io.music_assistant.client.ui.compose.home.players.rememberHideUnavailablePlayers
 import io.music_assistant.client.ui.compose.home.players.rememberToggleHideUnavailablePlayers
+import io.music_assistant.client.ui.compose.home.players.share.rememberPhoneAudioShareUi
 import io.music_assistant.client.ui.compose.home.players.statusDotColor
 import io.music_assistant.client.ui.compose.home.players.transportState
 import io.music_assistant.client.ui.compose.item.ItemDetailsScreen
@@ -338,6 +339,7 @@ fun MainNavigationRoot(
                         onAdjustPlayerDelay = homeScreenViewModel::adjustPlayerDelay,
                         canLeaveGroup = leaderLeaveSupported,
                         start = start,
+                        phoneAudioPlayerId = rememberPhoneAudioShareUi(it.playerData).target?.playerId,
                     )
                 }
             }

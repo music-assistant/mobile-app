@@ -9,6 +9,8 @@ import io.music_assistant.client.data.model.client.Player
 import io.music_assistant.client.data.model.client.QueueInfo
 import io.music_assistant.client.data.model.client.RepeatMode
 import io.music_assistant.client.data.model.server.StubServiceClient
+import io.music_assistant.client.data.share.PhoneAudioSource
+import io.music_assistant.client.data.share.UnsupportedPhoneAudioShare
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.utils.SessionState
@@ -64,6 +66,7 @@ class LocalPlayerAdapterTest {
             errorBus = ErrorMessageBus(),
             endpoints = LocalPlayerEndpoints(client, settings, scope),
             playerFactory = { _, _, _ -> player },
+            phoneAudioSource = PhoneAudioSource(UnsupportedPhoneAudioShare(), MutableStateFlow(null)),
         )
     }
 
