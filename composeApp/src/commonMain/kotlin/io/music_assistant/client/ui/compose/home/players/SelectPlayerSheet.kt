@@ -9,10 +9,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -127,7 +134,9 @@ fun SelectPlayerSheet(
         modifier = Modifier.boundedModalSheet(),
         sheetState = sheetState,
         onDismissRequest = onDismissRequest,
-        dragHandle = { SheetHandle(onClose = onDismissRequest) },
+        // The lists draw behind the bottom inset and pad their end instead (sheetListPadding),
+        // so the last row does not stop above an empty band.
+        contentWindowInsets = { BottomSheetDefaults.modalWindowInsets.only(WindowInsetsSides.Top) },
     ) {
         SnapToHeightLayout(thresholdRatio = 0.6) {
             var showGroupSettings by remember { mutableStateOf((start as? PlayerSheetStart.Group)?.playerId) }
@@ -174,16 +183,7 @@ private fun PlayerLayout(
     onToggleHideUnavailable: () -> Unit,
 ) {
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                stringResource(Res.string.players_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-
+        SheetHeader(title = stringResource(Res.string.players_title), onClose = onDismissRequest) {
             OverflowMenuButton(
                 options = listOf(
                     OverflowMenuOption(
@@ -215,8 +215,9 @@ private fun PlayerLayout(
             }
         }
 
-        Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
+        Box(modifier = Modifier.sheetListPadding().nestedScroll(SheetStaysOnContentScroll)) {
             PlayerSelection(
+                contentPadding = sheetListContentPadding(),
                 players = shownPlayers,
                 selectedPlayer = selectedPlayer,
                 onDismissRequest = onDismissRequest,
@@ -254,14 +255,11 @@ private fun GroupLayout(
     }
     LaunchedEffect(memberIds) { onLoadPlayerDelays(memberIds) }
     Column {
-        Text(
-            text = stringResource(Res.string.players_group_settings),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(start = 16.dp),
-        )
+        SheetHeader(title = stringResource(Res.string.players_group_settings), onClose = onDismissRequest)
 
-        Box(modifier = Modifier.padding(16.dp).nestedScroll(SheetStaysOnContentScroll)) {
+        Box(modifier = Modifier.sheetListPadding().nestedScroll(SheetStaysOnContentScroll)) {
             GroupSettings(
+                contentPadding = sheetListContentPadding(),
                 player = player,
                 onDismiss = onDismissRequest,
                 playerAction = onPlayerAction,
@@ -274,13 +272,29 @@ private fun GroupLayout(
     }
 }
 
-/** The drag handle of the sheet, with the close button at its end. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The title row of the sheet: the title, the [actions], then the close button. The close button
+ * shares the row with the actions, so their touch targets sit side by side and never stack.
+ */
 @Composable
-private fun SheetHandle(onClose: () -> Unit) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        BottomSheetDefaults.DragHandle(modifier = Modifier.align(Alignment.Center))
-        IconButton(onClick = onClose, modifier = Modifier.align(Alignment.CenterEnd)) {
+private fun SheetHeader(
+    title: String,
+    onClose: () -> Unit,
+    actions: @Composable RowScope.() -> Unit = {},
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        actions()
+        IconButton(onClick = onClose) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = stringResource(Res.string.cd_close),
@@ -289,8 +303,19 @@ private fun SheetHandle(onClose: () -> Unit) {
     }
 }
 
+/** The list box of the sheet: no bottom padding, so the list scrolls to the sheet edge. */
+private fun Modifier.sheetListPadding() = padding(start = 16.dp, top = 16.dp, end = 16.dp)
+
+/** The list end padding: the bottom safe area, plus the gap the box no longer adds. */
+@Composable
+private fun sheetListContentPadding() = PaddingValues(
+    bottom = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom).asPaddingValues().calculateBottomPadding() +
+        16.dp,
+)
+
 @Composable
 private fun PlayerSelection(
+    contentPadding: PaddingValues,
     players: List<PlayerData>,
     selectedPlayer: PlayerData,
     onDismissRequest: () -> Unit,
@@ -334,6 +359,7 @@ private fun PlayerSelection(
             .testTag("PlayersList")
             .selectableGroup(),
         state = listState,
+        contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(
