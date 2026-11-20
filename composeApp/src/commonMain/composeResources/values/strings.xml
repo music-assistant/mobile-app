@@ -386,6 +386,7 @@
   <string name="phone_audio_end_timeout">The phone audio did not start. Try again.</string>
   <string name="phone_audio_intro_body">Music Assistant sends the audio that other apps play on this phone to the player. Next, Android asks for the microphone permission and for a screen recording. The app uses only the audio. The player is about 2 seconds late, so video is not in sync. Some apps block the capture and give silence.</string>
   <string name="phone_audio_intro_continue">Continue</string>
+  <string name="phone_audio_intro_muted">The media sound of this phone is muted while the audio is shared, so you hear it only on the player. The sound comes back when the share stops. To hear the phone too, press a volume key.</string>
   <string name="phone_audio_intro_title">Play phone audio on %1$s</string>
   <string name="phone_audio_local_overlay">Phone audio is shared. It plays on %1$s.</string>
   <string name="phone_audio_local_overlay_starting">Phone audio is shared.</string>

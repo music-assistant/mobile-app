@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -35,6 +36,9 @@ class PhoneAudioShareService : Service() {
     private val logger = Logger.withTag("PhoneAudioShareService")
     private val share: AndroidPhoneAudioShare by inject()
     private var projection: MediaProjection? = null
+
+    /** This service muted the media stream, so it must give the sound back. */
+    private var mutedMedia = false
 
     private val projectionCallback = object : MediaProjection.Callback() {
         override fun onStop() {
@@ -72,6 +76,30 @@ class PhoneAudioShareService : Service() {
         granted.registerCallback(projectionCallback, Handler(Looper.getMainLooper()))
         projection = granted
         share.onStarted(granted)
+        muteMedia()
+    }
+
+    /**
+     * The capture copies the audio and the phone still plays it, about 2 seconds before the
+     * player: an echo. So the media stream is silent for the share. The capture does not depend
+     * on the stream volume. A mute, not a volume of zero: if the process dies, a volume key
+     * brings the sound back at its old level. A stream that the user muted stays muted after.
+     */
+    private fun muteMedia() {
+        val audio = getSystemService(AudioManager::class.java)
+        if (audio.isStreamMute(AudioManager.STREAM_MUSIC)) return
+        runCatching { audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0) }
+            .onSuccess { mutedMedia = true }
+            .onFailure { logger.w(it) { "Cannot mute the media stream" } }
+    }
+
+    private fun unmuteMedia() {
+        if (!mutedMedia) return
+        mutedMedia = false
+        runCatching {
+            getSystemService(AudioManager::class.java)
+                .adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+        }.onFailure { logger.w(it) { "Cannot unmute the media stream" } }
     }
 
     override fun onDestroy() {
@@ -80,6 +108,7 @@ class PhoneAudioShareService : Service() {
             it.stop()
         }
         projection = null
+        unmuteMedia()
         // No effect after a stop by the user, which cleared the capture already.
         share.onRevoked()
         super.onDestroy()

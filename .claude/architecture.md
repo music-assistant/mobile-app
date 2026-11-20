@@ -343,7 +343,8 @@ actual class PlatformFeature {
   plugin, or a `sendspin` provider with the `audio_source` feature. The role needs `WireVersion.SPEC_1_0`.
 
   On Android, `PhoneAudioShareService` (type `mediaProjection`) holds the projection, and `PlaybackCapture` records
-  with `excludeUid` of the app, so the local player never feeds the source. The start needs the record permission and
+  with `excludeUid` of the app, so the local player never feeds the source. The service mutes the media stream for the
+  share, because the phone plays the audio about 2 seconds before the player, and it unmutes the stream at the end. The start needs the record permission and
   the capture consent for each share (`rememberPhoneAudioShareLauncher`). `PhoneAudioShareDialog` tells the user first.
   A refusal starts nothing.
 
