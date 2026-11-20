@@ -44,7 +44,7 @@ data class ServerPlayer(
     @SerialName("group_members") val groupMembers: Set<String>? = null,
     @SerialName("static_group_members") val staticGroupMembers: Set<String>? = null,
     @SerialName("active_source") val activeSource: String? = null,
-    // @SerialName("source_list") val sourceList: List<PlayerSource>,
+    @SerialName("source_list") val sourceList: List<ServerPlayerSource> = emptyList(),
     @SerialName("active_group") val activeGroup: String? = null,
     @SerialName("synced_to") val syncedTo: String? = null,
     @SerialName("group_volume") val groupVolume: Float? = null,
@@ -99,12 +99,13 @@ data class ServerPlayerMedia(
 //    @SerialName("custom_data") val customData: JsonObject? = null,
 )
 
-// @Serializable
-// data class PlayerSource(
-//    @SerialName("id") val id: String,
-//    @SerialName("name") val name: String,
-//    @SerialName("passive") val passive: Boolean,
-//    @SerialName("can_play_pause") val canPlayPause: Boolean,
-//    @SerialName("can_seek") val canSeek: Boolean,
-//    @SerialName("can_next_previous") val canNextPrevious: Boolean
-// )
+/** An entry of the source list of a player: its queue, a live input, or an input of the device. */
+@Serializable
+data class ServerPlayerSource(
+    @SerialName("id") val id: String,
+    // @SerialName("name") val name: String,
+    // @SerialName("passive") val passive: Boolean,
+    @SerialName("can_play_pause") val canPlayPause: Boolean = false,
+    // @SerialName("can_seek") val canSeek: Boolean,
+    // @SerialName("can_next_previous") val canNextPrevious: Boolean
+)

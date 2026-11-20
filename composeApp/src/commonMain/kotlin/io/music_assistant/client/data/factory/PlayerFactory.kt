@@ -54,6 +54,7 @@ class PlayerFactory(
             sleepTimerMode = sleepTimerMode,
             // A queue id is a player id. Only an input of the audio source framework is a uri.
             liveInputUri = activeSource?.takeIf { URI_MARK in it },
+            canPauseLiveInput = sourceList.any { it.id == activeSource && URI_MARK in it.id && it.canPlayPause },
         )
     }
 

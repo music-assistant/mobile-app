@@ -182,7 +182,8 @@ class MergePlayerDataListTest {
 
         val withInput = merge(onInput, listOf(kitchen))
         assertNull(withInput.single().queueInfo, "the queue of before the input must not show")
-        assertFalse(withInput.single().canPauseContent, "a live input can only stop")
+        assertEquals("kitchen", withInput.single().queueOrPlayerId, "commands go to the player, not to the uri")
+        assertFalse(withInput.single().canPauseContent, "an input that the server does not list can only stop")
 
         val after = merge(kitchen.player, withInput)
         assertEquals("kitchen", after.single().queueInfo?.id)

@@ -50,4 +50,14 @@ class PlayerDataCanPauseContentTest {
         assertFalse(playerData(testAudioSource(canPlayPause = false)).canPauseContent)
         assertTrue(playerData(testAudioSource(canPlayPause = true), MediaType.RADIO).canPauseContent)
     }
+
+    @Test
+    fun aLiveInputFollowsTheFlagOfItsSourceEntry() {
+        fun onInput(canPause: Boolean) = playerData(mediaType = MediaType.TRACK).let {
+            it.copy(player = it.player.copy(liveInputUri = "spotify://audio_source/1", canPauseLiveInput = canPause))
+        }
+
+        assertTrue(onInput(canPause = true).canPauseContent)
+        assertFalse(onInput(canPause = false).canPauseContent)
+    }
 }

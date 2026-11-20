@@ -319,8 +319,10 @@ actual class PlatformFeature {
 - **Live input as the active source**: a newer server plays a live input through `select_source`. The
   `active_source` of the player is then the uri of the input, not a queue id, and the queue has no item for it.
   `Player.liveInputUri` holds that uri (an active source with `://`). `mergePlayerDataList` gives such a player no
-  queue, also not the queue of before the input. `PlayerData.canPauseContent` is false, so the main button is Stop,
-  and the other transport buttons are disabled because the player has no current item. An older server makes the
+  queue, also not the queue of before the input. `PlayerData.canPauseContent` follows `can_play_pause` of the input
+  in the `source_list` of the player (`Player.canPauseLiveInput`), like the web frontend. So Spotify Connect keeps
+  Pause, and the device audio source gets Stop. An input that the server does not list gets Stop. The other
+  transport buttons are disabled because the player has no current item. An older server makes the
   input the current queue item (`AudioSource`), and that path does not change.
 - **Queue end**: when a queue plays to its end, the server keeps `current_index` and `current_item` on
   the last item and sets `ended` (every server 2.x that the app supports). `QueueInfo.activeItemId` gives
