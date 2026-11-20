@@ -1,16 +1,17 @@
 # `.well-known/` — App Links / Universal Links association files
 
 These files are **staging copies**. They do nothing in this repo. They must be
-served from the website that answers `https://www.music-assistant.io` (and the
-apex `music-assistant.io`), at exactly:
+served from the website that answers `https://www.music-assistant.io`, at
+exactly:
 
 | File | Must be reachable at | Content-Type |
 |---|---|---|
 | `assetlinks.json` | `https://www.music-assistant.io/.well-known/assetlinks.json` | `application/json` |
 | `apple-app-site-association` | `https://www.music-assistant.io/.well-known/apple-app-site-association` | `application/json` (no extension) |
 
-Requirements for both: HTTPS, HTTP 200, **no redirect**, valid cert. Serve from
-both `www.` and the apex if both hosts should resolve links.
+Requirements for both: HTTPS, HTTP 200, **no redirect**, valid cert. The app
+claims the `www` host only: the apex redirects to `www`, and neither OS follows
+a redirect for these files. See `.claude/deep-links.md`.
 
 ## `assetlinks.json` (Android App Links)
 

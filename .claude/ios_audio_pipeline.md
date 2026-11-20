@@ -1,116 +1,97 @@
-# iOS Audio Pipeline & Native AudioQueue Integration
+# iOS Audio Pipeline
 
-## Overview
-High-Performance Audio Pipeline for iOS using native `AudioQueue` services and optimized C/Swift decoders for FLAC/Opus/PCM streaming playback via the Sendspin protocol. This implementation replaces the previous MPV-based solution to provide better system integration and lower overhead.
+The built-in Sendspin player on iOS writes encoded audio to a native `AudioQueue` player in Swift. Swift
+decodes FLAC and Opus. The MPV player was removed.
 
-## Architecture
+For the player module and the Sendspin rules, see the Sendspin section of `.claude/architecture.md`.
+
+## Chain
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         Server                                   │
-│  Sends FLAC/Opus/PCM chunks + codec_header via WebSocket        │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                   AudioStreamManager (Kotlin)                    │
-│  • Receives chunks with timestamps                               │
-│  • Buffers/reorders (TimestampOrderedBuffer, AdaptiveBuffer)    │
-│  • PassthroughDecoder for iOS (wraps codec type)                │
-│  • Calls writeRawPcm(data) to push encoded bytes                │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│            MediaPlayerController.ios.kt → PlatformPlayerProvider │
-│  Delegates to Swift via PlatformAudioPlayer interface           │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  NativeAudioController.swift (Swift)             │
-│  • prepareStream(codec, sampleRate, channels, bitDepth, header) │
-│  • Manages AudioQueue lifecycle                                 │
-│  • Maintains PCM buffer (PCMData[])                             │
-│  • Handles remote commands (via NowPlayingManager)              │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  AudioDecoders.swift (Swift)                     │
-│  • Factory creates specific decoder for stream                   │
-│  • Decodes input data -> Int16 PCM for AudioQueue               │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     AudioQueue (iOS Core Audio)                  │
-│  • 5x 64KB buffers                                               │
-│  • Callback-driven playback                                     │
-│  • System audio session management                              │
-└─────────────────────────────────────────────────────────────────┘
+sendspin-kmp scheduler (jitter buffer, timing, drift)
+  → PassThroughDecoder (IosDecoderFactory): the encoded bytes pass through
+  → AudioQueueSink (composeApp iosMain, player/local/)
+  → PlatformAudioPlayer (Kotlin interface), PlatformPlayerProvider.player
+  → NativeAudioController.swift: decoder, PCM queue, AudioQueue
+  → AudioDecoders.swift: FLACLibDecoder, OpusLibDecoder, PCMPassthroughDecoder
 ```
 
-## Key Implementation Details
+## Kotlin side
 
-### Codec Support
+- `IosModule` binds `AudioQueueSink` and `IosDecoderFactory` for the Sendspin player.
+- `IosDecoderFactory` supports every codec. `PassThroughDecoder` returns its input and reports the bit depth
+  of the stream.
+- `AudioQueueSink.open` calls `prepareStream` with the codec, the sample rate, the channels, the bit depth and
+  the codec header (Base64). If the native player reports an error, the sink emits `SinkEvent.Died`.
+- `write` copies the bytes into one `NSData` with `usePinned` and calls `writeRawPcmNSData`.
+- The sink gives no position and no latency. So iOS sync is open loop, and the manual delay setting is the
+  only correction.
+- `pause`, `resume`, `flush` and `close` call `pauseSink`, `resumeSink`, `flush` and `stopRawPcmStream`.
+- `iOSApp.swift` makes one `NativeAudioController` and sets it as `PlatformPlayerProvider.player` before
+  the Kotlin graph starts.
 
-Per-platform codec support is defined via `Codecs.list`. The iOS implementation uses specific libraries for each codec:
+## NativeAudioController
 
-| Codec | Implementation Source | decoding Details |
-|-------|-----------------------|------------------|
-| **FLAC** | `libFLAC` (C library) | `FLACLibDecoder` uses callbacks to decode to Int16 PCM. Handles 16/24-bit input (downsamples 24->16). |
-| **Opus** | `swift-opus` (libopus) | `OpusLibDecoder` decodes to Float32, then converts to Int16. |
-| **PCM** | Native | `PCMPassthroughDecoder` handles 16/24/32-bit integer PCM. |
+- `prepareStream` stops the old queue, clears the PCM queue and makes the decoder with
+  `AudioDecoderFactory.create`. A codec header (FLAC STREAMINFO) goes to the decoder first.
+- The first packet starts the `AudioQueue` and calls `NowPlayingCoordinator.activatePlayback`.
+- Each packet is decoded, cut into whole frames of at most 64 KiB (`PCMChunker`) and added to the PCM queue
+  under an `NSLock`.
+- The `AudioQueue` has 5 buffers of 64 KiB (`kNumberOfBuffers`, `kBufferSize`). The callback fills a buffer
+  from the PCM queue, or with silence if the queue is empty.
+- `shouldPlay` is the write gate. While it is false (pause, interruption, route loss), the controller drops
+  incoming packets, so a late packet cannot start the queue again.
+- `pauseSink` tears the queue down instead of `AudioQueuePause`, because a paused queue plays its old buffers
+  again on resume. The next packet builds a new queue.
 
-### AudioQueue Management
+## Bit depth
 
-The `NativeAudioController` manages an `AudioQueueRef` directly:
+| Codec | Decoder output | AudioQueue format |
+|-------|----------------|-------------------|
+| FLAC (`libFLAC`) | Int32, shifted to full range | 32-bit signed integer |
+| PCM 24-bit | Int32, unpacked from 3 bytes and shifted left by 8 | 32-bit signed integer |
+| PCM 16-bit | Unchanged | 16-bit signed integer |
+| Opus (`swift-opus`) | Int16, interleaved | 16-bit signed integer |
 
-1.  **Buffering**: Uses 5 buffers of 64KB each to ensure smooth playback and minimize stuttering.
-2.  **Format**: Always configures AudioQueue for Linear PCM, 16/24/32-bit signed integer, based on the source stream bit depth.
-3.  **Synchronization**: Uses `NSLock` to protect the PCM buffer shared between the writer (Kotlin->Swift) and the specific reader callback (AudioQueue).
+- `startAudioQueue` selects 32-bit if the codec is FLAC or the bit depth is 24.
+- `PCMPassthroughDecoder` accepts 16-bit and 24-bit only. Another depth throws an error.
+- `supportsHiResAudio` is true on iOS (`utils/HiResAudio.kt`), because the player widens 24-bit audio to 32-bit.
+- `OpusLibDecoder` expects one complete Opus packet in each call.
+- `FLACLibDecoder` resets its input buffer if it gets larger than 1 MiB.
 
-### Critical Implementation Notes
+## Audio session and Now Playing
 
-1.  **Decoding in Swift**: Unlike the previous MPV implementation where the player handled everything, we now explicitly decode encoded chunks (FLAC/Opus) into PCM *before* feeding them to the AudioQueue. This happens in `NativeAudioController.writeRawPcm`.
+- `NowPlayingCoordinator.swift` owns `MPNowPlayingInfoCenter` and `MPRemoteCommandCenter`. It renders the
+  Kotlin Now Playing channels (track, transport, modes) from `KmpHelper`.
+- It sets the `.playback` category at start, with no mix option, so the app can be the Now Playing app.
+  `activatePlayback` activates the session when playback starts.
+- A Control Center or CarPlay command goes to the handler of the open sink with source `remote`, and
+  `AudioQueueSink` gives it to `LocalPlayerAdapter.onRemoteCommand`. After `close`, the handler is null and
+  the command is dropped.
 
-2.  **Codec Header**: The `codec_header` (e.g., FLAC STREAMINFO) is passed to `prepareStream`. `nativeAudioController` uses this to initialize the decoder (specifically for FLAC).
+## Interruptions and route changes
 
-3.  **Now Playing Integration**: `NowPlayingManager` is integrated directly into the controller to handle Lock Screen / Control Center metadata and commands.
+`NativeAudioController` observes `AVAudioSession.interruptionNotification` and `routeChangeNotification`.
 
-4.  **Bit Depth Handling**:
-    - **FLAC**: 24-bit inputs are currently shifted down to 16-bit for playback compatibility if needed, or handled as is depending on decoder logic.
-    - **PCM**: Custom unpacking logic supports 24-bit packed integers (3 bytes per sample) which standard `CoreAudio` types don't always handle automatically.
+- Interruption `.began`: if the queue plays, the controller sends `pause` with source `interruption`.
+  `AudioQueueSink` makes it `SinkEvent.FocusLost`.
+- Interruption `.ended`: if the controller paused for the interruption, it sends `play`
+  (`SinkEvent.FocusRegained`). It does not if `secondaryAudioShouldBeSilencedHint` is true. The controller
+  does not use `.shouldResume`, because Apple gives it as a hint only.
+- Route change `.oldDeviceUnavailable` (headphones, Bluetooth, CarPlay): the controller stops the queue, clears
+  the PCM queue and sends `pause` with source `route_loss`. iOS sends no matching end event, so the user
+  starts playback again.
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `iosApp/NativeAudioController.swift` | Main implementation. Manages AudioQueue, referencing Decoders. |
-| `iosApp/AudioDecoders.swift` | Contains `FLACLibDecoder`, `OpusLibDecoder`, `PCMPassthroughDecoder` and factory. |
-| `iosApp/NowPlayingManager.swift` | Handles MPNowPlayingInfoCenter and MPRemoteCommandCenter. |
-| `composeApp/.../MediaPlayerController.ios.kt` | Kotlin stub that delegates to `PlatformPlayerProvider`. |
-| `composeApp/.../utils/Codecs.ios.kt` | Supported codecs: FLAC, Opus, PCM. |
-
-## Status: ✅ Working (last reviewed 2026-04-28)
-
-- [x] FLAC streaming playback (via libFLAC)
-- [x] Opus streaming playback (via swift-opus) — stereo decoding corrected and re-enabled as default in #288 (2026-04-27)
-- [x] PCM streaming playback (16/24/32 bit)
-- [x] Proper codec header handling
-- [x] Native AudioQueue implementation (replacing MPV)
-- [x] Background audio: `AVAudioSession` interruption + route-change handlers — resumes after phone calls, Siri, headphone disconnect (registered in `NativeAudioController.swift:40-95`; shipped 2026-02-20, in production via TestFlight since 2026-04-19)
-- [x] Compose Metal renderer pauses on app background to prevent GPU command-buffer rejection (`UIBackgroundModes: audio` keeps the run loop alive; without this CMP keeps submitting Metal work iOS rejects) — `iosApp/ComposeRenderingGuard.swift` + `composeApp/.../utils/ComposeRendererBridge.kt`, shipped 2026-04-24 (#265)
-- [x] CarPlay cold-launch black-screen fix shipped (#277, 2026-04-26)
-- [x] Efficient Kotlin→Swift data transfer via `writeRawPcmNSData(NSData)` using `usePinned` bulk copy (completed 2026-02-20)
-- [x] Lock Screen / Control Center: Now Playing info + remote commands via `NowPlayingManager`
-
-## Known Issues
-
-1. **Seek/Scrub**: Scrubbing might trigger issues in the API layer if not handled gracefully.
-2. **Resumption**: Stream resumption during network changes relies on the existing Sendspin resilience strategy (buffer preservation).
-
-## Future Work
-
-1. **Sample-Accurate Sync**: Direct access to `AudioQueue` callbacks provides better timing info than MPV. Could implement precise synchronized playback using `mSampleTime` from `AudioQueueTimeline`.
+| `composeApp/src/iosMain/.../player/local/AudioQueueSink.kt` | `AudioSink` over the native player, `IosDecoderFactory`, `PassThroughDecoder` |
+| `composeApp/src/iosMain/.../player/PlatformAudioPlayer.kt` | `PlatformAudioPlayer`, `RemoteCommandHandler`, `PlatformPlayerProvider` |
+| `composeApp/src/iosMain/.../di/IosModule.kt` | Koin bindings of the sink and the decoder factory |
+| `iosApp/NativeAudioController.swift` | AudioQueue, PCM queue, interruption and route observers |
+| `iosApp/AudioDecoders.swift` | `AudioDecoderFactory`, `FLACLibDecoder`, `OpusLibDecoder`, `PCMPassthroughDecoder` |
+| `iosApp/PCMChunker.swift` | Cuts PCM into whole frames that fit one AudioQueue buffer |
+| `iosApp/NowPlayingCoordinator.swift` | Audio session category and activation, Now Playing info, remote commands |
+| `iosApp/NowPlayingInfoStore.swift` | The one writer of `nowPlayingInfo` |
+| `iosApp/iosApp/iOSApp.swift` | Makes the controller and registers it with `PlatformPlayerProvider` |

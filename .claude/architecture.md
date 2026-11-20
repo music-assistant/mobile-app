@@ -135,7 +135,8 @@ actual class PlatformFeature {
 - **App and Universal Links**: the app claims `https://www.music-assistant.io/app/*` only. The apex domain
   redirects to `www`, and Android and iOS do not follow a redirect when they get the association file. So do not
   add the apex domain to the manifest or the entitlements, because the check of that host fails. Before
-  Android 12, one failed host makes all hosts of the intent filter fail.
+  Android 12, one failed host makes all hosts of the intent filter fail. See `.claude/deep-links.md` for all
+  link routes, the flow and the tests.
 - **Favorites**: from server 2.11 (`sendsFavoriteUpdates`), a favorite belongs to one user. The server
   sends null `favorite` in every `media_item_*` event, and sends the state of the user in `favorite_updated`.
   That event has no item body, so `MediaItemRepository` fetches the item and emits
@@ -398,7 +399,7 @@ actual class PlatformFeature {
 ## Compose Guidelines
 
 - Material3 components
-- Extract reusable composables to `ui/common/composables/`
+- Extract reusable composables to `ui/compose/common/`
 - Use `remember`/`derivedStateOf` for computed values
 - Split large composables into smaller files by meaning
 - Previews only when explicitly requested
@@ -515,15 +516,9 @@ fun FeatureScreen(viewModel: FeatureViewModel = koinViewModel()) {
 
 ## UI Architecture
 
-**IMPORTANT**: The project is transitioning from the old MainScreen/MainViewModel to the new HomeScreen/HomeScreenViewModel architecture.
-
-- **Deprecated (do NOT use)**: `MainScreen.kt`, `MainViewModel.kt`
-- **Current (use these)**: `HomeScreen.kt`, `HomeScreenViewModel.kt`
-
-When implementing new features or integrations:
-- Use `HomeScreenViewModel` as reference for architecture patterns
-- Add dependencies to `HomeScreenViewModel` in `SharedModule.kt`
-- Do NOT modify `MainViewModel` - it's legacy code being phased out
+- `HomeScreen` and `HomeScreenViewModel` (`ui/compose/home/`) are the main screen and its ViewModel. Use them as
+  the reference for architecture patterns.
+- Add dependencies of `HomeScreenViewModel` in `SharedModule.kt`.
 
 ### Sendspin Integration
 
@@ -566,14 +561,14 @@ Android foreground services integrate with Sendspin through MainDataSource:
 
 **MainMediaPlaybackService**:
 - Handles notifications and lock screen controls
-- Shows all active players (excluding deprecated builtin players)
+- Shows all active players
 - Accesses player state via `MainDataSource.playersData`
-- Uses `MediaSessionHelper` for MediaSession management and volume control (see `.claude/volume-control.md`)
+- Uses `SharedMediaSessionManager` for MediaSession management and volume control (see `.claude/volume-control.md`)
 
 **AndroidAutoPlaybackService**:
 - Provides Android Auto support via `MediaBrowserServiceCompat`
 - Shows first player with active playback (`queueInfo?.currentItem != null`)
-- Uses `playerData.queue` for queue access (not deprecated `builtinPlayerQueue`)
+- Uses `playerData.queue` for queue access
 - When Sendspin is playing locally, it appears in Android Auto
 - Supports library browsing via `AutoLibrary`
 - Shows a Home tab that copies the app home page. The tab has one browsable item for each
@@ -591,7 +586,7 @@ Android foreground services integrate with Sendspin through MainDataSource:
 
 **Key Pattern**: Services do NOT create or manage Sendspin directly. They access player data through MainDataSource's playersData StateFlow, maintaining a single source of truth.
 
-See `.claude/sendspin-integration-design.md` and `.claude/sendspin-android-services-integration.md` for detailed technical documentation.
+See `sendspin-kmp/README.md` for the player module.
 
 ## Misc rules
 

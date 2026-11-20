@@ -7,8 +7,8 @@
 | Shared logic | `commonMain/` |
 | Android-only | `androidMain/` |
 | iOS-only | `iosMain/` |
-| Reusable composables | `ui/common/composables/` |
-| Feature composables | `ui/{feature}/composables/` |
+| Reusable composables | `ui/compose/common/` |
+| Feature composables | `ui/compose/{feature}/` |
 | ViewModels | Same package as screen |
 
 ## Kotlin Conventions
@@ -140,14 +140,9 @@ Logger.withTag("PlayerVM").e(exception) { "Playback failed" }
 
 ## State Wrappers
 
-```kotlin
-sealed interface DataState<out T> {
-    data object Loading : DataState<Nothing>
-    data class Data<T>(val value: T) : DataState<T>
-    data class Error(val message: String) : DataState<Nothing>
-    data object NoData : DataState<Nothing>
-}
-```
+`DataState<T>` (`ui/compose/common/DataState.kt`) has `Loading`, `Data(data)`, `Error(error: AppError?)`, `NoData`
+and `Stale(data, disconnectedAt, reason)`. `Stale` keeps the last data while the connection is down. Read the
+data with `dataOrNull`, which covers `Data` and `Stale`.
 
 ## Maintenance Rules
 

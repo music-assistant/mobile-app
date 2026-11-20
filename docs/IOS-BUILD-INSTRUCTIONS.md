@@ -1,343 +1,304 @@
 # iOS App Build Guide
 
-Complete guide to build and run the **MusicAssistantClient** iOS app from source.
+This guide tells you how to build and run the iOS app from source.
+Run all commands from the repository root.
 
 ---
 
-## Environment Verified
+## Requirements
 
-| Tool | Required | Tested Version |
-|------|----------|----------------|
-| macOS | 12+ | macOS 26 (Sequoia) |
-| Xcode | 15+ | 26.2 (Build 17C52) |
-| Xcode Command Line Tools | required | included with Xcode 26.2 |
-| JDK | **17 or 21 LTS only** | Temurin 21.0.10 |
-| Swift | 5.9+ | 6.2.3 (included with Xcode) |
+| Tool | Requirement | Reason |
+|------|-------------|--------|
+| Mac | Apple silicon | The Kotlin build has the `iosArm64` and `iosSimulatorArm64` targets only. There is no Intel simulator slice. |
+| Xcode | A version with the iOS 27.1 SDK or later | The Swift code uses `UIHingeInteraction` and other iOS 27.1 APIs. |
+| iOS | 18.5 or later on the device or simulator | The `iosApp` target sets `IPHONEOS_DEPLOYMENT_TARGET` to 18.5. |
+| JDK | 21 | The CI workflows use Temurin 21. The Gradle wrapper (`gradle/wrapper/gradle-wrapper.properties`) runs on this JDK. |
 
-> **Critical:** JDK 25 is **not** supported by Gradle 8.13 + Kotlin 2.3.0. Use JDK 21 LTS.
-> Install Temurin 21: https://adoptium.net/temurin/releases/?version=21
+The versions of Kotlin, Compose Multiplatform, Ktor, Koin and the other libraries are in `gradle/libs.versions.toml`.
 
 ---
 
 ## Prerequisites
 
-### 1. Install JDK 21
+### 1. Install Xcode
 
-```bash
-# Verify installed JDKs
-/usr/libexec/java_home -V
-
-# Set JAVA_HOME to JDK 21 for the build session
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
-```
-
-If JDK 21 is not installed, download from https://adoptium.net/temurin/releases/?version=21
-
-### 2. Install Xcode
-
-Install Xcode 15 or later from the Mac App Store. Accept the license:
+Install Xcode from the Mac App Store or from developer.apple.com. Accept the license:
 
 ```bash
 sudo xcodebuild -license accept
 ```
 
-### 3. Make Gradle wrapper executable (one-time)
+### 2. Select the Xcode developer directory
+
+Check the active developer directory:
 
 ```bash
-chmod +x ./gradlew
+xcode-select -p
 ```
 
-### 4. WebRTC framework (one-time download)
-
-The app uses `webrtc-kmp` which requires the `WebRTC.xcframework` binary to be present at `iosApp/Frameworks/WebRTC.xcframework`. To download it:
+If the result is `/Library/Developer/CommandLineTools`, the Kotlin/Native tasks cannot find the iOS SDK.
+Select Xcode:
 
 ```bash
-# Download WebRTC.xcframework (M125 build + dcsctp COW-bloat fix,
-# ~15 MB compressed / ~32 MB extracted).
-# Patched build from teancom/webrtc — same M125 binary upstream ships
-# (125.6422.02), with the DcSctpTransport receive_buffer fix from
-# webrtc-sdk/webrtc#234 backported. Replace with an upstream
-# webrtc-sdk/Specs release once the fix lands in a stock release.
-curl -L "https://github.com/teancom/webrtc/releases/download/m125-cow-bloat-fix.1/WebRTC.xcframework.m125-cow-bloat-fix.1.zip" \
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+Instead of the global change, you can set `DEVELOPER_DIR` for one command:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer ./gradlew iosSimulatorArm64Test
+```
+
+### 3. Install JDK 21
+
+List the installed JDKs:
+
+```bash
+/usr/libexec/java_home -V
+```
+
+If JDK 21 is not in the list, get Temurin 21 from https://adoptium.net/temurin/releases/?version=21.
+Then set `JAVA_HOME` for the shell:
+
+```bash
+export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+```
+
+### 4. Give JAVA_HOME to Xcode
+
+The Xcode build phase `Compile Kotlin Framework` runs Gradle with the JDK in `$JAVA_HOME`.
+Xcode gets `JAVA_HOME` from the environment that starts it.
+If you start Xcode from the Dock, Xcode does not read your shell configuration.
+Use one of these methods:
+
+- Start Xcode from a shell that has `JAVA_HOME`, for example `open iosApp/iosApp.xcodeproj`.
+- Set the value for all apps that launchd starts: `launchctl setenv JAVA_HOME "$(/usr/libexec/java_home -v 21)"`.
+- Add a line `JAVA_HOME = <path to the JDK 21 home>` to `iosApp/Configuration/Local.xcconfig`. Xcode gives build settings to the build phase scripts as environment variables.
+
+### 5. Download the WebRTC framework
+
+The app links `WebRTC.xcframework` from `iosApp/Frameworks/`. Git ignores this directory, so you must download the framework one time.
+The build uses a patched M125 build from `teancom/webrtc`. It has the `DcSctpTransport` receive buffer fix from `webrtc-sdk/webrtc#234`.
+
+```bash
+curl -L --fail \
+  "https://github.com/teancom/webrtc/releases/download/m125-cow-bloat-fix.1/WebRTC.xcframework.m125-cow-bloat-fix.1.zip" \
   -o /tmp/WebRTC.xcframework.zip
-
-# Extract into iosApp/Frameworks/
 mkdir -p iosApp/Frameworks
-cd iosApp/Frameworks && unzip /tmp/WebRTC.xcframework.zip
+unzip -q /tmp/WebRTC.xcframework.zip -d iosApp/Frameworks/
+rm /tmp/WebRTC.xcframework.zip
 ```
 
-Expected result: `iosApp/Frameworks/WebRTC.xcframework/` containing slices for:
-- `ios-arm64` (physical device)
-- `ios-arm64_x86_64-simulator` (simulator)
+Check that these slices exist:
 
-The xcframework binary ships **without dSYMs** — they live as a separate
-`*-dsyms.zip` asset on the same release for opt-in download when you need
-to symbolicate a WebRTC frame in a crash report.
+- `iosApp/Frameworks/WebRTC.xcframework/ios-arm64` (device)
+- `iosApp/Frameworks/WebRTC.xcframework/ios-arm64_x86_64-simulator` (simulator)
 
-The Xcode build phase script (`Compile Kotlin Framework`) automatically:
-1. Copies the correct slice into the KMP output directory (so the linker can find it)
-2. Embeds `WebRTC.framework` into the `.app` bundle's `Frameworks/` folder (so dyld can find it at runtime)
-3. Signs `WebRTC.framework` using `$EXPANDED_CODE_SIGN_IDENTITY` — the developer cert for device builds, ad-hoc (`-`) for simulator builds
+If you change the WebRTC release, change it in all of these files:
+
+- `.github/workflows/check-pr-ios.yml`
+- `.github/workflows/ios-release.yml`
+- `iosApp/ci_scripts/ci_post_clone.sh`
+- this guide
 
 ---
 
-## Build Commands
+## How Xcode builds the Kotlin code
 
-### Build and run in Xcode (recommended)
+The `iosApp` target has a Run Script build phase, `Compile Kotlin Framework`. It runs before the Swift compile. The script does these steps:
+
+1. It calculates a hash of the Kotlin sources, the Compose resources and the Gradle build files. If the hash did not change since the last successful run, it skips Gradle.
+2. Otherwise, it runs `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode`. This task builds the static `ComposeApp.framework` into `composeApp/build/xcode-frameworks/<configuration>/<sdk>/`.
+3. It copies the applicable `WebRTC.framework` slice into the same directory, so the linker finds it.
+4. It copies `WebRTC.framework` into the `Frameworks` directory of the app bundle, so dyld finds it at runtime.
+5. It signs the embedded `WebRTC.framework` with `$EXPANDED_CODE_SIGN_IDENTITY`. If the value is empty, it uses the ad-hoc identity (`-`).
+6. It copies the Compose Multiplatform resources into `compose-resources` in the app bundle.
+
+The script stops at the first failed command (`set -e`). So a Gradle error fails the Xcode build.
+
+If `OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED` is `YES`, the script stops before step 1 and does nothing.
+
+---
+
+## Build and run
+
+### Xcode
 
 ```bash
 open iosApp/iosApp.xcodeproj
 ```
 
-Then in Xcode:
-1. Select a simulator or physical device from the toolbar
-2. Click the **Run** button (⌘R)
+1. Select the `iosApp` scheme.
+2. Select a simulator or a device.
+3. Click **Run** (⌘R).
 
-Xcode will invoke the Gradle build phase automatically.
+The first build compiles all Kotlin/Native code, so it takes much longer than the subsequent builds.
 
-### Build for iOS Simulator (command line)
+### Command line, simulator
+
+This command builds the app for the simulator without signing. The CI builds the app in the same way.
 
 ```bash
-# From the mobile-app/ directory:
-JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home \
 xcodebuild \
   -project iosApp/iosApp.xcodeproj \
   -scheme iosApp \
   -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro' \
-  CODE_SIGN_IDENTITY=- \
+  -destination 'generic/platform=iOS Simulator' \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   build
 ```
 
-The Xcode build phase will automatically run:
-```bash
-./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
-```
-to compile the KMP framework before Swift compilation.
-
-**First build time:** 10–30 minutes (Kotlin/Native compilation with `kotlin.native.cacheKind=none`).
-**Subsequent builds:** 1–3 minutes (incremental, Gradle up-to-date checks).
-
-#### Install and Run on Simulator
+To install and start the app on a simulator:
 
 ```bash
-# List available simulators
+# List the available simulators
 xcrun simctl list devices available
 
-# Boot a simulator (use UUID from list above)
+# Start a simulator
 xcrun simctl boot <SIMULATOR_UUID>
 
 # Install the app
 xcrun simctl install <SIMULATOR_UUID> \
   ~/Library/Developer/Xcode/DerivedData/iosApp-*/Build/Products/Debug-iphonesimulator/MusicAssistantClient.app
 
-# Launch the app
-xcrun simctl launch <SIMULATOR_UUID> io.music-assistant.client
+# Start the app (default bundle identifier)
+xcrun simctl launch <SIMULATOR_UUID> io.music-assistant.mobile-client
 ```
 
-### Build for physical device
-
-Physical device builds require valid provisioning:
-- Set `TEAM_ID` in `Config.xcconfig`
-- Ensure your Apple Developer account can sign for `PRODUCT_BUNDLE_IDENTIFIER`
-- Remove `CODE_SIGNING_ALLOWED=NO` from the xcodebuild command
-- The device must be registered in your Apple Developer portal
-
-#### Set signing team and bundle ID
-
-Edit `iosApp/Configuration/Config.xcconfig`:
-
-```
-TEAM_ID=YOUR_APPLE_TEAM_ID
-PRODUCT_BUNDLE_IDENTIFIER=io.music-assistant.client
-APP_NAME=MusicAssistantClient
-IPHONEOS_DEPLOYMENT_TARGET = 15.0
-```
-
-Replace `YOUR_APPLE_TEAM_ID` with your Apple Developer Team ID (10-character alphanumeric string found at developer.apple.com/account).
+If you set `MA_BUNDLE_ID`, use that value in the `launch` command.
 
 ---
 
-## Project Structure
+## Signing
+
+`iosApp/Configuration/Config.xcconfig` holds the signing values. The defaults build the official app with the team and the profile of the Music Assistant project.
+To build with your own Apple developer account, set these values:
+
+| Value | Meaning | Default |
+|-------|---------|---------|
+| `MA_TEAM_ID` | Your Apple developer team identifier | The team of the official app |
+| `MA_BUNDLE_ID` | The bundle identifier, for example `com.example.music-assistant` | `io.music-assistant.mobile-client` |
+| `MA_CARPLAY` | `YES` signs with the CarPlay audio entitlement. `NO` signs without it. | `YES` |
+| `MA_SIGNING_STYLE` | `Manual` or `Automatic`. Only the Release configuration uses it. | `Manual` |
+
+Apple grants the CarPlay audio entitlement to each account on request. If your account does not have it, set `MA_CARPLAY = NO`.
+The Debug configuration always uses automatic signing. The Release configuration with `Manual` needs the "Music Assistant App Store" profile, so set `MA_SIGNING_STYLE = Automatic` for your own release builds.
+
+Put the values in `iosApp/Configuration/Local.xcconfig`. Git ignores this file, and `Config.xcconfig` includes it. For example:
 
 ```
-mobile-app/
+MA_TEAM_ID = ABCDE12345
+MA_BUNDLE_ID = com.example.music-assistant
+MA_CARPLAY = NO
+MA_SIGNING_STYLE = Automatic
+```
+
+You can also give the values to `xcodebuild` as environment variables. Xcode.app does not see shell variables, so use `Local.xcconfig` for Xcode.app.
+
+For a device build, register the device in your Apple developer account. Your account must be able to sign for the bundle identifier.
+
+### Xcode Cloud
+
+`iosApp/ci_scripts/ci_post_clone.sh` runs after Xcode Cloud clones the repository. It does these steps:
+
+- It downloads `WebRTC.xcframework`.
+- It installs JDK 21, because Xcode Cloud has no JDK.
+- It writes `Local.xcconfig` with `JAVA_HOME`, `MA_SIGNING_STYLE = Automatic` and the `MA_TEAM_ID`, `MA_BUNDLE_ID` and `MA_CARPLAY` workflow environment variables.
+- It sets the build number to `CI_BUILD_NUMBER`, because TestFlight needs a new build number for each upload.
+
+The official release builds on GitHub Actions (`.github/workflows/ios-release.yml`), not on Xcode Cloud.
+
+---
+
+## Project structure
+
+```
+.
 ├── iosApp/
-│   ├── iosApp.xcodeproj/          # Xcode project
-│   ├── iosApp/                    # Swift source files
-│   │   ├── iOSApp.swift           # SwiftUI @main entry point
-│   │   └── ContentView.swift      # Hosts KMP ComposeUIViewController
-│   ├── AudioDecoders.swift        # PCM/Opus/FLAC decoders (AudioQueue)
-│   ├── NativeAudioController.swift # AudioQueue-based PCM player
-│   ├── NowPlayingManager.swift    # Lock screen / Control Center
+│   ├── iosApp.xcodeproj/                # Xcode project
+│   ├── iosApp/                          # App sources, Info.plist, entitlements
+│   │   ├── iOSApp.swift                 # SwiftUI entry point
+│   │   ├── ContentView.swift            # Hosts the Compose UI
+│   │   └── CarPlay/                     # CarPlay scene and Siri intent handler
+│   ├── AudioDecoders.swift              # PCM, Opus and FLAC decoders
+│   ├── NativeAudioController.swift      # AudioQueue player
+│   ├── NowPlayingCoordinator.swift      # Lock Screen and Control Center
+│   ├── OAuthWebSession.swift            # OAuth sign-in session
+│   ├── iosAppTests/                     # XCTest suite
+│   ├── ci_scripts/ci_post_clone.sh      # Xcode Cloud hook
 │   ├── Configuration/
-│   │   └── Config.xcconfig        # TEAM_ID, PRODUCT_BUNDLE_IDENTIFIER, APP_NAME
+│   │   ├── Config.xcconfig              # Deployment target, version, signing
+│   │   └── Local.xcconfig               # Your overrides (git-ignored)
 │   └── Frameworks/
-│       └── WebRTC.xcframework     # WebRTC M125 binary (125.6422.02)
+│       └── WebRTC.xcframework           # Downloaded in step 5 (git-ignored)
 ├── composeApp/
-│   ├── build.gradle.kts           # KMP module build config
 │   └── src/
-│       ├── commonMain/            # Shared Kotlin/Compose UI + logic
-│       ├── androidMain/           # Android-specific implementations
-│       └── iosMain/               # iOS-specific Kotlin glue
+│       ├── commonMain/                  # Shared Kotlin and Compose code, including webrtc/
+│       └── iosMain/                     # iOS Kotlin code
 │           ├── MainViewController.kt
-│           ├── di/IosModule.kt
-│           └── player/MediaPlayerController.ios.kt
-├── gradle.properties              # kotlin.native.cacheKind=none
-├── settings.gradle.kts
-└── build.gradle.kts
+│           ├── di/                      # IosModule.kt, KmpHelper.kt (Swift bridge)
+│           └── player/local/            # AudioQueueSink.kt (built-in player sink)
+├── sendspin-kmp/                        # Sendspin player library
+├── gradle/libs.versions.toml            # Library versions
+└── scripts/test-ios.sh                  # Runs the XCTest suite
 ```
 
----
-
-## Key Dependencies
-
-| Dependency | Version | Purpose |
-|-----------|---------|---------|
-| Kotlin Multiplatform | 2.3.0 | Cross-platform language + toolchain |
-| Compose Multiplatform | 1.9.3 | Shared UI (Compose for iOS/Android) |
-| Ktor | 3.3.3 | HTTP + WebSocket client (Darwin engine on iOS) |
-| Koin | 4.1.1 | Dependency injection |
-| kotlinx.coroutines | 1.10.2 | Async/concurrency |
-| Coil3 | 3.3.0 | Image loading |
-| Kermit | 2.0.8 | Multiplatform logging |
-| webrtc-kmp | 0.125.11 | WebRTC remote access (iOS: stubs only) |
-| swift-opus | 0.0.2 | Opus audio decoding (SPM) |
-| flac-binary-xcframework | 0.2.0 | FLAC decoding (SPM) |
-| ogg-binary-xcframework | 0.1.3 | Ogg container (SPM) |
-| **WebRTC.xcframework** | **125.6422.02** | **Required binary — see step 5** |
-
-SPM packages are resolved automatically by Xcode at first build.
+Xcode gets the Swift packages `swift-opus`, `flac-binary-xcframework` and `ogg-binary-xcframework` at the first build.
+The project file and `Package.resolved` hold their versions.
 
 ---
 
-## Gradle Build Tasks
+## Tests
+
+Run the Kotlin/Native tests on the simulator:
 
 ```bash
-# Build the KMP iOS framework manually (normally done by Xcode build phase)
-# Must set these env vars when running outside Xcode:
-JAVA_HOME=.../temurin-21.jdk/Contents/Home \
-CONFIGURATION=Debug \
-SDK_NAME=iphonesimulator \
-ARCHS=arm64 \
-EXPANDED_CODE_SIGN_IDENTITY=- \
-./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
-
-# Run KMP unit tests (Android + common)
-./gradlew :composeApp:testDebugUnitTest
-
-# Lint
-./gradlew lintDebug
+./gradlew iosSimulatorArm64Test
 ```
 
----
+Run the XCTest suite of the Swift code. The script needs an Apple silicon Mac and an available iPhone simulator.
 
-## Fixes Applied to Source Code
-
-The following issues were found and fixed to enable iOS/Kotlin-Native compilation:
-
-### 1. `System.currentTimeMillis()` in commonMain
-
-**File:** `composeApp/src/commonMain/kotlin/io/music_assistant/client/api/ServiceClient.kt`
-**Problem:** `System.currentTimeMillis()` is JVM-only; Kotlin/Native has no `System` class.
-**Fix:** Replaced with `currentTimeMillis()` from the existing `expect/actual` in `utils/PlatformTime.kt`.
-
-### 2. `synchronized()` in commonMain
-
-**File:** `composeApp/src/commonMain/kotlin/io/music_assistant/client/player/sendspin/audio/AudioStreamManager.kt`
-**Problem:** `synchronized(lock) {}` is JVM-only; not available in Kotlin/Native.
-**Fix:** Replaced `private val decoderLock = Any()` with `private val decoderLock = Mutex()` and all `synchronized(decoderLock) { }` blocks with `decoderLock.withLock { }` (suspend functions) or `runBlocking { decoderLock.withLock { } }` (`close()` non-suspend). Non-local `return` inside the old `synchronized` lambdas was replaced with `return@withLock null` + `?: return`.
-
-### 3. `PRODUCT_BUNDLE_IDENTIFIER` placeholder
-
-**File:** `iosApp/iosApp.xcodeproj/project.pbxproj`
-**Problem:** Bundle ID was hardcoded to `com.yourname.musicassistant` (placeholder).
-**Fix:** Changed to `"$(PRODUCT_BUNDLE_IDENTIFIER)"` to use the value from `Config.xcconfig`.
-
-### 4. `TEAM_ID` empty in Config.xcconfig
-
-**File:** `iosApp/Configuration/Config.xcconfig`
-**Fix:** Populated with the team ID from the existing `DEVELOPMENT_TEAM` in the pbxproj.
-
-### 5. `WebRTC.framework` not embedded in app bundle (dyld crash on launch)
-
-**File:** `iosApp/iosApp.xcodeproj/project.pbxproj` — `Compile Kotlin Framework` shell script
-**Problem:** The build phase script copied `WebRTC.framework` to the linker search path (so the build succeeded), but never embedded it into the `.app` bundle. At runtime, dyld looked for it at `@executable_path/Frameworks/WebRTC.framework`, found nothing, and aborted with:
-```
-#3  dyld4::halt()
-#4  dyld4::prepare()
-#5  start()
-```
-**Fix:** Added to the end of the shell script:
-```sh
-BUNDLE_FRAMEWORKS="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Frameworks"
-mkdir -p "$BUNDLE_FRAMEWORKS"
-cp -Rf "$OUTPUT_DIR/WebRTC.framework" "$BUNDLE_FRAMEWORKS/"
+```bash
+./scripts/test-ios.sh
 ```
 
-### 6. `WebRTC.framework` signature invalid on physical device
+Check the public API of `sendspin-kmp`. This check needs macOS, because the API dump comes from the iOS klibs.
 
-**File:** `iosApp/iosApp.xcodeproj/project.pbxproj` — `Compile Kotlin Framework` shell script
-**Problem:** After fix #5, a simulator build worked but deploying to a physical device failed with error `0xe8008014 (The executable contains an invalid signature)` because the framework was initially unsigned (error `0xe800801c`) and then signed with a hardcoded ad-hoc identity (`-`) which physical devices reject.
-**Fix:** Sign the embedded framework using `$EXPANDED_CODE_SIGN_IDENTITY` — the Xcode build environment variable that holds the actual developer certificate for device builds and `-` (ad-hoc) for simulator builds:
-```sh
-codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" "$BUNDLE_FRAMEWORKS/WebRTC.framework"
+```bash
+./gradlew :sendspin-kmp:checkKotlinAbi
 ```
-The `:--` fallback ensures ad-hoc signing if the variable is empty (e.g., CLI simulator builds with `CODE_SIGNING_ALLOWED=NO`).
+
+To compile the debug framework for the simulator without Xcode:
+
+```bash
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+```
 
 ---
 
 ## Troubleshooting
 
-### `BUILD FAILED: 25.0.2` (Gradle)
+### Gradle fails in the Xcode build phase with a Java error
 
-JDK 25 is not supported. Explicitly set `JAVA_HOME` to JDK 21:
-```bash
-export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
-```
+Xcode did not get JDK 21. Refer to step 4.
 
-### `Could not infer iOS target platform` (Gradle)
+### The Kotlin/Native tasks cannot find the iOS SDK
 
-This happens when running `./gradlew :composeApp:embedAndSignAppleFrameworkForXcode` directly without Xcode env vars. Either run the build through Xcode, or set all required env vars:
-```bash
-CONFIGURATION=Debug SDK_NAME=iphonesimulator ARCHS=arm64 EXPANDED_CODE_SIGN_IDENTITY=- ./gradlew ...
-```
+The developer directory is the Command Line Tools. Refer to step 2.
 
-### `Undefined symbols: _OBJC_CLASS_$_RTCAudioTrack` (Linker)
+### `Undefined symbols: _OBJC_CLASS_$_RTC...` (linker)
 
-WebRTC.xcframework is missing from `iosApp/Frameworks/`. Follow step 5 above to download and extract it.
+`WebRTC.xcframework` is not in `iosApp/Frameworks/`. Refer to step 5.
 
-### `The project is damaged and cannot be opened due to a parse error`
+### The app stops at launch with `dyld4::halt()` in the backtrace
 
-Variable references in `project.pbxproj` must be quoted. e.g., use `"$(PRODUCT_BUNDLE_IDENTIFIER)"` not `$(PRODUCT_BUNDLE_IDENTIFIER)`.
+`WebRTC.framework` is not in the app bundle. Make sure that `iosApp/Frameworks/WebRTC.xcframework` exists. Then select **Product > Clean Build Folder** and build again.
 
-### App crashes immediately on launch — `dyld4::halt()` / `dyld4::prepare()` in backtrace
+### The device rejects the app with a code signature error
 
-`WebRTC.framework` is not embedded in the app bundle. Verify the `Compile Kotlin Framework` build phase script contains the embed + sign block at the bottom (fixes #5 and #6 above). A clean build (`Product > Clean Build Folder`) then rebuild should resolve it.
+Make sure that `MA_TEAM_ID` is your team and that your account can sign for `MA_BUNDLE_ID`. If your account does not have the CarPlay entitlement, set `MA_CARPLAY = NO`.
 
-### `Failed to verify code signature … WebRTC.framework : 0xe800801c (No code signature found.)`
+### The Xcode build does not include a Kotlin change
 
-The framework was embedded but not signed. The `codesign` line is missing from the build phase script — see fix #6 above.
-
-### `Failed to verify code signature … WebRTC.framework : 0xe8008014 (The executable contains an invalid signature.)`
-
-The framework was signed with an ad-hoc identity (`-`) but is being installed on a physical device which requires a developer certificate. The `codesign` line must use `"${EXPANDED_CODE_SIGN_IDENTITY:--}"` (not a hardcoded `-`) — see fix #6 above.
-
-### `Unresolved reference 'synchronized'` or `'System'` (Kotlin/Native)
-
-JVM-only APIs in `commonMain`. Use KMP-compatible alternatives (`Mutex.withLock { }`, `currentTimeMillis()`).
-
-### Long first build (10–30 min)
-
-`kotlin.native.cacheKind=none` in `gradle.properties` disables all Kotlin/Native caching. This is intentional. Subsequent builds are faster (1–3 min) due to incremental compilation.
-
----
-
-## Known Limitations (iOS)
-
-- **Local playback** (`MediaPlayerController.ios.kt`): stub only — AVFoundation/AVPlayer not yet implemented
-- **WebRTC** (`DataChannelWrapper.ios.kt`, `PeerConnectionWrapper.ios.kt`): throws `NotImplementedError` — iOS WebRTC not yet implemented
-- **OAuth** (`OAuthHandler.ios.kt`): throws `UnsupportedOperationException`
-- **Background audio** / lock screen controls: infrastructure is present (`NowPlayingManager.swift`, `NativeAudioController.swift`) but requires AVFoundation player implementation to activate
+The build phase skips Gradle if the hash of the sources did not change. The hash includes the `.kt` and `.kts` files in `composeApp/src`, the Compose resources and the root Gradle files. It does not include the other modules, for example `sendspin-kmp`. After a change in a different module, select **Product > Clean Build Folder** and build again.

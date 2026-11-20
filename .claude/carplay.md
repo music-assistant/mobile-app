@@ -24,7 +24,7 @@ Root: CPListTemplate ("Library")
     └── RecommendationFolders with artwork thumbnails (up to 8 per folder)
 ```
 
-User taps an item → `CarPlayContentManager.playItem()` → `KmpHelper.playMediaItem()` → `CPNowPlayingTemplate.shared` is pushed → `NowPlayingManager` updates `MPNowPlayingInfoCenter` for artwork/metadata/remote commands.
+User taps an item → `CarPlayContentManager.playItem()` → `KmpHelper.playMediaItem()` → `CPNowPlayingTemplate.shared` is pushed → `NowPlayingCoordinator` updates `MPNowPlayingInfoCenter` for artwork/metadata/remote commands.
 
 ### Like button
 
@@ -103,9 +103,9 @@ The app conforms to three media-domain intents via a single class (`SiriIntentHa
 | `INUpdateMediaAffinityIntent` | "I love/like/dislike this song" | Resolve from prior donations or search → `KmpHelper.setFavorite`. Like ⇒ add. Dislike ⇒ dislike from server 2.11, remove below it. |
 | `INSearchForMediaIntent` | "search for X in Music Assistant" | Resolve only — surface results, don't play. Follow-up "play that" routes through `INPlayMediaIntent`. |
 
-**Voice transport commands bypass `SiriIntentHandler` entirely.** "Hey Siri, skip this," "next track," "pause," and the steering-wheel buttons all flow through `MPRemoteCommand` (`nextTrackCommand`, `pauseCommand`, etc.), dispatched by `mediaremoted` from `com.apple.AssistantServices`. Those land in `NowPlayingManager.setupRemoteCommands()` and route to `NativeAudioController`'s `RemoteCommandHandler`, never hitting any of the three intents above. Confirmed empirically: a "Hey Siri, skip to next track" during in-car testing produced a `mediaremoted` log line `Received command from <com.apple.assistant_service>: NextTrack` with no `INPlayMediaIntent` activity at all.
+**Voice transport commands bypass `SiriIntentHandler` entirely.** "Hey Siri, skip this," "next track," "pause," and the steering-wheel buttons all flow through `MPRemoteCommand` (`nextTrackCommand`, `pauseCommand`, etc.), dispatched by `mediaremoted` from `com.apple.AssistantServices`. Those land in `NowPlayingCoordinator.setupRemoteCommands()` and route to `NativeAudioController`'s `RemoteCommandHandler`, never hitting any of the three intents above. Confirmed empirically: a "Hey Siri, skip to next track" during in-car testing produced a `mediaremoted` log line `Received command from <com.apple.assistant_service>: NextTrack` with no `INPlayMediaIntent` activity at all.
 
-Practical consequence when triaging "Hey Siri did the wrong thing" reports: classify by *what* was said. Content phrases ("play X", "search for Y", "I love this") → `SiriIntentHandler`. Transport phrases ("next", "previous", "pause", "skip") → `NowPlayingManager` / `NativeAudioController`. The two paths share no code; diagnosing the wrong one wastes time.
+Practical consequence when triaging "Hey Siri did the wrong thing" reports: classify by *what* was said. Content phrases ("play X", "search for Y", "I love this") → `SiriIntentHandler`. Transport phrases ("next", "previous", "pause", "skip") → `NowPlayingCoordinator` / `NativeAudioController`. The two paths share no code; diagnosing the wrong one wastes time.
 
 **Diagnostic flow** when Siri claims the app doesn't support media:
 ```
@@ -201,7 +201,7 @@ Returns `Boolean` synchronously: `true` if the request was dispatched, `false` i
 | `iosApp/iosApp/CarPlay/CarPlayContentManager.swift` | Data fetching bridge, maps `AppMediaItem` → `CPListItem`, image loading, donates plays. |
 | `iosApp/iosApp/CarPlay/SiriIntentHandler.swift` | All three media-domain intents (`INPlayMediaIntentHandling`, `INUpdateMediaAffinityIntentHandling`, `INSearchForMediaIntentHandling`). Static `NSCache<NSString, AppMediaItem>` (100 items). Exposes `static donatePlayed(_:)`. |
 | `iosApp/iosApp/iOSApp.swift` | `AppDelegate` for CarPlay scene routing + Siri intent routing (`application(_:handlerFor:)`). Calls `bootstrapKmp()` from `iOSApp.init()` before any scene connects. Owns `KmpState.isReady`. |
-| `iosApp/iosApp/NowPlayingManager.swift` | Control Center / lock screen / Now Playing artwork via `MPNowPlayingInfoCenter`. |
+| `iosApp/NowPlayingCoordinator.swift` | Control Center / lock screen / Now Playing artwork via `MPNowPlayingInfoCenter`. |
 | `iosApp/iosApp/Info.plist` | Scene config + the SiriKit `INIntentsSupported` / `INSupportedMediaCategories` / `NSUserActivityTypes` keys. |
 | `iosApp/iosApp/CarPlay.entitlements` | `com.apple.developer.carplay-audio`. |
 | `composeApp/src/iosMain/.../KmpHelper.kt` | iOS-only KMP bridge: fetch, search, play, setFavorite, getServerId, getServerUrl. |

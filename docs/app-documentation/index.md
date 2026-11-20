@@ -11,14 +11,18 @@
 - [Local Sendspin Player](local-sendspin-player-settings.md)
 
 **Using the App**
-- [The Home Tab](home.md)
-- [The Library Tab](library.md)
-- [The Global Search Tab](global-search.md)
+- [Navigation](navigation.md)
+- [Discover](home.md)
+- [Library](library.md)
+- [Search](global-search.md)
 - [The Item Details View](item-details.md)
 - [The Players Pager](players-pager.md)
 - [Managing Playlists](playlists.md)
+- [AI Radio](ai-radio.md)
+- [Party](party.md)
 - [Android Auto](android-auto.md)
 - [Apple CarPlay](carplay.md)
+- [Deep Links](deep-links.md)
 
 ## 🔗 Quick Links
 

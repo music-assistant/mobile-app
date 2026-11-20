@@ -10,12 +10,12 @@ You can change these settings when the player is on or off:
 
 - **Player name** — The name that shows in Music Assistant (default: My Phone).
 - **Codec preference** — The audio codec for the stream. See [Codec Preference](#codec-preference) below.
-- **24-bit audio** — Streams 24-bit instead of 16-bit audio. This uses about 50% more bandwidth. Only available with FLAC or PCM; the switch is disabled when Opus is selected. See [24-bit Audio](#24-bit-audio).
-- **Advanced configuration** — Tap this row to show or hide the settings that follow:
+- **24-bit audio** — Streams 24-bit instead of 16-bit audio. This uses about 50% more bandwidth. It is available only with FLAC or PCM. See [24-bit Audio](#24-bit-audio).
+- **Advanced Configuration** — Tap this row to show or hide the settings that follow:
   - **Custom Sendspin connection** — Keep this setting off if your setup does not need a custom connection. See [Custom Sendspin Connection](#custom-sendspin-connection).
   - **Buffer size** — The maximum buffer size for the current stream, set with a slider (default: 10 s). The buffer helps the player continue through short network interruptions. It is not for offline playback, and it does not load the next queue items in advance. Larger values can prevent issues on an unreliable connection, but a larger buffer uses more app memory. The slider shows the approximate memory the buffer needs for the selected length, codec and bit depth (for example, about 1.9 MB at 10 s with FLAC, or about 0.5 MB at 30 s with Opus).
 
-The advanced configuration opens automatically if one of its settings is not at the default value.
+The **Advanced Configuration** opens automatically if one of its settings is not at the default value.
 
 ## Saving Changes
 
@@ -27,7 +27,7 @@ If the player is playing audio, the app shows an **Interrupting Playback** dialo
 ![Local Player Advanced Configuration](screenshots/local-sendspin-player-settings/local-player-advanced-configuration.jpeg)
 ![Interrupting Playback Confirmation](screenshots/local-sendspin-player-settings/interrupting-playback.jpeg)
 
-> **Good to know:** The app's built-in Local Player is designed to be a private player for a personal music experience. It plays music on your device, for you, while you're using it. This is different from the other players Music Assistant supports (like speakers), which stay on and available all the time. The Local Player isn't meant to work that way, so you can't find or control it from other apps or devices.
+> **Good to know:** The Local Player is a private player. It plays music on your device while you use the app. Other Music Assistant players, for example speakers, stay on and available all the time. The Local Player does not work that way. So, by default, the server hides it from other apps and devices.
 
 > It's hidden by default in the Music Assistant Web UI, but visible under Music Assistant > Settings > Players as long as it's registered to the server. Registration only happens automatically while the Local Player is enabled and the app runs with a server configured. When the system stops the app, the player is de-registered and its settings become uneditable.
 
@@ -47,11 +47,13 @@ The codec controls how audio is compressed and streamed from your Music Assistan
 
 Turn on **24-bit audio** to stream at 24-bit instead of 16-bit depth. This uses about 50% more bandwidth than 16-bit audio, and it also increases the memory needed for the buffer.
 
-This option is only available with the **FLAC** and **PCM** codecs. When **Opus** is selected, the switch is disabled and shows "Available with FLAC or PCM".
+This option is available only with the **FLAC** and **PCM** codecs. If you select **Opus**, the switch is disabled and shows "Available with FLAC or PCM".
+
+On Android, 24-bit audio needs Android 12 or later. On an older Android version, the switch is disabled and shows "Needs Android 12 or newer". All iOS versions support 24-bit audio.
 
 ## Custom Sendspin Connection
 
-If the app cannot reach your Music Assistant server with the default connection, open **Advanced configuration** and turn on **Custom Sendspin connection**. Then set the connection manually. While the setting is off, the fields are disabled and the app uses the default connection.
+If the app cannot reach your Music Assistant server with the default connection, open **Advanced Configuration** and turn on **Custom Sendspin connection**. Then set the connection manually. While the setting is off, the fields are disabled and the app uses the default connection.
 
 | Field | Description |
 |---|---|
@@ -59,6 +61,7 @@ If the app cannot reach your Music Assistant server with the default connection,
 | **Host** | The hostname or IP address of your Music Assistant server. If empty, the app uses the server host. |
 | **Port** | Port number (default: `8095`). If empty, the app uses the default. |
 | **Path** | Sendspin endpoint path (default: `/sendspin`) |
+| **Sign in through Music Assistant** | On by default. The app sends your Music Assistant sign-in to the custom server. Turn it off if the custom connection goes to a plain Sendspin server instead of Music Assistant. |
 
 ![Custom Sendspin Connection](screenshots/local-sendspin-player-settings/custom-sendspin-connection.jpeg)
 

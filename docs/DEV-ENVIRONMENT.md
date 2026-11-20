@@ -1,28 +1,32 @@
 # Development environment
 
+## Requirements
+
+- JDK 21. The CI workflows use Temurin 21. The modules compile to JVM 17 bytecode.
+- Android SDK. The project compiles against the SDK version in `android-compileSdk` in `gradle/libs.versions.toml`.
+- For iOS: a Mac with Apple silicon and Xcode. Refer to [IOS-BUILD-INSTRUCTIONS](IOS-BUILD-INSTRUCTIONS.md).
+
+The Gradle version is in `gradle/wrapper/gradle-wrapper.properties`. The library versions are in `gradle/libs.versions.toml`.
+
 ## iOS
 
-See [IOS-BUILD-INSTRUCTIONS](IOS-BUILD-INSTRUCTIONS.md) for a full step-by-step guide covering:
+Refer to [IOS-BUILD-INSTRUCTIONS](IOS-BUILD-INSTRUCTIONS.md) for these subjects:
 
-- Required tools and JDK version (JDK 21 LTS required — JDK 25 is not supported)
-- WebRTC framework setup
-- Signing and provisioning configuration
-- Build commands for simulator and physical device
-- Known limitations and troubleshooting
-
-Same-art native loads first resolve fresh metadata; a decoded version hit then skips body loading and decoding.
-
-CarPlay and Now Playing share the native decoded-artwork cache.
+- The tools and the JDK that the build needs
+- The WebRTC framework setup
+- The signing configuration
+- The build commands for the simulator and for a device
+- The tests and the troubleshooting
 
 ## Android
 
-To build the app:
+To build the debug app:
 
 ```bash
 ./gradlew :androidApp:assembleDebug
 ```
 
-To build a non-debuggable "release mode" APK for testing performance using your local debug keystore:
+To build a release APK that is not debuggable, use the `selfSignedRelease` build type. It signs the APK with the debug keystore, so you can test the release performance locally.
 
 ```bash
 ./gradlew :androidApp:assembleSelfSignedRelease
@@ -30,20 +34,52 @@ To build a non-debuggable "release mode" APK for testing performance using your 
 
 ## Structure
 
-The project currently supports the iOS and Android targets. Common code is held within a KMP library module (`composeApp`) which the two platform specific app modules then depend on (`androidApp` and `iosApp`).
+The project supports the Android and iOS targets. The shared code is in the Kotlin Multiplatform module `composeApp`. The platform apps `androidApp` and `iosApp` use it.
 
-## Writing/running tests
+These modules are also part of the build:
 
-Tests for shared multiplatform code live in the `composeApp` module's `commonTest` source set. These can be run locally in the JVM for the Android target using `./gradlew :composeApp:testAndroidHostTest`.
+- `sendspin-kmp`: the Sendspin player library. Refer to `sendspin-kmp/README.md`.
+- `nav` and `ui-utils`: shared navigation and UI helpers.
+- `shared-icons`: the icon sets.
 
-Tests for Compose UI code are in the `androidApp` module. This is because [multiplatform Compose testing is currently still experimental](https://kotlinlang.org/docs/multiplatform/compose-test.html) and tests written using the multiplatform approach cannot be easily run in a local JVM yet without the desktop target (which this project doesn't use). The Compose tests can be run with `./gradlew :androidApp:testDebug`.
+## Tests and checks
+
+Run the tests of the shared code (`commonTest` and `androidHostTest` of `composeApp`) on the JVM:
+
+```bash
+./gradlew :composeApp:testAndroidHostTest
+```
+
+Run the Compose UI tests. They are in the `androidApp` module and use Robolectric, so they run on the JVM. [Multiplatform Compose testing](https://kotlinlang.org/docs/multiplatform/compose-test.html) needs the desktop target to run on a local JVM, and the project does not have this target.
+
+```bash
+./gradlew :androidApp:testDebugUnitTest
+```
+
+Run the tests of the Sendspin library:
+
+```bash
+./gradlew :sendspin-kmp:testAndroidHostTest
+```
+
+Run Detekt on all modules. The CI runs the same check.
+
+```bash
+CI=true ./gradlew detektAll
+```
+
+Run Android Lint:
+
+```bash
+./gradlew :androidApp:lintDebug
+```
 
 ## Running MA Server locally
 
-You can run a local MA server using Docker using the included convenience script:
+You can run a local MA server in Docker with the included script:
 
 ```bash
 ./scripts/run-local-ma.sh
 ```
 
-This will start up a server at `http://localhost:8095`. Server data is stored in `.server`.
+The script starts a server at `http://localhost:8095`. The server keeps its data in `.server`.
