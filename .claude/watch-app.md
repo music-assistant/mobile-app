@@ -111,22 +111,42 @@ each screen dismissed by the system swipe.
 
 **Now playing.** The cover art is the background rather than a tile, blurred under a gradient,
 which is how watchOS puts a single subject on a screen this small: the labels and the controls
-then have the whole glass. That is also the whole of the artwork theming — unlike the Wear
+then have the whole glass. It is laid over a plain `Color.black` rather than stacked with one,
+and that is load-bearing: a `ZStack` takes its size from its children, and an image under
+`scaledToFill` reports back whatever it was proposed, which left the background an inset
+rectangle with bare screen below it. A colour is flexible and claims the whole container, the
+cover fills that, and `ignoresSafeArea` on the background — not on the column — runs it to the
+bezel while the controls stay inside the glass. That is also the whole of the artwork theming — unlike the Wear
 client, nothing is quantized into a colour scheme, because the album is read straight off the
 background and watchOS expects controls in the app's accent colour. The player name is the navigation title, so what the watch is
 pointed at is readable without opening anything. Previous, play/pause and next sit in one row,
 the play button larger because it is the one the user reaches for without looking; they are
 dimmed rather than hidden when the player cannot skip.
 
-The queue and the volume live in the **bottom toolbar**, which watchOS floats over the content
-rather than laying out in the column — on a 40 mm screen that is the difference between the
-transport row fitting and being pushed under the edge.
+The queue and the output picker sit in a last row of the column, under the transport. **Not in
+a `.toolbar`**, though that is where watchOS would normally want them: a bottom toolbar is drawn
+in the navigation container rather than in the screen, so it stands still while everything
+around it slides away on a push. Laid out in the column the two buttons belong to this screen
+and travel with it. The output button carries the AirPlay glyph, as on iOS — picking where the
+sound comes out is the same question, and it is the symbol a user already reads as "output".
 
-`ControlMetrics` picks one of two size sets at 180 pt of screen width, between the 41 mm
-(176 pt) and 45 mm (198 pt) families, the way `controlSizes()` does on Wear. The compact set
-also drops the elapsed/remaining line under the bar: of the four things on that screen it is
-the one the bar itself already says, and Apple's own Now Playing drops it on the same watches.
-Checked on a 40 mm and a 46 mm simulator.
+The screen does not scroll, and the way it does not is deliberate: it is a `ScrollView` with
+`.scrollDisabled(true)`. Only a scrolling container gets its content inset below watchOS's
+large navigation title, and only a disabled one cannot then ride up over that title — which is
+exactly what this screen did while it could scroll.
+
+Everything therefore has to fit, which is what `ControlMetrics` is for. It picks one of two
+size sets at 180 pt of screen width, between the 41 mm (176 pt) and 45 mm (198 pt) families,
+the way `controlSizes()` does on Wear. The compact set also drops the elapsed/remaining line
+under the bar: of the things on that screen, a pair of timestamps is the one the bar itself
+already says, and Apple's own Now Playing drops them on the same watches. Measured content
+heights are 84.5 pt on a 40 mm and 109 pt on a 46 mm, before the button row. Checked on both
+simulators.
+
+**The track title is one line on every watch.** Not only because a second line is 18 pt a
+40 mm column does not have, but because allowing one anywhere would make the height of the
+screen depend on the track: the transport row would shift under the user's thumb as one song
+followed another. A long title scales down first and only then truncates.
 
 **Volume.** The Digital Crown is the control — on a watch it is the fastest way to a volume —
 with buttons either side for the same step of 5 over the server's 0..100, and the player name

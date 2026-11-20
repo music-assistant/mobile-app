@@ -18,6 +18,9 @@ enum ControlMetrics {
     /// Previous and next.
     static var secondary: CGFloat { isCompact ? 34 : 38 }
 
+    /// The queue and output buttons along the bottom.
+    static var auxiliary: CGFloat { isCompact ? 32 : 36 }
+
     static var transportSpacing: CGFloat { isCompact ? 8 : 12 }
 
     static var stackSpacing: CGFloat { isCompact ? 5 : 6 }
@@ -28,11 +31,4 @@ enum ControlMetrics {
     /// fourth line as well — and of the four, a pair of timestamps is the one the bar itself
     /// already says. Apple's own Now Playing drops them on the same watches.
     static var showsTrackTimes: Bool { !isCompact }
-
-    /// How many lines the track title may take.
-    ///
-    /// Everything on the now-playing screen has to fit between the navigation title and the
-    /// bottom toolbar without scrolling, and a second title line is 18 pt a 40 mm screen does
-    /// not have. The title scales down into one line there instead.
-    static var titleLines: Int { isCompact ? 1 : 2 }
 }

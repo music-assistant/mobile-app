@@ -37,6 +37,10 @@
 - **Wear Compose** (1.7.1) - `compose-material3` (Material 3 Expressive for watches), `compose-foundation` (`TransformingLazyColumn`, rotary), `compose-navigation` (`SwipeDismissableNavHost`). Pinned against the androidx Compose artifacts (1.12.1), not Compose Multiplatform: the watch module shares no UI with the phone app.
 - **material-color-utilities** (5.0.1) - The HCT/quantizer half of MaterialKolor, without its Compose Material3 surface. Seeds the watch's `androidx.wear.compose.material3.ColorScheme` from the cover art.
 
+## watchOS (`watchShared` + `watchApp` only)
+- **Ktor Darwin** - `NSURLSession` behind the Ktor client, including its WebSocket. The one engine that builds for the watchOS targets; the Wear app uses OkHttp for the same job.
+- No UI library. The watch app is SwiftUI against the `MaWatchKit` framework, and nothing else. There is no equivalent of the Wear app's **material-color-utilities**: the album reaches the screen as the blurred cover behind it rather than as a generated colour scheme, so nothing is quantized or scored.
+
 ## Utilities
 - **Kermit** - Multiplatform logging
 - **QRose encoder** (`qrose-encoder-matrix` 1.3.1) - Makes the QR bit matrix of the party invite. It has no Compose dependency. `QrCode` draws the matrix.

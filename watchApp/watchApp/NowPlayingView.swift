@@ -26,22 +26,15 @@ struct NowPlayingView: View {
                 labels
                 timeline
                 TransportControls()
+                auxiliaryControls
             }
             .frame(maxWidth: .infinity)
         }
         .scrollDisabled(true)
-        .containerBackground(for: .navigation) { background }
+        // `ignoresSafeArea` on the background and not on the column: the artwork runs to
+        // the bezel on all four sides, while the controls stay inside the glass.
+        .containerBackground(for: .navigation) { background.ignoresSafeArea() }
         .navigationTitle(store.selected?.name ?? "Music Assistant")
-        // The queue and the volume live in the bottom toolbar rather than in the column:
-        // watchOS floats it over the content, so the track, the bar and the transport keep
-        // the whole of a 40 mm screen instead of being pushed under its edge.
-        .toolbar {
-            ToolbarItemGroup(placement: .bottomBar) {
-                auxiliaryLink(.queue, symbol: "list.bullet", label: "Queue")
-                Spacer()
-                auxiliaryLink(.volume, symbol: "speaker.wave.2.fill", label: "Volume and output")
-            }
-        }
         .task(id: store.nowPlaying?.imageUrl) {
             // Cleared first: keeping the previous cover behind a new track would tint the
             // screen from the wrong album until the fetch lands.
@@ -57,11 +50,15 @@ struct NowPlayingView: View {
     @ViewBuilder private var labels: some View {
         VStack(spacing: 1) {
             if let nowPlaying = store.nowPlaying {
+                // One line, on every watch. A second line is 18 pt that the column does
+                // not have on a 40 mm screen, and allowing it anywhere would make the
+                // height of this screen depend on the track: the transport row would shift
+                // under the user's thumb as one song followed another. A long title scales
+                // down first and only then truncates.
                 Text(nowPlaying.title)
                     .font(.headline)
-                    .lineLimit(ControlMetrics.titleLines)
+                    .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .multilineTextAlignment(.center)
                 if let artist = nowPlaying.artist {
                     Text(artist)
                         .font(.caption2)
@@ -132,6 +129,24 @@ struct NowPlayingView: View {
         return "-" + TrackTime.format(max(0, duration - store.position(at: date)))
     }
 
+    /// The queue, and the output picker behind the volume.
+    ///
+    /// The last row of the column, not a `.toolbar`.
+    ///
+    /// watchOS draws a bottom toolbar in the navigation container rather than in the screen,
+    /// so it stands still while everything around it slides away on a push. Laid out here
+    /// the two buttons belong to this screen and travel with it. It costs the column their
+    /// height, which is what the reduced control sizes bought back.
+    private var auxiliaryControls: some View {
+        HStack(spacing: ControlMetrics.auxiliary) {
+            auxiliaryLink(.queue, symbol: "list.bullet", label: "Queue")
+            // The AirPlay glyph, as on iOS: picking where the sound comes out is the same
+            // question here, and it is the symbol a user already reads as "output".
+            auxiliaryLink(.volume, symbol: "airplayaudio", label: "Volume and output")
+        }
+        .padding(.top, 2)
+    }
+
     private func auxiliaryLink(
         _ route: WatchRoute,
         symbol: String,
@@ -139,8 +154,12 @@ struct NowPlayingView: View {
     ) -> some View {
         NavigationLink(value: route) {
             Image(systemName: symbol)
-                .font(.system(size: 15))
+                .font(.system(size: ControlMetrics.auxiliary * 0.42))
+                .frame(width: ControlMetrics.auxiliary, height: ControlMetrics.auxiliary)
+                .background(ControlShape(isOutlined: isLuminanceReduced))
         }
+        .buttonStyle(.plain)
+        .contentShape(Circle())
         .accessibilityLabel(label)
         .disabled(!store.isConnected)
     }
@@ -149,17 +168,26 @@ struct NowPlayingView: View {
         if isLuminanceReduced {
             Color.black
         } else if let cover {
-            ZStack {
-                Image(uiImage: cover)
-                    .resizable()
-                    .scaledToFill()
-                    .blur(radius: 20, opaque: true)
-                LinearGradient(
-                    colors: [.black.opacity(0.35), .black.opacity(0.75)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
+            // The black is what sizes this, not the cover. A `ZStack` takes its size from
+            // its children, and an image under `scaledToFill` reports back whatever it was
+            // proposed — which left the background an inset rectangle with bare screen
+            // under it. A plain colour is flexible, so it claims the whole screen, and the
+            // cover fills that and is clipped to it.
+            Color.black
+                .overlay {
+                    Image(uiImage: cover)
+                        .resizable()
+                        .scaledToFill()
+                        .blur(radius: 20, opaque: true)
+                }
+                .overlay {
+                    LinearGradient(
+                        colors: [.black.opacity(0.35), .black.opacity(0.75)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                }
+                .clipped()
         } else {
             LinearGradient(
                 colors: [Color(white: 0.14), .black],
