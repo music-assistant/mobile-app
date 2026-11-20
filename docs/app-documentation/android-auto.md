@@ -35,7 +35,7 @@ The car shows these tabs by default:
 
 | Tab | Content |
 |---|---|
-| **Home** | The rows from the app [Home tab](home.md). |
+| **Home** | The rows of the app [Discover](home.md) page. |
 | **Artists** | Your library artists. |
 | **Albums** | Your library albums. |
 | **Playlists** | Your library playlists. |
@@ -52,7 +52,7 @@ Android Auto shows a maximum of four tabs at the top of the screen. If you turn 
 
 ### Home Tab
 
-The Home tab shows one folder for each row of the app Home tab. The car uses the same row order and the same hidden rows as the app. To change them, [customize Home](home.md#customizing-home) in the app. The car does not show the Shortcuts row, and it does not show genres.
+The Home tab shows one folder for each row of the app **Discover** page. The car uses the same row order and the same hidden rows as the app. To change them, [customize Discover](home.md#customizing-discover) in the app. The car does not show the Shortcuts row, and it does not show genres.
 
 ![Home tab in the car](screenshots/android-auto/car-home-tab.png)
 
@@ -212,6 +212,9 @@ Tap **Done** to keep the changes. If you turn off all buttons, the car shows no 
 | **Add next** | **Add all next** |
 | **Add to queue** | **Add all to queue** |
 | **Start endless mix** | **Start endless mix** |
+| **Play shuffled** | **Play all shuffled** |
+
+**Play shuffled** is available for artists, albums and playlists only. A server with a schema version lower than 52 plays the item in order.
 
 ![Album actions](screenshots/android-auto/settings-car-bulk-actions.png)
 

@@ -1,39 +1,50 @@
-# Home
+# Discover
 
-The Home tab is populated with data from the **Discover** view in Music Assistant. By default, it loads all sections that appear in Discover, excluding the MA frontend Player Bar section and folder sections.
+The **Discover** page shows the rows of the **Discover** view of Music Assistant. The rows come from your Music Assistant server. The page also shows a **Shortcuts** row if you have shortcuts in the Music Assistant web app.
 
-The Music Assistant App provides its own [Players Pager](players-pager.md) for interacting with your Music Assistant players.
+The app has its own [Players Pager](players-pager.md) to control your Music Assistant players.
 
-## Refreshing Home
+## Refreshing Discover
 
-Tap the **refresh icon** in the top right corner to refresh the Home tab. This pulls the latest Discover data from your Music Assistant server.
+Tap the **refresh icon** in the top right corner to load the rows again from your server.
 
 ![Home tab](screenshots/home/home.jpeg)
 
-## Customizing Home
+## Customizing Discover
 
-You can personalize the Home tab by tapping the **pencil icon** in the top right corner. From here you can:
+1. Tap the **pencil icon** in the top right corner.
+2. Turn off the switch of each row that you want to hide.
+3. Drag a row by its handle to move it.
+4. Tap the **done icon** to save the changes.
 
-- **Hide sections** — Remove sections you don't want to see on Home.
-- **Reorder sections** — Drag sections into the order that works best for you.
-
-Changes apply immediately and are saved per device.
+At least one row must stay visible. The app saves the changes on this device only.
 
 ![Customize Home](screenshots/home/customize-home.jpeg)
 
+## Rows of tracks, episodes and radio stations
+
+A row that holds only tracks, podcast episodes or radio stations shows its items as a list. Each column of the row holds two items. Other rows show one line of tiles.
+
 ## Interacting with Items
 
-Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, the default tap action is **Play Now**, which replaces the current queue and starts playing immediately.
+Tap an item to open its [item details page](item-details.md). A tap on a track, a podcast episode or a radio station starts the default action instead. The default action is **Play now**, which replaces the queue and starts playback.
 
-Long-pressing an item opens a menu with additional actions. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
+Long-press an item to open a menu with more actions. The actions in the menu change with the item type.
 
 ![Menu](screenshots/home/context-menu.jpeg)
 
-### Customizing default actions for single item clicks
+### Customizing the default action
 
-The default action for single-item clicks can be customized per item type, so tracks, radio stations, and other items can each have their own default behavior.
+You can set a different default action for each item type and for each place in the app.
 
-To configure this, long-press any single item and tap **Customize...** at the bottom of the menu. This opens the **Default click action** settings, where you can set a different default action per context (Home, Library, Album, Playlist, Artist, and Search).
+1. Long-press a track, a podcast episode or a radio station.
+2. Tap **Customize…** at the bottom of the menu.
+3. In the **Default click action** dialog, select an action for each place.
+4. Tap **Save**.
+
+The dialog shows only the places where the item type can show. The places are **Discover**, **Library**, **Browse**, **Album**, **Playlist**, **Artist**, **Search** and **Podcast**.
+
+For an album, an artist, a playlist, a podcast or an audiobook, the dialog sets the action of the play button on the [item details page](item-details.md). This place has the name **Play button**.
 
 ![Long-Press Menu](screenshots/home/long-press-customize.jpeg)
 ![Default Click Action Customize](screenshots/home/default-click-action-customize.jpeg)

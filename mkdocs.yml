@@ -45,11 +45,15 @@ nav:
       - WebRTC connection: connection-to-server-webrtc.md
       - Local Sendspin player: local-sendspin-player-settings.md
   - Using the app:
-      - Home tab: home.md
-      - Library tab: library.md
-      - Global search: global-search.md
+      - Navigation: navigation.md
+      - Discover: home.md
+      - Library: library.md
+      - Search: global-search.md
       - Item details: item-details.md
       - Players pager: players-pager.md
       - Managing playlists: playlists.md
+      - AI Radio: ai-radio.md
+      - Party: party.md
       - Android Auto: android-auto.md
       - Apple CarPlay: carplay.md
+      - Deep links: deep-links.md

@@ -1,302 +1,85 @@
-# WebRTC Remote Access - Completion Summary
+# WebRTC Remote Access
 
-**Status**: ✅ **PRODUCTION READY** (Android + iOS)
-**Date Completed**: 2026-02-15 (Android), 2026-04-24 (iOS)
-**Last reviewed**: 2026-04-28
-**Functionality**: Fully working WebRTC remote access with robust auto-reconnection and smooth audio streaming over cellular on both platforms
+Remote Access connects the app to a Music Assistant server through a WebRTC peer connection.
+It works on Android and iOS. The server needs no open port.
 
----
+## Library and wrappers
 
-## What Works
+- The library is `io.ktor:ktor-client-webrtc`, with the Ktor version (see `.claude/dependencies.md`).
+- All code is in `commonMain`, package `webrtc/`. There is no expect or actual declaration.
+- `PeerConnectionWrapper` and `DataChannelWrapper` are plain classes over the Ktor types.
 
-### Core WebRTC (✅ Complete)
-- Signaling via `wss://signaling.music-assistant.io/ws`
-- Peer-to-peer connection establishment
-- Data channels: `ma-api` (JSON API) and `sendspin` (audio streaming)
-- ICE candidate gathering and exchange
-- DTLS encryption (end-to-end)
-- Full authentication flow over WebRTC
-- All API commands work identically to Direct mode
+## Connection
 
-### Auto-Reconnection (✅ Complete - 2026-02-15)
-- **Exponential backoff**: 500ms, 1s, 2s, 3s, 5s
-- **Network change detection**: WiFi ↔ 4G transitions
-- **Connection info caching**: Survives state race conditions
-- **Per-server credentials**: Separate tokens for each server
-- **Initial monitor cleanup**: Prevents race conditions on error
-- **Overlap prevention**: Stops duplicate attempts from fighting each other
+- `SignalingClient` connects to `wss://signaling.music-assistant.io/ws` (`DEFAULT_SIGNALING_URL`).
+- `WebRTCConnectionManager` sends the Remote ID, gets the ICE servers, sends the SDP offer and exchanges
+  the ICE candidates.
+- An ICE `DISCONNECTED` state gets a grace time of 4 s (`ICE_DISCONNECT_GRACE_MS`) before the manager
+  reports an error. `FAILED` and `CLOSED` report the error at once.
+- `api/WebRTCTransport.kt` owns one manager for each connection and restarts it after an error.
+  It uses `runReconnectionLoop` from `api/ReconnectBackoff.kt`, with `DEFAULT_MAX_RECONNECT_ATTEMPTS` (20).
+  The delays are 0, 0.5, 1, 2, 4, 8, 15, 30 and 60 s, then 120 s. The loop waits for the network
+  if it is down.
+- `api/SessionMachine.kt` holds the session lifecycle, and `api/KtorServiceClient.kt` runs it.
+  See the Session Lifecycle section of `.claude/architecture.md`.
+- The token of each server is stored under its `server_id` (`SettingsRepository.getTokenForServer`).
+  An address key is not safe, because one address can host different servers over time.
 
-### Sendspin over WebRTC (✅ Complete - 2026-02-15)
-- Binary audio streaming via dedicated `sendspin` data channel
-- **Unreliable delivery** (`ordered=false, maxRetransmits=0`) for real-time streaming
-- Transport abstraction (`WebRTCDataChannelTransport`)
-- Auto-detection in `SendspinClientFactory`
-- Full protocol handshake (skips redundant auth)
-- Smooth playback over cellular networks (tested in car)
+## Data channels
 
-### Platform Support
-- **Android**: ✅ Fully implemented and tested
-- **iOS**: ✅ Fully implemented (2026-04-24) — shipped via TestFlight, in production. See "iOS Parity" section below.
+| Label | Opened | Settings | Content |
+|-------|--------|----------|---------|
+| `ma-api` | Before the offer | `ordered = true`, `maxRetransmits = -1` | JSON API commands and events, as TEXT messages |
+| `sendspin` | Before the offer, then again in-band | `ordered = true` | Sendspin audio and control |
+| `http_proxy` | In-band, from schema 49 | `ordered = true` | Artwork and other HTTP requests |
 
-### iOS Parity (✅ Shipped 2026-04-24)
-- `PeerConnectionWrapper.ios.kt` — `actual class` over webrtc-kmp; real `RTCPeerConnection`, ICE gathering, SDP offer/answer, data channel events
-- `DataChannelWrapper.ios.kt` — bypasses webrtc-kmp's binary-only `send()` and calls native `RTCDataChannel.sendData(isBinary:false)` for text frames (fix #264)
-- Same `ordered=false, maxRetransmits=0` config for sendspin channel as Android
-- Same auto-reconnect + per-server token model — sendspin channel reuse + reauth-on-reconnect unified across both platforms (fix #293, 2026-04-28)
-- TestFlight distribution active since 2026-04-19 (#234)
+- The manager creates `ma-api` and `sendspin` before the offer, because a data channel adds the
+  `m=application` section to the SDP.
+- The `sendspin` channel is reliable and ordered. Unreliable delivery lost about 15% of the packets and
+  made audible distortion. The Opus framing needs every packet.
+- A channel that opens later is signalled in-band on the live peer, with no SDP renegotiation.
+  `openHttpProxyChannel` and `openDataChannel` wait 10 s (`CHANNEL_OPEN_TIMEOUT_MS`) for the open state.
 
----
+## Messages
 
-## Critical Bugs Fixed
+- `DataChannelWrapper.send(String)` sends a TEXT message, and `sendBinary` sends a BINARY message.
+  The server reads the API messages as text, so send API JSON with `send(String)` only.
+- The receive side puts text and binary messages into one ordered `inbound` stream with one collector.
+  The buffer is `Channel.UNLIMITED`. Do not add a drop policy, because a lost message breaks the protocol
+  state of the consumer.
+- Channel state changes come from the connection events, not from a poll. A poll added a delay that broke
+  the first auth handshake.
+- The server splits a message above the 256 KiB limit of libdatachannel into `__chunk__` envelopes.
+  `WebRTCChunkReassembler` (`api/WebRTCTransport.kt`) joins them. A whole message passes through.
 
-### 1. TEXT vs BINARY Message Transmission (2026-02-08)
-**Problem**: webrtc-kmp `send(ByteArray)` sends BINARY frames, server expects TEXT
-**Impact**: Messages reached server but crashed Python `send_str()` handler
-**Fix**: Bypass webrtc-kmp, use native Android WebRTC API with `binary=false` flag
-**File**: `DataChannelWrapper.android.kt`
+## HTTP proxy
 
-### 2. Provider Loading Race Conditions (2026-02-09)
-**Problem**: Switching Direct ↔ WebRTC polluted auth provider state
-**Fix**: Job lifecycle management - cancel stale jobs, reuse when safe
-**File**: `AuthenticationViewModel.kt`
+- `WebRTCHttpProxy` sends HTTP requests over a data channel, with the protocol of the web frontend.
+  The artwork loader uses it for `mawebrtc://` URLs (see Artwork Loading in `.claude/architecture.md`).
+- From schema 49 (`LABEL_ROUTED_CHANNELS_SCHEMA`), the transport opens `http_proxy` after `server_info`.
+  The body comes as raw binary messages after a small JSON header.
+- An older server gets the requests on `ma-api`, with a hex body. A server before schema 49 drops the
+  whole session for an unknown label, so the transport never opens `http_proxy` before it knows the schema.
+- If `http_proxy` does not open, the requests stay on `ma-api`.
+- A semaphore limits the requests in flight to 6, so artwork does not block the API messages.
 
-### 3. Sendspin Auth Over WebRTC (2026-02-13)
-**Problem**: Config had `requiresAuth=true`, sent auth on sendspin channel (unsupported)
-**Fix**: Override config for WebRTC: `mainConnectionPort = null` → `requiresAuth = false`
-**Result**: Protocol sends `client/hello` directly, player registers successfully
-**File**: `SendspinClientFactory.kt`
+## Sendspin over WebRTC
 
-### 4. Playback Hang (Shared Flow Buffer Overflow) (2026-02-14)
-**Problem**: Audio chunks arrive at ~50-100/sec, SharedFlow buffer (100) overflows in 1-2 seconds
-**Impact**: Backpressure blocks WebRTC native callbacks, audio starves
-**Fix**: Increased buffer to 2000 messages (~20-40 seconds headroom)
-**File**: `DataChannelWrapper.android.kt`
+- `LocalPlayerEndpoints` gives `Endpoint.WebRtc` for a WebRTC session. Each Sendspin connection attempt
+  gets a new channel from `openFreshChannel`:
+  1. The negotiated `sendspin` channel, if no attempt used it.
+  2. From schema 49, a new `sendspin` channel on the live peer. The spent channel must close first,
+     because the server accepts one `sendspin` channel for each peer.
+  3. On an older server, or if the new channel does not open, a renegotiation
+     (`SessionEvent.ForceWebRTCReconnect`). This interrupts the MA session.
+- See the Sendspin section of `.claude/architecture.md` for the player side.
 
-### 5. Reconnection State Race Condition (2026-02-14)
-**Problem**: State transitioned to `Disconnected.Error` before monitor could extract connection info
-**Fix 1**: Cache connection info in `WebRTCConnectionCache` data class
-**Fix 2**: Extract from current state first, fall back to cache
-**Files**: `ServiceClient.kt`
+## Rules
 
-### 6. Self-Cancelling Reconnection (2026-02-14)
-**Problem**: Reconnection calls `getOrCreateWebRTCManager()` → cancels `webrtcStateMonitorJob` → cancels parent coroutine → reconnection aborts
-**Fix**: Launch reconnection in separate coroutine via `launch { autoReconnectWebRTC(...) }`
-**File**: `ServiceClient.kt`
-
-### 7. Initial Monitor Race (2026-02-14) - **ROOT CAUSE**
-**Problem**: Initial connection monitor (created in `connectWebRTC`) still running after connection succeeds. On error, it transitions to `Disconnected.Error` before message listener can trigger reconnection.
-**Root Cause**: `return@collect` ends collection but doesn't cancel the launch{} job
-**Fix**: Track monitor job in `webrtcInitialMonitorJob` variable, explicitly cancel in `startWebRTCMessageListener()`
-**Result**: Only ONE monitor active at a time, reconnection works reliably
-**Files**: `ServiceClient.kt` (added tracking variable, cancellation logic)
-
-### 8. Audio Hiccups Over Cellular (2026-02-15) - **PRODUCTION BLOCKER**
-**Problem**: Huge repeating hiccups, cranks, jumps, complete audio stops while driving on cellular network
-**Root Cause**: `ordered=true` on sendspin data channel → packet loss causes retransmission queue → buffering cascade → audio stalls
-**Impact**: Unusable on cellular/poor WiFi conditions (car environment)
-**Fix**: Changed sendspin channel to `ordered=false, maxRetransmits=0` (unreliable delivery, like UDP)
-**Trade-off**: Lost audio chunk = minor glitch (barely noticeable at 50-100 chunks/sec) vs stalled stream = major failure
-**Files**:
-- `PeerConnectionWrapper.kt` - added `ordered` and `maxRetransmits` parameters
-- `PeerConnectionWrapper.android.kt` - pass parameters to webrtc-kmp
-- `PeerConnectionWrapper.ios.kt` - pass parameters to webrtc-kmp (iOS impl)
-- `WebRTCConnectionManager.kt` - different configs: ma-api (reliable), sendspin (unreliable)
-**Result**: Smooth playback over cellular, tested in car
-
-### 9. Self-Cancelling Reconnection v2 (2026-02-15)
-**Problem**: Reconnection still self-cancelling despite 2026-02-14 fix
-**Root Cause**: `launch { autoReconnectWebRTC() }` without explicit scope creates child of monitor job
-**Impact**: Reconnection aborts with `JobCancellationException`
-**Fix**: Changed to `this@ServiceClient.launch { }` to explicitly use ServiceClient scope, not monitor scope
-**File**: `ServiceClient.kt:490`
-**Result**: Reconnection survives monitor cancellation
-
-### 10. Overlapping Reconnection Attempts (2026-02-15) - **CRITICAL**
-**Problem**: Multiple reconnection attempts running simultaneously, each creating new managers
-**Symptom**: Connection succeeds but immediately replaced by next attempt (seen in logs as different manager hash codes)
-**Root Cause**: Attempts scheduled with exponential delays but 5-second connection timeout causes overlap
-**Timeline Example**:
-  - 11:42:05 - Attempt 3 fails
-  - 11:42:07 - Attempt 3 actually succeeds (creates manager [100109782])
-  - 11:42:08 - Attempt 4 starts (scheduled before attempt 3 succeeded), creates manager [192041205], destroys [100109782]
-  - 11:42:15 - Attempt 4 succeeds, but attempt 5 already starting...
-**Fix**: Check if already connected after delay, before creating new manager:
-```kotlin
-if (stateAfterDelay is SessionState.Connected.WebRTC) {
-    Logger.i { "Already connected (another attempt succeeded) - stopping" }
-    return
-}
-```
-**File**: `ServiceClient.kt:773`
-**Result**: Only ONE successful connection, no more fighting managers
-
----
-
-## Architecture
-
-### Connection Manager Hierarchy
-```
-ServiceClient (dual-mode: Direct + WebRTC)
-    ├── Direct: Ktor WebSocket
-    └── WebRTC: WebRTCConnectionManager
-            ├── SignalingClient (WebSocket to cloud)
-            ├── PeerConnectionWrapper (WebRTC peer connection)
-            │   └── DataChannelWrapper (ma-api + sendspin)
-            └── Sendspin: WebRTCDataChannelTransport
-```
-
-### State Management
-- `SessionState.Connected.WebRTC` - Main connection state
-- `SessionState.Reconnecting.WebRTC` - During reconnection
-- `WebRTCConnectionCache` - Cached info for reconnection (survives races)
-- Per-server tokens: `settings.getTokenForServer(serverIdentifier)`
-
-### Data Channels
-1. **ma-api** (label: "ma-api")
-   - Purpose: JSON API commands
-   - Format: TEXT messages
-   - Config: `ordered=true, maxRetransmits=-1` (reliable, like TCP)
-   - Usage: All Music Assistant API calls
-
-2. **sendspin** (label: "sendspin")
-   - Purpose: Real-time audio streaming
-   - Format: BINARY messages (Sendspin protocol)
-   - Config: `ordered=false, maxRetransmits=0` (unreliable, like UDP)
-   - Rationale: Better to skip lost chunk than stall entire stream on poor networks
-   - Usage: Built-in player audio delivery
-
----
-
-## Files Modified/Created
-
-### Created
-- `webrtc/model/RemoteId.kt` - Remote ID validation
-- `webrtc/model/SignalingMessage.kt` - Signaling protocol
-- `webrtc/model/PeerConnectionStateValue.kt` - Type-safe state enum
-- `webrtc/WebRTCConnectionManager.kt` - Connection orchestration
-- `webrtc/SignalingClient.kt` - Cloud signaling WebSocket
-- `webrtc/PeerConnectionWrapper.kt` (expect/actual) - Platform abstraction
-- `webrtc/DataChannelWrapper.kt` (expect/actual) - Data channel abstraction
-- `webrtc/WebRTCModule.kt` - Koin DI module
-- `player/sendspin/transport/WebRTCDataChannelTransport.kt` - Sendspin over WebRTC
-- `.claude/webrtc-completion-summary.md` - This doc
-
-### Modified
-- `ServiceClient.kt` - WebRTC integration, reconnection logic, per-server tokens, monitor management
-- `SettingsRepository.kt` - WebRTC settings, per-server tokens, connection mode
-- `SettingsScreen.kt` - WebRTC UI, connection switching
-- `SessionState.kt` - WebRTC state hierarchy
-- `SendspinClientFactory.kt` - Auto-detect WebRTC vs WebSocket transport
-- `MainDataSource.kt` - Per-server token re-authentication
-- `AuthenticationViewModel.kt` - Provider job lifecycle management
-- `MEMORY.md` - Updated with completion status and key learnings
-
----
-
-## Key Learnings
-
-### 1. Job Lifecycle is Critical
-**Lesson**: Always track and cancel coroutine jobs explicitly. `return@collect` doesn't cancel the launch{} block.
-**Application**: Added `webrtcInitialMonitorJob` tracking and explicit cancellation.
-
-### 2. Race Conditions in Reactive Flows
-**Lesson**: When multiple components monitor the same state, the fastest one wins.
-**Application**: Cache critical data before state transitions, use cached values for recovery.
-
-### 3. Self-Cancelling Coroutines
-**Lesson**: If reconnection logic is inside a job that gets cancelled during reconnection, it aborts. `launch { }` without explicit scope creates child of current job.
-**Application**: Launch in ServiceClient scope explicitly: `this@ServiceClient.launch { autoReconnect() }`
-
-### 4. Platform API Limitations
-**Lesson**: webrtc-kmp doesn't expose TEXT vs BINARY flag for data channel messages.
-**Application**: Direct native API access via reflection when wrapper is insufficient.
-
-### 5. SharedFlow Backpressure
-**Lesson**: Real-time data streams need generous buffer capacity to prevent callback blocking.
-**Application**: Audio chunks: 2000 buffer capacity (~40 seconds at 50 chunks/sec).
-
-### 6. Data Class Cohesion
-**Lesson**: 5 nullable fields that are always set/cleared together = code smell.
-**Application**: Consolidate into single `WebRTCConnectionCache` data class.
-
-### 7. Ordered vs Unordered Delivery
-**Lesson**: `ordered=true` on WebRTC data channels is catastrophic for real-time streams over unreliable networks.
-**Problem**: Lost packet → entire stream stalls waiting for retransmission → buffering cascade → audio glitches
-**Application**: Use `ordered=false, maxRetransmits=0` for real-time audio (UDP-like), `ordered=true` for commands (TCP-like)
-**Trade-off**: Minor glitch from lost chunk << major stall from retransmission queue
-
-### 8. Overlapping Async Operations
-**Lesson**: Exponential backoff reconnection can create overlapping attempts if connection takes longer than delay.
-**Problem**: Attempt N connecting while attempts N+1, N+2 already scheduled → parallel managers destroying each other
-**Application**: Check if already connected after delay, before starting new operation
-**Pattern**: `if (stateAfterDelay is Connected) { return /* another attempt succeeded */ }`
-
----
-
-## Testing Results
-
-### Connection Success Rate
-- **Local network**: 100% (STUN only)
-- **Remote network**: 95%+ (TURN relay when needed)
-- **4G/5G mobile**: 90%+ (depends on carrier NAT)
-
-### Reconnection Performance
-- **Detection time**: <1 second (ICE DISCONNECTED)
-- **First retry**: 500ms delay
-- **Success rate**: 95%+ (typically succeeds on first retry)
-- **Max attempts**: 10 (exponential backoff up to 5s)
-
-### Audio Streaming Quality
-- **Latency**: <100ms (comparable to Direct mode)
-- **Dropout rate**: <0.1% with unreliable delivery (minor glitches vs major stalls)
-- **Buffer stability**: No overflows with 2000-message buffer
-- **Cellular performance**: Smooth playback in car (4G/5G), tested while driving
-- **Network transitions**: WiFi ↔ cellular handoffs handled gracefully with auto-reconnect
-
----
-
-## Known Limitations
-
-### Network
-- Some corporate firewalls block WebRTC (TURN can help)
-- Double NAT scenarios may require TURN servers
-- Symmetric NAT requires TURN relay
-
-### Features
-- No connection quality metrics exposed to UI
-- No bandwidth adaptation (uses fixed quality)
-- Background mode not optimized (battery impact TBD)
-
----
-
-## Future Enhancements
-
-### Planned
-- [x] iOS WebRTC implementation (shipped 2026-04-24)
-- [ ] Connection quality indicators in UI
-- [ ] Bandwidth adaptation based on network conditions
-- [ ] QR code for Remote ID sharing
-
-### Under Consideration
-- [ ] Certificate pinning for enhanced security
-- [ ] Connection mode auto-detection (local vs remote)
-- [ ] Analytics/telemetry for connection success rates
-- [ ] Background connection optimization
-
----
-
-## References
-
-### Documentation
-- WebRTC Implementation Plan - original plan (archived, no longer in the repository)
-- [Sendspin WebRTC Status](sendspin-webrtc-status.md) - Sendspin integration details
-- [Music Assistant Frontend](https://github.com/music-assistant/frontend) - Reference implementation
-
-### Key Files
-- ServiceClient.kt - Main integration point (~1200 lines)
-- WebRTCConnectionManager.kt - Connection orchestration (~520 lines)
-- DataChannelWrapper.android.kt - Platform implementation (~130 lines)
-
----
-
-**Bottom Line**: WebRTC remote access is production-ready on **both Android and iOS** (iOS shipped 2026-04-24 via TestFlight). Users can connect from anywhere without port forwarding. All features work identically to Direct mode. Auto-reconnection is reliable and fast. Sendspin audio streaming works flawlessly over WebRTC data channels on both platforms, with shared transport/reconnect/reauth logic in `commonMain`.
+- Keep one owner for each coroutine job, and cancel it explicitly. `return@collect` does not cancel the
+  `launch` that holds the collection.
+- Start a reconnection in its own job. Do not start it as a child of the job that the reconnection cancels.
+- Run one reconnection loop at a time. Cancel the old `reconnectionJob` before a new loop starts.
+- Read the data for a reconnection before the state changes, because a different collector can change the
+  state first.
+- Never gate a new channel label on a guess. Read the schema version first.

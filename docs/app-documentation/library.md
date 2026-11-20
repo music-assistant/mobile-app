@@ -1,68 +1,78 @@
 # Library
 
-The **Library** tab contains your Music Assistant library — a database of music you have indicated you want to listen to on a regular basis.
+Your Music Assistant library is the music, the podcasts and the audiobooks that you added to Music Assistant. The **Library** section of the side menu has one entry for each category: **Artists**, **Albums**, **Tracks**, **Playlists**, **Audiobooks**, **Podcasts**, **Radio** and **Genres**. To hide or move a category, see [Navigation](navigation.md#customizing-the-side-menu).
 
-![Library](screenshots/library/library.jpeg)
-
-## Customizing the Library
-
-You can customize the **Library** tab by tapping the **Tune icon** in the top right corner. From here you can:
-
-- **Hide Library Items** — Remove items you don't want to see in the Library tab.
-- **Reorder Library Items** — Drag items into the order that works best for you.
-
-Changes apply after clicking **Done** and are saved per device.
-
-![Customize Library](screenshots/library/customize-library.jpeg)
-
-## Interacting with Your Library
-
-From the **Library** tab, you can navigate into a child library (e.g. Albums) to browse and interact with items of that type. Here you will find all items of that type in your library, along with options that vary depending on the child library you are in.
+Tap a category to open its list. The list shows all items of that type in your library.
 
 ![Child Library](screenshots/library/child-library.jpeg)
 
-### Quick Search
+## Quick Search
 
-Use the **Quick Search** field in the top right to search for items within that library.
+Tap the **search icon** in the top bar to search the list for a name.
 
-If no items match your query, click **Search everywhere** to switch to [Global Search](global-search.md) — your query will be pre-filled and the appropriate filter(s) will be selected automatically based on the library type you initially searched from.
+If no item matches, tap **Search everywhere**. The app opens [Search](global-search.md) with your query and the filter of the list type.
 
-> **Example:** Searching for "eagles" from the Artists library will pre-fill "eagles" in Global Search and select the **Artists** filter.
+> **Example:** Search for "eagles" in the **Artists** list. Then tap **Search everywhere**. **Search** opens with "eagles" and the **Artists** filter.
 
 ![Quick No Results](screenshots/library/quick-search.jpeg)
 ![Quick Search Redirect Global Search](screenshots/library/global-search-redirect.jpeg)
 
-### Filter Favorites
+## Filters
 
-Use the **Favorites** button to quickly filter your library items by favorite.
+Tap the **filter icon** in the top bar to open the **Filters** sheet. The icon shows in color while a filter is active. Set the filters, then tap **Apply**. Tap **Reset filters** to clear all filters.
 
-![Filter Favorites](screenshots/library/filter-favorites.jpeg)
+The sheet shows these filters:
 
-### Sort
+| Filter | Lists | Description |
+|---|---|---|
+| **Favorites** | All lists | Shows only your favorites. |
+| **Music sources** | All lists except **Genres** | Shows only the items of the selected music sources. The filter shows only if more than one source has items of the list type. |
+| **Genres** | All lists except **Genres** | Shows only the items of the selected genres. |
+| **Album artists only** | **Artists** | Shows only the album artists. |
+| **Album types** | **Albums** | Shows only the selected album types, for example **Single** or **EP**. |
+| **Show** | **Audiobooks** | Shows the books, the **Authors** or the **Narrators**. The authors and the narrators show only if your library has them. |
+| **Show genres** | **Genres** | **Default**, **Non-empty only** or **All**. |
+| **Content type** | **Genres** | Shows the genres of **Music**, **Podcasts** or **Audiobooks**. |
+| **Media type** | **Genres** | Shows when **Content type** is **Music**. |
 
-Use the **Sort** button to sort items in the list. Available options vary depending on the child library you are currently in.
+The app keeps the filters of each list on this device.
+
+## Sort
+
+Tap the **sort chip** under the top bar to select the sort order. Tap the selected order again to change the direction.
+
+The sort options change with the list. On server 2.11 or later, the server gives the sort options.
 
 ![Sort Items](screenshots/library/sort.jpeg)
 
-### Toggle View Type
+## Toggle View Type
 
-Toggle between grid and list view. This preference is saved per content type.
+Tap the **view mode** button to change between a grid and a list. The app keeps this setting for each list type.
 
 ![Toggle View Mode](screenshots/library/toggle-view.jpeg)
 
+## Audiobook Series
+
+The **Audiobooks** list has a **Group series** button. Turn it on to show each series as one item. Tap a series to see its books.
+
+## Playlists
+
+The **Playlists** list has the **Add new** and **Import** buttons. For more information, see [Managing Playlists](playlists.md).
+
+## Browse
+
+**Browse** is in the **Explore** section of the side menu. It shows the folders of your music sources, as the server gives them. Tap a folder to open it.
+
+From server 2.9, the top level of **Browse** also shows the input sources of the server plugins. Tap an input source to play it.
+
 ## Interacting with Items
 
-Tapping an item opens its [item details page](item-details.md). For single items such as tracks or radio stations, the default tap action is **Play Now**, which replaces the current queue and starts playing immediately.
+Tap an item to open its [item details page](item-details.md). A tap on a track or a radio station starts the default action instead. The default action is **Play now**, which replaces the queue and starts playback.
 
-Long-pressing an item opens a menu with additional actions. Available actions vary depending on the item type — for example, an album, audiobook, or podcast may each offer different options.
+Long-press an item to open a menu with more actions. The actions in the menu change with the item type.
+
+To change the default action, see [Customizing the default action](home.md#customizing-the-default-action).
 
 ![Menu](screenshots/library/context-menu.jpeg)
-
-### Customizing default actions for single item clicks
-
-The default action for single-item clicks can be customized per item type, so tracks, radio stations, and other items can each have their own default behavior.
-
-To configure this, long-press any single item and tap **Customize...** at the bottom of the menu. This opens the **Default click action** settings, where you can set a different default action per context (Home, Library, Album, Playlist, Artist, and Search).
-
 ![Long Press Menu](screenshots/library/long-press-customize.jpeg)
 ![Default Click Action Customize](screenshots/library/default-click-action-customize.jpeg)

@@ -1,6 +1,6 @@
 # Music Assistant Mobile app
 
-*Please note: that this project is still under (heavy) development and not yet in a production state or published to any of the app stores. Development work is in progress to allow this project to become the official mobile app for the Music Assistant project.*
+*Please note: this project is still under active development. The app is available on Google Play and in TestFlight.*
 
 The (official) Music Assistant Mobile app is a cross-platform client application designed for Android and iOS. Developed using Kotlin Multiplatform (KMP) and Compose Multiplatform frameworks, this project aims to provide a unified codebase for seamless music management across mobile platforms.
 
@@ -12,18 +12,19 @@ The (official) Music Assistant Mobile app is a cross-platform client application
   - managing MA players queues and playback;
   - managing dynamic and static groups (no static group creation);
   - local playback on device from MA library (Sendspin streaming protocol over WebRTC or WebSocket);
-  - comprehensive Settings screen with section-based UI for server connection, authentication (builtin/OAuth), and local player configuration.
+  - comprehensive Settings screen with section-based UI for server connection, authentication (Music Assistant username and password, long-lived token, or Home Assistant OAuth), and local player configuration;
+  - deep links that open a page of the app or play a media item, see [Deep Links](docs/app-documentation/deep-links.md).
 - Android-specific:
   - requires Android 9 or later; 
   - media service (background playback) and media notification in system area for quick access to players controls;
-  - Android Auto support for the built-in player, plus voice playback ("Hey Google, play *X* on Music Assistant") via Google Assistant and Gemini App Actions — works in the car *and* on the phone, single symmetric code path. Full phrase reference, architecture notes and testing in [ANDROID-AUTO.md](docs/ANDROID-AUTO.md).
+  - Android Auto support for the built-in player, plus voice playback ("Hey Google, play *X* on Music Assistant") in the car, and on the phone with the classic Google Assistant. Gemini refuses voice playback requests on the phone, and the app cannot change that. Full phrase reference, architecture notes and testing in [ANDROID-AUTO.md](docs/ANDROID-AUTO.md).
 - iOS-specific:
   - requires iOS 18.5 or later; 
   - native audio playback via AudioQueue (CoreAudio) with support for FLAC, Opus, and PCM;
   - Lock Screen and Control Center integration (Now Playing info, play/pause/next/prev remote commands);
   - background audio playback with automatic resume after phone call or Siri interruptions;
   - WebRTC data channel transport for low-latency Sendspin streaming;
-  - Apple CarPlay support for built-in player (very early state, a lot of bugs are expected);
+  - Apple CarPlay support for the built-in player, see [CarPlay](docs/app-documentation/carplay.md);
   - *known issue:* artwork may be missing in certain setups, for example peer-to-peer mesh VPN setups such as Tailscale. We're aware of this and looking into it, but we don't have an ETA on a fix yet.
     - Why: iOS App Transport Security (ATS) blocks image requests to insecure hosts, with an exception for local networks. On your LAN, artwork loads fine, but over Tailscale and similar VPNs the server appears to the phone as a remote host, so ATS kicks in and blocks the requests.
 
@@ -57,7 +58,7 @@ In addition, there's some general design directions that are being observed:
 
 ## Want to try it?
 
-Android users can download the APK [for the latest release](https://github.com/music-assistant/mobile-app/releases).
+Android users can install the app from Google Play, or download the APK [for the latest release](https://github.com/music-assistant/mobile-app/releases).
 
 iOS users can join [TestFlight](https://testflight.apple.com/join/AkvSDf2z).
 
@@ -71,7 +72,7 @@ See [ANDROID-AUTO](docs/ANDROID-AUTO.md) for:
 
 - enabling Android Auto with sideloaded debug/self-signed builds (Unknown sources flow);
 - the library browsing layout on the head unit;
-- the full list of supported Google Assistant voice phrases (works in the car *and* on the phone);
+- the full list of supported Google Assistant voice phrases (in the car, and on the phone with the classic Google Assistant);
 - shell-based testing of `MEDIA_PLAY_FROM_SEARCH` intents;
 - known limitations.
 
