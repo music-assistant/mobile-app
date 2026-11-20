@@ -26,6 +26,9 @@ data class PlayerData(
     /** The source that plays in place of the queue, or null while a queue plays. */
     val externalSource: PlayerSource? get() = player.externalSource
 
+    /** The key of the playback position in `PlayerPositionTracker`: the queue, or the external source. */
+    val positionKey: String? get() = queueId ?: externalSource?.let { player.sourcePositionKey }
+
     /**
      * False for a source without pause support and for a radio stream, like the web app:
      * the player then offers Stop instead of Pause.

@@ -56,6 +56,9 @@ data class Player(
             ?: active.takeIf { URI_MARK in it }?.let { PlayerSource(id = it, passive = true) }
     }
 
+    /** The key of the position of the external source in `PlayerPositionTracker`. Not a queue id. */
+    val sourcePositionKey: String get() = "source:$id"
+
     /**
      * The sources of the source menu, like the web frontend: the sources that the user can select
      * and the active one, sorted by name. Empty if there is no choice, and for a sync child.

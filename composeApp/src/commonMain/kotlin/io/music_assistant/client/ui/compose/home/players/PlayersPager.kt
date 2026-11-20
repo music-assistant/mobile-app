@@ -493,8 +493,10 @@ fun PlayersPager(
                         // recomposition — otherwise collectAsStateWithLifecycle would
                         // tear down and restart the position collector on every pass.
                         val queueId = player.queueInfo?.id
-                        val livePositionFlow = remember(queueId) {
-                            queueId?.let { homeScreenViewModel.observePosition(it) }
+                        // An external source has a position too, under its own key.
+                        val positionKey = player.positionKey
+                        val livePositionFlow = remember(positionKey) {
+                            positionKey?.let { homeScreenViewModel.observePosition(it) }
                         }
                         // Buffered-ahead seconds — local player only, and only when the user has the
                         // buffer indicator enabled; remote players / disabled → null (no segment).

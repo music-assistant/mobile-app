@@ -176,6 +176,30 @@ class PlayerPositionTracker {
         }
     }
 
+    /**
+     * Where a player is in the media of its external source, or null when it plays none. [key]
+     * is not a queue id, so no queue anchor lies beneath. A report from a paused player holds
+     * its position; a report from a playing one advances from the time of the report.
+     */
+    fun setSource(key: String, timing: SongTiming?, isPlaying: Boolean) {
+        songs.update { existing ->
+            when {
+                timing == null -> existing - key
+                timing == existing[key]?.timing -> existing
+                else -> {
+                    val now = currentTimeMillis()
+                    val anchor = Anchor(
+                        elapsedSec = if (isPlaying) timing.positionAt(now / 1000.0) else timing.elapsed,
+                        wallMs = now,
+                        isPlaying = isPlaying,
+                        durationSec = timing.duration,
+                    )
+                    existing + (key to Song(timing, anchor))
+                }
+            }
+        }
+    }
+
     /** User-dropped seek anchor; server echoes do not release the freeze. Returns the freeze id. */
     fun setOptimisticSeek(
         queueId: String,

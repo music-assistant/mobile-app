@@ -40,7 +40,7 @@ fun <T> Flow<T>.withPresentationChapter(
         .transformLatest { (value, chapterEnabled) ->
             val playerData = playerOf(value)
             while (true) {
-                val elapsedSec = playerData?.queueInfo?.id?.let(positionTracker::effectiveSec)
+                val elapsedSec = playerData?.positionKey?.let(positionTracker::effectiveSec)
                 val chapter = playerData?.presentationChapter(elapsedSec)
                     ?.takeIf { chapterEnabled }
                 emit(ChapterPresentation(value, chapter, elapsedSec))

@@ -345,7 +345,11 @@ actual class PlatformFeature {
   and `canNextPrevious` gives the skip buttons. A stopped source that is not passive accepts Play, because the
   server selects it again. `PlayerData.canSeekContent` gives the seek rule to the timeline and to the Android
   media session. The page shows the source name as the title if the media has no title. The position of an
-  external source is not tracked, so its timeline stays at the start.
+  external source comes from `current_media` of the player (`PlayerMedia.timing`), because the source has no
+  queue. `externalSourceTimings` gives it to `PlayerPositionTracker.setSource` under `Player.sourcePositionKey`,
+  which is not a queue id. Read the position of a player with `PlayerData.positionKey`, which covers the queue
+  and the external source. The timeline and the Android media session read it. The position uses the server
+  time of the report, so a wrong device clock moves it. The iOS lock screen shows no position for a source.
 
   The menu of the expanded player has "Select source" (`Player.sourceChoices`): the entries that are not
   passive and the active entry, sorted by name. The entry shows only if the list has more than one choice and
