@@ -80,7 +80,7 @@ fun PlayPauseButton(
                 // what has to fit inside the canvas, so the ring keeps clear of the button
                 // beneath it.
                 val radius =
-                    size.minDimension / 2f - stroke / 2f - amplitude + 2f // additional margin
+                    size.minDimension / 2f - stroke / 2f - amplitude // additional margin
                 drawWavyArc(radius, amplitude, FULL_CIRCLE, trackColor, stroke)
                 progress?.takeIf { it > 0f }?.let {
                     drawWavyArc(radius, amplitude, FULL_CIRCLE * it, indicatorColor, stroke)
@@ -200,7 +200,7 @@ private fun wavyPath(
 }
 
 private val RING_STROKE = 3.5.dp
-private val WAVE_AMPLITUDE = 2.5.dp
+private val WAVE_AMPLITUDE = 1.5.dp
 private const val WAVE_COUNT = 12f
 private const val FULL_CIRCLE = 360f
 private const val QUARTER_TURN = 90f

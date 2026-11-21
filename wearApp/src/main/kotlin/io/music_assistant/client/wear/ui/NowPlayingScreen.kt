@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Queue
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.SpeakerGroup
 import androidx.compose.runtime.Composable
@@ -27,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.findRootCoordinates
@@ -53,7 +51,6 @@ import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import io.music_assistant.client.ui.compose.common.icons.SkipBackIcon
 import io.music_assistant.client.ui.compose.common.icons.SkipForwardIcon
-import io.music_assistant.client.ui.fullBleed
 import io.music_assistant.client.wear.R
 import io.music_assistant.client.wear.data.WearPlayer
 import kotlin.math.abs
@@ -62,8 +59,9 @@ import kotlin.math.sqrt
 
 /**
  * The watch's main screen: cover art behind the transport controls, the track position drawn
- * around the play button, and the two ways out — the queue and the volume, which is also
- * where the output is picked.
+ * around the play button, the volume button — which is also where the output is picked —
+ * and, along the bottom edge, the handle of the queue sheet (`QueueSheet`), which is drawn
+ * over this screen rather than by it.
  *
  * Everything sits in one centred column rather than a scrolling list: a media control screen
  * that moves under the thumb while the user reaches for pause is worse than one that fits.
@@ -79,19 +77,15 @@ fun NowPlayingScreen(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenVolume: () -> Unit,
-    onOpenQueue: () -> Unit,
     ambient: AmbientState = LocalAmbientState.current,
 ) {
     // The scaffold's own content padding is 5.2% of the screen on every side, which is the
     // safe area for text and is given up here: the artwork is meant to bleed to the glass and
     // the rim buttons are meant to touch it. The column below keeps that margin itself.
     ScreenScaffold(contentPadding = PaddingValues(0.dp)) {
+        // No cover here: [NowPlayingPager] holds one behind both of its pages, so that a
+        // swipe down uncovers it rather than sliding a second copy of it over the first.
         Box(Modifier.fillMaxSize()) {
-            // A full-screen image is the one thing an OLED watch must not hold up for an
-            // hour, and the crossfade behind it would animate a screen meant to be still.
-            if (!ambient.isAmbient) {
-                ArtworkBackground(state.artwork, Modifier.fillMaxSize())
-            }
             NowPlayingContent(
                 state = state,
                 ambient = ambient,
@@ -99,7 +93,6 @@ fun NowPlayingScreen(
                 onNext = onNext,
                 onPrevious = onPrevious,
                 onOpenVolume = onOpenVolume,
-                onOpenQueue = onOpenQueue,
             )
         }
     }
@@ -113,7 +106,6 @@ private fun NowPlayingContent(
     onNext: () -> Unit,
     onPrevious: () -> Unit,
     onOpenVolume: () -> Unit,
-    onOpenQueue: () -> Unit,
 ) {
     val sizes = controlSizes()
     Column(
@@ -148,7 +140,6 @@ private fun NowPlayingContent(
         buttonSize = sizes.actionButton,
         selectedPlayer = state.selected,
         onOpenVolume = onOpenVolume,
-        onOpenQueue = onOpenQueue,
     )
 }
 
@@ -219,7 +210,7 @@ private fun TrackLabels(state: WearUiState, ambient: AmbientState) {
  * down, so the measurement cannot chase itself. A square screen keeps the flat margin.
  */
 @Composable
-private fun Modifier.roundScreenPadding(): Modifier {
+internal fun Modifier.roundScreenPadding(): Modifier {
     val isRound = LocalConfiguration.current.isScreenRound
     val density = LocalDensity.current
     var inset by remember { mutableStateOf(SAFE_MARGIN) }
@@ -255,7 +246,7 @@ private fun Modifier.roundScreenPadding(): Modifier {
  * Never on the always-on screen, which is meant to be still: there [enabled] is false and the
  * line falls back to the ellipsis.
  */
-private fun Modifier.scrollingTitle(enabled: Boolean): Modifier =
+internal fun Modifier.scrollingTitle(enabled: Boolean): Modifier =
     if (enabled) basicMarquee(iterations = Int.MAX_VALUE) else this
 
 /**
@@ -347,47 +338,36 @@ private fun SkipButton(
 }
 
 /**
- * The queue and the volume, set against the rim.
+ * The volume, set against the rim.
  *
- * They are the two ways off this screen, so they give their space to the controls and take
- * the edge the artwork was filling anyway. They are outlined rather than filled, on the lit
- * screen as well as the dimmed one: they sit beside the outlined transport buttons, and a
- * pair of discs at the rim would pull the eye away from the controls they frame. On the
- * always-on screen they also stay rather than leave a gap where a control was, and an
- * outline is a ring of lit pixels rather than a disc of them.
+ * It is the one way off this screen — the queue is a sheet pulled up from the bottom rather
+ * than a screen to leave for — so it gives its space to the controls and takes the edge the
+ * artwork was filling anyway. It is outlined rather than filled, on the lit screen as well as
+ * the dimmed one: it sits beside the outlined transport buttons, and a disc at the rim would
+ * pull the eye away from the controls it frames. On the always-on screen it also stays rather
+ * than leave a gap where a control was, and an outline is a ring of lit pixels rather than a
+ * disc of them.
  *
- * On a round watch the bottom corners are not glass:
- * each button is placed so that its outer bottom corner rides a circle just inside the bezel,
- * which puts the pair as low as the screen allows and lets a wider button ride higher instead
- * of running off the edge.
+ * On a round watch the bottom corners are not glass: the button is placed so that its outer
+ * bottom corner rides a circle just inside the bezel, which puts it as low as the screen
+ * allows and lets a wider button ride higher instead of running off the edge. That circle
+ * clears [QUEUE_HANDLE_REACH] too, so the button and the sheet's handle below it never
+ * share a tap target.
  */
 @Composable
 private fun ActionRow(
     enabled: Boolean,
     buttonSize: Dp,
     onOpenVolume: () -> Unit,
-    onOpenQueue: () -> Unit,
     selectedPlayer: WearPlayer?,
 ) {
     val colors = ButtonDefaults.outlinedButtonColors()
     RimRow(
         spacing = 56.dp,
         bottomSlack = CompactButtonDefaults.TapTargetPadding.calculateBottomPadding(),
+        rimInset = RIM_INSET + QUEUE_HANDLE_REACH,
         modifier = Modifier.fillMaxSize(),
     ) {
-        CompactButton(
-            onClick = onOpenQueue,
-            enabled = enabled,
-            modifier = Modifier.size(buttonSize),
-            colors = colors,
-            icon = {
-                Icon(
-                    imageVector = Icons.Rounded.Queue,
-                    contentDescription = stringResource(R.string.cd_queue),
-                    modifier = Modifier.size(buttonSize / 2),
-                )
-            },
-        )
         CompactButton(
             onClick = onOpenVolume,
             enabled = enabled,
@@ -407,7 +387,7 @@ private fun ActionRow(
 /**
  * Lays [content] out as a row along the bottom edge, as low as the screen's shape allows.
  *
- * A round screen gets each child's outer bottom corner on a circle one [RIM_INSET] inside the
+ * A round screen gets each child's outer bottom corner on a circle [rimInset] inside the
  * bezel; a square one gets that inset from the bottom. The row is centred horizontally and
  * measured against the whole screen, so it must fill it.
  *
@@ -419,13 +399,14 @@ private fun ActionRow(
 private fun RimRow(
     spacing: Dp,
     bottomSlack: Dp,
+    rimInset: Dp,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     val isRound = LocalConfiguration.current.isScreenRound
     Layout(content = content, modifier = modifier) { measurables, constraints ->
         val gap = spacing.roundToPx()
-        val inset = RIM_INSET.roundToPx()
+        val inset = rimInset.roundToPx()
         val slack = bottomSlack.roundToPx()
         val children = measurables.map {
             it.measure(Constraints(maxWidth = constraints.maxWidth, maxHeight = constraints.maxHeight))
