@@ -16,25 +16,42 @@ struct NowPlayingView: View {
     @State private var cover: UIImage?
 
     var body: some View {
-        // A scroll view that cannot scroll, which is not a contradiction here: only a
-        // scrolling container gets the content inset below watchOS's large navigation
-        // title, and only a disabled one cannot then ride up over it — which is exactly
-        // what this screen did while it could scroll. Nothing here is meant to scroll
-        // anyway; it is a fixed control surface, as Apple's own Now Playing is.
-        ScrollView {
-            VStack(spacing: ControlMetrics.stackSpacing) {
-                labels
-                timeline
-                TransportControls()
-                auxiliaryControls
-            }
-            .frame(maxWidth: .infinity)
+        // No scroll view. There was one, disabled, because only a scrolling container gets
+        // its content inset below watchOS's *large* navigation title - and that title is
+        // gone: a bar with toolbar items in it is an inline one, and this screen has two.
+        // What the scroll view cost was a height to lay out against. A scroll view proposes
+        // none, so neither `maxHeight` nor a spacer had anything to take, and the column
+        // stayed hung under the bar whatever it was asked to do. A plain stack is proposed
+        // the whole of what the navigation container has left, which is why the slack below
+        // reaches the content now.
+        VStack(spacing: ControlMetrics.stackSpacing) {
+            Spacer(minLength: 0)
+            labels
+            timeline
+            TransportControls()
+                .padding(.top, -ControlMetrics.transportLift)
         }
-        .scrollDisabled(true)
+        // The navigation container keeps about 39 pt of bottom safe area, and the column was
+        // already sitting at the bottom of what that left it - measured, with a border drawn
+        // round the frame. That strip is the only room left, so the column claims it and
+        // gives back just enough to keep the transport off the curve of the glass.
+        .padding(.bottom, Self.bottomInset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .ignoresSafeArea(.container, edges: .bottom)
         // `ignoresSafeArea` on the background and not on the column: the artwork runs to
         // the bezel on all four sides, while the controls stay inside the glass.
         .containerBackground(for: .navigation) { background.ignoresSafeArea() }
         .navigationTitle(store.selected?.name ?? "Music Assistant")
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                // The AirPlay glyph, as on iOS: picking where the sound comes out is the
+                // same question here, and it is the symbol a user already reads as "output".
+                barLink(.volume, symbol: "airplayaudio", label: "Volume and output")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                barLink(.queue, symbol: "list.bullet", label: "Queue")
+            }
+        }
         .task(id: store.nowPlaying?.imageUrl) {
             // Cleared first: keeping the previous cover behind a new track would tint the
             // screen from the wrong album until the fetch lands.
@@ -100,8 +117,7 @@ struct NowPlayingView: View {
     private func progress(at date: Date) -> some View {
         let fraction = store.progress(at: date)
         return VStack(spacing: 1) {
-            ProgressView(value: fraction ?? 0)
-                .progressViewStyle(.linear)
+            progressBar(fraction ?? 0)
                 // A radio stream has no length: the bar keeps its space so that nothing
                 // reflows when a track with one starts, but it draws no played arc.
                 .opacity(fraction == nil ? 0 : 1)
@@ -120,6 +136,27 @@ struct NowPlayingView: View {
         .padding(.horizontal, 6)
     }
 
+    /// The played fraction as a hairline.
+    ///
+    /// Drawn rather than taken from `ProgressView(.linear)`, whose height is watchOS's to
+    /// choose and is built for a list row: several times this, and heavy enough on a screen
+    /// this small to read as a control rather than as a position.
+    private func progressBar(_ fraction: Double) -> some View {
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                Capsule().fill(.white.opacity(0.25))
+                Capsule()
+                    .fill(Color.accentColor)
+                    .frame(width: geometry.size.width * fraction)
+            }
+        }
+        .frame(height: Self.progressBarHeight)
+    }
+
+    private static let progressBarHeight: CGFloat = 2
+
+    private static let bottomInset: CGFloat = 8
+
     private func elapsed(at date: Date) -> String {
         TrackTime.format(store.position(at: date))
     }
@@ -129,37 +166,25 @@ struct NowPlayingView: View {
         return "-" + TrackTime.format(max(0, duration - store.position(at: date)))
     }
 
-    /// The queue, and the output picker behind the volume.
+    /// The queue and the output picker, in the navigation bar rather than in the column.
     ///
-    /// The last row of the column, not a `.toolbar`.
+    /// They sit either side of the bar, so the player's name - the inline title - reads
+    /// between them, and the whole of the glass below belongs to the track and the
+    /// transport. The clock stays where watchOS draws it; its corner is the system's and
+    /// not an app's to lay out.
     ///
-    /// watchOS draws a bottom toolbar in the navigation container rather than in the screen,
-    /// so it stands still while everything around it slides away on a push. Laid out here
-    /// the two buttons belong to this screen and travel with it. It costs the column their
-    /// height, which is what the reduced control sizes bought back.
-    private var auxiliaryControls: some View {
-        HStack(spacing: ControlMetrics.auxiliary) {
-            auxiliaryLink(.queue, symbol: "list.bullet", label: "Queue")
-            // The AirPlay glyph, as on iOS: picking where the sound comes out is the same
-            // question here, and it is the symbol a user already reads as "output".
-            auxiliaryLink(.volume, symbol: "airplayaudio", label: "Volume and output")
-        }
-        .padding(.top, 2)
-    }
-
-    private func auxiliaryLink(
+    /// Bare glyphs, without the filled or outlined disc the transport buttons carry: a
+    /// navigation bar item on watchOS is a glyph, and a disc in a bar that is thirty-odd
+    /// points tall reads as a button that did not fit. Always On dims the bar itself, so
+    /// there is nothing here to take out of it.
+    private func barLink(
         _ route: WatchRoute,
         symbol: String,
         label: LocalizedStringKey
     ) -> some View {
         NavigationLink(value: route) {
             Image(systemName: symbol)
-                .font(.system(size: ControlMetrics.auxiliary * 0.42))
-                .frame(width: ControlMetrics.auxiliary, height: ControlMetrics.auxiliary)
-                .background(ControlShape(isOutlined: isLuminanceReduced))
         }
-        .buttonStyle(.plain)
-        .contentShape(Circle())
         .accessibilityLabel(label)
         .disabled(!store.isConnected)
     }
@@ -178,7 +203,7 @@ struct NowPlayingView: View {
                     Image(uiImage: cover)
                         .resizable()
                         .scaledToFill()
-                        .blur(radius: 20, opaque: true)
+                        .blur(radius: 2, opaque: true)
                 }
                 .overlay {
                     LinearGradient(

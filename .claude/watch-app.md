@@ -105,9 +105,11 @@ played arc.
 
 ## The screens
 
-A `NavigationStack` with the now-playing screen at its root, the queue and the volume one push
-away, and the output picker one step past the volume — the same shape as the Wear client, and
-each screen dismissed by the system swipe.
+A `NavigationStack` whose root is two pages of a `.verticalPage` `TabView` — the controls,
+where the watch starts, and the cover on its own above them — with the queue and the volume one
+push away, and the output picker one step past the volume. The same shape as the Wear client,
+and each pushed screen dismissed by the system swipe. The queue is **not** one of the pages: it
+is a push, so it covers them and their indicator rather than sitting beside them.
 
 **Now playing.** The cover art is the background rather than a tile, blurred under a gradient,
 which is how watchOS puts a single subject on a screen this small: the labels and the controls
@@ -119,21 +121,42 @@ cover fills that, and `ignoresSafeArea` on the background — not on the column 
 bezel while the controls stay inside the glass. That is also the whole of the artwork theming — unlike the Wear
 client, nothing is quantized into a colour scheme, because the album is read straight off the
 background and watchOS expects controls in the app's accent colour. The player name is the navigation title, so what the watch is
-pointed at is readable without opening anything. Previous, play/pause and next sit in one row,
-the play button larger because it is the one the user reaches for without looking; they are
-dimmed rather than hidden when the player cannot skip.
+pointed at is readable without opening anything — and the queue and the output picker are
+navigation-bar items either side of it (`.topBarLeading`, `.topBarTrailing`), so it reads
+between them and the whole of the glass below belongs to the track and the transport. They are
+bare glyphs rather than the filled or outlined disc the transport buttons carry: a bar item on
+watchOS is a glyph, and a disc in a bar thirty-odd points tall reads as a button that did not
+fit. The clock stays in its corner — that corner is the system's and not an app's to lay out. The
+output button carries the AirPlay glyph, as on iOS: picking where the sound comes out is the
+same question, and it is the symbol a user already reads as "output".
 
-The queue and the output picker sit in a last row of the column, under the transport. **Not in
-a `.toolbar`**, though that is where watchOS would normally want them: a bottom toolbar is drawn
-in the navigation container rather than in the screen, so it stands still while everything
-around it slides away on a push. Laid out in the column the two buttons belong to this screen
-and travel with it. The output button carries the AirPlay glyph, as on iOS — picking where the
-sound comes out is the same question, and it is the symbol a user already reads as "output".
+Previous, play/pause and next sit in one row, the play button larger because it is the one the
+user reaches for without looking; they are dimmed rather than hidden when the player cannot
+skip. All three are bare glyphs — the discs behind them went, and the accent colour the play
+disc carried moved onto its glyph so that button is still the one the eye lands on. Skip is
+`backward.end` / `forward.end` rather than the `.fill` pair: one triangle against an end bar,
+which is the glyph the Wear client draws, taken as SF Symbols so it keeps the optical sizing
+and the Always On treatment every other glyph gets. The played fraction is two capsules in a
+`GeometryReader` at 2 pt rather than `ProgressView(.linear)`, whose height watchOS picks and
+sizes for a list row.
 
-The screen does not scroll, and the way it does not is deliberate: it is a `ScrollView` with
-`.scrollDisabled(true)`. Only a scrolling container gets its content inset below watchOS's
-large navigation title, and only a disabled one cannot then ride up over that title — which is
-exactly what this screen did while it could scroll.
+**The column sits at the bottom of the glass**, and getting it there took measuring rather than
+guessing. It is a plain `VStack` with a leading `Spacer`, `.frame(maxHeight: .infinity,
+alignment: .bottom)` and `.ignoresSafeArea(.container, edges: .bottom)`, and each of those is
+load-bearing:
+
+- There used to be a `ScrollView` with `.scrollDisabled(true)`, so that the content was inset
+  below watchOS's *large* navigation title. That title is gone — a bar with toolbar items in it
+  is an inline one — and the scroll view was actively in the way: it proposes no height to its
+  content, so neither a spacer nor `maxHeight` nor `containerRelativeFrame` had anything to
+  take, and the column stayed hung under the bar whatever it was asked to do.
+- Even then the column only reached ~39 pt short of the glass, because the navigation container
+  keeps that strip as bottom safe area. A border drawn round the frame is what showed it. The
+  column claims the strip and gives back `bottomInset` (8 pt) to stay off the curve.
+- `ControlMetrics.transportLift` then pulls the transport row up under the timeline. The space
+  there is not stack spacing but the slack inside the buttons' own frames — tap targets a good
+  deal taller than their glyphs — so negative padding is what closes it, and the targets keep
+  their size.
 
 Everything therefore has to fit, which is what `ControlMetrics` is for. It picks one of two
 size sets at 180 pt of screen width, between the 41 mm (176 pt) and 45 mm (198 pt) families,
@@ -171,6 +194,26 @@ disagreement. No row artwork, as on Wear: a hundred thumbnails over that link bu
 A player whose `active_source` is an external source — Spotify Connect, say — has no Music
 Assistant queue, and the screen correctly says so. That is the server's model, not a gap here.
 
+**The album page** (`AlbumArtView`) is the cover and nothing else. Unlike the one behind the
+controls it is neither blurred nor darkened — there is nothing left on top of it that has to
+stay readable — and only the title and the artist remain, at the bottom, carrying a shadow
+rather than a scrim so the cover keeps the glass to itself. The cover is also the play button:
+nothing is drawn there and nowhere on it could a tap mean anything else. It sets no navigation
+title, so the time is the only other thing on the screen.
+
+Each page sets its own `containerBackground`, and watchOS crossfades them — which is what turns
+the blurred cover behind the controls into the clear one, with no shared image to animate. That
+is the one place this diverges from the Wear client, where the cover is drawn once behind both
+pages and the blur and scrim are faded off it as the pager moves.
+
+**Queue rows carry their covers** (`QueueArtwork`), fetched at row size through
+`ArtworkLoader.thumbnail`, which decodes down with ImageIO rather than handing back a full
+cover for the GPU to shrink — a megabyte a row on a watch — and keeps its own LRU by the
+screenful, with a miss kept as a nil so a track the server has no cover for is not fetched
+again every time its row scrolls back. A music note stands in while the fetch is in flight and
+stays when there is nothing to show, so rows keep one height and the list does not reflow under
+the thumb.
+
 ## Always On
 
 `@Environment(\.isLuminanceReduced)` is the signal, and the now-playing screen takes out of
@@ -182,7 +225,13 @@ dimming and waking never reflow what the user was looking at.
 **The screen is not navigated away from on the way into Always On**, which is where this
 diverges from the Wear client: Wear pops back to the now-playing root, because its ambient
 screen can outlive the interaction by hours. watchOS keeps the user's own screen visible and
-hands it straight back on the wake, and moving them somewhere else would be the surprise.
+hands it straight back on the wake, and moving them somewhere else would be the surprise. That
+includes which page is up.
+
+The album page is the **one** place the cover is held through Always On, on both clients: that
+page is nothing but the cover, so taking it away would leave an empty screen rather than a
+quieter one. Everything above about a full-screen image on an OLED still applies — it is a
+deliberate trade for a page the user has chosen to sit on.
 
 The session is held through Always On and torn down only on `.background`: an always-on screen
 that froze on whatever was playing when the wrist dropped would be telling the user a lie.

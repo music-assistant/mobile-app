@@ -2,9 +2,17 @@ import SwiftUI
 
 /// Previous, play/pause and next, sized so the row fits the narrowest watch in circulation.
 ///
-/// The play button is the larger of the three because it is the one the user reaches for
-/// without looking; previous and next are dimmed rather than hidden when the player cannot
-/// skip, since a gap where a control was reads as the app having lost something.
+/// Skip is `backward.end` / `forward.end` and not the `.fill` pair: one triangle against an
+/// end bar, outlined, which is the glyph the Wear client draws. Taken as SF Symbols rather
+/// than as the Wear vector itself, so they keep the weight, the optical sizing and the Always
+/// On treatment that every other glyph on this watch gets.
+///
+/// The three are glyphs on the cover with no disc behind them. The play button is still the
+/// larger of them, and carries the accent colour the disc used to, because it is the one the
+/// user reaches for without looking. The frames stay, so the tap targets are what they were
+/// and nothing reflows when the screen dims; previous and next are dimmed rather than hidden
+/// when the player cannot skip, since a gap where a control was reads as the app having lost
+/// something.
 struct TransportControls: View {
     @Environment(PlayerStore.self) private var store
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
@@ -12,7 +20,7 @@ struct TransportControls: View {
     var body: some View {
         HStack(spacing: ControlMetrics.transportSpacing) {
             transportButton(
-                symbol: "backward.fill",
+                symbol: "backward.end",
                 label: "Previous track",
                 action: store.previous
             )
@@ -21,7 +29,7 @@ struct TransportControls: View {
             playPauseButton
 
             transportButton(
-                symbol: "forward.fill",
+                symbol: "forward.end",
                 label: "Next track",
                 action: store.next
             )
@@ -34,15 +42,11 @@ struct TransportControls: View {
         Button(action: store.togglePlayPause) {
             Image(systemName: store.isPlaying ? "pause.fill" : "play.fill")
                 .font(.system(size: ControlMetrics.primary * 0.4, weight: .semibold))
-                .foregroundStyle(isLuminanceReduced ? Color.primary : Color.black)
+                // The accent colour carried the disc before; with the disc gone it carries
+                // the glyph, so the play button is still the one the eye lands on. Always On
+                // takes it back to plain, as it did the fill.
+                .foregroundStyle(isLuminanceReduced ? Color.primary : Color.accentColor)
                 .frame(width: ControlMetrics.primary, height: ControlMetrics.primary)
-                .background {
-                    if isLuminanceReduced {
-                        Circle().strokeBorder(.primary.opacity(0.7), lineWidth: 1.5)
-                    } else {
-                        Circle().fill(Color.accentColor)
-                    }
-                }
         }
         .buttonStyle(.plain)
         .contentShape(Circle())
@@ -58,7 +62,6 @@ struct TransportControls: View {
             Image(systemName: symbol)
                 .font(.system(size: ControlMetrics.secondary * 0.4))
                 .frame(width: ControlMetrics.secondary, height: ControlMetrics.secondary)
-                .background(ControlShape(isOutlined: isLuminanceReduced))
         }
         .buttonStyle(.plain)
         .contentShape(Circle())

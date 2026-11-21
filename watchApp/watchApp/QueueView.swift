@@ -1,6 +1,34 @@
 import MaWatchKit
 import SwiftUI
 
+/// One row's cover, fetched at row size through the app's own loader.
+///
+/// The note stands in while the fetch is in flight and stays for a track the server has no
+/// cover for, so every row is the same height and the list does not reflow under the thumb
+/// as covers land.
+private struct QueueArtwork: View {
+    let urlString: String?
+
+    @State private var cover: UIImage?
+
+    var body: some View {
+        Group {
+            if let cover {
+                Image(uiImage: cover)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "music.note")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(width: 24, height: 24)
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .task(id: urlString) { cover = await ArtworkLoader.shared.thumbnail(for: urlString) }
+    }
+}
+
 /// The queue of the selected player, around whatever is playing now.
 ///
 /// The watch loads a window rather than the whole queue — a full page is a large message for
@@ -50,6 +78,7 @@ struct QueueView: View {
 
     private func row(for item: WatchQueueItem) -> some View {
         HStack(spacing: 6) {
+            QueueArtwork(urlString: item.imageUrl)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
                     .font(.body)

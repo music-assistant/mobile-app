@@ -13,17 +13,34 @@ enum ControlMetrics {
     static let isCompact = screenWidth < 180
 
     /// The play/pause button, which is the one thing the user reaches for without looking.
-    static var primary: CGFloat { isCompact ? 44 : 48 }
+    ///
+    /// These sizes are the glyphs' frames, and the glyphs are drawn at 0.4 of them. They grew
+    /// when the discs behind them went: a glyph on its own reads smaller than the same glyph
+    /// on a disc, and without one the frame is a tap target rather than something drawn.
+    ///
+    /// The row is `secondary + spacing + primary + spacing + secondary` and has to clear the
+    /// narrowest glass in circulation, which is 162 pt. At these sizes it comes to 150 pt
+    /// compact — six points either side of the row before the bezel — and 178 pt on the large
+    /// set, which no watch under 198 pt uses. There is no room left for another step without
+    /// the row running into the glass, and unlike the Wear client nothing here scales to fit.
+    static var primary: CGFloat { isCompact ? 54 : 62 }
 
     /// Previous and next.
-    static var secondary: CGFloat { isCompact ? 34 : 38 }
+    static var secondary: CGFloat { isCompact ? 44 : 50 }
 
-    /// The queue and output buttons along the bottom.
-    static var auxiliary: CGFloat { isCompact ? 32 : 36 }
-
-    static var transportSpacing: CGFloat { isCompact ? 8 : 12 }
+    /// Tightened to pay for the sizes above: three buttons that nearly touch read as one
+    /// control, which is what a transport row is, and the gap was space the glyphs wanted.
+    static var transportSpacing: CGFloat { isCompact ? 4 : 8 }
 
     static var stackSpacing: CGFloat { isCompact ? 5 : 6 }
+
+    /// How far the transport row is pulled up under the timeline.
+    ///
+    /// The space there is not stack spacing but the slack inside the buttons' own frames:
+    /// those are tap targets, and at these sizes they are a good deal taller than the glyphs
+    /// drawn in them, so the row reads as further below the bar than it is. This takes the
+    /// slack back where it shows and leaves the targets the size they are.
+    static var transportLift: CGFloat { isCompact ? 10 : 12 }
 
     /// The elapsed and remaining times under the progress bar.
     ///
