@@ -54,6 +54,18 @@ class ArtworkLoader {
     }
     private val cacheLock = Mutex()
 
+    /**
+     * Thumbnails for list rows, which are a different job from the cover behind the screen:
+     * decoded small, never scored for a colour, and kept by the screenful rather than one at
+     * a time. A miss is cached as a null so that a cover the server does not have is not
+     * fetched again every time its row scrolls back into view.
+     */
+    private val thumbnails = object : LinkedHashMap<String, ImageBitmap?>(0, LOAD_FACTOR, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<String, ImageBitmap?>): Boolean =
+            size > THUMBNAIL_ENTRIES
+    }
+    private val thumbnailLock = Mutex()
+
     suspend fun load(url: String): Artwork? {
         cacheLock.withLock { cache[url] }?.let { return it }
         val artwork = fetch(url) ?: return null
@@ -61,7 +73,26 @@ class ArtworkLoader {
         return artwork
     }
 
-    private suspend fun fetch(url: String): Artwork? = withContext(Dispatchers.IO) {
+    /** A row-sized cover, or null when there is none to be had. */
+    suspend fun loadThumbnail(url: String): ImageBitmap? {
+        thumbnailLock.withLock { if (thumbnails.containsKey(url)) return thumbnails[url] }
+        val image = fetchBytes(url)
+            ?.let { decode(it, THUMBNAIL_SIZE) }
+            ?.asImageBitmap()
+        thumbnailLock.withLock { thumbnails[url] = image }
+        return image
+    }
+
+    private suspend fun fetch(url: String): Artwork? {
+        val bytes = fetchBytes(url) ?: return null
+        return withContext(Dispatchers.IO) {
+            val display = decode(bytes, DISPLAY_SIZE) ?: return@withContext null
+            val seed = decode(bytes, SEED_SIZE)?.let(::seedArgb)
+            Artwork(display.asImageBitmap(), seed)
+        }
+    }
+
+    private suspend fun fetchBytes(url: String): ByteArray? = withContext(Dispatchers.IO) {
         try {
             val response: HttpResponse = client.get(url)
             if (!response.status.isSuccess()) {
@@ -73,9 +104,7 @@ class ArtworkLoader {
                 logger.w { "Artwork $url: ${bytes.size} bytes rejected" }
                 return@withContext null
             }
-            val display = decode(bytes, DISPLAY_SIZE) ?: return@withContext null
-            val seed = decode(bytes, SEED_SIZE)?.let(::seedArgb)
-            Artwork(display.asImageBitmap(), seed)
+            bytes
         } catch (e: CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
@@ -113,8 +142,10 @@ class ArtworkLoader {
         const val MAX_BYTES = 8 * 1024 * 1024
         const val DISPLAY_SIZE = 512
         const val SEED_SIZE = 64
+        const val THUMBNAIL_SIZE = 96
         const val QUANTIZE_COLORS = 64
         const val CACHE_ENTRIES = 8
+        const val THUMBNAIL_ENTRIES = 64
         const val LOAD_FACTOR = 0.75f
     }
 }

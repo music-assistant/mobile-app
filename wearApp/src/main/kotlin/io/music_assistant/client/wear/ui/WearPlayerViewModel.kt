@@ -1,5 +1,6 @@
 package io.music_assistant.client.wear.ui
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -87,6 +88,9 @@ class WearPlayerViewModel(
     fun playQueueItem(itemId: String) = repository.playQueueItem(itemId)
 
     fun removeQueueItem(itemId: String) = repository.removeQueueItem(itemId)
+
+    /** The cover for one queue row, at row size. Null when the server has none. */
+    suspend fun queueArtwork(url: String): ImageBitmap? = artworkLoader.loadThumbnail(url)
 
     class Factory(
         private val repository: MaRepository,

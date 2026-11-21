@@ -89,6 +89,7 @@ fun MaWearApp(viewModel: WearPlayerViewModel, ambient: AmbientState = AmbientSta
                             QueueSheet(
                                 state = state,
                                 sheetState = queueSheet,
+                                loadArtwork = viewModel::queueArtwork,
                                 swipeAwayPx = {
                                     (pagerState.albumFraction() * screenHeightPx).toInt()
                                 },

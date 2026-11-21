@@ -4,6 +4,7 @@
 package io.music_assistant.client.wear.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
@@ -15,7 +16,6 @@ import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +34,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -85,7 +87,6 @@ import androidx.wear.compose.material3.SwipeToReveal
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import androidx.wear.compose.material3.lazy.transformedHeight
-import coil3.compose.AsyncImage
 import io.music_assistant.client.wear.R
 import io.music_assistant.client.wear.data.WearQueueItem
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -190,6 +191,7 @@ fun rememberQueueSheetState(): QueueSheetState = remember { QueueSheetState() }
 fun QueueSheet(
     state: WearUiState,
     sheetState: QueueSheetState,
+    loadArtwork: suspend (String) -> ImageBitmap?,
     swipeAwayPx: () -> Int = { 0 },
     onPlayItem: (String) -> Unit,
     onRemoveItem: (String) -> Unit,
@@ -298,6 +300,7 @@ fun QueueSheet(
             QueueList(
                 state = state,
                 listState = listState,
+                loadArtwork = loadArtwork,
                 contentTop = contentTop,
                 pinned = pinned,
                 rotaryScroll = rotaryScroll,
@@ -371,6 +374,7 @@ private fun AnchoredDraggableState<QueueSheetValue>.liftedFraction(): Float {
 private fun QueueList(
     state: WearUiState,
     listState: TransformingLazyColumnState,
+    loadArtwork: suspend (String) -> ImageBitmap?,
     contentTop: Dp,
     pinned: Boolean,
     rotaryScroll: ScrollableState,
@@ -471,6 +475,7 @@ private fun QueueList(
                         QueueRow(
                             item = queueItem,
                             isPlaying = queueItem.id == state.activeQueueItemId,
+                            loadArtwork = loadArtwork,
                             transformation = SurfaceTransformation(spec),
                             onClick = { onPlayItem(queueItem.id) },
                         )
@@ -615,6 +620,7 @@ private fun rememberQueueRotaryScroll(
 private fun QueueRow(
     item: WearQueueItem,
     isPlaying: Boolean,
+    loadArtwork: suspend (String) -> ImageBitmap?,
     transformation: SurfaceTransformation,
     onClick: () -> Unit,
 ) {
@@ -636,17 +642,7 @@ private fun QueueRow(
                 )
             }
         } else {
-            {
-                AsyncImage(
-                    model = item.imageUrl,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .aspectRatio(1f)
-                        .height(16.dp)
-                        .clip(RoundedCornerShape(16.dp)),
-                    contentDescription = null,
-                )
-            }
+            { QueueArtwork(item.imageUrl, loadArtwork) }
         },
         secondaryLabel = item.artist?.let { artist ->
             {
@@ -685,6 +681,40 @@ private val CHAIN_JOIN = 4.dp
 
 /** What keeps two links of the chain apart. */
 private val CHAIN_GAP = 2.dp
+
+/**
+ * The cover for one row, fetched through the watch's own `ArtworkLoader` rather than an image
+ * library: the phone app's Coil has no network fetcher of its own - it is handed bytes by a
+ * repository this module does not have - so a URL given straight to it here would quietly
+ * resolve to nothing.
+ *
+ * The note stands in while the fetch is in flight and stays for a track the server has no
+ * cover for, so a row is the same height either way and the list does not reflow under the
+ * thumb as covers land.
+ */
+@Composable
+private fun QueueArtwork(url: String?, load: suspend (String) -> ImageBitmap?) {
+    val cover by produceState<ImageBitmap?>(null, url, load) {
+        value = url?.let { load(it) }
+    }
+    cover?.let {
+        Image(
+            bitmap = it,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(32.dp)
+                .clip(RoundedCornerShape(COVER_CORNER)),
+        )
+    } ?: Icon(
+        painter = painterResource(R.drawable.ic_music_note),
+        contentDescription = null,
+        modifier = Modifier.size(ButtonDefaults.IconSize),
+    )
+}
+
+/** Box art is square, so its corners are the chain's and not the button's. */
+private val COVER_CORNER = 4.dp
 
 @Composable
 private fun QueuePlaceholder(isLoading: Boolean) {

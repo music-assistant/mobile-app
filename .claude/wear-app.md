@@ -59,9 +59,17 @@ matter are: `players/cmd/<play_pause|next|previous>`, `players/cmd/volume_set`,
   completed handshake and stay current through events. Commands are **optimistic**: the local
   model changes at once and the next server event for that player overwrites it wholesale, so
   a refused command corrects itself with no extra bookkeeping.
-- **`data/ArtworkLoader`** — fetches and decodes one cover at a time behind a small LRU. The
-  same fetch produces the display bitmap and, from a 64 px thumbnail decode, the ARGB seed for
-  the colour scheme, so the quantizer never walks a full-size image on a watch CPU.
+- **`data/ArtworkLoader`** — fetches and decodes covers behind two LRUs. `load` is the cover
+  behind the screen: one fetch produces the display bitmap and, from a 64 px thumbnail decode,
+  the ARGB seed for the colour scheme, so the quantizer never walks a full-size image on a watch
+  CPU. `loadThumbnail` is the cover on a queue row: decoded small, never scored for a colour,
+  and cached by the screenful rather than one at a time, with a miss cached as a null so a track
+  the server has no cover for is not re-fetched every time its row scrolls back.
+
+  **Not Coil.** `:composeApp` ships no Coil network artifact — its Coil is handed bytes by an
+  `ArtworkRepository` this module does not have — so a URL given straight to `AsyncImage` here
+  resolves to nothing at all, quietly. The server's imageproxy needs no token, so a plain Ktor
+  `get` is the whole of what a cover takes.
 - **`ui/WearPlayerViewModel`** — combines the repository flows into one `WearUiState` and
   keeps the current cover loaded.
 - **`ui/`** — `NowPlayingPager` (root: the controls and the cover art, as two pages), with
