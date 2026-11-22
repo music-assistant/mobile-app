@@ -330,6 +330,7 @@ The role is available on `WireVersion.SPEC_1_0` only.
 | `SourceDialect` | The revision of the role that the server has. See below. |
 | `EncoderFactory` | Optional, in `SendspinDeps.encoders`. It gives the FLAC encoder. |
 | `SourceStatus` | `Off`, `Refused`, `Unpaired`, `Ready`, or `Streaming`, in `PlayerState.Connected.source`. |
+| `SourceSignal` | `Present` or `Absent`, the signal that the source last reported, in `PlayerState.Connected.sourceSignal`. |
 
 Only the server starts a stream. The application starts playback of the source through the
 control plane of the server. The server then sends a `start` command, and the player starts
@@ -346,6 +347,14 @@ activity. `SourceDialect.RC1` is specification 1.0.0-rc1, which aiosendspin 10.3
 have: `client/hello` has the `source@v1_support` object, and a `start` needs no activity. An
 rc1 server does not activate the role for the `SPEC` dialect. So start with `SPEC`, and change
 to `RC1` if the status is `Refused`.
+
+**Signal.** With `RC1`, `client/hello` advertises `line_sense`, and the player senses the
+captured PCM before it encodes it. After 5 seconds of a stream in which every sample stays at or
+below 10 in 16-bit terms (about -70 dBFS, the top 16 bits of a 24 or 32-bit sample), the player
+sends `client/state` with the signal `absent`. The first block above that sends `present`. Each
+connection and each stream starts `present`. The signal keeps its value after a stream ends, so
+a server that stops a silent source does not get a `present` that would start it again. `SPEC`
+has no `line_sense`, so it always reports `present`. Other bit depths are always `present`.
 
 **Codec.** The stream is FLAC if the `EncoderFactory` gives an encoder. The stream is PCM if
 there is no factory, if the encoder fails, or if the encoder gives no codec header in 2 seconds

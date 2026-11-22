@@ -14,6 +14,7 @@ import io.music_assistant.sendspin.api.SendspinDeps
 import io.music_assistant.sendspin.api.SendspinPlayer
 import io.music_assistant.sendspin.api.SourceConfig
 import io.music_assistant.sendspin.api.SourceDialect
+import io.music_assistant.sendspin.api.SourceSignal
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.StopCause
 import io.music_assistant.sendspin.api.WarningCode
@@ -229,7 +230,15 @@ internal class SendspinPlayerImpl(
                 .collectLatest { key ->
                     pipeline.capacityBytes = key.capacityBytes()
                     session.source.value = key.source?.let { source ->
-                        SourceStreamer(source, deps.encoders, clockSync, deps.clock, deps.audioDispatcher, sourceHealth)
+                        SourceStreamer(
+                            source,
+                            deps.encoders,
+                            clockSync,
+                            deps.clock,
+                            deps.audioDispatcher,
+                            sourceHealth,
+                            lineSense = sourceSupportFor(source.dialect)?.features?.lineSense == true,
+                        )
                     }
                     supervisor.run(
                         endpoint = key.endpoint,
@@ -284,12 +293,6 @@ internal class SendspinPlayerImpl(
             roles = listOfNotNull(VersionedRole.PLAYER_V1, VersionedRole.SOURCE_V1.takeIf { key.source != null }),
             sourceSupport = key.source?.dialect?.let(::sourceSupportFor),
         )
-
-        /** Spec 1.0.0-rc1 activates the role only with this object; the current spec forbids it. */
-        private fun sourceSupportFor(dialect: SourceDialect): SourceSupport? = when (dialect) {
-            SourceDialect.SPEC -> null
-            SourceDialect.RC1 -> SourceSupport(SourceFeatures(lineSense = true))
-        }
 
         override fun onReady(info: SessionInfo) {
             serverName = info.serverName
@@ -356,13 +359,17 @@ internal class SendspinPlayerImpl(
 
         /**
          * Spec 1.0.0-rc1: `available` only once the time filter has converged (the
-         * server starts no stream before it), then again on every change. The reported
+         * server starts no stream before it), then again on every change of the delay or of
+         * the source signal. The first report of a connection always says `present`. The reported
          * delay is informational for the server's send-ahead; the scheduler still applies
          * the signed [LocalPlayerConfig.userDelayMs] itself.
          */
+        @OptIn(ExperimentalCoroutinesApi::class)
         private suspend fun reportSpecState(session: NoiseSession) {
             while (!clockSync.isConverged) delay(CLOCK_POLL_MILLIS)
-            config.filterNotNull().map { it.userDelayMs }.distinctUntilChanged().collect { delayMs ->
+            val delays = config.filterNotNull().map { it.userDelayMs }
+            val signals = source.flatMapLatest { it?.signal ?: flowOf(null) }
+            combine(delays, signals, ::Pair).distinctUntilChanged().collect { (delayMs, signal) ->
                 session.send(
                     WireCodec.encode(
                         ClientStateMessage(
@@ -372,7 +379,7 @@ internal class SendspinPlayerImpl(
                                     requiredLeadTimeMs = REQUIRED_LEAD_TIME_MS,
                                     minBufferMs = MIN_BUFFER_MS,
                                 ),
-                                source = SourceStateObject.PRESENT.takeIf { source.value != null },
+                                source = signal?.let(::sourceStateOf),
                                 available = true,
                             ),
                         ),
@@ -380,6 +387,11 @@ internal class SendspinPlayerImpl(
                 )
                 source.value?.onStateReported()
             }
+        }
+
+        private fun sourceStateOf(signal: SourceSignal) = when (signal) {
+            SourceSignal.Present -> SourceStateObject.PRESENT
+            SourceSignal.Absent -> SourceStateObject.ABSENT
         }
 
         private suspend fun watchClockQuality() {
@@ -402,12 +414,18 @@ internal class SendspinPlayerImpl(
         @OptIn(ExperimentalCoroutinesApi::class)
         suspend fun publishState() {
             val sourceStatus = source.flatMapLatest { it?.status ?: flowOf(SourceStatus.Off) }
-            combine(supervisor.state, pipeline.status, sourceStatus) { connection, audio, source ->
+            val sourceSignal = source.flatMapLatest { it?.signal ?: flowOf(SourceSignal.Present) }
+            combine(
+                supervisor.state,
+                pipeline.status,
+                sourceStatus,
+                sourceSignal,
+            ) { connection, audio, source, signal ->
                 when (connection) {
                     ConnectionState.Idle -> PlayerState.Connecting(0)
                     is ConnectionState.Connecting -> PlayerState.Connecting(connection.attempt)
                     is ConnectionState.Active ->
-                        PlayerState.Connected(playerId, serverName, clockSync.quality(), audio, source)
+                        PlayerState.Connected(playerId, serverName, clockSync.quality(), audio, source, signal)
                     is ConnectionState.Backoff -> PlayerState.Reconnecting(
                         connection.attempt,
                         connection.retryAtMicros / 1_000,
@@ -453,6 +471,12 @@ internal class SendspinPlayerImpl(
     }
 
     internal companion object {
+        /** Spec 1.0.0-rc1 activates the role only with this object; the current spec forbids it. */
+        fun sourceSupportFor(dialect: SourceDialect): SourceSupport? = when (dialect) {
+            SourceDialect.SPEC -> null
+            SourceDialect.RC1 -> SourceSupport(SourceFeatures(lineSense = true))
+        }
+
         const val STATE_REPORT_MILLIS = 2_000L
         const val CLOCK_UNSTABLE_MICROS = 60_000_000L
         const val CLOCK_POLL_MILLIS = 100L

@@ -11,6 +11,8 @@ public sealed interface PlayerState {
         val clock: ClockQuality,
         val audio: AudioStatus,
         val source: SourceStatus = SourceStatus.Off,
+        /** The input signal that the source last reported. It does not change while no stream runs. */
+        val sourceSignal: SourceSignal = SourceSignal.Present,
     ) : PlayerState
 
     /** Connection lost; retry scheduled. [nextRetryAtMs] is null while waiting for the network. */
