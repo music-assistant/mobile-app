@@ -30,11 +30,16 @@ import kotlin.math.abs
  *
  * [clock] must be the clock of the Sendspin player, on the `BOOTTIME` base: the player turns
  * each capture time into server time with it.
+ *
+ * [onFailed] runs when the record cannot start or a read fails (a dead record after the
+ * projection ended, for one), before the flow throws: the share then ends as a capture end, and
+ * not as a stop by the server.
  */
 @RequiresApi(Build.VERSION_CODES.Q)
 internal class PlaybackCapture(
     private val projection: MediaProjection,
     private val clock: MonotonicClock,
+    private val onFailed: (PlaybackCapture) -> Unit,
 ) : AudioCapture {
     private val log = Logger.withTag("PlaybackCapture")
 
@@ -65,7 +70,7 @@ internal class PlaybackCapture(
         val thread = Process.myTid()
         val priority = Process.getThreadPriority(thread)
         try {
-            check(record.state == AudioRecord.STATE_INITIALIZED) { "The playback capture did not start" }
+            if (record.state != AudioRecord.STATE_INITIALIZED) fail("The playback capture did not start")
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             record.startRecording()
             log.i { "Playback capture started: recording=${record.recordingState == AudioRecord.RECORDSTATE_RECORDING}" }
@@ -73,7 +78,7 @@ internal class PlaybackCapture(
             while (currentCoroutineContext().isActive) {
                 val block = ByteArray(blockBytes)
                 val read = record.read(block, 0, blockBytes, AudioRecord.READ_BLOCKING)
-                check(read >= 0) { "The playback capture failed: $read" }
+                if (read < 0) fail("The playback capture failed: $read")
                 val frames = read / format.bytesPerFrame
                 if (frames == 0) continue
                 val pcm = if (read == blockBytes) block else block.copyOf(frames * format.bytesPerFrame)
@@ -86,6 +91,11 @@ internal class PlaybackCapture(
             record.release()
         }
     }.flowOn(Dispatchers.IO)
+
+    private fun fail(message: String): Nothing {
+        onFailed(this)
+        error(message)
+    }
 
     private fun minBufferBytes(): Int =
         AudioRecord.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_IN_STEREO, AudioFormat.ENCODING_PCM_16BIT)

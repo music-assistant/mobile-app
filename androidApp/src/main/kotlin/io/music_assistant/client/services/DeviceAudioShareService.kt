@@ -65,10 +65,10 @@ class DeviceAudioShareService : Service() {
             IntentCompat.getParcelableExtra(it, AndroidDeviceAudioShare.EXTRA_CONSENT, Intent::class.java)
         }
         val granted = consent?.let { data ->
-            val resultCode = intent.getIntExtra(AndroidDeviceAudioShare.EXTRA_RESULT_CODE, Activity.RESULT_CANCELED)
-            getSystemService(MediaProjectionManager::class.java).getMediaProjection(resultCode, data)
+            projectionOf(intent.getIntExtra(AndroidDeviceAudioShare.EXTRA_RESULT_CODE, Activity.RESULT_CANCELED), data)
         } ?: run {
-            logger.w { "No capture consent: stopping" }
+            logger.w { "No valid capture consent: stopping" }
+            share.onStartFailed()
             stopSelf()
             return
         }
@@ -77,6 +77,17 @@ class DeviceAudioShareService : Service() {
         projection = granted
         share.onStarted(granted)
         muteMedia()
+    }
+
+    /** Null if the system rejects the consent: a token that was used already, or that expired. */
+    private fun projectionOf(resultCode: Int, consent: Intent): MediaProjection? = try {
+        getSystemService(MediaProjectionManager::class.java).getMediaProjection(resultCode, consent)
+    } catch (e: SecurityException) {
+        logger.w(e) { "The system rejected the capture consent" }
+        null
+    } catch (e: IllegalStateException) {
+        logger.w(e) { "The system rejected the capture consent" }
+        null
     }
 
     /**
@@ -109,7 +120,8 @@ class DeviceAudioShareService : Service() {
         }
         projection = null
         unmuteMedia()
-        // No effect after a stop by the user, which cleared the capture already.
+        // No effect after a stop by the user, which cleared the capture already, or after the
+        // projection callback, which ended the share as a system end.
         share.onRevoked()
         super.onDestroy()
     }

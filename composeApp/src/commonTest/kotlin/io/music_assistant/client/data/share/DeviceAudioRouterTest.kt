@@ -13,22 +13,35 @@ import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SourceDialect
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.WireVersion
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.yield
+import kotlin.concurrent.atomics.AtomicInt
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalAtomicApi::class)
 class DeviceAudioRouterTest {
     private object Capture : AudioCapture {
         override val format = CaptureFormat(sampleRate = 48_000, channels = 2, bitDepth = 16)
@@ -38,6 +51,7 @@ class DeviceAudioRouterTest {
     private class FakeShare(override val isSupported: Boolean = true) : DeviceAudioShare {
         override val capture = MutableStateFlow<AudioCapture?>(null)
         override var endedBySystem = false
+        override val startFailures = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         var stops = 0
 
         override fun stop() {
@@ -45,13 +59,24 @@ class DeviceAudioRouterTest {
             capture.value = null
         }
 
+        /** The system ended the projection, or the capture failed: the same end for the router. */
         fun revoke() {
             endedBySystem = true
             capture.value = null
         }
+
+        /** The system rejected the consent, so the capture never started. */
+        fun failStart() {
+            startFailures.tryEmit(Unit)
+        }
     }
 
-    private class Harness(scope: TestScope, wire: WireVersion = WireVersion.SPEC_1_0, instanceId: String? = "sendspin") {
+    private class Harness(
+        scope: TestScope,
+        wire: WireVersion = WireVersion.SPEC_1_0,
+        instanceId: String? = "sendspin",
+        routerScope: CoroutineScope = scope.backgroundScope,
+    ) {
         val share = FakeShare()
         val source = DeviceAudioSource(share, MutableStateFlow(instanceId))
         val player = MutableStateFlow<PlayerState>(connected(SourceStatus.Off))
@@ -62,6 +87,9 @@ class DeviceAudioRouterTest {
 
         /** Each released player, with whether it was told to stop first. */
         val released = mutableListOf<Pair<String, Boolean>>()
+
+        /** Runs in each release, before it is recorded. */
+        var onRelease: () -> Unit = {}
         val errors = ErrorMessageBus()
         val router = DeviceAudioRouter(
             share = share,
@@ -70,9 +98,12 @@ class DeviceAudioRouterTest {
             endpoint = MutableStateFlow(Endpoint.WebSocket("ws://server/sendspin", wire)),
             isListed = { listed },
             play = { plays += it },
-            releasePlayer = { playerId, stop -> released += playerId to stop },
+            releasePlayer = { playerId, stop ->
+                onRelease()
+                released += playerId to stop
+            },
             errorBus = errors,
-            scope = scope.backgroundScope,
+            scope = routerScope,
             describe = { it.key },
         )
 
@@ -88,6 +119,10 @@ class DeviceAudioRouterTest {
     }
 
     private companion object {
+        const val ROUNDS = 50
+        const val ENDERS = 4
+        const val SPIN = 100_000
+
         fun connected(source: SourceStatus) =
             PlayerState.Connected("device", "Server", ClockQuality.Good, AudioStatus.IDLE, source)
     }
@@ -276,5 +311,103 @@ class DeviceAudioRouterTest {
         assertFalse(noProvider.router.isAvailable.value)
         noProvider.share.capture.value = Capture
         assertNull(noProvider.source.config.first(), "no source role without a provider")
+    }
+
+    @Test
+    fun `a capture that fails while the stream runs ends as a capture end and stops the player`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        h.status(SourceStatus.Streaming)
+        runCurrent()
+        // The stream reports its end before the capture collector runs.
+        h.status(SourceStatus.Ready)
+        h.share.revoke()
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_revoked", h.errors.messages.first())
+        assertEquals(listOf("kitchen" to true), h.released, "the server did not stop the player")
+    }
+
+    @Test
+    fun `a stop from the notification while the stream runs is silent`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        h.status(SourceStatus.Streaming)
+        runCurrent()
+        h.player.value = PlayerState.Connecting(0)
+        h.share.stop()
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals(listOf("kitchen" to true), h.released)
+        h.errors.emit("end of messages")
+        assertEquals("end of messages", h.errors.messages.first())
+    }
+
+    @Test
+    fun `an unpaired session ends the share at once with a pairing message`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        runCurrent()
+        h.status(SourceStatus.Unpaired)
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertTrue(h.plays.isEmpty())
+        assertEquals(SourceDialect.SPEC, h.source.dialect.value, "no dialect retry: pairing is the problem")
+        assertEquals("device_audio_end_unpaired", h.errors.messages.first())
+    }
+
+    @Test
+    fun `a rejected consent ends the share at once`() = runTest {
+        val h = Harness(this)
+        runCurrent()
+        // The launcher routes right after it starts the service, before any capture exists.
+        h.router.route("kitchen")
+        runCurrent()
+        h.share.failStart()
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_timeout", h.errors.messages.first())
+        assertTrue(h.plays.isEmpty())
+    }
+
+    @Test
+    fun `ends on several threads release the player once`() = runTest {
+        withContext(Dispatchers.Default) {
+            repeat(ROUNDS) {
+                val routerScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+                val h = Harness(this@runTest, routerScope = routerScope)
+                val releases = AtomicInt(0)
+                // A slow release keeps a second end inside the window of the first.
+                h.onRelease = {
+                    releases.incrementAndFetch()
+                    var spin = 0L
+                    repeat(SPIN) { spin += it }
+                    check(spin >= 0)
+                }
+                h.status(SourceStatus.Streaming)
+                h.startShare()
+                withTimeout(5_000) { h.router.state.first { it == DeviceAudioShareState.Active } }
+
+                val ready = AtomicInt(0)
+                List(ENDERS) {
+                    launch {
+                        ready.incrementAndFetch()
+                        while (ready.load() < ENDERS) yield()
+                        h.router.stop()
+                    }
+                }.joinAll()
+
+                assertEquals(1, releases.load(), "round $it")
+                routerScope.cancel()
+            }
+        }
     }
 }
