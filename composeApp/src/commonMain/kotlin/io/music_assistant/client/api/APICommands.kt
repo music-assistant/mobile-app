@@ -158,6 +158,9 @@ object APICommands {
     const val AI_RADIO_QUEUE_DJ_STATUS = "ai_radio/queue_dj/status"
     const val AI_RADIO_QUEUE_DJ_SET = "ai_radio/queue_dj/set"
 
+    // Optional Share Links plugin.
+    const val SHARE_GENERATE = "share/generate"
+
     // Party plugin (optional provider, domain "party"): the host side of guest access.
     const val PARTY_URL = "party/url"
     const val PARTY_CONFIG = "party/config"

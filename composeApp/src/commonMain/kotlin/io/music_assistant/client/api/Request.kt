@@ -1350,6 +1350,13 @@ data class Request @OptIn(ExperimentalUuidApi::class) constructor(
         )
     }
 
+    data object Share {
+        fun generate(uri: String) = Request(
+            command = APICommands.SHARE_GENERATE,
+            args = buildJsonObject { put("uri", JsonPrimitive(uri)) },
+        )
+    }
+
     /**
      * The optional `party` plugin provider (checked on server 2.10.9 and 2.11). Gate the call sites on
      * `PartyRepository.available`. Both need `providers.read`.

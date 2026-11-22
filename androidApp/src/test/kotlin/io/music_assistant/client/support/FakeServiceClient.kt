@@ -98,6 +98,9 @@ class FakeServiceClient : ServiceClient {
      */
     var authorizeGate: CompletableDeferred<Unit>? = null
 
+    var generatedShareLink: String? = null
+    val shareRequests = mutableListOf<Request>()
+
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
     override val sessionState: StateFlow<SessionState> = _sessionState
@@ -113,6 +116,11 @@ class FakeServiceClient : ServiceClient {
         }
 
         return when (request.command) {
+            APICommands.SHARE_GENERATE -> {
+                shareRequests.add(request)
+                Result.success(answer(request, generatedShareLink))
+            }
+
             APICommands.PROVIDERS -> {
                 Result.success(
                     answer(

@@ -36,6 +36,7 @@ import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.QueueOverlayRepository
 import io.music_assistant.client.data.repository.SendspinDelayRepository
 import io.music_assistant.client.data.repository.ServiceClientMediaItemRepository
+import io.music_assistant.client.data.repository.ShareRepository
 import io.music_assistant.client.data.repository.WaveformRepository
 import io.music_assistant.client.data.share.DeviceAudioRouter
 import io.music_assistant.client.data.share.DeviceAudioShare
@@ -247,6 +248,7 @@ fun sharedModule(
                 scope = scope,
             )
         }
+        single { ShareRepository(get()) }
         single<MediaItemRepository> { ServiceClientMediaItemRepository(get(), get()) }
         single {                            // Sole refresh_item sender; refreshes outlive the page
             ItemRefresher(
