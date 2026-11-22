@@ -672,19 +672,27 @@ final class io.music_assistant.sendspin.api/SinkPosition { // io.music_assistant
 }
 
 final class io.music_assistant.sendspin.api/SourceConfig { // io.music_assistant.sendspin.api/SourceConfig|null[0]
-    constructor <init>(io.music_assistant.sendspin.api/AudioCapture, io.music_assistant.sendspin.api/SourceDialect = ...) // io.music_assistant.sendspin.api/SourceConfig.<init>|<init>(io.music_assistant.sendspin.api.AudioCapture;io.music_assistant.sendspin.api.SourceDialect){}[0]
+    constructor <init>(io.music_assistant.sendspin.api/AudioCapture, io.music_assistant.sendspin.api/SourceDialect = ..., kotlin/Int = ...) // io.music_assistant.sendspin.api/SourceConfig.<init>|<init>(io.music_assistant.sendspin.api.AudioCapture;io.music_assistant.sendspin.api.SourceDialect;kotlin.Int){}[0]
 
     final val capture // io.music_assistant.sendspin.api/SourceConfig.capture|{}capture[0]
         final fun <get-capture>(): io.music_assistant.sendspin.api/AudioCapture // io.music_assistant.sendspin.api/SourceConfig.capture.<get-capture>|<get-capture>(){}[0]
     final val dialect // io.music_assistant.sendspin.api/SourceConfig.dialect|{}dialect[0]
         final fun <get-dialect>(): io.music_assistant.sendspin.api/SourceDialect // io.music_assistant.sendspin.api/SourceConfig.dialect.<get-dialect>|<get-dialect>(){}[0]
+    final val maxLatencyMs // io.music_assistant.sendspin.api/SourceConfig.maxLatencyMs|{}maxLatencyMs[0]
+        final fun <get-maxLatencyMs>(): kotlin/Int // io.music_assistant.sendspin.api/SourceConfig.maxLatencyMs.<get-maxLatencyMs>|<get-maxLatencyMs>(){}[0]
 
     final fun component1(): io.music_assistant.sendspin.api/AudioCapture // io.music_assistant.sendspin.api/SourceConfig.component1|component1(){}[0]
     final fun component2(): io.music_assistant.sendspin.api/SourceDialect // io.music_assistant.sendspin.api/SourceConfig.component2|component2(){}[0]
-    final fun copy(io.music_assistant.sendspin.api/AudioCapture = ..., io.music_assistant.sendspin.api/SourceDialect = ...): io.music_assistant.sendspin.api/SourceConfig // io.music_assistant.sendspin.api/SourceConfig.copy|copy(io.music_assistant.sendspin.api.AudioCapture;io.music_assistant.sendspin.api.SourceDialect){}[0]
+    final fun component3(): kotlin/Int // io.music_assistant.sendspin.api/SourceConfig.component3|component3(){}[0]
+    final fun copy(io.music_assistant.sendspin.api/AudioCapture = ..., io.music_assistant.sendspin.api/SourceDialect = ..., kotlin/Int = ...): io.music_assistant.sendspin.api/SourceConfig // io.music_assistant.sendspin.api/SourceConfig.copy|copy(io.music_assistant.sendspin.api.AudioCapture;io.music_assistant.sendspin.api.SourceDialect;kotlin.Int){}[0]
     final fun equals(kotlin/Any?): kotlin/Boolean // io.music_assistant.sendspin.api/SourceConfig.equals|equals(kotlin.Any?){}[0]
     final fun hashCode(): kotlin/Int // io.music_assistant.sendspin.api/SourceConfig.hashCode|hashCode(){}[0]
     final fun toString(): kotlin/String // io.music_assistant.sendspin.api/SourceConfig.toString|toString(){}[0]
+
+    final object Companion { // io.music_assistant.sendspin.api/SourceConfig.Companion|null[0]
+        final const val DEFAULT_MAX_LATENCY_MS // io.music_assistant.sendspin.api/SourceConfig.Companion.DEFAULT_MAX_LATENCY_MS|{}DEFAULT_MAX_LATENCY_MS[0]
+            final fun <get-DEFAULT_MAX_LATENCY_MS>(): kotlin/Int // io.music_assistant.sendspin.api/SourceConfig.Companion.DEFAULT_MAX_LATENCY_MS.<get-DEFAULT_MAX_LATENCY_MS>|<get-DEFAULT_MAX_LATENCY_MS>(){}[0]
+    }
 }
 
 final class io.music_assistant.sendspin.api/SteppedHeadTracker { // io.music_assistant.sendspin.api/SteppedHeadTracker|null[0]

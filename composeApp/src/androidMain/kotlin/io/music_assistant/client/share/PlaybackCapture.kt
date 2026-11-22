@@ -15,12 +15,17 @@ import io.music_assistant.sendspin.api.AudioCapture
 import io.music_assistant.sendspin.api.CaptureFormat
 import io.music_assistant.sendspin.api.CapturedAudio
 import io.music_assistant.sendspin.api.MonotonicClock
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
+import java.util.concurrent.Executors
 import kotlin.math.abs
 
 /**
@@ -45,9 +50,35 @@ internal class PlaybackCapture(
 
     override val format = CaptureFormat(sampleRate = SAMPLE_RATE, channels = CHANNELS, bitDepth = BIT_DEPTH)
 
+    /**
+     * The reads run on a thread of their own at audio priority, so the priority never stays on
+     * a shared pool thread. The queue to the encoder holds [QUEUE_BLOCKS] and drops the oldest,
+     * so a slow encoder never stops the reads: the record does not overrun, and the frame count
+     * of the timeline stays right. The player drops audio that is too old anyway.
+     */
+    override fun frames(): Flow<CapturedAudio> = flow {
+        val thread = captureThread()
+        try {
+            emitAll(recording().flowOn(thread).buffer(QUEUE_BLOCKS, BufferOverflow.DROP_OLDEST))
+        } finally {
+            // The recording has ended here: the collection waits for it.
+            thread.close()
+        }
+    }
+
+    private fun captureThread(): ExecutorCoroutineDispatcher = Executors.newSingleThreadExecutor { task ->
+        Thread(
+            {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
+                task.run()
+            },
+            THREAD_NAME,
+        )
+    }.asCoroutineDispatcher()
+
     // The record permission is a precondition of the share: the launcher asks for it first.
     @SuppressLint("MissingPermission")
-    override fun frames(): Flow<CapturedAudio> = flow {
+    private fun recording(): Flow<CapturedAudio> = flow {
         val blockBytes = SAMPLE_RATE * BLOCK_MILLIS / MILLIS_PER_SECOND * format.bytesPerFrame
         val record = AudioRecord.Builder()
             .setAudioFormat(
@@ -67,11 +98,8 @@ internal class PlaybackCapture(
                     .build(),
             )
             .build()
-        val thread = Process.myTid()
-        val priority = Process.getThreadPriority(thread)
         try {
             if (record.state != AudioRecord.STATE_INITIALIZED) fail("The playback capture did not start")
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
             record.startRecording()
             log.i { "Playback capture started: recording=${record.recordingState == AudioRecord.RECORDSTATE_RECORDING}" }
             val timeline = CaptureTimeline()
@@ -85,12 +113,10 @@ internal class PlaybackCapture(
                 emit(CapturedAudio(pcm, timeline.timeOf(record, frames)))
             }
         } finally {
-            // The thread goes back to the shared pool.
-            Process.setThreadPriority(thread, priority)
             runCatching { record.stop() }
             record.release()
         }
-    }.flowOn(Dispatchers.IO)
+    }
 
     private fun fail(message: String): Nothing {
         onFailed(this)
@@ -150,6 +176,8 @@ internal class PlaybackCapture(
         const val BIT_DEPTH = 16
         const val BLOCK_MILLIS = 20
         const val BUFFER_BLOCKS = 4
+        const val QUEUE_BLOCKS = 4
+        const val THREAD_NAME = "PlaybackCapture"
         const val MILLIS_PER_SECOND = 1_000
         const val MICROS_PER_SECOND = 1_000_000L
         const val NANOS_PER_MICRO = 1_000L

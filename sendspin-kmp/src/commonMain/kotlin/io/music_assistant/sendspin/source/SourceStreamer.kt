@@ -86,6 +86,15 @@ internal class SourceStreamer(
     private var starts = 0
 
     // Written by the session reader only.
+    /** Audio older than this at send time is dropped. */
+    private val maxBacklogMicros = config.maxLatencyMs * MICROS_PER_MILLI
+
+    /**
+     * Room for [SourceConfig.maxLatencyMs] of 20 ms chunks, plus one. More would only hold
+     * audio that the age check drops anyway.
+     */
+    private val backlogChunks = config.maxLatencyMs / PCM_CHUNK_MILLIS + 1
+
     private var trusted = false
     private var roleActive = false
     private var playback = false
@@ -167,11 +176,11 @@ internal class SourceStreamer(
         try {
             encoded()
                 .flowOn(encodeDispatcher)
-                .buffer(BACKLOG_CHUNKS, BufferOverflow.DROP_OLDEST)
+                .buffer(backlogChunks, BufferOverflow.DROP_OLDEST)
                 .collect { chunk ->
                     // After a stalled link, live audio is worth more than the backlog.
                     val ageMicros = clock.nowMicros() - chunk.audio.captureTimeMicros
-                    val late = ageMicros > MAX_BACKLOG_MICROS
+                    val late = ageMicros > maxBacklogMicros
                     val serverMicros = clockSync.toServerMicros(chunk.audio.captureTimeMicros)?.takeUnless { late }
                         ?: run {
                             if (dropped++ % DROP_LOG_INTERVAL == 0) {
@@ -245,8 +254,8 @@ internal class SourceStreamer(
         }
 
     private companion object {
-        const val BACKLOG_CHUNKS = 32
-        const val MAX_BACKLOG_MICROS = 500_000L
+        const val PCM_CHUNK_MILLIS = 20
+        const val MICROS_PER_MILLI = 1_000L
         const val END_TIMEOUT_MILLIS = 1_000L
         const val DROP_LOG_INTERVAL = 50
     }
