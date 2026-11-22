@@ -13,6 +13,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -153,6 +154,44 @@ class VolumeButtonServiceTest {
             runCurrent()
         }
         assertEquals<List<PlayerAction>>(listOf(PlayerAction.VolumeUp, PlayerAction.VolumeDown), target.sent)
+    }
+
+    @Test
+    fun pressesShowThePendingLevelUntilTheServerHadTimeToReachIt() = runTest {
+        val service = enabledServiceWith(playerData())
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        service.onVolumeKey(up = true, isRepeat = true)
+        // 40 → 43 → 46, stepping from the pending level, not the reported 40.
+        assertEquals(mapOf("remote" to 46f), service.pendingVolumes.value)
+
+        advanceTimeBy(PENDING_VOLUME_MS - 1)
+        service.onVolumeKey(up = false, isRepeat = false)
+        assertEquals(mapOf("remote" to 43f), service.pendingVolumes.value)
+
+        // Each press restarts the hold.
+        advanceTimeBy(PENDING_VOLUME_MS - 1)
+        assertEquals(mapOf("remote" to 43f), service.pendingVolumes.value)
+        advanceTimeBy(2)
+        assertTrue(service.pendingVolumes.value.isEmpty())
+    }
+
+    @Test
+    fun refusedPressShowsNoPendingLevel() = runTest {
+        val service = enabledServiceWith(playerData(canSetVolume = false))
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        assertTrue(service.pendingVolumes.value.isEmpty())
+    }
+
+    @Test
+    fun nextVolumeUsesTheServerSteps() {
+        assertEquals(6f, nextVolume(5f, up = true))
+        assertEquals(22f, nextVolume(20f, up = true))
+        assertEquals(53f, nextVolume(50f, up = true))
+        assertEquals(78f, nextVolume(80f, up = false))
+        assertEquals(100f, nextVolume(100f, up = true))
+        assertEquals(0f, nextVolume(0f, up = false))
     }
 
     @Test

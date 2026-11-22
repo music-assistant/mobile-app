@@ -6,16 +6,23 @@ import io.music_assistant.client.data.model.client.PlayerData
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 class VolumeButtonService(
     private val target: RemoteVolumeTarget,
     private val settings: SettingsRepository,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
 ) {
     private val log = Logger.withTag("VolumeButtonService")
 
@@ -39,6 +46,18 @@ class VolumeButtonService(
 
     /** Each press that the selected remote player cannot act on, with the reason. */
     val refusals = _refusals.asSharedFlow()
+
+    private val _pendingVolumes = MutableStateFlow<Map<String, Float>>(emptyMap())
+
+    /**
+     * The level that the key presses of the last [PENDING_VOLUME_MS] step each remote player to,
+     * by player id. The player reports its new level only after the server reached it, so the
+     * app shows this level until then; it uses the server's default steps ([nextVolume]).
+     */
+    val pendingVolumes: StateFlow<Map<String, Float>> = _pendingVolumes.asStateFlow()
+
+    // Main thread only, like the key events.
+    private val pendingExpiries = mutableMapOf<String, Job>()
 
     // Conflated: one step is in flight and only the latest press waits, so a held key steps once
     // per server round trip and a reversal replaces the waiting step. The server applies its own
@@ -95,12 +114,24 @@ class VolumeButtonService(
         when (val reason = refusalFor(player)) {
             null -> {
                 steps.trySend(player to volumeStep(player, up))
+                showPendingVolume(player, up)
                 _remoteAdjust.tryEmit(player.playerId)
             }
 
             else -> if (!isRepeat) _refusals.tryEmit(VolumeKeyRefusal(reason, player.player.name))
         }
         return true
+    }
+
+    private fun showPendingVolume(player: PlayerData, up: Boolean) {
+        val id = player.playerId
+        val base = _pendingVolumes.value[id] ?: player.player.currentVolume ?: return
+        _pendingVolumes.update { it + (id to nextVolume(base, up)) }
+        pendingExpiries.remove(id)?.cancel()
+        pendingExpiries[id] = scope.launch {
+            delay(PENDING_VOLUME_MS)
+            _pendingVolumes.update { it - id }
+        }
     }
 
     private fun refusalFor(player: PlayerData): VolumeKeyRefusal.Reason? = when {
@@ -122,6 +153,31 @@ enum class UnroutedVolumeKey {
     /** A call or VoIP holds the audio mode. */
     IN_CALL,
 }
+
+/**
+ * How long a pressed level shows after the last press. The server steps from the level it
+ * last commanded for 2 s, so after that the player's own level is the one to show.
+ */
+internal const val PENDING_VOLUME_MS = 2_000L
+
+/**
+ * The level one volume step goes to from [current], with the server's default steps: 1 below
+ * 10 and above 90, 2 below 30 and above 70, 3 in between. A player configured with its own
+ * step shows that step once the server confirms it.
+ */
+internal fun nextVolume(current: Float, up: Boolean): Float {
+    val level = current.roundToInt()
+    val step = when {
+        level < FINE_BELOW || level > 100 - FINE_BELOW -> 1
+        level < MEDIUM_BELOW || level > 100 - MEDIUM_BELOW -> 2
+        else -> COARSE_STEP
+    }
+    return (if (up) level + step else level - step).coerceIn(0, 100).toFloat()
+}
+
+private const val FINE_BELOW = 10
+private const val MEDIUM_BELOW = 30
+private const val COARSE_STEP = 3
 
 /** Why a volume key press for the selected remote player changed nothing. */
 data class VolumeKeyRefusal(val reason: Reason, val playerName: String) {
