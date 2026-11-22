@@ -76,7 +76,16 @@ class QueueSharingTest {
     fun tearDown() = scope.cancel()
 
     @Test
-    fun `played track shares the generated link without replaying or editing the queue`() {
+    fun `played track shares the direct YouTube Music link without replaying or editing the queue`() {
+        assertPlayedTrackShare("Share YouTube Music link", "https://music.youtube.com/watch?v=meuR1l4j-xs")
+    }
+
+    @Test
+    fun `played track can still share the generated Music Assistant link`() {
+        assertPlayedTrackShare("Share Music Assistant link", GENERATED_LINK)
+    }
+
+    private fun assertPlayedTrackShare(choice: String, expectedUrl: String) {
         val played = queueItem("Previously played", "library://track/1")
         val current = queueItem("Playing", "library://track/2")
         val queue = listOf(played, current).toQueue()
@@ -90,6 +99,11 @@ class QueueSharingTest {
             assertTrue(actions.isEmpty())
         }
         composeTestRule.onNodeWithText("Share").performClick()
+        composeTestRule.onNodeWithText("Share YouTube Music link").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Share Music Assistant link").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Share unsafe link").assertDoesNotExist()
+        composeTestRule.runOnIdle { assertTrue(intents.isEmpty()) }
+        composeTestRule.onNodeWithText(choice).performClick()
 
         composeTestRule.runOnIdle {
             val request = client.requests.single()
@@ -100,7 +114,7 @@ class QueueSharingTest {
             val send = assertNotNull(IntentCompat.getParcelableExtra(chooser, Intent.EXTRA_INTENT, Intent::class.java))
             assertEquals(Intent.ACTION_SEND, send.action)
             assertEquals("text/plain", send.type)
-            assertEquals(GENERATED_LINK, send.getStringExtra(Intent.EXTRA_TEXT))
+            assertEquals(expectedUrl, send.getStringExtra(Intent.EXTRA_TEXT))
             assertTrue(actions.isEmpty())
         }
     }
@@ -189,6 +203,9 @@ class QueueSharingTest {
     }
 
     private companion object {
-        const val GENERATED_LINK = "https://share.music-assistant.io/#1abcd"
+        // Version 1 payload with a YouTube Music URL and a credential-bearing URL.
+        const val GENERATED_LINK =
+            "https://share.music-assistant.io/#1TYxBCsIwEEWvIrPWBsFVQPQI4gUkpiONTpqQmYkNpXe3unL5-O-_GaRlBAtSnH_BF" +
+            "iQIfflSsIakTG2TyTXs1y2XVEOP5aaFGOwMTaJy8Ks-iGS2xvy4a0lF79j5FM3biR9O9RhRr3s6PHcTrykd2T3w76iMxTL6gnLGycVM2IWxOgq9gWX5AA"
     }
 }
