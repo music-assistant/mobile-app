@@ -25,12 +25,13 @@ import org.jetbrains.compose.resources.stringResource
 fun ProviderIcon(
     modifier: Modifier = Modifier,
     providerIconModel: ProviderIconModel?,
+    contentDescription: String? = stringResource(Res.string.cd_provider_icon),
 ) {
     when (providerIconModel) {
         is ProviderIconModel.Mdi -> {
             Icon(
                 imageVector = providerIconModel.icon,
-                contentDescription = stringResource(Res.string.cd_provider_icon),
+                contentDescription = contentDescription,
                 modifier = modifier,
                 tint = providerIconModel.tint,
             )
@@ -41,7 +42,7 @@ fun ProviderIcon(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
                     .data(providerIconModel.imageBytes)
                     .build(),
-                contentDescription = stringResource(Res.string.cd_provider_icon),
+                contentDescription = contentDescription,
                 modifier = modifier,
                 contentScale = ContentScale.Fit,
             )
@@ -52,7 +53,7 @@ fun ProviderIcon(
                 model = ImageRequest.Builder(LocalPlatformContext.current)
                     .data(providerIconModel.svgBytes)
                     .build(),
-                contentDescription = stringResource(Res.string.cd_provider_icon),
+                contentDescription = contentDescription,
                 modifier = modifier,
                 contentScale = ContentScale.Fit,
             )

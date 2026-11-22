@@ -37,6 +37,7 @@ import io.music_assistant.client.support.FakeServiceClient
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.action.QueueAction
+import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.ui.theme.AppTheme
 import io.music_assistant.client.utils.ConnectionData
 import io.music_assistant.client.utils.SessionState
@@ -53,6 +54,7 @@ import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 import org.koin.test.KoinTestRule
 import kotlin.test.assertEquals
@@ -77,12 +79,12 @@ class QueueSharingTest {
 
     @Test
     fun `played track shares the direct YouTube Music link without replaying or editing the queue`() {
-        assertPlayedTrackShare("Share YouTube Music link", "https://music.youtube.com/watch?v=meuR1l4j-xs")
+        assertPlayedTrackShare("YouTube Music", "https://music.youtube.com/watch?v=meuR1l4j-xs")
     }
 
     @Test
     fun `played track can still share the generated Music Assistant link`() {
-        assertPlayedTrackShare("Share Music Assistant link", GENERATED_LINK)
+        assertPlayedTrackShare("Music Assistant", GENERATED_LINK)
     }
 
     private fun assertPlayedTrackShare(choice: String, expectedUrl: String) {
@@ -99,9 +101,9 @@ class QueueSharingTest {
             assertTrue(actions.isEmpty())
         }
         composeTestRule.onNodeWithText("Share").performClick()
-        composeTestRule.onNodeWithText("Share YouTube Music link").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Share Music Assistant link").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Share unsafe link").assertDoesNotExist()
+        composeTestRule.onNodeWithText("YouTube Music").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Music Assistant").assertIsDisplayed()
+        composeTestRule.onNodeWithText("unsafe").assertDoesNotExist()
         composeTestRule.runOnIdle { assertTrue(intents.isEmpty()) }
         composeTestRule.onNodeWithText(choice).performClick()
 
@@ -135,6 +137,7 @@ class QueueSharingTest {
         val dependencies = module {
             single { ShareRepository(client) }
             single { ProviderRepository(client, scope) }
+            viewModel { ProviderViewModel(client, get()) }
         }
         koinRule.koin.loadModules(listOf(dependencies))
         composeTestRule.setContent {
@@ -192,6 +195,7 @@ class QueueSharingTest {
                 APICommands.PROVIDERS -> myJson.encodeToJsonElement(
                     listOf(ServerProviderInstance("share_provider", "Share Links", "share_provider", "plugin")),
                 )
+                APICommands.PROVIDERS_ICON -> myJson.encodeToJsonElement(null as String?)
                 "share/generate" -> {
                     requests.add(request)
                     myJson.encodeToJsonElement(GENERATED_LINK)
