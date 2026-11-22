@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo
 import android.media.AudioManager
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -36,6 +37,9 @@ class DeviceAudioShareService : Service() {
     private val logger = Logger.withTag("DeviceAudioShareService")
     private val share: AndroidDeviceAudioShare by inject()
     private var projection: MediaProjection? = null
+
+    /** Held for the share, so Wi-Fi power save does not batch the audio packets with the screen off. */
+    private var wifiLock: WifiManager.WifiLock? = null
 
     /** This service muted the media stream, so it must give the sound back. */
     private var mutedMedia = false
@@ -77,6 +81,26 @@ class DeviceAudioShareService : Service() {
         projection = granted
         share.onStarted(granted)
         muteMedia()
+        acquireWifiLock()
+    }
+
+    /** Low latency, from Android 10 like the share. Not reference counted: one release ends it. */
+    private fun acquireWifiLock() {
+        if (wifiLock?.isHeld == true) return
+        runCatching {
+            applicationContext.getSystemService(WifiManager::class.java)
+                .createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, WIFI_LOCK_TAG)
+                .apply {
+                    setReferenceCounted(false)
+                    acquire()
+                }
+        }.onSuccess { wifiLock = it }
+            .onFailure { logger.w(it) { "Cannot take the Wi-Fi lock" } }
+    }
+
+    private fun releaseWifiLock() {
+        wifiLock?.takeIf { it.isHeld }?.release()
+        wifiLock = null
     }
 
     /** Null if the system rejects the consent: a token that was used already, or that expired. */
@@ -120,6 +144,7 @@ class DeviceAudioShareService : Service() {
         }
         projection = null
         unmuteMedia()
+        releaseWifiLock()
         // No effect after a stop by the user, which cleared the capture already, or after the
         // projection callback, which ended the share as a system end.
         share.onRevoked()
@@ -151,5 +176,6 @@ class DeviceAudioShareService : Service() {
         const val CHANNEL_ID = "device_audio_share"
         const val NOTIFICATION_ID = 2
         const val ACTION_STOP = "io.music_assistant.client.action.STOP_PHONE_AUDIO_SHARE"
+        const val WIFI_LOCK_TAG = "MusicAssistant:DeviceAudioShare"
     }
 }

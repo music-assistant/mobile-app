@@ -386,7 +386,11 @@ actual class PlatformFeature {
   5 s, the share ends.
   The handshake does not give the revision of the role. The router starts with `SourceDialect.SPEC`, and tries `RC1`
   if the status is `Refused`. That restarts the audio link one time. A share ends when the user stops it, when the
-  system ends the capture, when the server stops the stream, or when the audio link drops. The roles go in
+  system ends the capture, when the server stops the stream, or when the audio link drops. A share that started on Wi-Fi
+  also ends when no Wi-Fi network is back within 5 s (`DeviceAudioShareEnd.WifiLost`). The router collects
+  `DeviceAudioShare.wifiConnected` only while the capture runs, so the Android network callback is registered only then.
+  A share that started without Wi-Fi never ends this way. `DeviceAudioShareService` holds a `WIFI_MODE_FULL_LOW_LATENCY`
+  lock for the life of the projection. The roles go in
   `client/hello`, so the start and the end of a share restart the audio link.
 
   The server keeps the device as the active source of the target after a stop. So the end of a share sends

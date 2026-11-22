@@ -54,6 +54,10 @@ class DeviceAudioRouterTest {
         override val startFailures = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         var stops = 0
 
+        /** The device is on Wi-Fi. */
+        val wifi = MutableStateFlow(true)
+        override val wifiConnected: Flow<Boolean> = wifi
+
         override fun stop() {
             stops++
             capture.value = null
@@ -115,6 +119,13 @@ class DeviceAudioRouterTest {
         fun startShare() {
             share.capture.value = Capture
             router.route("kitchen")
+        }
+
+        /** [startShare], and the server streams the source. */
+        fun startStreaming() {
+            startShare()
+            status(SourceStatus.Ready)
+            status(SourceStatus.Streaming)
         }
     }
 
@@ -299,6 +310,78 @@ class DeviceAudioRouterTest {
         assertEquals(listOf("kitchen" to true), h.released, "the player must not wait in silence for the source")
         h.errors.emit("end of messages")
         assertEquals("end of messages", h.errors.messages.first())
+    }
+
+    @Test
+    fun `a short wifi drop keeps the share`() = runTest {
+        val h = Harness(this)
+        h.startStreaming()
+        runCurrent()
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value)
+
+        h.share.wifi.value = false
+        advanceTimeBy(4_000)
+        runCurrent()
+        h.share.wifi.value = true
+        advanceTimeBy(10_000)
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value)
+        assertEquals(0, h.share.stops)
+    }
+
+    @Test
+    fun `a wifi loss longer than the grace ends the share`() = runTest {
+        val h = Harness(this)
+        h.startStreaming()
+        runCurrent()
+
+        h.share.wifi.value = false
+        advanceTimeBy(4_999)
+        runCurrent()
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value)
+        advanceTimeBy(2)
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals(1, h.share.stops)
+        assertEquals("device_audio_end_wifi_lost", h.errors.messages.first())
+        assertEquals(listOf("kitchen" to true), h.released)
+    }
+
+    @Test
+    fun `a share that started without wifi does not end on wifi`() = runTest {
+        val h = Harness(this)
+        h.share.wifi.value = false
+        h.startStreaming()
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value)
+
+        // A Wi-Fi that comes and goes later is not the network of the share.
+        h.share.wifi.value = true
+        runCurrent()
+        h.share.wifi.value = false
+        advanceTimeBy(10_000)
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value)
+        assertEquals(0, h.share.stops)
+    }
+
+    @Test
+    fun `wifi is watched only while a share runs`() = runTest {
+        val h = Harness(this)
+        runCurrent()
+        assertEquals(0, h.share.wifi.subscriptionCount.value)
+
+        h.startShare()
+        runCurrent()
+        assertEquals(1, h.share.wifi.subscriptionCount.value)
+
+        h.router.stop()
+        runCurrent()
+        assertEquals(0, h.share.wifi.subscriptionCount.value)
     }
 
     @Test

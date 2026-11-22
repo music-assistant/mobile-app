@@ -26,6 +26,12 @@ interface DeviceAudioShare {
     /** Emits when a start gave no capture: the system did not accept the consent. */
     val startFailures: Flow<Unit>
 
+    /**
+     * Whether the device is on Wi-Fi. Cold: the platform watches the network only while this is
+     * collected, so the router collects it only during a share. Empty where the platform cannot tell.
+     */
+    val wifiConnected: Flow<Boolean>
+
     /** Ends the capture. No effect while nothing is shared. */
     fun stop()
 }
@@ -36,5 +42,6 @@ class UnsupportedDeviceAudioShare : DeviceAudioShare {
     override val capture: StateFlow<AudioCapture?> = MutableStateFlow(null)
     override val endedBySystem = false
     override val startFailures: Flow<Unit> = emptyFlow()
+    override val wifiConnected: Flow<Boolean> = emptyFlow()
     override fun stop() = Unit
 }

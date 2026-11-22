@@ -19,7 +19,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -34,6 +36,7 @@ import musicassistantclient.composeapp.generated.resources.device_audio_end_revo
 import musicassistantclient.composeapp.generated.resources.device_audio_end_server_stopped
 import musicassistantclient.composeapp.generated.resources.device_audio_end_timeout
 import musicassistantclient.composeapp.generated.resources.device_audio_end_unpaired
+import musicassistantclient.composeapp.generated.resources.device_audio_end_wifi_lost
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 
@@ -64,6 +67,8 @@ enum class DeviceAudioShareEnd(val message: StringResource) {
 
     /** The local player is not paired with the server, which grants the source only to a paired one. */
     Unpaired(Res.string.device_audio_end_unpaired),
+
+    WifiLost(Res.string.device_audio_end_wifi_lost),
 }
 
 /**
@@ -74,7 +79,9 @@ enum class DeviceAudioShareEnd(val message: StringResource) {
  * waits until the server accepts the source and then sends an ordinary play request for the
  * source uri through [play]. A share ends when the user stops it, when the system ends the
  * capture, when the server stops the stream, or when the audio link drops: a start command
- * does not survive a reconnect. The end of a share stops the player that played it.
+ * does not survive a reconnect. A share that started on Wi-Fi also ends when the Wi-Fi is gone
+ * for [WIFI_GRACE_MS]: the server cannot reach a source that left the local network. The end
+ * of a share stops the player that played it.
  */
 class DeviceAudioRouter(
     private val share: DeviceAudioShare,
@@ -141,6 +148,27 @@ class DeviceAudioRouter(
         scope.launch {
             share.startFailures.collect {
                 if (_state.value != DeviceAudioShareState.Idle) end(DeviceAudioShareEnd.CaptureFailed)
+            }
+        }
+        scope.launch {
+            share.capture.map { it != null }.distinctUntilChanged().collectLatest { running ->
+                if (running) watchWifi()
+            }
+        }
+    }
+
+    /**
+     * Ends the share when the Wi-Fi that it started on is gone for [WIFI_GRACE_MS]. A share that
+     * started without Wi-Fi (ethernet, or a remote connection) has none to lose, and never ends here.
+     * The grace covers a roam between access points and a short drop of the signal.
+     */
+    private suspend fun watchWifi() {
+        var startedOnWifi: Boolean? = null
+        share.wifiConnected.distinctUntilChanged().collectLatest { connected ->
+            val armed = startedOnWifi ?: connected.also { startedOnWifi = it }
+            if (armed && !connected) {
+                delay(WIFI_GRACE_MS)
+                end(DeviceAudioShareEnd.WifiLost)
             }
         }
     }
@@ -277,5 +305,11 @@ class DeviceAudioRouter(
 
         /** The server gives a source 5 s to send audio after its start command. */
         const val STREAM_WAIT_MS = 10_000L
+
+        /**
+         * How long the Wi-Fi may be gone before the share ends. A roam or a short drop is back in
+         * this time; the share is faster to end than the ~27 s that a silent socket takes.
+         */
+        const val WIFI_GRACE_MS = 5_000L
     }
 }

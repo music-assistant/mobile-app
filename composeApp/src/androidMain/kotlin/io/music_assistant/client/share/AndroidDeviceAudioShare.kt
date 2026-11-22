@@ -4,16 +4,22 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjection
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.annotation.VisibleForTesting
 import io.music_assistant.client.data.share.DeviceAudioShare
 import io.music_assistant.client.utils.sendspinClock
 import io.music_assistant.sendspin.api.AudioCapture
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlin.concurrent.Volatile
 
 /**
@@ -40,6 +46,39 @@ class AndroidDeviceAudioShare(
 
     /** A stop by the user and an end by the system can race: the first to clear the capture decides. */
     private val lock = Any()
+
+    /**
+     * A Wi-Fi network is up, with or without internet: a server on the local network needs none.
+     * The callback is registered only while collected. The first value is the default network,
+     * which the audio link uses; the callback then follows every Wi-Fi network. Needs the
+     * `ACCESS_NETWORK_STATE` permission, which the sendspin-kmp manifest declares.
+     */
+    override val wifiConnected: Flow<Boolean> = callbackFlow {
+        val manager = context.getSystemService(ConnectivityManager::class.java)
+        val networks = mutableSetOf<Network>()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                synchronized(networks) { networks += network }
+                trySend(true)
+            }
+
+            override fun onLost(network: Network) {
+                val connected = synchronized(networks) {
+                    networks -= network
+                    networks.isNotEmpty()
+                }
+                trySend(connected)
+            }
+        }
+        val default = manager.activeNetwork?.let(manager::getNetworkCapabilities)
+        send(default?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true)
+        val request = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+        manager.registerNetworkCallback(request, callback)
+        awaitClose { manager.unregisterNetworkCallback(callback) }
+    }
 
     /** Starts the service with the consent that the user just gave ([resultCode], [consent]). */
     fun start(resultCode: Int, consent: Intent, notification: ShareNotificationText) {
