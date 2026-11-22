@@ -384,8 +384,10 @@ actual class PlatformFeature {
   The report and the play request use different connections, so the router also asks the server with
   `music/verify_item_uri`. It sends the play request only after the answer is true. If the answer stays false for
   5 s, the share ends.
-  The handshake does not give the revision of the role. The router starts with `SourceDialect.SPEC`, and tries `RC1`
-  if the status is `Refused`. That restarts the audio link one time. A share ends when the user stops it, when the
+  The handshake does not give the revision of the role. The router starts with the dialect that the server accepted
+  last time (`SettingsRepository.getSourceDialect`, keyed by `server_id`), or `SourceDialect.SPEC` for a new server,
+  and tries the other one if the status is `Refused`. That restarts the audio link one time. An accepted dialect
+  replaces the stored one, so an upgraded server pays the retry once. A share ends when the user stops it, when the
   system ends the capture, when the server stops the stream, or when the audio link drops. The roles go in
   `client/hello`, so the start and the end of a share restart the audio link.
 

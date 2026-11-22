@@ -66,7 +66,13 @@ class LocalPlayerAdapterTest {
             errorBus = ErrorMessageBus(),
             endpoints = LocalPlayerEndpoints(client, settings, scope),
             playerFactory = { _, _, _ -> player },
-            deviceAudioSource = DeviceAudioSource(UnsupportedDeviceAudioShare(), MutableStateFlow(null)),
+            deviceAudioSource = DeviceAudioSource(
+                UnsupportedDeviceAudioShare(),
+                instanceId = MutableStateFlow(null),
+                serverId = MutableStateFlow(null),
+                settings = settings,
+                scope = scope,
+            ),
         )
     }
 

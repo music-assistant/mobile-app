@@ -1,8 +1,10 @@
 package io.music_assistant.client.data.share
 
+import com.russhwolf.settings.MapSettings
 import io.music_assistant.client.api.ErrorMessageBus
 import io.music_assistant.client.data.model.client.QueueOption
 import io.music_assistant.client.data.play.PlayRequest
+import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.sendspin.api.AudioCapture
 import io.music_assistant.sendspin.api.AudioStatus
 import io.music_assistant.sendspin.api.CaptureFormat
@@ -76,9 +78,19 @@ class DeviceAudioRouterTest {
         wire: WireVersion = WireVersion.SPEC_1_0,
         instanceId: String? = "sendspin",
         routerScope: CoroutineScope = scope.backgroundScope,
+        serverId: String? = SERVER_A,
+        /** What earlier processes stored; shared by harnesses that stand for app restarts. */
+        val settings: SettingsRepository = SettingsRepository(MapSettings(), MapSettings()),
     ) {
         val share = FakeShare()
-        val source = DeviceAudioSource(share, MutableStateFlow(instanceId))
+        val serverId = MutableStateFlow(serverId)
+        val source = DeviceAudioSource(
+            share = share,
+            instanceId = MutableStateFlow(instanceId),
+            serverId = this.serverId,
+            settings = settings,
+            scope = scope.backgroundScope,
+        )
         val player = MutableStateFlow<PlayerState>(connected(SourceStatus.Off))
         val plays = mutableListOf<PlayRequest>()
 
@@ -122,6 +134,8 @@ class DeviceAudioRouterTest {
         const val ROUNDS = 50
         const val ENDERS = 4
         const val SPIN = 100_000
+        const val SERVER_A = "server-a"
+        const val SERVER_B = "server-b"
 
         fun connected(source: SourceStatus) =
             PlayerState.Connected("device", "Server", ClockQuality.Good, AudioStatus.IDLE, source)
@@ -409,5 +423,130 @@ class DeviceAudioRouterTest {
                 routerScope.cancel()
             }
         }
+    }
+
+    /** Every dialect the local player offers from now on, so a test sees each restart. */
+    private fun TestScope.offered(source: DeviceAudioSource): List<SourceDialect> =
+        mutableListOf<SourceDialect>().also { seen ->
+            backgroundScope.launch { source.dialect.collect { seen += it } }
+            runCurrent()
+        }
+
+    @Test
+    fun `an accepted dialect is saved for the server`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        runCurrent()
+        h.status(SourceStatus.Refused)
+        runCurrent()
+        h.player.value = PlayerState.Connecting(0)
+        runCurrent()
+        assertNull(h.settings.getSourceDialect(SERVER_A), "a dialect that is only tried is not saved")
+        h.status(SourceStatus.Ready)
+        runCurrent()
+
+        assertEquals(SourceDialect.RC1, h.settings.getSourceDialect(SERVER_A))
+        assertNull(h.settings.getSourceDialect(SERVER_B))
+    }
+
+    @Test
+    fun `the next process starts with the stored dialect and needs no retry`() = runTest {
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        settings.setSourceDialect(SERVER_A, SourceDialect.RC1)
+        val h = Harness(this, settings = settings)
+        runCurrent()
+        val offered = offered(h.source)
+
+        h.startShare()
+        runCurrent()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+
+        assertEquals(1, h.plays.size)
+        assertEquals(listOf(SourceDialect.RC1), offered, "one hello, so one restart")
+        assertEquals(SourceDialect.RC1, settings.getSourceDialect(SERVER_A))
+    }
+
+    @Test
+    fun `a stored dialect that the server no longer takes flips once and is replaced`() = runTest {
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        settings.setSourceDialect(SERVER_A, SourceDialect.RC1)
+        val h = Harness(this, settings = settings)
+        runCurrent()
+        val offered = offered(h.source)
+
+        h.startShare()
+        runCurrent()
+        h.status(SourceStatus.Refused)
+        runCurrent()
+        h.player.value = PlayerState.Connecting(0)
+        runCurrent()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+
+        assertEquals(1, h.plays.size)
+        assertEquals(listOf(SourceDialect.RC1, SourceDialect.SPEC), offered)
+        assertEquals(SourceDialect.SPEC, settings.getSourceDialect(SERVER_A))
+    }
+
+    @Test
+    fun `a server does not get the dialect of another server`() = runTest {
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        settings.setSourceDialect(SERVER_A, SourceDialect.RC1)
+        val h = Harness(this, serverId = SERVER_B, settings = settings)
+        runCurrent()
+        assertEquals(SourceDialect.SPEC, h.source.dialect.value)
+
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        assertEquals(SourceDialect.SPEC, settings.getSourceDialect(SERVER_B))
+        assertEquals(SourceDialect.RC1, settings.getSourceDialect(SERVER_A))
+
+        // The app moves to server A: its own value applies, and a lost server info keeps it.
+        h.serverId.value = SERVER_A
+        runCurrent()
+        assertEquals(SourceDialect.RC1, h.source.dialect.value)
+        h.serverId.value = null
+        runCurrent()
+        assertEquals(SourceDialect.RC1, h.source.dialect.value)
+    }
+
+    @Test
+    fun `a share before the server is known still finds the dialect and saves nothing`() = runTest {
+        val h = Harness(this, serverId = null)
+        h.startShare()
+        runCurrent()
+        h.status(SourceStatus.Refused)
+        runCurrent()
+        h.player.value = PlayerState.Connecting(0)
+        runCurrent()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+
+        assertEquals(1, h.plays.size)
+        assertEquals(SourceDialect.RC1, h.source.dialect.value)
+        assertNull(h.settings.getSourceDialect(SERVER_A))
+    }
+
+    @Test
+    fun `a refusal of both dialects saves nothing`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        runCurrent()
+        h.status(SourceStatus.Refused)
+        runCurrent()
+        h.player.value = PlayerState.Connecting(0)
+        runCurrent()
+        h.status(SourceStatus.Refused)
+        runCurrent()
+
+        assertNull(h.settings.getSourceDialect(SERVER_A))
+    }
+
+    @Test
+    fun `an unknown stored dialect reads as none`() {
+        val settings = SettingsRepository(MapSettings(), MapSettings("source_dialect_$SERVER_A" to "RC9"))
+        assertNull(settings.getSourceDialect(SERVER_A))
     }
 }

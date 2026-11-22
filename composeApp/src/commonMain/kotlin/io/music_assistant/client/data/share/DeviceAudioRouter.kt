@@ -209,6 +209,7 @@ class DeviceAudioRouter(
             } ?: return endAndNull(DeviceAudioShareEnd.Timeout)
             if (status == SourceStatus.Unpaired) return endAndNull(DeviceAudioShareEnd.Unpaired)
             if (status != SourceStatus.Refused) {
+                source.accepted()
                 // Not [sourceUri]: that flow gets the player state one dispatch later.
                 return sourceUriOf(source.instanceId.value, playerState.value)
                     ?: endAndNull(DeviceAudioShareEnd.ConnectionLost)

@@ -15,6 +15,7 @@ import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.SourceDialect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -159,6 +160,24 @@ class SettingsRepository(
         } else {
             secrets.putString("$TOKEN_PREFIX$serverId", token)
         }
+    }
+
+    /**
+     * The source dialect that a server last accepted from the local player, or null if none.
+     *
+     * The handshake does not tell the revision of the source role, so a share finds it by a
+     * retry. Kept per server, by `server_id` like the token: an upgrade changes the dialect of
+     * one server, and the next accepted dialect replaces the value.
+     *
+     * @param serverId `ServerInfo.serverId` of the server.
+     */
+    fun getSourceDialect(serverId: String): SourceDialect? =
+        secrets.getStringOrNull("$SOURCE_DIALECT_PREFIX$serverId")
+            ?.let { stored -> SourceDialect.entries.firstOrNull { it.name == stored } }
+
+    /** Save the source dialect that [serverId] accepted. */
+    fun setSourceDialect(serverId: String, dialect: SourceDialect) {
+        secrets.putString("$SOURCE_DIALECT_PREFIX$serverId", dialect.name)
     }
 
     /**
@@ -868,6 +887,7 @@ class SettingsRepository(
         // when it authenticates to the user's server or identifies it.
         private const val TOKEN_PREFIX = "token_"
         private const val SERVER_ID_PREFIX = "id_"
+        private const val SOURCE_DIALECT_PREFIX = "source_dialect_"
         private const val CLIENT_CERTIFICATE_ALIAS_KEY = "client_certificate_alias"
         private const val SERIES_GROUPING_KEY = "library_series_grouping"
         private const val PODCAST_EPISODES_PLAYED_FILTER_KEY = "podcast_episodes_played_filter"
