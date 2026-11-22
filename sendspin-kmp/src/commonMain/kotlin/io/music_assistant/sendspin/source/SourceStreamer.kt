@@ -85,7 +85,6 @@ internal class SourceStreamer(
     private val authorized = MutableStateFlow<Int?>(null)
     private var starts = 0
 
-    // Written by the session reader only.
     /** Audio older than this at send time is dropped. */
     private val maxBacklogMicros = config.maxLatencyMs * MICROS_PER_MILLI
 
@@ -95,6 +94,7 @@ internal class SourceStreamer(
      */
     private val backlogChunks = config.maxLatencyMs / PCM_CHUNK_MILLIS + 1
 
+    // Written by the session reader only.
     private var trusted = false
     private var roleActive = false
     private var playback = false
