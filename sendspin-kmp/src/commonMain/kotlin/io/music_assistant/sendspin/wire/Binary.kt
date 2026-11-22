@@ -1,6 +1,7 @@
 package io.music_assistant.sendspin.wire
 
 import io.music_assistant.sendspin.api.WireVersion
+import io.music_assistant.sendspin.noise.NoiseFraming
 
 /**
  * One timestamped audio chunk as received on the wire: a view into [body]
@@ -51,16 +52,18 @@ internal object BinaryFrames {
     }
 
     /**
-     * The body of a source-role audio message: an 8 byte big-endian int64, the server
-     * time of the first sample in microseconds, then the encoded audio.
+     * The frame plaintext of a source-role audio message, ready for
+     * [NoiseFraming.encodeFramed]: the type byte, an 8 byte big-endian int64 (the server
+     * time of the first sample in microseconds), then the encoded audio. Built in one
+     * buffer, so the audio is copied once on its way to the cipher.
      */
-    fun sourceChunk(serverTimeMicros: Long, audio: ByteArray): ByteArray {
-        val body = ByteArray(TIMESTAMP_BYTES + audio.size)
+    fun sourceChunkFrame(serverTimeMicros: Long, audio: ByteArray): ByteArray {
+        val frame = NoiseFraming.frame(TYPE_SOURCE_AUDIO_CHUNK, TIMESTAMP_BYTES + audio.size)
         for (i in 0 until TIMESTAMP_BYTES) {
-            body[i] = (serverTimeMicros ushr (BITS_PER_BYTE * (TIMESTAMP_BYTES - 1 - i))).toByte()
+            frame[1 + i] = (serverTimeMicros ushr (BITS_PER_BYTE * (TIMESTAMP_BYTES - 1 - i))).toByte()
         }
-        audio.copyInto(body, TIMESTAMP_BYTES)
-        return body
+        audio.copyInto(frame, 1 + TIMESTAMP_BYTES)
+        return frame
     }
 
     fun parse(wire: WireVersion, type: Int, body: ByteArray): BinaryFrame {

@@ -205,4 +205,34 @@ class NoiseFramingTest {
             assertContentEquals(byteArrayOf(42), small.payload)
         }
     }
+
+    @Test
+    fun encodeFramedMatchesEncodeOnBothWires() {
+        val sizes = listOf(
+            0,
+            1,
+            3848,
+            NoiseFraming.MAX_UNFRAGMENTED_PAYLOAD,
+            NoiseFraming.MAX_UNFRAGMENTED_PAYLOAD + 1,
+            200_000,
+        )
+        for (wire in WireVersion.entries) {
+            for (size in sizes) {
+                val payload = Random(size).nextBytes(size)
+                val framed = NoiseFraming.frame(12, size).also { payload.copyInto(it, 1) }
+                val expected = NoiseFraming.encode(wire, 12, payload)
+                val actual = NoiseFraming.encodeFramed(wire, framed)
+                assertEquals(expected.size, actual.size, "$wire size $size")
+                expected.zip(actual).forEach { (e, a) -> assertContentEquals(e, a, "$wire size $size") }
+            }
+        }
+    }
+
+    @Test
+    fun encodeFramedRejectsFragmentTypesAndEmptyFrames() {
+        assertFailsWith<IllegalArgumentException> { NoiseFraming.encodeFramed(WireVersion.SPEC_1_0, byteArrayOf(1, 0)) }
+        assertFailsWith<IllegalArgumentException> { NoiseFraming.encodeFramed(WireVersion.LEGACY_9, byteArrayOf(3)) }
+        assertFailsWith<IllegalArgumentException> { NoiseFraming.encodeFramed(WireVersion.SPEC_1_0, ByteArray(0)) }
+        assertFailsWith<IllegalArgumentException> { NoiseFraming.frame(256, 1) }
+    }
 }

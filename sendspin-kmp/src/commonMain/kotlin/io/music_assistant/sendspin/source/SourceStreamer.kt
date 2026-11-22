@@ -166,10 +166,7 @@ internal class SourceStreamer(
                         announced = chunk.format
                         _status.value = SourceStatus.Streaming
                     }
-                    session.sendBinary(
-                        BinaryFrames.TYPE_SOURCE_AUDIO_CHUNK,
-                        BinaryFrames.sourceChunk(serverMicros, chunk.audio.data),
-                    )
+                    session.sendBinaryFrame(BinaryFrames.sourceChunkFrame(serverMicros, chunk.audio.data))
                 }
             inputEnded = true
             logger.i { "The capture ended" }

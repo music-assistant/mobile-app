@@ -69,4 +69,11 @@ class BinaryFramesTest {
         assertEquals(BinaryFrame.Malformed, BinaryFrames.parse(WireVersion.SPEC_1_0, 4, ByteArray(11)))
         assertEquals(BinaryFrame.Malformed, BinaryFrames.parse(WireVersion.SPEC_1_0, 4, body(-1L, byteArrayOf(1), 0)))
     }
+
+    @Test
+    fun sourceChunkFrameIsTypeThenBigEndianTimestampThenAudio() {
+        val frame = BinaryFrames.sourceChunkFrame(0x0102030405060708L, byteArrayOf(9, 10, 11))
+        assertContentEquals(byteArrayOf(12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11), frame)
+        assertContentEquals(byteArrayOf(12, 0, 0, 0, 0, 0, 0, 0, 0), BinaryFrames.sourceChunkFrame(0, ByteArray(0)))
+    }
 }

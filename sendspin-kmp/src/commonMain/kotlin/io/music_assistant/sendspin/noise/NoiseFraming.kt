@@ -74,14 +74,35 @@ internal object NoiseFraming {
         require(type in 0..255) { "message type out of range: $type" }
         require(!isFragmentType(wire, type)) { "fragment types cannot be sent as application message types" }
         if (payload.size <= MAX_UNFRAGMENTED_PAYLOAD) {
-            val frame = ByteArray(1 + payload.size)
-            frame[0] = type.toByte()
-            payload.copyInto(frame, 1)
-            return listOf(frame)
+            return listOf(frame(type, payload.size).also { payload.copyInto(it, 1) })
         }
         return when (wire) {
             WireVersion.LEGACY_9 -> encodeLegacyFragments(type, payload)
             WireVersion.SPEC_1_0 -> encodeFragments(type, payload)
+        }
+    }
+
+    /**
+     * A `[type][payload]` frame plaintext with [payloadSize] zero bytes after the type,
+     * for a caller that writes its payload in place instead of handing [encode] a copy.
+     */
+    fun frame(type: Int, payloadSize: Int): ByteArray {
+        require(type in 0..255) { "message type out of range: $type" }
+        return ByteArray(1 + payloadSize).also { it[0] = type.toByte() }
+    }
+
+    /**
+     * Frame plaintexts for a message already laid out as `[type][payload]` (see [frame]):
+     * the same frames as [encode] of its type and payload, without a copy when it fits one
+     * frame.
+     */
+    fun encodeFramed(wire: WireVersion, frame: ByteArray): List<ByteArray> {
+        require(frame.isNotEmpty()) { "empty frame plaintext" }
+        val type = frame[0].toInt() and 0xFF
+        require(!isFragmentType(wire, type)) { "fragment types cannot be sent as application message types" }
+        return when {
+            frame.size <= MAX_FRAME_PLAINTEXT -> listOf(frame)
+            else -> encode(wire, type, frame.copyOfRange(1, frame.size))
         }
     }
 

@@ -107,19 +107,23 @@ internal class NoiseSession(
      * Application send. Suspends until the session is activated; quiesces
      * through pairing and re-handshakes. Throws once the session is over.
      */
-    suspend fun send(json: String) = sendGated(NoiseFraming.TYPE_JSON, json.encodeToByteArray())
+    suspend fun send(json: String) =
+        sendGated(NoiseFraming.encode(config.wire, NoiseFraming.TYPE_JSON, json.encodeToByteArray()))
 
-    /** Application send of a binary message of [type], gated like [send]. */
-    suspend fun sendBinary(type: Int, payload: ByteArray) = sendGated(type, payload)
+    /**
+     * Application send of a binary message already laid out as `[type][payload]`
+     * ([NoiseFraming.frame]), gated like [send]. The array must not change afterwards.
+     */
+    suspend fun sendBinaryFrame(frame: ByteArray) = sendGated(NoiseFraming.encodeFramed(config.wire, frame))
 
-    private suspend fun sendGated(type: Int, payload: ByteArray) {
+    private suspend fun sendGated(frames: List<ByteArray>) {
         while (true) {
             gate.first { it != Gate.CLOSED }
             // Re-check under the mutex: the reader closes the gate and swaps keys
             // while holding it, so a woken sender cannot encrypt under stale keys.
             sendMutex.withLock {
                 when (gate.value) {
-                    Gate.OPEN -> return sendFrameLocked(type, payload)
+                    Gate.OPEN -> return sendFramesLocked(frames)
                     Gate.FAILED -> error("session closed")
                     Gate.CLOSED -> Unit // Raced a gate transition; wait again.
                 }
@@ -490,12 +494,12 @@ internal class NoiseSession(
 
     /** Session-internal send: bypasses the gate but shares the mutex, so frames never interleave. */
     private suspend fun sendJsonUngated(json: String) = sendMutex.withLock {
-        sendFrameLocked(NoiseFraming.TYPE_JSON, json.encodeToByteArray())
+        sendFramesLocked(NoiseFraming.encode(config.wire, NoiseFraming.TYPE_JSON, json.encodeToByteArray()))
     }
 
-    private suspend fun sendFrameLocked(type: Int, payload: ByteArray) {
+    private suspend fun sendFramesLocked(frames: List<ByteArray>) {
         val secure = requireChannel()
-        NoiseFraming.encode(config.wire, type, payload).forEach { frame ->
+        frames.forEach { frame ->
             transport.send(Frame.Binary(secure.noise.encrypt(frame)))
         }
     }
