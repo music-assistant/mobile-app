@@ -100,10 +100,16 @@ internal class SourceStreamer(
         roleActive = VersionedRole.SOURCE_V1.identifier in activation.activeRoles
         playback = ActivationPolicy.ACTIVITY_PLAYBACK in activation.activities
         if (!canStream) authorized.value = null
+        val pairing = ActivationPolicy.ACTIVITY_PAIRING in activation.activities
         _status.update { current ->
             when {
                 // An unpaired session never gets the role, so only a paired one can refuse it.
-                !roleActive -> if (trusted) SourceStatus.Refused else SourceStatus.Off
+                // A pairing activation is no answer yet: the session can become paired.
+                !roleActive -> when {
+                    trusted -> SourceStatus.Refused
+                    pairing -> SourceStatus.Off
+                    else -> SourceStatus.Unpaired
+                }
                 current == SourceStatus.Streaming && authorized.value != null -> SourceStatus.Streaming
                 else -> SourceStatus.Ready
             }

@@ -56,6 +56,12 @@ public enum class SourceStatus {
     /** The server activated the connection without the source role, on a paired session. */
     Refused,
 
+    /**
+     * The server activated the connection on an unpaired session. Such a session never gets the
+     * source role: the device must be paired with the server first.
+     */
+    Unpaired,
+
     /** The server accepted the source. It streams when the server asks. */
     Ready,
 

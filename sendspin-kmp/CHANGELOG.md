@@ -2,6 +2,12 @@
 
 All changes to `io.github.music-assistant:sendspin-kmp` are in this file.
 
+## Unreleased
+
+- `SourceStatus.Unpaired`: the server activated an unpaired session, which never gets the source
+  role. Before, that session gave `SourceStatus.Off`, the same as no answer. A `when` over
+  `SourceStatus` without an `else` branch needs the new case.
+
 ## 0.2.0
 
 - Sendspin `source@v1` role: the client can send audio to the server. Set
