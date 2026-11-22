@@ -19,7 +19,9 @@ class VolumeButtonService(
 ) {
     private val log = Logger.withTag("VolumeButtonService")
 
-    private val _buttonPresses = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val _buttonPresses = MutableSharedFlow<UnroutedVolumeKey>(extraBufferCapacity = 1)
+
+    /** Each press that changed the device volume, with the reason it did not go to the player. */
     val buttonPresses = _buttonPresses.asSharedFlow()
 
     private val _remoteAdjust = MutableSharedFlow<String>(
@@ -53,8 +55,24 @@ class VolumeButtonService(
         }
     }
 
+    /** A press on a platform that never gives the keys to a remote player (iOS). */
     fun onPlatformVolumeButtonPressed() {
-        _buttonPresses.tryEmit(Unit)
+        _buttonPresses.tryEmit(UnroutedVolumeKey.NOT_SUPPORTED)
+    }
+
+    /**
+     * A press that the platform kept for the device volume. [inCall]: the audio mode is a call
+     * or VoIP, so the key changes the call volume and [onVolumeKey] was not asked.
+     */
+    fun onVolumeKeyLeftToDevice(inCall: Boolean) {
+        val reason = when {
+            inCall -> UnroutedVolumeKey.IN_CALL
+            !settings.volumeKeysControlSelectedPlayer.value -> UnroutedVolumeKey.SETTING_OFF
+            else -> UnroutedVolumeKey.NO_REMOTE_PLAYER
+        }
+        val selected = target.selectedPlayer
+        log.i { "Volume key left to the device: $reason, selected=${selected?.playerId} local=${selected?.isLocal}" }
+        _buttonPresses.tryEmit(reason)
     }
 
     /**
@@ -86,6 +104,21 @@ class VolumeButtonService(
         !player.player.isVolumeSliderAccessible -> VolumeKeyRefusal.Reason.NO_VOLUME_CONTROL
         else -> null
     }
+}
+
+/** Why a volume key press changed the device volume and not the selected player. */
+enum class UnroutedVolumeKey {
+    /** The platform does not route the keys (iOS). */
+    NOT_SUPPORTED,
+
+    /** The setting that gives the keys to the selected player is off. */
+    SETTING_OFF,
+
+    /** A call or VoIP holds the audio mode. */
+    IN_CALL,
+
+    /** The setting is on, but the selection the keys follow is this device or none. */
+    NO_REMOTE_PLAYER,
 }
 
 /** Why a volume key press for the selected remote player changed nothing. */

@@ -52,8 +52,27 @@ class VolumeButtonServiceTest {
 
         service.buttonPresses.test {
             service.onPlatformVolumeButtonPressed()
-            awaitItem()
+            assertEquals(UnroutedVolumeKey.NOT_SUPPORTED, awaitItem())
             cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun keyLeftToTheDeviceSaysWhy() = runTest {
+        target.selectedPlayer = playerData()
+        val service = service(backgroundScope)
+
+        service.buttonPresses.test {
+            service.onVolumeKeyLeftToDevice(inCall = false)
+            assertEquals(UnroutedVolumeKey.SETTING_OFF, awaitItem())
+
+            settings.setVolumeKeysControlSelectedPlayer(true)
+            service.onVolumeKeyLeftToDevice(inCall = true)
+            assertEquals(UnroutedVolumeKey.IN_CALL, awaitItem())
+
+            target.selectedPlayer = playerData(isLocal = true)
+            service.onVolumeKeyLeftToDevice(inCall = false)
+            assertEquals(UnroutedVolumeKey.NO_REMOTE_PLAYER, awaitItem())
         }
     }
 

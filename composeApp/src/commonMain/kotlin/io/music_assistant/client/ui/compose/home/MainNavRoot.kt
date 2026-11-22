@@ -63,6 +63,7 @@ import io.music_assistant.client.data.model.client.items.Podcast
 import io.music_assistant.client.data.model.client.items.PodcastEpisode
 import io.music_assistant.client.data.model.client.items.RecommendationFolder
 import io.music_assistant.client.data.model.client.items.Track
+import io.music_assistant.client.input.UnroutedVolumeKey
 import io.music_assistant.client.input.VolumeButtonService
 import io.music_assistant.client.input.VolumeKeyRefusal
 import io.music_assistant.client.nav.AdaptiveNavigationBarLayout
@@ -141,8 +142,11 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.nav_system
 import musicassistantclient.composeapp.generated.resources.not_connected_retry
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
+import musicassistantclient.composeapp.generated.resources.volume_keys_in_call
+import musicassistantclient.composeapp.generated.resources.volume_keys_no_remote_player
 import musicassistantclient.composeapp.generated.resources.volume_keys_no_volume_control
 import musicassistantclient.composeapp.generated.resources.volume_keys_player_off
+import musicassistantclient.composeapp.generated.resources.volume_keys_setting_off
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
@@ -282,16 +286,22 @@ fun MainNavigationRoot(
     val homeScreenState = remember { mutableStateOf<HomeScreenState?>(null) }
     val searchScreenState = remember { mutableStateOf<SearchScreenState?>(null) }
 
-    val remoteVolumeHint = stringResource(Res.string.players_remote_volume_hint)
     val viewingRemote = data?.selectedPlayer?.isLocal == false
-    val currentHint by rememberUpdatedState(remoteVolumeHint)
     val observingRemote by rememberUpdatedState(viewingRemote)
+    val viewedPlayerName by rememberUpdatedState(data?.selectedPlayer?.player?.name.orEmpty())
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, volumeButtonService) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            volumeButtonService.buttonPresses.collect {
+            volumeButtonService.buttonPresses.collect { reason ->
                 if (observingRemote) {
-                    toastState.showToast(currentHint, ToastDuration.SHORT)
+                    val text = when (reason) {
+                        UnroutedVolumeKey.NOT_SUPPORTED -> getString(Res.string.players_remote_volume_hint)
+                        UnroutedVolumeKey.SETTING_OFF ->
+                            getString(Res.string.volume_keys_setting_off, viewedPlayerName)
+                        UnroutedVolumeKey.IN_CALL -> getString(Res.string.volume_keys_in_call)
+                        UnroutedVolumeKey.NO_REMOTE_PLAYER -> getString(Res.string.volume_keys_no_remote_player)
+                    }
+                    toastState.showToast(text, ToastDuration.SHORT)
                 }
             }
         }

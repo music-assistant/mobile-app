@@ -117,7 +117,11 @@ class MainActivity : ComponentActivity() {
 
             else -> {
                 routedVolumeKeys -= keyCode
-                if (!repeat) volumeButtonService.onPlatformVolumeButtonPressed()
+                if (!repeat) {
+                    val mode = audioManager.mode
+                    if (mode != AudioManager.MODE_NORMAL) Logger.i { "Volume key kept by the system: audio mode $mode" }
+                    volumeButtonService.onVolumeKeyLeftToDevice(inCall = mode != AudioManager.MODE_NORMAL)
+                }
                 super.onKeyDown(keyCode, event)
             }
         }
