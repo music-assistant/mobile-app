@@ -2,9 +2,10 @@ package io.music_assistant.client.ui.compose.common.items
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -95,22 +96,36 @@ private fun rememberGenerateShareLink(
             onDismissRequest = { choices = null },
             title = { Text(stringResource(Res.string.action_share_item)) },
             text = {
-                FlowRow(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                val destinations: List<Pair<String?, String>> = item.links.toList() + (null to item.url)
+                Column(
+                    modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    item.links.forEach { (domain, url) ->
-                        val name = if (domain == "ytmusic") "YouTube Music" else providerNames[domain] ?: domain
-                        ShareDestination(name, onClick = { shareChoice(url) }) {
-                            ShareProviderIcon(domain)
+                    destinations.chunked(2).forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            row.forEach { (domain, url) ->
+                                val name = when (domain) {
+                                    null -> stringResource(Res.string.share_music_assistant_link)
+                                    "ytmusic" -> "YouTube Music"
+                                    else -> providerNames[domain] ?: domain
+                                }
+                                ShareDestination(name, { shareChoice(url) }, Modifier.weight(1f)) {
+                                    if (domain == null) {
+                                        Icon(
+                                            Icons.Default.Link,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(26.dp),
+                                        )
+                                    } else {
+                                        ShareProviderIcon(domain)
+                                    }
+                                }
+                            }
+                            if (row.size == 1) Spacer(Modifier.weight(1f))
                         }
-                    }
-                    ShareDestination(
-                        name = stringResource(Res.string.share_music_assistant_link),
-                        onClick = { shareChoice(item.url) },
-                    ) {
-                        Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(26.dp))
                     }
                 }
             },
@@ -151,8 +166,13 @@ private fun rememberGenerateShareLink(
 }
 
 @Composable
-private fun ShareDestination(name: String, onClick: () -> Unit, icon: @Composable () -> Unit) {
-    TextButton(onClick = onClick, modifier = Modifier.widthIn(min = 88.dp, max = 132.dp)) {
+private fun ShareDestination(
+    name: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: @Composable () -> Unit,
+) {
+    TextButton(onClick = onClick, modifier = modifier) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
