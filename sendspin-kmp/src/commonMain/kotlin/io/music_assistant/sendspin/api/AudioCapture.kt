@@ -33,12 +33,27 @@ public class CapturedAudio(
 
 /**
  * What the player offers as a source. A change of [capture] or [dialect]
- * restarts the connection, because the roles travel in `client/hello`.
+ * restarts the connection, because the roles travel in `client/hello`. A change of
+ * [codec] restarts it too, because the config is one value; [codec] does not travel in
+ * `client/hello`, so an application that changes it only between captures loses nothing.
  */
 public data class SourceConfig(
     val capture: AudioCapture,
     val dialect: SourceDialect = SourceDialect.SPEC,
+    val codec: SourceCodec = SourceCodec.FLAC,
 )
+
+/** The codec that the source asks for. The `client-stream/start` of each stream names the codec that it got. */
+public enum class SourceCodec {
+    /** Raw PCM: no encoder delay and no encoder CPU, but about twice the bytes of FLAC. */
+    PCM,
+
+    /**
+     * FLAC from [SendspinDeps.encoders]. The stream is PCM if there is no factory, or if the
+     * encoder fails or gives no codec header in time.
+     */
+    FLAC,
+}
 
 /** The revision of the source role that the server speaks. The handshake does not tell, so the app selects it. */
 public enum class SourceDialect {

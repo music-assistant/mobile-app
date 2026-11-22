@@ -15,6 +15,7 @@ import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.utils.myJson
 import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.SourceCodec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -601,6 +602,20 @@ class SettingsRepository(
         val clamped = ms.coerceIn(SENDSPIN_STATIC_DELAY_RANGE)
         settings.putInt("sendspin_static_delay_ms", clamped)
         _sendspinStaticDelayMs.update { clamped }
+    }
+
+    // The codec of the device audio share (the Sendspin source). Read when a share starts, so a
+    // change applies to the next share. FLAC by default; an unknown stored name falls back to it.
+    private val _deviceAudioShareCodec = MutableStateFlow(
+        settings.getStringOrNull("device_audio_share_codec")
+            ?.let { name -> SourceCodec.entries.firstOrNull { it.name == name } }
+            ?: SourceCodec.FLAC,
+    )
+    val deviceAudioShareCodec = _deviceAudioShareCodec.asStateFlow()
+
+    fun setDeviceAudioShareCodec(codec: SourceCodec) {
+        settings.putString("device_audio_share_codec", codec.name)
+        _deviceAudioShareCodec.update { codec }
     }
 
     // Connection method preference

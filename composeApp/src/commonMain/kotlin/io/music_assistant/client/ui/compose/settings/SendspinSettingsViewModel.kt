@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.music_assistant.client.settings.SendspinConnectionSettings
 import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
+import io.music_assistant.sendspin.api.SourceCodec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,12 +18,18 @@ import kotlinx.coroutines.flow.stateIn
  * Local player settings with a draft. Edits stay in the draft until a save or a reset applies
  * them, whether the player is on or off. Applying them restarts a running player, so a save or a
  * reset asks for a confirmation first if the player is playing.
+ *
+ * The device audio share codec is not in the draft: it applies at once, and only to the next share.
  */
 class SendspinSettingsViewModel(
     private val settings: SettingsRepository,
+    /** False on a platform that cannot share the device audio; the screen then hides the share codec. */
+    val isDeviceAudioShareSupported: Boolean = false,
     private val isLocalPlayerPlaying: () -> Boolean,
 ) : ViewModel() {
     val enabled: StateFlow<Boolean> = settings.sendspinEnabled
+
+    val deviceAudioShareCodec: StateFlow<SourceCodec> = settings.deviceAudioShareCodec
 
     private val _draft = MutableStateFlow(settings.sendspinPlayerSettings.value)
     val draft: StateFlow<SendspinPlayerSettings> = _draft.asStateFlow()
@@ -43,6 +50,8 @@ class SendspinSettingsViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     fun setEnabled(enabled: Boolean) = settings.setSendspinEnabled(enabled)
+
+    fun setDeviceAudioShareCodec(codec: SourceCodec) = settings.setDeviceAudioShareCodec(codec)
 
     fun update(transform: (SendspinPlayerSettings) -> SendspinPlayerSettings) {
         _draft.value = transform(_draft.value)

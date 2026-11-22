@@ -9,6 +9,8 @@ All changes to `io.github.music-assistant:sendspin-kmp` are in this file.
   `player@v1` role only. `PlayerState.Connected.source` gives the `SourceStatus`.
 - `SourceDialect.SPEC` is the current spec shape. `SourceDialect.RC1` is the shape that
   aiosendspin 10.3.0 and older need.
+- `SourceConfig.codec` selects `SourceCodec.PCM` or `SourceCodec.FLAC`. The default is FLAC.
+  With PCM, the source does not use the `EncoderFactory`.
 - New ports: `AudioCapture` (with `CaptureFormat` and `CapturedAudio`), and `EncoderFactory`
   with `AudioEncoder` and `EncodedAudio`. Without an `EncoderFactory`, the source sends PCM.
 - Android: `AndroidEncoderFactory` in `io.music_assistant.sendspin.android`, which has a FLAC

@@ -178,6 +178,7 @@ fun sharedModule(
                 instanceId = providers
                     .map { state -> (state as? DataState.Data)?.data?.let(::sendspinSourceInstanceId) }
                     .stateIn(scope, SharingStarted.Eagerly, null),
+                codec = get<SettingsRepository>().deviceAudioShareCodec,
             )
         }
         singleOf(::LocalPlayerAdapter)      // Local player: app side of the Sendspin module
@@ -293,6 +294,7 @@ fun sharedModule(
             val mainDataSource = get<MainDataSource>()
             SendspinSettingsViewModel(
                 settings = get(),
+                isDeviceAudioShareSupported = deviceAudioShare().isSupported,
                 isLocalPlayerPlaying = { mainDataSource.localPlayer.value?.player?.isPlaying == true },
             )
         }

@@ -6,6 +6,7 @@ import io.music_assistant.sendspin.api.AudioEncoder
 import io.music_assistant.sendspin.api.CaptureFormat
 import io.music_assistant.sendspin.api.EncoderFactory
 import io.music_assistant.sendspin.api.MonotonicClock
+import io.music_assistant.sendspin.api.SourceCodec
 import io.music_assistant.sendspin.api.SourceConfig
 import io.music_assistant.sendspin.api.SourceDialect
 import io.music_assistant.sendspin.api.SourceStatus
@@ -199,7 +200,11 @@ internal class SourceStreamer(
 
     private fun encoded(): Flow<SourceChunk> = flow {
         val format = config.capture.format
-        val encoding = SourceEncoding(format, flacEncoder(format), health)
+        val flac = when (config.codec) {
+            SourceCodec.PCM -> null
+            SourceCodec.FLAC -> flacEncoder(format)
+        }
+        val encoding = SourceEncoding(format, flac, health)
         try {
             config.capture.frames().collect { audio -> encoding.encode(audio).forEach { emit(it) } }
         } finally {

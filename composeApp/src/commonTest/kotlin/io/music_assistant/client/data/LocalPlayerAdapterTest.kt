@@ -20,6 +20,7 @@ import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SendspinPlayer
+import io.music_assistant.sendspin.api.SourceCodec
 import io.music_assistant.sendspin.api.StopCause
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,7 +67,11 @@ class LocalPlayerAdapterTest {
             errorBus = ErrorMessageBus(),
             endpoints = LocalPlayerEndpoints(client, settings, scope),
             playerFactory = { _, _, _ -> player },
-            deviceAudioSource = DeviceAudioSource(UnsupportedDeviceAudioShare(), MutableStateFlow(null)),
+            deviceAudioSource = DeviceAudioSource(
+                UnsupportedDeviceAudioShare(),
+                MutableStateFlow(null),
+                MutableStateFlow(SourceCodec.FLAC),
+            ),
         )
     }
 

@@ -173,6 +173,7 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val isSendspinSavable by sendspinViewModel.isSavable.collectAsStateWithLifecycle()
     val isSendspinResettable by sendspinViewModel.isResettable.collectAsStateWithLifecycle()
     val isSendspinConfirmationPending by sendspinViewModel.isConfirmationPending.collectAsStateWithLifecycle()
+    val deviceAudioShareCodec by sendspinViewModel.deviceAudioShareCodec.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
     val localNetworkOnboardingShown by viewModel.localNetworkOnboardingShown
@@ -403,6 +404,10 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                                     onReset = sendspinViewModel::reset,
                                     onConfirm = sendspinViewModel::confirm,
                                     onDismiss = sendspinViewModel::dismiss,
+                                    shareCodec = deviceAudioShareCodec.takeIf {
+                                        sendspinEnabled && sendspinViewModel.isDeviceAudioShareSupported
+                                    },
+                                    onShareCodecChange = sendspinViewModel::setDeviceAudioShareCodec,
                                 )
 
                                 // Car options route to the local player — only meaningful when

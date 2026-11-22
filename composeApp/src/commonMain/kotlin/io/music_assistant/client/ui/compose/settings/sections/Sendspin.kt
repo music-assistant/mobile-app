@@ -62,6 +62,7 @@ import io.music_assistant.client.ui.compose.common.displayName
 import io.music_assistant.client.ui.compose.common.localizedDescription
 import io.music_assistant.client.utils.supportsHiResAudio
 import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.SourceCodec
 import io.music_assistant.sendspin.api.estimatedBytesPerSecond
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.cd_collapse_sendspin_advanced
@@ -77,6 +78,9 @@ import musicassistantclient.composeapp.generated.resources.settings_buffer_size_
 import musicassistantclient.composeapp.generated.resources.settings_codec_preference
 import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin
 import musicassistantclient.composeapp.generated.resources.settings_custom_sendspin_ma_sign_in
+import musicassistantclient.composeapp.generated.resources.settings_device_audio_share_codec
+import musicassistantclient.composeapp.generated.resources.settings_device_audio_share_codec_flac
+import musicassistantclient.composeapp.generated.resources.settings_device_audio_share_codec_pcm
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_hint
 import musicassistantclient.composeapp.generated.resources.settings_hi_res_audio_lossless_only
@@ -108,6 +112,9 @@ fun SendspinSettingsSection(
     onReset: () -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    /** Null hides the device audio share codec, on a platform that cannot share. */
+    shareCodec: SourceCodec?,
+    onShareCodecChange: (SourceCodec) -> Unit,
 ) {
     if (isConfirmationPending) {
         InterruptPlaybackDialog(onConfirm = onConfirm, onDismiss = onDismiss)
@@ -186,6 +193,19 @@ fun SendspinSettingsSection(
                 isSavable = isSavable,
                 onSave = onSave,
             )
+        }
+        shareCodec?.let { codec ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                ),
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                DeviceAudioShareCodecSection(codec = codec, onCodecChange = onShareCodecChange)
+            }
         }
     }
 }
@@ -277,6 +297,47 @@ private fun CodecPreferenceSection(
         }
         Text(
             text = codec.localizedDescription(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** The codec of the device audio share. Not in the draft: a change applies at once, to the next share. */
+@Composable
+private fun DeviceAudioShareCodecSection(
+    codec: SourceCodec,
+    onCodecChange: (SourceCodec) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = stringResource(Res.string.settings_device_audio_share_codec),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SourceCodec.entries.forEachIndexed { index, option ->
+                SegmentedButton(
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = SourceCodec.entries.size),
+                    onClick = { onCodecChange(option) },
+                    selected = option == codec,
+                    label = { Text(option.name) },
+                )
+            }
+        }
+        Text(
+            text = stringResource(
+                when (codec) {
+                    SourceCodec.PCM -> Res.string.settings_device_audio_share_codec_pcm
+                    SourceCodec.FLAC -> Res.string.settings_device_audio_share_codec_flac
+                },
+            ),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -5,6 +5,7 @@ import io.music_assistant.client.settings.SendspinConnectionAuth
 import io.music_assistant.client.settings.SendspinPlayerSettings
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.sendspin.api.AudioCodec
+import io.music_assistant.sendspin.api.SourceCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -226,6 +227,26 @@ class SendspinSettingsViewModelTest {
         repository.setSendspinPlayerSettings(saved)
 
         assertEquals(saved, SettingsRepository(store, secrets).sendspinPlayerSettings.value)
+    }
+
+    @Test
+    fun theShareCodecIsFlacByDefaultAndAppliesAtOnceOutsideTheDraft() {
+        playing = true
+        val vm = viewModel()
+        assertEquals(SourceCodec.FLAC, vm.deviceAudioShareCodec.value)
+
+        vm.setDeviceAudioShareCodec(SourceCodec.PCM)
+
+        assertEquals(SourceCodec.PCM, repository.deviceAudioShareCodec.value)
+        assertFalse(vm.isSavable.value, "not a draft edit")
+        assertFalse(vm.isConfirmationPending.value, "does not interrupt playback")
+        assertEquals(SourceCodec.PCM, SettingsRepository(store, secrets).deviceAudioShareCodec.value)
+    }
+
+    @Test
+    fun anUnknownStoredShareCodecFallsBackToFlac() {
+        store.putString("device_audio_share_codec", "OPUS")
+        assertEquals(SourceCodec.FLAC, SettingsRepository(store, secrets).deviceAudioShareCodec.value)
     }
 
     @Test

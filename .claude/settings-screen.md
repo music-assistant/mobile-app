@@ -196,6 +196,9 @@ token stays in the settings, so the next connection signs in with it.
     It applies to a direct session only.
   - `BufferSizeSection`: 5 s to 30 s in steps of 5 s, 10 s by default, with a size estimate for the codec.
 - `ActionButtonsSection`: "Reset to defaults" and "Save changes".
+- `DeviceAudioShareCodecSection`, in its own card under the player card: PCM or FLAC (the default) for the
+  device audio share (`deviceAudioShareCodec`). It shows only while the local player is on, on a platform that
+  can share. It is not in the draft: a change applies at once, and only to the next share.
 
 The edits stay in the draft until Save or Reset. A change restarts a running player. So if the player plays,
 Save and Reset show the "Interrupting playback" dialog first. Cancel keeps the draft.

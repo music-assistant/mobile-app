@@ -3,6 +3,7 @@ package io.music_assistant.sendspin.player
 import io.music_assistant.sendspin.api.EncoderFactory
 import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
+import io.music_assistant.sendspin.api.SourceCodec
 import io.music_assistant.sendspin.api.SourceConfig
 import io.music_assistant.sendspin.api.SourceDialect
 import io.music_assistant.sendspin.api.SourceStatus
@@ -115,10 +116,12 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     private fun sourceTest(
         dialect: SourceDialect = SourceDialect.SPEC,
         encoders: EncoderFactory? = null,
+        codec: SourceCodec? = null,
         block: suspend TestScope.(Harness, FakeCapture) -> Unit,
     ) {
         val capture = FakeCapture()
-        playerTest(sharedPsk = SHARED_PSK, source = SourceConfig(capture, dialect), encoders = encoders) { h ->
+        val source = codec?.let { SourceConfig(capture, dialect, it) } ?: SourceConfig(capture, dialect)
+        playerTest(sharedPsk = SHARED_PSK, source = source, encoders = encoders) { h ->
             block(h, capture)
         }
     }
@@ -321,6 +324,7 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
         assertContentEquals(live, server.sourceChunks.single().second)
     }
 
+    /** Also the default: [sourceTest] leaves [SourceConfig.codec] unset. */
     @Test
     fun flacStreamsWithItsCodecHeader() = sourceTest(encoders = FakeEncoderFactory()) { h, capture ->
         val server = connectSource(h)
@@ -335,6 +339,23 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
             Base64.decode(start.getValue("codec_header").jsonPrimitive.content),
         )
         assertContentEquals(pcm, server.sourceChunks.single().second)
+    }
+
+    @Test
+    fun pcmIsSentWhenAskedForEvenWithAnEncoderFactory() {
+        val encoders = FakeEncoderFactory()
+        sourceTest(encoders = encoders, codec = SourceCodec.PCM) { h, capture ->
+            val server = connectSource(h)
+            server.sourceCommand("start")
+            runCurrent()
+            val pcm = capture.capture(currentTime * 1_000)
+            runCurrent()
+            val start = server.clientStreamStarts.single()
+            assertEquals("pcm", start.codec())
+            assertFalse("codec_header" in start)
+            assertContentEquals(pcm, server.sourceChunks.single().second)
+            assertTrue(encoders.created.isEmpty(), "no FLAC encoder for a PCM source")
+        }
     }
 
     @Test

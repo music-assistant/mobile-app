@@ -555,6 +555,9 @@
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Custom Sendspin connection</string>
   <string name="settings_custom_sendspin_ma_sign_in">Sign in through Music Assistant</string>
+  <string name="settings_device_audio_share_codec">Device audio share codec</string>
+  <string name="settings_device_audio_share_codec_flac">Less Wi-Fi bandwidth, slightly more delay. Applies to the next share.</string>
+  <string name="settings_device_audio_share_codec_pcm">Lowest delay, more Wi-Fi bandwidth. Applies to the next share.</string>
   <string name="settings_disable_local_player">Disable local player</string>
   <string name="settings_disconnect">Disconnect</string>
   <string name="settings_discovered_server_ha_addon">Home Assistant add-on</string>

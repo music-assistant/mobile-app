@@ -10,6 +10,7 @@ import io.music_assistant.sendspin.api.CapturedAudio
 import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.PlayerState
+import io.music_assistant.sendspin.api.SourceCodec
 import io.music_assistant.sendspin.api.SourceDialect
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.WireVersion
@@ -53,7 +54,8 @@ class DeviceAudioRouterTest {
 
     private class Harness(scope: TestScope, wire: WireVersion = WireVersion.SPEC_1_0, instanceId: String? = "sendspin") {
         val share = FakeShare()
-        val source = DeviceAudioSource(share, MutableStateFlow(instanceId))
+        val codec = MutableStateFlow(SourceCodec.FLAC)
+        val source = DeviceAudioSource(share, MutableStateFlow(instanceId), codec)
         val player = MutableStateFlow<PlayerState>(connected(SourceStatus.Off))
         val plays = mutableListOf<PlayRequest>()
 
@@ -264,6 +266,23 @@ class DeviceAudioRouterTest {
         assertEquals(listOf("kitchen" to true), h.released, "the player must not wait in silence for the source")
         h.errors.emit("end of messages")
         assertEquals("end of messages", h.errors.messages.first())
+    }
+
+    @Test
+    fun `a share takes the codec setting at its start and keeps it`() = runTest {
+        val h = Harness(this)
+        h.share.capture.value = Capture
+        assertEquals(SourceCodec.FLAC, h.source.config.first()?.codec, "FLAC by default")
+        h.share.capture.value = null
+        assertNull(h.source.config.first())
+
+        h.codec.value = SourceCodec.PCM
+        h.share.capture.value = Capture
+        assertEquals(SourceCodec.PCM, h.source.config.first()?.codec)
+
+        h.codec.value = SourceCodec.FLAC
+        h.source.dialect.value = SourceDialect.RC1
+        assertEquals(SourceCodec.PCM, h.source.config.first()?.codec, "a change does not restart a running share")
     }
 
     @Test
