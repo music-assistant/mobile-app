@@ -4,6 +4,9 @@ All changes to `io.github.music-assistant:sendspin-kmp` are in this file.
 
 ## Unreleased
 
+- The source send queue holds 26 chunks, 500 ms of 20 ms PCM, instead of 32. More would only
+  hold audio that the 500 ms age check drops anyway. A FLAC chunk is longer, so for FLAC the age
+  check alone bounds the queue, as before.
 - Source signal: under both dialects, the source now reports `client/state.source.signal =
   "absent"` after 5 seconds of silence in a stream (every sample at or below about -70 dBFS), and
   `"present"` on the first block above it. The server can then stop a silent source (Music
@@ -12,11 +15,6 @@ All changes to `io.github.music-assistant:sendspin-kmp` are in this file.
   `line_sense` in `client/hello`, which the current spec removed.
 - New `SourceSignal` (`Present`, `Absent`) and `PlayerState.Connected.sourceSignal`, the signal that
   the source last reported. The parameter has a default value, so the source stays compatible.
-- `SourceConfig.maxLatencyMs` (default 500 ms, the old fixed value) sets the age limit of source
-  audio after a stalled link. The send queue now holds only that much 20 ms audio (26 chunks by
-  default, before 32), and a smaller value gives a smaller queue. A change restarts the
-  connection, as for the other `SourceConfig` fields. The constructor and `copy` have a new parameter
-  with a default value, so code that was compiled against 0.2.0 must be compiled again.
 - `SourceStatus.Unpaired`: the server activated an unpaired session, which never gets the source
   role. Before, that session gave `SourceStatus.Off`, the same as no answer. A `when` over
   `SourceStatus` without an `else` branch needs the new case.

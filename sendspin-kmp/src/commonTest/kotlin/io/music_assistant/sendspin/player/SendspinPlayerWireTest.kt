@@ -116,11 +116,10 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     private fun sourceTest(
         dialect: SourceDialect = SourceDialect.SPEC,
         encoders: EncoderFactory? = null,
-        maxLatencyMs: Int = SourceConfig.DEFAULT_MAX_LATENCY_MS,
         block: suspend TestScope.(Harness, FakeCapture) -> Unit,
     ) {
         val capture = FakeCapture()
-        val source = SourceConfig(capture, dialect, maxLatencyMs)
+        val source = SourceConfig(capture, dialect)
         playerTest(sharedPsk = SHARED_PSK, source = source, encoders = encoders) { h ->
             block(h, capture)
         }
@@ -472,13 +471,8 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     }
 
     @Test
-    fun aStalledLinkSendsNoAudioOlderThanTheDefaultMaxLatency() = sourceTest { h, capture ->
-        assertStallBound(measureStalls(h, capture), SourceConfig.DEFAULT_MAX_LATENCY_MS)
-    }
-
-    @Test
-    fun aStalledLinkSendsNoAudioOlderThanTheConfiguredMaxLatency() = sourceTest(maxLatencyMs = 100) { h, capture ->
-        assertStallBound(measureStalls(h, capture), maxLatencyMs = 100)
+    fun aStalledLinkSendsNoAudioOlderThanTheAgeLimit() = sourceTest { h, capture ->
+        assertStallBound(measureStalls(h, capture), maxLatencyMs = MAX_LATENCY_MILLIS)
     }
 
     @Test
@@ -584,6 +578,10 @@ private data class StallReport(
 )
 
 private const val BLOCK_MILLIS = 20
+
+/** The source's age limit for audio at send time. */
+
+private const val MAX_LATENCY_MILLIS = 500
 private const val STEADY_MILLIS = 1_000
 private const val RECOVERY_MILLIS = 1_000
 private const val SHORT_STALL_MILLIS = 1_000

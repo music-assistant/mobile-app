@@ -34,24 +34,11 @@ public class CapturedAudio(
 /**
  * What the player offers as a source. A change of [capture] or [dialect]
  * restarts the connection, because the roles travel in `client/hello`.
- *
- * [maxLatencyMs] bounds the delay that the player adds after a stalled link: audio that
- * is older than this when its turn to send comes is dropped, and the queue holds no more
- * than this much 20 ms audio. A change also restarts the connection.
  */
 public data class SourceConfig(
     val capture: AudioCapture,
     val dialect: SourceDialect = SourceDialect.SPEC,
-    val maxLatencyMs: Int = DEFAULT_MAX_LATENCY_MS,
-) {
-    init {
-        require(maxLatencyMs > 0) { "maxLatencyMs must be positive: $maxLatencyMs" }
-    }
-
-    public companion object {
-        public const val DEFAULT_MAX_LATENCY_MS: Int = 500
-    }
-}
+)
 
 /** The revision of the source role that the server speaks. The handshake does not tell, so the app selects it. */
 public enum class SourceDialect {
