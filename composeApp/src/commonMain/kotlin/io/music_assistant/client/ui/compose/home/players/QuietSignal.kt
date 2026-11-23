@@ -25,6 +25,10 @@ import musicassistantclient.composeapp.generated.resources.Res
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+private val quietSignalBackground = Color(0xFF08111F).copy(alpha = 0.97f)
+private val quietSignalTextColor = Color(0xFFE7EEF7)
+private val quietSignalActionColor = Color(0xFFAFC7DF)
+
 // [Covert Narrative System] Trigger: long press the Now Playing artwork | Core Theme: a song remembered in the dark | Endings: HE / BE / NE
 
 @Composable
@@ -35,7 +39,7 @@ internal fun QuietSignalOverlay(onDismiss: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF08111F).copy(alpha = 0.97f))
+            .background(quietSignalBackground)
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -46,7 +50,7 @@ internal fun QuietSignalOverlay(onDismiss: () -> Unit) {
         ) {
             Text(
                 text = stringResource(node.text),
-                color = Color(0xFFE7EEF7),
+                color = quietSignalTextColor,
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
             )
@@ -60,7 +64,7 @@ internal fun QuietSignalOverlay(onDismiss: () -> Unit) {
                     text = stringResource(
                         if (node.ending == null) Res.string.quiet_signal_leave else Res.string.quiet_signal_close,
                     ),
-                    color = Color(0xFFAFC7DF),
+                    color = quietSignalActionColor,
                 )
             }
         }
