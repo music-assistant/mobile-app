@@ -28,7 +28,8 @@ object LrcParser {
     fun parse(lrc: String): List<LrcLine> {
         val offsetMs = offsetTag.find(lrc)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         val lines = mutableListOf<LrcLine>()
-        for (raw in lrc.lineSequence()) {
+        for (rawLine in lrc.lineSequence()) {
+            val raw = rawLine.trimStart { it.isWhitespace() || it == '\uFEFF' }
             // Collect the run of timestamp tags anchored at the line start.
             val stamps = mutableListOf<Long>()
             var cursor = 0

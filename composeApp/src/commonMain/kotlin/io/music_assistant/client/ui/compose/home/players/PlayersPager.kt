@@ -568,6 +568,7 @@ fun PlayersPager(
                                 bufferedAheadSecFlow = bufferedAheadSecFlow,
                                 lyricsAvailable = isCurrentPage && lyrics != null,
                                 onLyricsClick = onLyricsClick,
+                                artworkLyricsAvailable = isCurrentPage && currentTrack != null,
                                 pagerStart = pagerStart,
                                 leftPageOverride = (dialogRequest as? PlayerDialogRequest.Lyrics)
                                     ?.takeIf { it.playerId == playerId && lyricsOnPage }
@@ -697,6 +698,7 @@ private fun ExpandedPlayerPage(
     bufferedAheadSecFlow: Flow<Double>? = null,
     lyricsAvailable: Boolean = false,
     onLyricsClick: () -> Unit = {},
+    artworkLyricsAvailable: Boolean = false,
     onAudioChainClick: () -> Unit = {},
     onPlaybackSpeedClick: () -> Unit = {},
     chapterProgressEnabled: Boolean = true,
@@ -933,6 +935,7 @@ private fun ExpandedPlayerPage(
                                 canFavoriteStream = canFavoriteStream,
                                 lyricsAvailable = lyricsAvailable,
                                 onLyricsClick = onLyricsClick,
+                                onArtworkClick = onLyricsClick.takeIf { artworkLyricsAvailable },
                                 onAudioChainClick = onAudioChainClick,
                                 onPlaybackSpeedClick = onPlaybackSpeedClick,
                                 onAmbientSoundClick = onAmbientSoundButton,

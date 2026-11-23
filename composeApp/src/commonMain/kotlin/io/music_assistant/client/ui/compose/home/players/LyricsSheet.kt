@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.music_assistant.client.data.model.client.LrcLine
 import io.music_assistant.client.data.model.client.Lyrics
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.ToastHost
 import io.music_assistant.client.ui.compose.common.boundedModalSheet
 import io.music_assistant.client.ui.compose.common.rememberToastState
@@ -70,7 +73,11 @@ import musicassistantclient.composeapp.generated.resources.cd_transcript_close
 import musicassistantclient.composeapp.generated.resources.cd_transcript_offset_decrease
 import musicassistantclient.composeapp.generated.resources.cd_transcript_offset_increase
 import musicassistantclient.composeapp.generated.resources.edit_audio
+import musicassistantclient.composeapp.generated.resources.lyrics_error
+import musicassistantclient.composeapp.generated.resources.lyrics_fetching
+import musicassistantclient.composeapp.generated.resources.lyrics_retry
 import musicassistantclient.composeapp.generated.resources.lyrics_screen_wake_on
+import musicassistantclient.composeapp.generated.resources.lyrics_unavailable
 import musicassistantclient.composeapp.generated.resources.night_sight_auto
 import musicassistantclient.composeapp.generated.resources.night_sight_auto_off
 import org.jetbrains.compose.resources.painterResource
@@ -94,6 +101,18 @@ fun LyricsSheet(
     onDismiss: () -> Unit,
     kind: LyricsSheetKind = LyricsSheetKind.LYRICS,
 ) {
+    LyricsStateSheet(DataState.Data(lyrics), livePositionFlow, onDismiss, kind)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun LyricsStateSheet(
+    state: DataState<Lyrics>,
+    livePositionFlow: Flow<Double>?,
+    onDismiss: () -> Unit,
+    kind: LyricsSheetKind,
+    onRetry: () -> Unit = {},
+) {
     ModalBottomSheet(
         modifier = Modifier.boundedModalSheet(),
         onDismissRequest = onDismiss,
@@ -107,16 +126,66 @@ fun LyricsSheet(
         // empty bottom band (pointless on iOS, which has no button bar). Matches BottomSheet.kt.
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
     ) {
-        LyricsPanel(
-            lyrics = lyrics,
+        LyricsStatePanel(
+            state = state,
             livePositionFlow = livePositionFlow,
             onDismiss = onDismiss,
             kind = kind,
+            onRetry = onRetry,
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(LYRICS_BOTTOM_SHEET_HEIGHT)
                 .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
         )
+    }
+}
+
+/** Keeps loading, absence, and errors visible while the lyrics request is in flight. */
+@Composable
+internal fun LyricsStatePanel(
+    state: DataState<Lyrics>,
+    livePositionFlow: Flow<Double>?,
+    onDismiss: () -> Unit,
+    kind: LyricsSheetKind,
+    modifier: Modifier = Modifier,
+    closeIcon: ImageVector = Icons.Default.ExpandMore,
+    onRetry: () -> Unit = {},
+) {
+    val lyrics = state.dataOrNull
+    if (lyrics != null) {
+        LyricsPanel(lyrics, livePositionFlow, onDismiss, kind, modifier, closeIcon)
+        return
+    }
+    Box(modifier = modifier) {
+        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopStart)) {
+            Icon(
+                closeIcon,
+                contentDescription = stringResource(
+                    if (kind == LyricsSheetKind.LYRICS) Res.string.cd_lyrics_close else Res.string.cd_transcript_close,
+                ),
+            )
+        }
+        Column(
+            modifier = Modifier.align(Alignment.Center).padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            if (state is DataState.Loading) CircularProgressIndicator()
+            Text(
+                text = stringResource(
+                    when (state) {
+                        is DataState.Loading -> Res.string.lyrics_fetching
+                        is DataState.Error -> Res.string.lyrics_error
+                        else -> Res.string.lyrics_unavailable
+                    },
+                ),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (state is DataState.Error) {
+                TextButton(onClick = onRetry) { Text(stringResource(Res.string.lyrics_retry)) }
+            }
+        }
     }
 }
 

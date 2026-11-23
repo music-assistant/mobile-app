@@ -80,6 +80,7 @@
   <string name="cd_library_filters">过滤器</string>
   <string name="cd_lyrics">歌词</string>
   <string name="cd_lyrics_close">关闭歌词</string>
+  <string name="cd_lyrics_show">显示歌词</string>
   <string name="cd_more">更多</string>
   <string name="cd_mute">静音</string>
   <string name="cd_play_now">立刻播放</string>
@@ -157,7 +158,22 @@
   <string name="kind_radio">广播电台</string>
   <string name="kind_track">曲目</string>
   <string name="library_customize">自定义</string>
+  <string name="lyrics_error">无法获取歌词</string>
+  <string name="lyrics_fetching">正在获取歌词…</string>
+  <string name="lyrics_retry">重试</string>
+  <string name="lyrics_unavailable">暂无歌词</string>
   <string name="player_power_off">关机</string>
   <string name="player_power_on">开机</string>
   <string name="player_powered_off">已关机</string>
+  <string name="quiet_signal_answer">回应</string>
+  <string name="quiet_signal_bitter">歌曲没有等来回答。你小心地收好这段寂静。</string>
+  <string name="quiet_signal_close">回到歌曲</string>
+  <string name="quiet_signal_continue">继续走</string>
+  <string name="quiet_signal_hopeful">下一句旋律抵达时，你仍在那里听见了它。</string>
+  <string name="quiet_signal_leave">安静离开</string>
+  <string name="quiet_signal_listen">听下去</string>
+  <string name="quiet_signal_neutral">道路还在延伸。有些歌只是同行，并没有终点。</string>
+  <string name="quiet_signal_opening">歌里仍有一束微光在移动。要听下去吗？</string>
+  <string name="quiet_signal_receive">寂静喊出了你的名字。要回应吗？</string>
+  <string name="quiet_signal_walk">让它经过</string>
 </resources>

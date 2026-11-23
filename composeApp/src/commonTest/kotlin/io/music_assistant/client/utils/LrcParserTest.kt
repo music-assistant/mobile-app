@@ -24,6 +24,12 @@ class LrcParserTest {
     }
 
     @Test
+    fun `parses timestamps following a byte order mark or leading whitespace`() {
+        val lines = LrcParser.parse("\uFEFF[00:01.00]first\n  [00:02.00]second")
+        assertEquals(listOf(LrcLine(1_000, "first"), LrcLine(2_000, "second")), lines)
+    }
+
+    @Test
     fun `supports missing and three-digit fractions`() {
         val lines = LrcParser.parse(
             """

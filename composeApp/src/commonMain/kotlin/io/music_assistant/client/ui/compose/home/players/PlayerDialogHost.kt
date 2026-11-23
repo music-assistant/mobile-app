@@ -17,6 +17,7 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.sleepTimerEndMode
 import io.music_assistant.client.data.model.client.sleepTimerEndModes
 import io.music_assistant.client.data.repository.QueueOverlayRepository
+import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
 import io.music_assistant.client.ui.compose.common.items.AddToPlaylistDialog
 import io.music_assistant.client.ui.compose.common.items.ChooseArtistDialog
@@ -79,8 +80,8 @@ fun PlayerDialogHost(
         )
 
         is PlayerDialogRequest.Lyrics -> if (pageSplitOrNull(lyricsOpen = true) == null) {
-            ResolvedLyrics(player, homeScreenViewModel, request, onDismiss) { lyrics, livePositionFlow, kind ->
-                LyricsSheet(lyrics, livePositionFlow, onDismiss, kind)
+            ResolvedLyrics(player, homeScreenViewModel, request, onDismiss) { state, livePositionFlow, kind, retry ->
+                LyricsStateSheet(state, livePositionFlow, onDismiss, kind, retry)
             }
         }
 
@@ -167,8 +168,8 @@ fun LyricsPage(
     modifier: Modifier = Modifier,
 ) {
     val player = players.byId(request.playerId) ?: return
-    ResolvedLyrics(player, homeScreenViewModel, request, onDismiss) { lyrics, livePositionFlow, kind ->
-        LyricsPanel(lyrics, livePositionFlow, onDismiss, kind, modifier, closeIcon = Icons.Default.Close)
+    ResolvedLyrics(player, homeScreenViewModel, request, onDismiss) { state, livePositionFlow, kind, retry ->
+        LyricsStatePanel(state, livePositionFlow, onDismiss, kind, modifier, Icons.Default.Close, retry)
     }
 }
 
@@ -178,17 +179,18 @@ private fun ResolvedLyrics(
     homeScreenViewModel: HomeScreenViewModel,
     request: PlayerDialogRequest,
     onDismiss: () -> Unit,
-    content: @Composable (Lyrics, Flow<Double>?, LyricsSheetKind) -> Unit,
+    content: @Composable (DataState<Lyrics>, Flow<Double>?, LyricsSheetKind, () -> Unit) -> Unit,
 ) {
     val item = player.queueInfo?.currentItem?.track
-    val lyrics = when (item) {
+    val state = when (item) {
         is Track -> key(item.provider, item.itemId, item.lyrics) {
+            LaunchedEffect(Unit) { homeScreenViewModel.loadTrackLyrics(item) }
             remember { homeScreenViewModel.trackLyrics(item) }
-                .collectAsStateWithLifecycle().value.dataOrNull
+                .collectAsStateWithLifecycle().value
         }
 
         is PodcastEpisode -> remember(item.provider, item.itemId) { homeScreenViewModel.transcript(item) }
-            .collectAsStateWithLifecycle().value.dataOrNull
+            .collectAsStateWithLifecycle().value
 
         else -> null
     } ?: return DismissEffect(request, onDismiss)
@@ -197,8 +199,15 @@ private fun ResolvedLyrics(
         queueId?.let { homeScreenViewModel.observePosition(it) }
     }
     content(
-        lyrics,
+        state,
         livePositionFlow,
         if (item is PodcastEpisode) LyricsSheetKind.TRANSCRIPT else LyricsSheetKind.LYRICS,
+        {
+            when (item) {
+                is Track -> homeScreenViewModel.loadTrackLyrics(item)
+                is PodcastEpisode -> homeScreenViewModel.loadTranscript(item)
+                else -> Unit
+            }
+        },
     )
 }
