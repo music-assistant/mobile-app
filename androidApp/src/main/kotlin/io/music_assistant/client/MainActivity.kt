@@ -104,20 +104,20 @@ class MainActivity : ComponentActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val up = volumeKeyDirection(keyCode) ?: return super.onKeyDown(keyCode, event)
         val repeat = (event?.repeatCount ?: 0) > 0
+        val inCall = audioManager.mode != AudioManager.MODE_NORMAL
         return when {
             repeat && keyCode in routedVolumeKeys -> {
-                volumeButtonService.onVolumeKey(up, isRepeat = true)
+                volumeButtonService.onVolumeKey(up, isRepeat = true, inCall = inCall)
                 true
             }
 
-            audioManager.mode == AudioManager.MODE_NORMAL && volumeButtonService.onVolumeKey(up, repeat) -> {
+            volumeButtonService.onVolumeKey(up, repeat, inCall) -> {
                 routedVolumeKeys += keyCode
                 true
             }
 
             else -> {
                 routedVolumeKeys -= keyCode
-                if (!repeat) volumeButtonService.onPlatformVolumeButtonPressed()
                 super.onKeyDown(keyCode, event)
             }
         }

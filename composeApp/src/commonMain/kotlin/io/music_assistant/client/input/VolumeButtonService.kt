@@ -19,7 +19,9 @@ class VolumeButtonService(
 ) {
     private val log = Logger.withTag("VolumeButtonService")
 
-    private val _buttonPresses = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val _buttonPresses = MutableSharedFlow<UnroutedVolumeKey>(extraBufferCapacity = 1)
+
+    /** Each press that changed the device volume, with the reason it did not go to the player. */
     val buttonPresses = _buttonPresses.asSharedFlow()
 
     private val _remoteAdjust = MutableSharedFlow<String>(
@@ -53,8 +55,9 @@ class VolumeButtonService(
         }
     }
 
+    /** A press on a platform that never gives the keys to a remote player (iOS). */
     fun onPlatformVolumeButtonPressed() {
-        _buttonPresses.tryEmit(Unit)
+        _buttonPresses.tryEmit(UnroutedVolumeKey.NOT_SUPPORTED)
     }
 
     /**
@@ -62,13 +65,33 @@ class VolumeButtonService(
      * Returns true when the app takes the press, so the platform must not change the device
      * volume. With the setting on and a remote player selected the app always takes it: a
      * press that the player cannot act on emits a [VolumeKeyRefusal] instead of a step, once
-     * for each press and not for its repeats. Returns false for the local player and while the
-     * setting is off: the device volume changes as usual.
+     * for each press and not for its repeats.
+     *
+     * Returns false during a call or VoIP ([inCall]: the key changes the call volume), while the
+     * setting is off, and for the local player or no selection: the device volume changes as
+     * usual. The first two emit the reason on [buttonPresses], once for each press.
      */
-    fun onVolumeKey(up: Boolean, isRepeat: Boolean): Boolean {
-        val player = target.selectedPlayer
-            ?.takeIf { settings.volumeKeysControlSelectedPlayer.value && !it.isLocal }
-            ?: return false
+    fun onVolumeKey(up: Boolean, isRepeat: Boolean, inCall: Boolean = false): Boolean {
+        val selected = target.selectedPlayer
+        val player = selected?.takeIf { !it.isLocal }
+        val unrouted = when {
+            inCall -> UnroutedVolumeKey.IN_CALL
+            !settings.volumeKeysControlSelectedPlayer.value -> UnroutedVolumeKey.SETTING_OFF
+            player == null -> null
+            else -> return route(player, up, isRepeat)
+        }
+        if (!isRepeat) {
+            val message = "Volume key left to the device: ${unrouted ?: "no remote player"}, " +
+                "selected=${selected?.playerId} local=${selected?.isLocal}"
+            // An ordinary press for this device is no news: info only when a remote player is selected.
+            if (player != null) log.i { message } else log.d { message }
+            // No toast without a remote player: the user isn't looking at one, or the UI is a moment ahead.
+            unrouted?.let { _buttonPresses.tryEmit(it) }
+        }
+        return false
+    }
+
+    private fun route(player: PlayerData, up: Boolean, isRepeat: Boolean): Boolean {
         when (val reason = refusalFor(player)) {
             null -> {
                 steps.trySend(player to volumeStep(player, up))
@@ -86,6 +109,18 @@ class VolumeButtonService(
         !player.player.isVolumeSliderAccessible -> VolumeKeyRefusal.Reason.NO_VOLUME_CONTROL
         else -> null
     }
+}
+
+/** Why a volume key press changed the device volume and not the selected player. */
+enum class UnroutedVolumeKey {
+    /** The platform does not route the keys (iOS). */
+    NOT_SUPPORTED,
+
+    /** The setting that gives the keys to the selected player is off. */
+    SETTING_OFF,
+
+    /** A call or VoIP holds the audio mode. */
+    IN_CALL,
 }
 
 /** Why a volume key press for the selected remote player changed nothing. */
