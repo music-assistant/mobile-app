@@ -3,6 +3,7 @@ package io.music_assistant.client.data.play
 import co.touchlab.kermit.Logger
 import io.music_assistant.client.api.Request
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.client.RepeatMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -82,6 +83,7 @@ class PlayDispatcher(
             while (true) {
                 val next = takeNext(queueId) ?: return
                 beforeSend(queueId)
+                if (next.playsAudiobook) disableRepeat(queueId)
                 apiClient.sendRequest(next.toRequest())
                     .onFailure { log.w(it) { "play_media failed for $next: ${it.message}" } }
             }
@@ -91,6 +93,17 @@ class PlayDispatcher(
             lanes.update { it - queueId }
             throw e
         }
+    }
+
+    /**
+     * A repeating queue preloads its current audiobook as its own next item, from 0, and the
+     * server then loses the seek and the resume position of the book. The player controls hide
+     * repeat for audiobooks, so a repeat mode left from music would stay on unseen. A failure
+     * does not stop the play request.
+     */
+    private suspend fun disableRepeat(queueId: String) {
+        apiClient.sendRequest(Request.Queue.setRepeatMode(queueId, RepeatMode.OFF))
+            .onFailure { log.w(it) { "$queueId: repeat off failed: ${it.message}" } }
     }
 
     /** Moves the first waiting request to "in progress", or closes the lane if none waits. */

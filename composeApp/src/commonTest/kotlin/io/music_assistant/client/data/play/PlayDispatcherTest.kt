@@ -127,10 +127,69 @@ class PlayDispatcherTest {
         assertEquals(listOf("a", "b"), client.sentMedia)
     }
 
+    @Test
+    fun `an audiobook request turns repeat off on its queue before play_media`() = runTest {
+        val client = GatedClient()
+        val dispatcher = PlayDispatcher(client, backgroundScope)
+
+        dispatcher.play(play("library://audiobook/27", queue = "kitchen"))
+        runCurrent()
+        client.answer()
+        runCurrent()
+
+        assertEquals(listOf(REPEAT, PLAY_MEDIA), client.sentCommands)
+        val repeat = client.sent.first().args
+        assertEquals("kitchen", repeat?.get("queue_id")?.jsonPrimitive?.content)
+        assertEquals("off", repeat?.get("repeat_mode")?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun `an audiobook series request turns repeat off`() = runTest {
+        val client = GatedClient()
+        val dispatcher = PlayDispatcher(client, backgroundScope)
+
+        dispatcher.play(play("audiobookshelf--x://collection/7"))
+        runCurrent()
+        client.answer()
+        runCurrent()
+
+        assertEquals(listOf(REPEAT, PLAY_MEDIA), client.sentCommands)
+    }
+
+    @Test
+    fun `a music request leaves repeat alone`() = runTest {
+        val client = GatedClient()
+        val dispatcher = PlayDispatcher(client, backgroundScope)
+
+        dispatcher.play(play("library://track/5"))
+        dispatcher.play(play("spotify--x://album/9", QueueOption.ADD))
+        runCurrent()
+        client.answer()
+        runCurrent()
+
+        assertEquals(listOf(PLAY_MEDIA, PLAY_MEDIA), client.sentCommands)
+    }
+
+    @Test
+    fun `a failed repeat off does not stop the audiobook request`() = runTest {
+        val client = GatedClient()
+        val dispatcher = PlayDispatcher(client, backgroundScope)
+
+        dispatcher.play(play("library://audiobook/27"))
+        runCurrent()
+        client.answer(Result.failure(IllegalStateException("dynamic queue")))
+        runCurrent()
+
+        assertEquals(listOf(REPEAT, PLAY_MEDIA), client.sentCommands)
+    }
+
     /** Holds every request until the test answers it, oldest first. */
     private class GatedClient : StubServiceClient() {
-        private val sent = mutableListOf<Request>()
+        val sent = mutableListOf<Request>()
         private val pending = ArrayDeque<CompletableDeferred<Result<Answer>>>()
+
+        val sentCommands: List<String>
+            get() = sent.map { it.command }
 
         val sentMedia: List<String>
             get() = sent.map { request ->
@@ -149,6 +208,8 @@ class PlayDispatcherTest {
 
     private companion object {
         const val QUEUE = "queue"
+        const val REPEAT = "player_queues/repeat"
+        const val PLAY_MEDIA = "player_queues/play_media"
 
         fun play(media: String, option: QueueOption = QueueOption.PLAY, queue: String = QUEUE) =
             PlayRequest(queueOrPlayerId = queue, media = listOf(media), option = option)
