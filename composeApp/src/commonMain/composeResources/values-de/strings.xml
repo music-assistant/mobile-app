@@ -18,6 +18,7 @@
   <string name="action_choose_artist">Künstler wählen</string>
   <string name="action_customize">Anpassen...</string>
   <string name="action_dislike">Gefällt mir nicht</string>
+  <string name="action_export_playlist">Wiedergabeliste exportieren</string>
   <string name="action_favorite">Zu Favoriten hinzufügen</string>
   <string name="action_go_to_album">Zum Album</string>
   <string name="action_go_to_artist">Zum Künstler</string>
@@ -48,6 +49,7 @@
   <string name="action_remove_from_library">Aus Bibliothek entfernen</string>
   <string name="action_remove_from_playlist">Aus Wiedergabeliste entfernen</string>
   <string name="action_replace_next">Als Nächstes abspielen, Rest ersetzen</string>
+  <string name="action_select_multiple">Mehrere auswählen</string>
   <string name="action_similar_artists">Ähnliche Künstler</string>
   <string name="action_start_endless_mix">Endlosen Mix starten</string>
   <string name="action_start_radio">Radio starten</string>
@@ -56,6 +58,7 @@
   <string name="action_unfavorite">Aus Favoriten entfernen</string>
   <string name="action_view_all">Alle zeigen</string>
   <string name="ai_radio_dj">AI Radio aktivieren</string>
+  <string name="ai_radio_no_player">Wähle zuerst ein Wiedergabegerät aus</string>
   <string name="ai_radio_stop">Stopp</string>
   <string name="ai_radio_title">AI Radio</string>
   <string name="album_disc_header">Disc %1$d</string>
@@ -74,6 +77,7 @@
   <string name="all_podcasts">Alle Podcasts</string>
   <string name="all_radio">Alle Radiosender</string>
   <string name="all_tracks">Alle Titel</string>
+  <string name="ambient_sound_menu_subtitle">%1$s · %2$d%</string>
   <string name="announcement_chime">Ankündigungston abspielen</string>
   <string name="announcement_custom_volume">Benutzerdefinierte Lautstärke</string>
   <string name="announcement_failed">Benachrichtigung konnte nicht gesendet werden</string>
@@ -89,11 +93,16 @@
   <string name="announcement_title">Benachrichtigung abspielen</string>
   <string name="announcement_volume">Lautstärke: %1$d</string>
   <string name="app_name">Music Assistant</string>
+  <string name="artist_section_albums">Alben</string>
   <string name="artist_section_all">Diskografie</string>
   <string name="artist_section_all_audiobooks">Alle Hörbücher</string>
+  <string name="artist_section_appears_on">Erscheint auf</string>
+  <string name="artist_section_discography">Diskografie</string>
   <string name="artist_section_in_library">In Bibliothek</string>
+  <string name="artist_section_singles_eps">Singles &amp; EPs</string>
   <string name="artist_section_top">Beliebt</string>
   <string name="artist_source_all">Alle</string>
+  <string name="artist_source_library">Bibliothek</string>
   <string name="artist_type_authors">Autoren</string>
   <string name="artist_type_narrators">Erzähler</string>
   <string name="auth_authenticating">Anmelden...</string>
@@ -200,6 +209,7 @@
   <string name="common_create">Erstellen</string>
   <string name="common_delete">Löschen</string>
   <string name="common_done">Fertig</string>
+  <string name="common_save">Speichern</string>
   <string name="connection_lost">Verbindung unterbrochen — wird verbunden...</string>
   <string name="default_click_dialog_save">Speichern</string>
   <string name="default_click_dialog_title">Standardaktion beim Klicken</string>
@@ -208,6 +218,10 @@
   <string name="dialog_remove_from_library_title">Aus Bibliothek entfernen?</string>
   <string name="dialog_remove_from_playlist_message">"%1$s" von der Wiedergabeliste entfernen?</string>
   <string name="dialog_remove_from_playlist_title">Aus Wiedergabeliste entfernen?</string>
+  <plurals name="dialog_remove_items_from_playlist_message">
+    <item quantity="one">Entferne %1$d Element aus dieser Wiedergabeliste?</item>
+    <item quantity="other">Entferne %1$d Elemente aus dieser Wiedergabeliste?</item>
+  </plurals>
   <string name="discover_shortcuts">Verknüpfungen</string>
   <string name="dsp_enable">DSP aktivieren</string>
   <string name="dsp_error">Fehler beim Laden der DSP-Einstellungen</string>
@@ -247,6 +261,7 @@
   <string name="item_section_about_episode">Über diese Folge</string>
   <string name="item_section_biography">Biografie</string>
   <string name="item_section_description">Beschreibung</string>
+  <string name="item_subtitle_audio_source">Eingang</string>
   <string name="item_subtitle_genre">Genre</string>
   <string name="item_subtitle_playlist">Wiedergabeliste</string>
   <string name="item_subtitle_playlist_dynamic">Dynamische Wiedergabeliste</string>
@@ -310,10 +325,20 @@
   <string name="nav_home">Home</string>
   <string name="nav_library">Bibliothek</string>
   <string name="nav_menu">Menü</string>
+  <string name="nav_party">Party</string>
   <string name="nav_search">Suchen</string>
   <string name="nav_settings">Einstellungen</string>
   <string name="nav_system">System</string>
   <string name="not_connected_retry">Nicht verbunden — erneut versuchen, wenn Verbindung hergestellt wurde</string>
+  <string name="party_copy_link">Link kopieren</string>
+  <string name="party_guest_access_off">Gastzugriff deaktiviert. Aktiviere ihn in den Einstellungen des Party-Plugins auf dem Server.</string>
+  <string name="party_guest_access_off_host">Erstelle deine Party und aktiviere den Gastzugriff, damit der QR-Code erscheint.</string>
+  <string name="party_invite_error">Party Link konnte nicht geladen werden. </string>
+  <string name="party_link_copied">Link kopiert</string>
+  <string name="party_save_failed">Party Einstellungen konnten nicht gespeichert werden.</string>
+  <string name="party_scan_to_join">Scanne den QR-Code, um an der Party teilzunehmen!</string>
+  <string name="party_settings">Party Einstellungen</string>
+  <string name="party_settings_error">Party Einstellungen konntent nicht geladen werden.</string>
   <string name="playback_speed_dialog_title">Wiedergabegeschwindigkeit</string>
   <string name="player_autoplay">Automatische Wiedergabe</string>
   <string name="player_crossfade">Crossfade</string>
@@ -323,6 +348,7 @@
   <string name="player_power_on">Einschalten</string>
   <string name="player_powered_off">Ausgeschaltet</string>
   <string name="player_show_buffer_indicator">Pufferstatus anzeigen</string>
+  <string name="player_show_waveform">Wellenform anzeigen</string>
   <string name="player_sleep_timer">Timer</string>
   <string name="player_standby">Player ist im Standby-Modus. Zum Aufwecken tippen.</string>
   <string name="player_unavailable">Nicht verfügbar</string>
@@ -337,6 +363,7 @@
   <string name="players_none_available">Keine Player verfügbar</string>
   <string name="players_nothing">Keine Wiedergabe</string>
   <string name="players_remote_volume_hint">Lautstärketasten funktionieren nur für den lokalen Player</string>
+  <string name="players_select_source">Quelle auswählen</string>
   <string name="players_swipe_hint">Wische nach links oder rechts, um zwischen den Playern zu wechseln.</string>
   <string name="players_title">Player</string>
   <string name="playlist_access_collaborative">Gemeinsam genutzt</string>
@@ -346,6 +373,16 @@
   <string name="playlist_add_new">Neue hinzufügen</string>
   <string name="playlist_add_to_title">Zu Wiedergabeliste hinzufügen</string>
   <string name="playlist_create_title">Wiedergabeliste erstellen</string>
+  <string name="playlist_import">Importieren</string>
+  <string name="playlist_import_match_best_effort">Bestmöglich</string>
+  <string name="playlist_import_match_best_effort_description">Exakte Übereinstimmung bevorzugen, danach dieselbe Aufnahme. Andernfalls den ähnlichsten verfügbaren Treffer verwenden.</string>
+  <string name="playlist_import_match_exact">Gleiches Release</string>
+  <string name="playlist_import_match_exact_description">Übereinstimmungen nur innerhalb des gleichen Releases zulassen.</string>
+  <string name="playlist_import_match_same_recording">Gleiche Aufnahme (empfohlen)</string>
+  <string name="playlist_import_match_same_recording_description">Bevorzuge eine exakte Übereinstimmung. Andernfalls akzeptiere dieselbe Aufnahme von einem anderen Release.</string>
+  <string name="playlist_import_matching">Titelabgleich</string>
+  <string name="playlist_import_sources">Nach Tracks suchen in</string>
+  <string name="playlist_import_title">Wiedergabeliste importieren</string>
   <string name="playlist_name_label">Name der Wiedergabeliste</string>
   <string name="playlist_no_editable">Keine editierbaren Wiedergabelisten verfügbar</string>
   <string name="playlist_sharing_everyone">Für alle Benutzer (inkl. Gästen)</string>
@@ -357,6 +394,7 @@
     <item quantity="other">Mit %1$d Benutzern geteilt</item>
   </plurals>
   <string name="quality_dialog_input">Eingang</string>
+  <string name="quality_dialog_open_origin">Öffne %1$s</string>
   <string name="quality_dialog_output">Ausgang</string>
   <string name="quality_dialog_title">Audiokette</string>
   <string name="queue_autoplay_disable">Automatische Wiedergabe deaktivieren</string>
@@ -369,6 +407,7 @@
   <string name="queue_dsm_disable">Don't Stop The Music ausschalten</string>
   <string name="queue_dsm_enable">Don't Stop The Music einschalten</string>
   <string name="queue_empty">Warteschlange ist leer</string>
+  <string name="queue_ended">Wiedergabe beendet</string>
   <string name="queue_error">Fehler beim Laden der Warteschlange</string>
   <string name="queue_label">Warteschlange</string>
   <string name="queue_label_with_position">Warteschlange (%1$d/%2$d)</string>
@@ -394,6 +433,11 @@
   <string name="search_source_library">Bibliothek</string>
   <string name="search_start">Suche starten</string>
   <string name="search_title">Globale Suche</string>
+  <plurals name="selection_count">
+    <item quantity="one">%1$s ausgewählt</item>
+    <item quantity="other">%1$s ausgewählt</item>
+  </plurals>
+  <string name="selection_select_all">Alle auswählen</string>
   <string name="sendspin_encryption_required_unavailable">Eine verschlüsselte Verbindung ist erforderlich, wird von diesem Server jedoch nicht unterstützt. Aktualisiere Music Assistant oder deaktiviere die entsprechende Einstellung.</string>
   <string name="sendspin_failed_incompatible_protocol">Der Server verwendet eine Version des Sendspin-Protokolls, die von dieser App nicht unterstützt wird. Suche nach Updates für die App und den Server und starte anschließend den lokalen Player neu. Sollte das Problem weiterhin besteht, teile die Logs mit uns.</string>
   <string name="sendspin_failed_server_rejected">Der Server hat dieses Gerät als Player abgelehnt. Prüfe das Serverprotokoll von Music Assistant.</string>
@@ -448,8 +492,11 @@
   <string name="settings_connection_method">Verbindungsmethode</string>
   <string name="settings_connection_webrtc">WebRTC</string>
   <string name="settings_custom_sendspin">Benutzerdefinierte Sendspin Verbindung</string>
+  <string name="settings_custom_sendspin_ma_sign_in">Mit Music Assistant anmelden</string>
   <string name="settings_disable_local_player">Lokalen Player deaktivieren</string>
   <string name="settings_disconnect">Verbindung trennen</string>
+  <string name="settings_discovered_server_ha_addon">Home Assistant Add-on</string>
+  <string name="settings_discovered_servers">Server in deinem Netzwerk</string>
   <string name="settings_enable_local_player">Lokalen Player aktivieren</string>
   <string name="settings_error_local_network_ios">Server nicht erreichbar. iOS benötigt Zugriff auf dein lokales Netzwerk – tippe auf Erlauben, wenn eine Abfrage angezeigt wurde, oder aktiviere den Zugriff später unter Einstellungen &gt; Datenschutz &amp; Sicherheit &gt; Lokales Netzwerk. Stelle außerdem sicher, dass dein Gerät mit demselben Netzwerk wie der Server verbunden ist, und versuche es erneut.</string>
   <string name="settings_error_offline_ios">Server nicht erreichbar. Prüfe, ob die Adresse stimmt und dein Gerät online und mit demselben Netzwerk wie der Server verbunden ist. Versuche es dann erneut.</string>
@@ -463,6 +510,7 @@
   <string name="settings_host">Host</string>
   <string name="settings_local_network_onboarding_body_ios">Wenn du dich zum ersten Mal mit deinem Server verbindest, fragt iOS nach der Erlaubnis, auf dein lokales Netzwerk zuzugreifen. Tippe auf Erlauben – sonst kann die App deinen Server nicht finden oder erreichen.</string>
   <string name="settings_local_network_onboarding_title_ios">Zugriff auf lokales Netzwerk</string>
+  <string name="settings_local_network_prompt_ios">iOS fragt nach der Erlaubnis, auf dein lokales Netzwerk zuzugreifen. Tippe auf "Erlauben", damit die App deinen Server finden und erreichen kann.</string>
   <string name="settings_local_player">Sendspin Player</string>
   <string name="settings_local_player_clear_name">Name zurücksetzen</string>
   <string name="settings_local_player_disabled">Lokaler Player (Sendspin protocol)</string>
@@ -473,6 +521,8 @@
   <string name="settings_player_name">Player Name</string>
   <string name="settings_port">Port</string>
   <string name="settings_port_default">Port (Standard: 8095)</string>
+  <string name="settings_port_home_assistant_hint">Port 8123 ist Home Assistant. Music Assistant verwendet seinen eigenen Port - üblicherweise 8095. </string>
+  <string name="settings_port_invalid">Gib einen Port zwischen 1 und 65535 ein.</string>
   <string name="settings_remote_id">Remote ID</string>
   <string name="settings_remote_id_hint">Remote ID aus den Music Assistant Servereinstellungen eingeben</string>
   <string name="settings_remote_id_invalid">Ungültiges Format der Remote ID</string>
@@ -488,15 +538,24 @@
   <string name="settings_server_base_path">Basispfad (optional)</string>
   <string name="settings_server_base_path_hint">Falls der Webdienst unter einem Unterpfad betrieben wird.</string>
   <string name="settings_server_host">Server Host</string>
+  <string name="settings_server_host_invalid">Gib nur den Hostnamen oder die IP-Adresse ein (ohne Protokoll, Port oder Pfad).</string>
   <string name="settings_share_crash_logs">Absturzberichte teilen</string>
   <string name="settings_share_logs">Logs teilen</string>
+  <string name="settings_ssl_tls">SSL/TLS (wss://)</string>
   <string name="settings_use_tls">TLS verwenden (wss://)</string>
   <string name="settings_use_tls_wss">Sichere Verbindung verwenden (WSS/TLS)</string>
   <string name="settings_version_info">Version %1$s, Schema %2$s</string>
+  <string name="settings_volume_keys_control_player">Lautstärketasten steuern den ausgewählten Player</string>
+  <string name="settings_volume_keys_control_player_hint">Bei geöffneter App passen die Lautstärketasten die Lautstärke des ausgewählten Players an, sofern es sich nicht um dieses Gerät handelt.</string>
   <string name="settings_webrtc_description">Von überall verbinden (ohne Port-Forwarding)</string>
   <string name="settings_webrtc_disclaimer">WebRTC Verbindungen können langsamer und weniger zuverlässig als direkte oder proxybasierte Verbindungen sein.</string>
   <string name="settings_webrtc_info">WebRTC verwendet cloud signalling und Ende-zu-Ende Verschlüsselung. Funktioniert mit den meisten Firewalls und NATs.</string>
   <string name="sleep_timer_clear">Timer zurücksetzen</string>
+  <string name="sleep_timer_end_of_audiobook">Ende des Hörbuchs</string>
+  <string name="sleep_timer_end_of_chapter">Ende des Kapitels</string>
+  <string name="sleep_timer_end_of_episode">Ende der Folge</string>
+  <string name="sleep_timer_end_of_item">Ende des aktuellen Elements</string>
+  <string name="sleep_timer_end_of_track">Ende des Titels</string>
   <string name="sleep_timer_hour">1 Stunde</string>
   <string name="sleep_timer_hours">%1$d Stunden</string>
   <string name="sleep_timer_minutes">%1$d Minuten</string>
@@ -518,13 +577,20 @@
   <string name="toast_error_add_playlist">Fehler beim Hinzufügen zur Wiedergabeliste</string>
   <string name="toast_error_create_playlist">Fehler beim Erstellen der Wiedergabeliste</string>
   <string name="toast_error_favorite_stream_track">Der aktuell laufende Titel konnte nicht zu den Favoriten hinzugefügt werden. Möglicherweise kann der Server den Titel nicht erkennen.</string>
+  <string name="toast_error_import_playlist">Fehler beim Importieren der Wiedergabeliste</string>
   <string name="toast_error_mark_played">Fehler beim markieren als gespielt</string>
   <string name="toast_error_mark_unplayed">Fehler beim markieren als ungespielt</string>
   <string name="toast_favorited_stream_track">Der aktuell laufende Titel wurde zu den Favoriten hinzugefügt.</string>
   <string name="toast_marked_played">Als gespielt markieren</string>
   <string name="toast_marked_unplayed">Als ungespielt markieren</string>
   <string name="toast_no_uri">Medienelement hat keine URI</string>
+  <string name="toast_playlist_file_invalid">Diese Datei ist keine M3U Wiedergabeliste</string>
+  <string name="toast_playlist_file_too_large">Die Datei der Wiedergabeliste ist zu groß</string>
+  <string name="toast_playlist_file_unreadable">Konnte Datei nicht lesen</string>
+  <string name="toast_playlist_imported">%1$s importiert</string>
   <string name="unsupported_install_description">Dieser Server wurde nicht über eine der unterstützten Installationsmethoden installiert. Einige Funktionen funktionieren möglicherweise nicht wie erwartet. Gemeldete Probleme werden möglicherweise ohne weitere Bearbeitung geschlossen.</string>
   <string name="unsupported_install_link">Installationsmethoden</string>
   <string name="unsupported_install_title">Nicht unterstützte Installation</string>
+  <string name="volume_keys_no_volume_control">Die Lautstärke von %1$s konnte nicht angepasst werden</string>
+  <string name="volume_keys_player_off">%1$s ist aus</string>
 </resources>
