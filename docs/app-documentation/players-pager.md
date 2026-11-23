@@ -215,4 +215,6 @@ The expanded view shows the full control row:
 
 For an audiobook or a podcast episode, **Rewind 10s** and **Forward 30s** show instead of **Shuffle** and **Repeat**.
 
+When you play an audiobook or an audiobook series from the app, the app sets the repeat mode of the queue to off. Repeat on an audiobook makes a seek or a chapter change start the book from the beginning.
+
 While a play request runs, a ring turns around the play button. The ring also shows when a different app starts playback on the same queue.

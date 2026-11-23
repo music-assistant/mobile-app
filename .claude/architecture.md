@@ -106,6 +106,10 @@ actual class PlatformFeature {
   time. It drops a double tap, and a new "play" or "replace" request replaces a waiting one (`coalesce`).
   Before a request leaves, the dispatcher calls `LocalPlayerAdapter.prepareQueue` with the queue id. For the local
   player, that lifts the hold and brings the audio link up first (see the link policy in the Sendspin section).
+  If the media holds an audiobook or a series (`PlayRequest.playsAudiobook`), the dispatcher first sets the repeat
+  mode of the queue to off. With repeat on, the server preloads the current book as its own next item from 0, and
+  that clears the seek and the resume position of the book. The player controls hide repeat for an audiobook, so
+  the user cannot see or change it. If the repeat command fails, the play request still goes out.
   `busyQueueIds` gives the queues that have a request in progress or waiting. `PlayerData.playRequestPending`
   joins it with the server flag `extra_attributes.play_action_in_progress` (any client), and `PlayerControls`
   shows a ring around the main button while it is true. Read the server flag from the server queues, because the
