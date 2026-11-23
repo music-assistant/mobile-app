@@ -6,9 +6,12 @@ import android.content.Intent
 import android.media.projection.MediaProjection
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.annotation.VisibleForTesting
 import io.music_assistant.client.data.share.DeviceAudioShare
 import io.music_assistant.client.utils.sendspinClock
 import io.music_assistant.sendspin.api.AudioCapture
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.concurrent.Volatile
@@ -32,6 +35,12 @@ class AndroidDeviceAudioShare(
     override var endedBySystem = false
         private set
 
+    private val _startFailures = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val startFailures: Flow<Unit> = _startFailures
+
+    /** A stop by the user and an end by the system can race: the first to clear the capture decides. */
+    private val lock = Any()
+
     /** Starts the service with the consent that the user just gave ([resultCode], [consent]). */
     fun start(resultCode: Int, consent: Intent, notification: ShareNotificationText) {
         context.startForegroundService(
@@ -45,20 +54,43 @@ class AndroidDeviceAudioShare(
     }
 
     override fun stop() {
-        _capture.value = null
+        synchronized(lock) { _capture.value = null }
         context.stopService(Intent(context, serviceClass))
     }
 
     /** The service holds [projection]: the capture can run. */
     @RequiresApi(Build.VERSION_CODES.Q)
-    fun onStarted(projection: MediaProjection) {
+    fun onStarted(projection: MediaProjection) =
+        onStarted(PlaybackCapture(projection, sendspinClock, onFailed = ::onCaptureFailed))
+
+    @VisibleForTesting
+    internal fun onStarted(capture: AudioCapture) = synchronized(lock) {
         endedBySystem = false
-        _capture.value = PlaybackCapture(projection, sendspinClock)
+        _capture.value = capture
     }
 
-    /** The system ended the projection. [stop] clears the capture first, so this is no user stop. */
+    /** The service got no projection from the consent: nothing was shared. */
+    fun onStartFailed() {
+        _startFailures.tryEmit(Unit)
+    }
+
+    /**
+     * The system ended the projection, or the service went away. No effect once the capture is
+     * cleared: after a stop by the user, or on the second call of a revoke (callback, then destroy).
+     */
     fun onRevoked() {
-        endedBySystem = _capture.value != null
+        synchronized(lock) { _capture.value?.let { endBySystem() } }
+    }
+
+    /** [capture] cannot record any more; a capture that was replaced or stopped has no effect. */
+    @VisibleForTesting
+    internal fun onCaptureFailed(capture: AudioCapture) = synchronized(lock) {
+        if (_capture.value === capture) endBySystem()
+    }
+
+    /** [endedBySystem] first: the router reads it when the capture becomes null. */
+    private fun endBySystem() {
+        endedBySystem = true
         _capture.value = null
     }
 

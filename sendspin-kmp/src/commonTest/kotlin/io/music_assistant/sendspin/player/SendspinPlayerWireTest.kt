@@ -287,7 +287,7 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     @Test
     fun anUnpairedSessionIsNotARefusal() = playerTest(source = SourceConfig(FakeCapture())) { h ->
         h.connectServer()
-        assertEquals(SourceStatus.Off, h.awaitConnected().source)
+        assertEquals(SourceStatus.Unpaired, h.awaitConnected().source, "the app must ask for a pairing, not retry")
     }
 
     @Test

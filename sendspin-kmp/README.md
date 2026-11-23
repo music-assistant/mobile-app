@@ -329,14 +329,16 @@ The role is available on `WireVersion.SPEC_1_0` only.
 | `CapturedAudio` | One PCM block and the time of its first sample, on `SendspinDeps.clock`. |
 | `SourceDialect` | The revision of the role that the server has. See below. |
 | `EncoderFactory` | Optional, in `SendspinDeps.encoders`. It gives the FLAC encoder. |
-| `SourceStatus` | `Off`, `Refused`, `Ready`, or `Streaming`, in `PlayerState.Connected.source`. |
+| `SourceStatus` | `Off`, `Refused`, `Unpaired`, `Ready`, or `Streaming`, in `PlayerState.Connected.source`. |
 
 Only the server starts a stream. The application starts playback of the source through the
 control plane of the server. The server then sends a `start` command, and the player starts
 the capture. A `stop` command, the loss of the role, or the end of the input stops the capture.
 
 The server accepts the source only on a paired session. `Refused` means that a paired server
-activated the connection without the role.
+activated the connection without the role. `Unpaired` means that the server activated an
+unpaired session, which never gets the role: pair the device first. A pairing activation leaves
+the status at `Off`, because the session can still become paired.
 
 **Dialects.** The handshake does not give the revision of the role. `SourceDialect.SPEC` is the
 current specification: `client/hello` has no source object, and a `start` needs the `playback`

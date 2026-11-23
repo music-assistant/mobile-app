@@ -1,8 +1,10 @@
 package io.music_assistant.client.data.share
 
 import io.music_assistant.sendspin.api.AudioCapture
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emptyFlow
 
 /**
  * The capture of the audio that other apps play on this device. The platform starts it from
@@ -16,10 +18,13 @@ interface DeviceAudioShare {
     val capture: StateFlow<AudioCapture?>
 
     /**
-     * True if the system ended the last capture: the user stopped it in the system UI, or another
-     * app took the projection. Read it when [capture] becomes null.
+     * True if the system ended the last capture: the user stopped it in the system UI, another
+     * app took the projection, or the capture failed. Read it when [capture] becomes null.
      */
     val endedBySystem: Boolean
+
+    /** Emits when a start gave no capture: the system did not accept the consent. */
+    val startFailures: Flow<Unit>
 
     /** Ends the capture. No effect while nothing is shared. */
     fun stop()
@@ -30,5 +35,6 @@ class UnsupportedDeviceAudioShare : DeviceAudioShare {
     override val isSupported = false
     override val capture: StateFlow<AudioCapture?> = MutableStateFlow(null)
     override val endedBySystem = false
+    override val startFailures: Flow<Unit> = emptyFlow()
     override fun stop() = Unit
 }
