@@ -85,6 +85,7 @@ final enum class io.music_assistant.sendspin.api/SourceStatus : kotlin/Enum<io.m
     enum entry Ready // io.music_assistant.sendspin.api/SourceStatus.Ready|null[0]
     enum entry Refused // io.music_assistant.sendspin.api/SourceStatus.Refused|null[0]
     enum entry Streaming // io.music_assistant.sendspin.api/SourceStatus.Streaming|null[0]
+    enum entry Unpaired // io.music_assistant.sendspin.api/SourceStatus.Unpaired|null[0]
 
     final val entries // io.music_assistant.sendspin.api/SourceStatus.entries|#static{}entries[0]
         final fun <get-entries>(): kotlin.enums/EnumEntries<io.music_assistant.sendspin.api/SourceStatus> // io.music_assistant.sendspin.api/SourceStatus.entries.<get-entries>|<get-entries>#static(){}[0]
