@@ -1,7 +1,10 @@
 package io.music_assistant.client.feature
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -39,7 +42,7 @@ class SharingTest {
     private val serviceClient: FakeServiceClient by inject(ServiceClient::class.java)
 
     @Test
-    fun `details share generates a link on selection`() {
+    fun `details share loads destinations on selection`() {
         val album = ServerMediaItemFixtures.album()
         serviceClient.addItems(ServerMediaItemFixtures.track(album = album))
         enableSharing()
@@ -51,11 +54,15 @@ class SharingTest {
         composeTestRule.runOnIdle { assertTrue(serviceClient.shareRequests.isEmpty()) }
         composeTestRule.onNodeWithText("Share").performClick()
 
+        val destination = composeTestRule.onNode(hasText("Music Assistant").and(hasAnyAncestor(isDialog())))
+        destination.assertIsDisplayed()
         assertRequested(album.uri)
+        destination.performClick()
+        assertRequested(album.uri, "share/item", "share/generate")
     }
 
     @Test
-    fun `expanded player generates a link for the underlying queue track`() {
+    fun `expanded player loads destinations for the underlying queue track`() {
         val album = ServerMediaItemFixtures.album()
         val track = ServerMediaItemFixtures.track(album = album)
         val player = ServerPlayerFixtures.player()
@@ -89,7 +96,7 @@ class SharingTest {
 
     private fun enableSharing() {
         serviceClient.schemaVersion = 122
-        serviceClient.generatedShareLink = "https://share.music-assistant.io/#1abcd"
+        serviceClient.generatedShareLink = "https://share.music-assistant.io/#1example"
         serviceClient.addProvider(ServerProviderInstance("share_provider", "Share Links", "share_provider", "plugin"))
     }
 
@@ -102,11 +109,10 @@ class SharingTest {
         composeTestRule.runOnIdle { assertTrue(serviceClient.shareRequests.isEmpty()) }
     }
 
-    private fun assertRequested(uri: String?) {
+    private fun assertRequested(uri: String?, vararg commands: String = arrayOf("share/item")) {
         composeTestRule.runOnIdle {
-            val request = serviceClient.shareRequests.single()
-            assertEquals("share/generate", request.command)
-            assertEquals(uri, request.args?.get("uri")?.jsonPrimitive?.content)
+            assertEquals(commands.toList(), serviceClient.shareRequests.map { it.command })
+            assertTrue(serviceClient.shareRequests.all { it.args?.get("uri")?.jsonPrimitive?.content == uri })
         }
     }
 }

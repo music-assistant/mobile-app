@@ -25,6 +25,7 @@ import io.music_assistant.client.data.model.server.ServerPlayerMedia
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueue
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.ServerShareItem
 import io.music_assistant.client.data.model.server.StreamDetails
 import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.Event
@@ -116,6 +117,11 @@ class FakeServiceClient : ServiceClient {
         }
 
         return when (request.command) {
+            APICommands.SHARE_ITEM -> {
+                shareRequests.add(request)
+                Result.success(answer(request, ServerShareItem("Example track")))
+            }
+
             APICommands.SHARE_GENERATE -> {
                 shareRequests.add(request)
                 Result.success(answer(request, generatedShareLink))

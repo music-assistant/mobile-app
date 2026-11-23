@@ -31,6 +31,8 @@ import io.music_assistant.client.data.model.server.ServerInfo
 import io.music_assistant.client.data.model.server.ServerMediaItem
 import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerQueueItem
+import io.music_assistant.client.data.model.server.ServerShareItem
+import io.music_assistant.client.data.model.server.ServerShareLink
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.ShareRepository
 import io.music_assistant.client.support.FakeServiceClient
@@ -79,7 +81,7 @@ class QueueSharingTest {
 
     @Test
     fun `played track shares the direct YouTube Music link without replaying or editing the queue`() {
-        assertPlayedTrackShare("YouTube Music", "https://music.youtube.com/watch?v=meuR1l4j-xs")
+        assertPlayedTrackShare("My YouTube Music", "https://music.youtube.com/watch?v=meuR1l4j-xs")
     }
 
     @Test
@@ -101,16 +103,24 @@ class QueueSharingTest {
             assertTrue(actions.isEmpty())
         }
         composeTestRule.onNodeWithText("Share").performClick()
-        composeTestRule.onNodeWithText("YouTube Music").assertIsDisplayed()
+        composeTestRule.onNodeWithText("My YouTube Music").assertIsDisplayed()
         composeTestRule.onNodeWithText("Music Assistant").assertIsDisplayed()
-        composeTestRule.onNodeWithText("unsafe").assertDoesNotExist()
-        composeTestRule.runOnIdle { assertTrue(intents.isEmpty()) }
+        composeTestRule.onNodeWithText("Other YouTube Music").assertDoesNotExist()
+        composeTestRule.runOnIdle {
+            assertTrue(intents.isEmpty())
+            assertEquals(listOf("share/item"), client.requests.map { it.command })
+        }
         composeTestRule.onNodeWithText(choice).performClick()
 
         composeTestRule.runOnIdle {
-            val request = client.requests.single()
-            assertEquals("share/generate", request.command)
-            assertEquals("library://track/1", request.args?.get("uri")?.jsonPrimitive?.content)
+            val expectedCommands = if (choice == "Music Assistant") {
+                listOf("share/item", "share/generate")
+            } else {
+                listOf("share/item")
+            }
+            assertEquals(expectedCommands, client.requests.map { it.command })
+            val uris = client.requests.map { it.args?.get("uri")?.jsonPrimitive?.content }.toSet()
+            assertEquals(setOf("library://track/1"), uris)
             val chooser = intents.single()
             assertEquals(Intent.ACTION_CHOOSER, chooser.action)
             val send = assertNotNull(IntentCompat.getParcelableExtra(chooser, Intent.EXTRA_INTENT, Intent::class.java))
@@ -193,9 +203,28 @@ class QueueSharingTest {
         override suspend fun sendRequest(request: Request): Result<Answer> {
             val result = when (request.command) {
                 APICommands.PROVIDERS -> myJson.encodeToJsonElement(
-                    listOf(ServerProviderInstance("share_provider", "Share Links", "share_provider", "plugin")),
+                    listOf(
+                        ServerProviderInstance("share_provider", "Share Links", "share_provider", "plugin"),
+                        ServerProviderInstance("ytmusic--personal", "My YouTube Music", "ytmusic", "music"),
+                        ServerProviderInstance("ytmusic--other", "Other YouTube Music", "ytmusic", "music"),
+                    ),
                 )
                 APICommands.PROVIDERS_ICON -> myJson.encodeToJsonElement(null as String?)
+                "share/item" -> {
+                    requests.add(request)
+                    myJson.encodeToJsonElement(
+                        ServerShareItem(
+                            "Previously played",
+                            listOf(
+                                ServerShareLink(
+                                    "ytmusic",
+                                    "ytmusic--personal",
+                                    "https://music.youtube.com/watch?v=meuR1l4j-xs",
+                                ),
+                            ),
+                        ),
+                    )
+                }
                 "share/generate" -> {
                     requests.add(request)
                     myJson.encodeToJsonElement(GENERATED_LINK)
@@ -207,9 +236,6 @@ class QueueSharingTest {
     }
 
     private companion object {
-        // Version 1 payload with a YouTube Music URL and a credential-bearing URL.
-        const val GENERATED_LINK =
-            "https://share.music-assistant.io/#1TYxBCsIwEEWvIrPWBsFVQPQI4gUkpiONTpqQmYkNpXe3unL5-O-_GaRlBAtSnH_BF" +
-            "iQIfflSsIakTG2TyTXs1y2XVEOP5aaFGOwMTaJy8Ks-iGS2xvy4a0lF79j5FM3biR9O9RhRr3s6PHcTrykd2T3w76iMxTL6gnLGycVM2IWxOgq9gWX5AA"
+        const val GENERATED_LINK = "https://share.music-assistant.io/#1example"
     }
 }

@@ -34,15 +34,17 @@ import io.music_assistant.client.data.model.client.MediaType
 import io.music_assistant.client.data.model.client.items.AppMediaItem
 import io.music_assistant.client.data.model.server.SHARE_LINKS_DOMAIN
 import io.music_assistant.client.data.model.server.Scope
+import io.music_assistant.client.data.model.server.ServerShareItem
+import io.music_assistant.client.data.model.server.ServerShareLink
 import io.music_assistant.client.data.model.server.supportsShareLinks
 import io.music_assistant.client.data.repository.ProviderRepository
 import io.music_assistant.client.data.repository.ShareRepository
-import io.music_assistant.client.data.share.providerLinksFromShareUrl
 import io.music_assistant.client.ui.compose.common.LocalGrantedScopes
 import io.music_assistant.client.ui.compose.common.OverflowMenuOption
 import io.music_assistant.client.ui.compose.common.providers.ProviderIcon
 import io.music_assistant.client.ui.compose.provider.ProviderViewModel
 import io.music_assistant.client.utils.HasConnectionData
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import musicassistantclient.composeapp.generated.resources.Res
@@ -59,7 +61,7 @@ import org.koin.compose.viewmodel.koinViewModel
 expect fun rememberShareItem(): (String, String) -> Unit
 
 @Composable
-fun rememberShareLinkLauncher(): ((String, String) -> Unit)? {
+fun rememberShareLinkLauncher(): ((String) -> Unit)? {
     if (LocalInspectionMode.current || !LocalGrantedScopes.current.has(Scope.LIBRARY_READ)) return null
 
     val repository = koinInject<ShareRepository>()
@@ -71,32 +73,52 @@ fun rememberShareLinkLauncher(): ((String, String) -> Unit)? {
     val providers by koinInject<ProviderRepository>().providers.collectAsStateWithLifecycle()
     if (providers.dataOrNull.orEmpty().none { it.domain == SHARE_LINKS_DOMAIN && it.available }) return null
 
-    val names = providers.dataOrNull.orEmpty().associate { it.domain to it.name }
-    return key(session) { rememberGenerateShareLink(repository, names) }
+    val names = providers.dataOrNull.orEmpty().associate { it.instanceId to it.name }
+    return key(session) { rememberShareLinkPicker(repository, names) }
 }
 
-private data class ShareChoices(val title: String, val url: String, val links: Map<String, String>)
+private data class ShareChoices(val uri: String, val item: ServerShareItem)
 
 @Composable
-private fun rememberGenerateShareLink(
+private fun rememberShareLinkPicker(
     repository: ShareRepository,
     providerNames: Map<String, String>,
-): (String, String) -> Unit {
+): (String) -> Unit {
     val scope = rememberCoroutineScope()
     val share = rememberShareItem()
     var pending by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
     var choices by remember { mutableStateOf<ShareChoices?>(null) }
-    choices?.let { item ->
-        val shareChoice: (String) -> Unit = { url ->
+    fun request(block: suspend () -> Unit) {
+        if (pending) return
+        pending = true
+        scope.launch {
+            try {
+                block()
+            } finally {
+                pending = false
+            }
+        }
+    }
+
+    choices?.let { (uri, item) ->
+        val select: (ServerShareLink?) -> Unit = { link ->
             choices = null
-            share(url, item.title)
+            if (link == null) {
+                request {
+                    val url = repository.generateLink(uri)
+                    currentCoroutineContext().ensureActive()
+                    if (url == null) failed = true else share(url, item.title)
+                }
+            } else {
+                share(link.url, item.title)
+            }
         }
         AlertDialog(
             onDismissRequest = { choices = null },
             title = { Text(stringResource(Res.string.action_share_item)) },
             text = {
-                val destinations: List<Pair<String?, String>> = item.links.toList() + (null to item.url)
+                val destinations = item.links + listOf(null)
                 Column(
                     modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -106,21 +128,18 @@ private fun rememberGenerateShareLink(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            row.forEach { (domain, url) ->
-                                val name = when (domain) {
-                                    null -> stringResource(Res.string.share_music_assistant_link)
-                                    "ytmusic" -> "YouTube Music"
-                                    else -> providerNames[domain] ?: domain
-                                }
-                                ShareDestination(name, { shareChoice(url) }, Modifier.weight(1f)) {
-                                    if (domain == null) {
+                            row.forEach { link ->
+                                val name = link?.let { providerNames[it.providerInstance] ?: it.providerDomain }
+                                    ?: stringResource(Res.string.share_music_assistant_link)
+                                ShareDestination(name, { select(link) }, Modifier.weight(1f)) {
+                                    if (link == null) {
                                         Icon(
                                             Icons.Default.Link,
                                             contentDescription = null,
                                             modifier = Modifier.size(26.dp),
                                         )
                                     } else {
-                                        ShareProviderIcon(domain)
+                                        ShareProviderIcon(link.providerDomain)
                                     }
                                 }
                             }
@@ -144,23 +163,11 @@ private fun rememberGenerateShareLink(
             },
         )
     }
-    return { uri, title ->
-        if (!pending) {
-            pending = true
-            scope.launch {
-                try {
-                    val url = repository.generateLink(uri)
-                    ensureActive()
-                    if (url == null) {
-                        failed = true
-                    } else {
-                        val links = providerLinksFromShareUrl(url)
-                        if (links.isEmpty()) share(url, title) else choices = ShareChoices(title, url, links)
-                    }
-                } finally {
-                    pending = false
-                }
-            }
+    return { uri ->
+        request {
+            val item = repository.shareItem(uri)
+            currentCoroutineContext().ensureActive()
+            if (item == null) failed = true else choices = ShareChoices(uri, item)
         }
     }
 }
@@ -196,7 +203,7 @@ private fun ShareProviderIcon(domain: String) {
 }
 
 @Composable
-fun shareLinkMenuOption(item: AppMediaItem?, launchShare: (String, String) -> Unit): OverflowMenuOption? {
+fun shareLinkMenuOption(item: AppMediaItem?, launchShare: (String) -> Unit): OverflowMenuOption? {
     val uri = item?.uri?.takeIf { it.isNotBlank() } ?: return null
     when (item.mediaType) {
         MediaType.ARTIST, MediaType.ALBUM, MediaType.TRACK -> Unit
@@ -205,6 +212,6 @@ fun shareLinkMenuOption(item: AppMediaItem?, launchShare: (String, String) -> Un
     return OverflowMenuOption(
         title = stringResource(Res.string.action_share_item),
         icon = Icons.Default.Share,
-        onClick = { launchShare(uri, item.name) },
+        onClick = { launchShare(uri) },
     )
 }

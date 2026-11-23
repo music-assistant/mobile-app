@@ -254,9 +254,10 @@ actual class PlatformFeature {
   finds it, an external item has no favorite (`canBeFavorited`), no playlist entry
   (`supportsAddToPlaylist`) and no refresh entry. It is not in the library, so the menu offers
   "Add to library", which sends the uri.
-- **Share Links**: item details, expanded player and queue menus generate a Music Assistant link
-  through the optional Share Links plugin on schema 122 or newer, with `library.read`.
-  Generate the link on selection through `ShareRepository` and pass it to the platform share sheet.
+- **Share Links**: item details, expanded player and queue menus use the optional Share Links
+  plugin on schema 122 or newer, with `library.read`. Load provider destinations with
+  `share/item` through `ShareRepository`. Call `share/generate` when the user chooses the Music
+  Assistant destination.
 - **Providers**: `ProviderRepository` (`data/repository/`) owns the `providers` list. Read
   `providers` from it. Do not send `Request.Provider.all()` from a screen. It loads the list once
   for each session and again on each `providers_updated`. It does not use the event payload,
