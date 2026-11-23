@@ -181,6 +181,23 @@ the controls page still goes dark behind them, because a full-screen image is th
 OLED watch should not hold up for an hour. Entering ambient does not touch the pager, so a
 wrist that drops on the cover keeps it.
 
+## Double pinch
+
+The one-handed primary action plays and pauses on both pages of the root: the play button
+carries it on the controls page, and the cover carries it on the album page. It is
+`Modifier.oneHandedGesture` with `OneHandedGestureAction.Primary`
+(`androidx.wear.compose.material3.onehandedgesture`, Wear Compose 1.7). Each modifier shares
+the `MutableInteractionSource` of its control, so the gesture shows the press of the control
+it stands in for. The play button wraps its glyph in `OneHandedGestureClickIndicator`, which
+shows the hint when the system reports the gesture available. The album page has no
+indicator, because the whole cover is the control. `onGesture` checks the same `enabled` as
+the tap, because the modifier does not follow the button's `enabled`.
+
+The framework needs Wear OS 7 (API 37) and maps the primary action to the double pinch on
+Pixel Watch. On an older watch, including a Galaxy Watch on Wear OS 6, the library does
+nothing. The stock API 37 emulator image has no `IWearGestureService`, so
+`adb shell cmd IWearGestureService gesture DoublePinch` needs an image or a watch that has it.
+
 ## Volume and output
 
 `VolumeScreen` is Wear's full-screen `Stepper`: louder at the top, quieter at the bottom, the

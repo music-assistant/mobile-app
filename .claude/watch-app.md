@@ -208,6 +208,14 @@ rather than a scrim so the cover keeps the glass to itself. The cover is also th
 nothing is drawn there and nowhere on it could a tap mean anything else. It sets no navigation
 title, so the time is the only other thing on the screen.
 
+**Double tap.** The one-handed primary action (`handGestureShortcut(.primaryAction)`, the
+double tap of Series 9, Ultra 2 and newer) plays and pauses on both pages: the play button
+carries it on the now-playing page, and the cover carries it on the album page. The gesture
+reaches only a `Button` or a `Toggle`, so the cover is a `Button` with
+`UnhighlightedButtonStyle` rather than a tap gesture. `primaryActionShortcut()`
+(`PrimaryActionShortcut.swift`) applies it from watchOS 11 and does nothing on watchOS 10.
+Give it to one control per page.
+
 Each page sets its own `containerBackground`, and watchOS crossfades them — which is what turns
 the blurred cover behind the controls into the clear one, with no shared image to animate. That
 is the one place this diverges from the Wear client, where the cover is drawn once behind both

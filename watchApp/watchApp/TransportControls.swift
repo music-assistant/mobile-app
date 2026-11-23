@@ -50,6 +50,9 @@ struct TransportControls: View {
         }
         .buttonStyle(.plain)
         .contentShape(Circle())
+        // The double tap plays and pauses, as the play button is the one the user reaches
+        // for without looking. The system also draws its hint on this button.
+        .primaryActionShortcut()
         .accessibilityLabel(store.isPlaying ? "Pause" : "Play")
     }
 

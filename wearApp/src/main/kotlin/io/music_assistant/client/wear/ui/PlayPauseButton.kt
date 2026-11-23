@@ -4,10 +4,13 @@
 package io.music_assistant.client.wear.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -31,9 +34,15 @@ import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.IconButtonShapes
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.OutlinedIconButton
+import androidx.wear.compose.material3.onehandedgesture.OneHandedGestureAction
+import androidx.wear.compose.material3.onehandedgesture.OneHandedGestureClickIndicator
+import androidx.wear.compose.material3.onehandedgesture.OneHandedGestureClickIndicatorState
+import androidx.wear.compose.material3.onehandedgesture.oneHandedGesture
+import androidx.wear.compose.material3.onehandedgesture.rememberOneHandedGestureConfiguration
 import io.music_assistant.client.ui.compose.common.icons.PauseIcon
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.wear.R
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -87,14 +96,30 @@ fun PlayPauseButton(
                 }
             }
         }
-        val glyph = @Composable {
-            Icon(
-                imageVector =  if (isPlaying) PauseIcon else PlayIcon,
-                contentDescription = stringResource(
-                    if (isPlaying) R.string.cd_pause else R.string.cd_play,
-                ),
-                modifier = Modifier.size(buttonSize / 2),
+        val label = stringResource(if (isPlaying) R.string.cd_pause else R.string.cd_play)
+        // The double pinch (the one-handed primary action, Wear OS 7 and newer) plays and
+        // pauses too. On an older watch the library does nothing.
+        val gesture = rememberOneHandedGestureConfiguration(action = OneHandedGestureAction.Primary)
+        val indicatorState = remember { OneHandedGestureClickIndicatorState() }
+        val interactionSource = remember { MutableInteractionSource() }
+        val scope = rememberCoroutineScope()
+        val buttonModifier = Modifier
+            .size(buttonSize)
+            .oneHandedGesture(
+                gestureConfiguration = gesture,
+                interactionSource = interactionSource,
+                onGestureLabel = label,
+                onGestureAvailable = { scope.launch { indicatorState.showIndicator() } },
+                onGesture = { if (enabled) onClick() },
             )
+        val glyph = @Composable {
+            OneHandedGestureClickIndicator(gestureConfiguration = gesture, state = indicatorState) {
+                Icon(
+                    imageVector = if (isPlaying) PauseIcon else PlayIcon,
+                    contentDescription = label,
+                    modifier = Modifier.size(buttonSize / 2),
+                )
+            }
         }
         // Outlined rather than filled while dimmed, for the same reason the ring goes. The
         // outline is drawn at [RING_STROKE], the width of the ring it stands in for, so the
@@ -103,7 +128,8 @@ fun PlayPauseButton(
             OutlinedIconButton(
                 onClick = onClick,
                 enabled = enabled,
-                modifier = Modifier.size(buttonSize),
+                modifier = buttonModifier,
+                interactionSource = interactionSource,
                 shapes = IconButtonShapes(WavyButtonShape),
                 border = ButtonDefaults.outlinedButtonBorder(
                     enabled = enabled,
@@ -114,7 +140,8 @@ fun PlayPauseButton(
             FilledIconButton(
                 onClick = onClick,
                 enabled = enabled,
-                modifier = Modifier.size(buttonSize),
+                modifier = buttonModifier,
+                interactionSource = interactionSource,
                 shapes = IconButtonShapes(WavyButtonShape),
             ) { glyph() }
         }

@@ -25,6 +25,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffoldDefaults
 import androidx.wear.compose.material3.Text
+import androidx.wear.compose.material3.onehandedgesture.OneHandedGestureAction
+import androidx.wear.compose.material3.onehandedgesture.oneHandedGesture
+import androidx.wear.compose.material3.onehandedgesture.rememberOneHandedGestureConfiguration
 import io.music_assistant.client.wear.R
 
 /**
@@ -41,7 +44,8 @@ import io.music_assistant.client.wear.R
  * The cover is the play button. There is no control drawn on this page and nowhere on it a
  * tap could mean anything else, so the whole of it takes one - without a ripple, which over
  * a photograph reads as a flash rather than as a press, and with the tick the watch gives for
- * its own controls instead.
+ * its own controls instead. The double pinch (the one-handed primary action) plays and pauses
+ * here as well, as it does on the play button of the controls page.
  *
  * The page is transparent, so on a low-bit ambient panel it is the cover behind it that is
  * dimmed and these two lines that stay legible over it.
@@ -55,18 +59,31 @@ fun AlbumArtPage(
 ) {
     val view = LocalView.current
     val playing = state.nowPlaying?.isPlaying == true
+    val enabled = state.isConnected && state.selected != null
+    val label = stringResource(if (playing) R.string.cd_pause else R.string.cd_play)
+    val interactionSource = remember { MutableInteractionSource() }
+    val gesture = rememberOneHandedGestureConfiguration(action = OneHandedGestureAction.Primary)
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clickable(
-                enabled = state.isConnected && state.selected != null,
-                interactionSource = remember { MutableInteractionSource() },
+                enabled = enabled,
+                interactionSource = interactionSource,
                 indication = null,
-                onClickLabel = stringResource(if (playing) R.string.cd_pause else R.string.cd_play),
+                onClickLabel = label,
             ) {
                 view.performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
                 onPlayPause()
-            },
+            }
+            // No indicator: the page draws nothing but the cover, and the whole cover is
+            // the control the gesture stands in for.
+            .oneHandedGesture(
+                gestureConfiguration = gesture,
+                interactionSource = interactionSource,
+                onGestureLabel = label,
+                onGestureAvailable = {},
+                onGesture = { if (enabled) onPlayPause() },
+            ),
     ) {
         val track = state.nowPlaying ?: return@Box
         Column(
