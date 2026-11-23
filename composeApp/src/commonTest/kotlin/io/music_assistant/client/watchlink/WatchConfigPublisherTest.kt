@@ -19,7 +19,6 @@ import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WatchConfigPublisherTest {
-
     @Test
     fun directSignedInSessionSendsAddressAndToken() {
         val state = linkStateOf(direct(CONNECTION.copy(basePath = "ma/"), signedIn()))

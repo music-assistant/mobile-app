@@ -447,4 +447,3 @@ private fun RimRow(
  */
 private val SAFE_MARGIN = 24.dp
 private val BADGE_SIZE = 16.dp
-private const val LAUNCHER_SAFE_ZONE = 0.41f

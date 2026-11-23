@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -45,7 +44,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -654,30 +652,6 @@ private fun QueueRow(
         },
     )
 }
-
-/**
- * Where a row sits in the chain: round where the chain ends, square where it meets the next
- * row, so the queue reads as one run of links rather than as a stack of separate buttons.
- *
- * The round end keeps whatever corner a Wear button has by default, so the two ends of the
- * chain look like the buttons everywhere else in the app and only the joins are new.
- */
-@Composable
-private fun chainShape(index: Int, count: Int): Shape {
-    val end = ButtonDefaults.shape
-    val join = CornerSize(CHAIN_JOIN)
-    val first = index == 0
-    val last = index == count - 1
-    return RoundedCornerShape(
-        topStart = if (first) end.topStart else join,
-        topEnd = if (first) end.topEnd else join,
-        bottomStart = if (last) end.bottomStart else join,
-        bottomEnd = if (last) end.bottomEnd else join,
-    )
-}
-
-/** The corner a chained row keeps where it meets the row above or below it. */
-private val CHAIN_JOIN = 4.dp
 
 /** What keeps two links of the chain apart. */
 private val CHAIN_GAP = 2.dp
