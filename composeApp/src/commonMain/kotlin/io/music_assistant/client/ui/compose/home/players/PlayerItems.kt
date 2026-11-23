@@ -53,6 +53,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
@@ -350,6 +351,13 @@ fun FullPlayerItem(
     val currentMedia = item.player.currentMedia
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
+    val lyricsLabel = stringResource(
+        if (item.queueInfo?.currentItem?.track is PodcastEpisode) {
+            Res.string.cd_transcript
+        } else {
+            Res.string.cd_lyrics
+        },
+    )
 
     // Across a horizontal fold the artwork ends above the crease, which leaves the controls, pushed
     // down by SpaceBetween, on the lower half. Without a fold the position is not measured, so a drag
@@ -377,7 +385,14 @@ fun FullPlayerItem(
                 .aspectRatio(1f)
                 .heightIn(max = 500.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(colors.dominant.alphaOn(currentMedia != null)),
+                .background(colors.dominant.alphaOn(currentMedia != null))
+                .conditional(lyricsAvailable) {
+                    clickable(
+                        onClickLabel = lyricsLabel,
+                        role = Role.Button,
+                        onClick = onLyricsClick,
+                    )
+                },
             contentAlignment = Alignment.Center,
         ) {
             currentMedia?.imageUrl?.let {
@@ -871,13 +886,7 @@ fun FullPlayerItem(
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Lyrics,
-                        contentDescription = stringResource(
-                            if (item.queueInfo?.currentItem?.track is PodcastEpisode) {
-                                Res.string.cd_transcript
-                            } else {
-                                Res.string.cd_lyrics
-                            },
-                        ),
+                        contentDescription = lyricsLabel,
                         tint = colors.controlTint,
                     )
                 }
