@@ -9,15 +9,18 @@ import io.music_assistant.client.data.model.client.PlayerType
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.ui.compose.common.DataState
 import io.music_assistant.client.ui.compose.common.action.PlayerAction
+import io.music_assistant.client.ui.compose.home.withPendingVolumes
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class VolumeButtonServiceTest {
@@ -29,9 +32,13 @@ class VolumeButtonServiceTest {
         /** While set, each send suspends until it completes, like a server round trip. */
         var roundTrip: CompletableDeferred<Unit>? = null
 
-        override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction) {
+        /** While false, the server doesn't take a send, like a dropped connection or an error answer. */
+        var accepts = true
+
+        override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction): Boolean {
             sent += action
             roundTrip?.await()
+            return accepts
         }
     }
 
@@ -153,6 +160,128 @@ class VolumeButtonServiceTest {
             runCurrent()
         }
         assertEquals<List<PlayerAction>>(listOf(PlayerAction.VolumeUp, PlayerAction.VolumeDown), target.sent)
+    }
+
+    private fun VolumeButtonService.levels() = pendingVolumes.value.mapValues { it.value.level }
+
+    @Test
+    fun sentStepsShowThePendingLevelUntilTheServerHadTimeToReachIt() = runTest {
+        val service = enabledServiceWith(playerData())
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        service.onVolumeKey(up = true, isRepeat = true)
+        runCurrent()
+        // 40 → 43 → 46, stepping from the pending level, not the reported 40.
+        assertEquals(mapOf("remote" to 46f), service.levels())
+
+        advanceTimeBy(PENDING_VOLUME_MS - 1)
+        service.onVolumeKey(up = false, isRepeat = false)
+        runCurrent()
+        assertEquals(mapOf("remote" to 43f), service.levels())
+
+        // Each sent step restarts the hold.
+        advanceTimeBy(PENDING_VOLUME_MS - 1)
+        assertEquals(mapOf("remote" to 43f), service.levels())
+        advanceTimeBy(2)
+        assertTrue(service.levels().isEmpty())
+    }
+
+    @Test
+    fun heldKeyShowsOnlyTheStepsThatReachTheServer() = runTest {
+        val service = enabledServiceWith(playerData())
+        val firstTrip = CompletableDeferred<Unit>()
+        target.roundTrip = firstTrip
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        assertEquals(mapOf("remote" to 43f), service.levels())
+
+        // Three repeats while the first step is in flight: the channel keeps only the last.
+        repeat(3) { service.onVolumeKey(up = true, isRepeat = true) }
+        runCurrent()
+        assertEquals(mapOf("remote" to 43f), service.levels())
+
+        target.roundTrip = null
+        firstTrip.complete(Unit)
+        runCurrent()
+        assertEquals(2, target.sent.size)
+        assertEquals(mapOf("remote" to 46f), service.levels())
+    }
+
+    @Test
+    fun slowRoundTripKeepsTheLevelUntilTheAnswer() = runTest {
+        val service = enabledServiceWith(playerData())
+        val trip = CompletableDeferred<Unit>()
+        target.roundTrip = trip
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        // Longer than the hold, still in flight (Remote Access).
+        advanceTimeBy(PENDING_VOLUME_MS + 1_000)
+        assertEquals(mapOf("remote" to 43f), service.levels())
+
+        trip.complete(Unit)
+        runCurrent()
+        advanceTimeBy(PENDING_VOLUME_MS - 1)
+        assertEquals(mapOf("remote" to 43f), service.levels())
+        advanceTimeBy(2)
+        assertTrue(service.levels().isEmpty())
+    }
+
+    @Test
+    fun failedStepShowsTheReportedLevelAgain() = runTest {
+        val service = enabledServiceWith(playerData())
+        target.accepts = false
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        assertTrue(service.levels().isEmpty())
+
+        // The next press starts again from the reported 40, and an old expiry doesn't touch it.
+        target.accepts = true
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        assertEquals(mapOf("remote" to 43f), service.levels())
+    }
+
+    @Test
+    fun pendingLevelsReplaceTheReportedVolume() {
+        val single = playerData()
+        val group = playerData().let { data ->
+            data.copy(player = data.player.copy(id = "group", groupMembers = setOf("a", "b"), groupVolume = 20f))
+        }
+        val players = DataState.Data(listOf(single, group))
+
+        assertSame(players, players.withPendingVolumes(emptyMap()))
+        val shown = players.withPendingVolumes(
+            mapOf("remote" to PendingVolume(43f, 1), "group" to PendingVolume(22f, 2)),
+        ) as DataState.Data
+        assertEquals(listOf(43f, 22f), shown.data.map { it.player.currentVolume })
+        // A group shows its group volume; its own volume level stays as reported.
+        assertEquals(40f, shown.data[1].player.volumeLevel)
+
+        val onlySingle = players.withPendingVolumes(mapOf("remote" to PendingVolume(46f, 3))) as DataState.Data
+        assertSame(group, onlySingle.data[1])
+    }
+
+    @Test
+    fun refusedPressShowsNoPendingLevel() = runTest {
+        val service = enabledServiceWith(playerData(canSetVolume = false))
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        assertTrue(service.pendingVolumes.value.isEmpty())
+    }
+
+    @Test
+    fun nextVolumeUsesTheServerSteps() {
+        assertEquals(6f, nextVolume(5f, up = true))
+        assertEquals(22f, nextVolume(20f, up = true))
+        assertEquals(53f, nextVolume(50f, up = true))
+        assertEquals(78f, nextVolume(80f, up = false))
+        assertEquals(100f, nextVolume(100f, up = true))
+        assertEquals(0f, nextVolume(0f, up = false))
     }
 
     @Test
