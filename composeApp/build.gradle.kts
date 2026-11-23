@@ -87,6 +87,8 @@ kotlin {
 
             implementation(libs.androidx.media)
             implementation(libs.androidx.browser)
+            // Sends the server and token to the Wear OS app (`watchlink/WearDataLayerLink`).
+            implementation(libs.play.services.wearable)
 
             // Noise primitives backend (JCA crypto via the JDK provider).
             implementation(libs.cryptography.provider.jdk)

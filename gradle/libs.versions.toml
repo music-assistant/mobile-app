@@ -20,6 +20,8 @@ androidx-wear-compose = "1.7.1"
 androidx-wear = "1.3.0"
 # Ongoing Activity: what keeps a Wear app on screen past the first minute of ambient.
 androidx-wear-ongoing = "1.0.0"
+# Wearable Data Layer: the phone hands the server and token to the Wear OS app.
+play-services-wearable = "19.0.0"
 androidx-compose = "1.12.1"
 androidx-lifecycle-android = "2.11.0"
 
@@ -79,6 +81,7 @@ androidx-material = { group = "com.google.android.material", name = "material", 
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidx-constraintlayout" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "androidx-media" }
 androidx-wear = { module = "androidx.wear:wear", version.ref = "androidx-wear" }
+play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "play-services-wearable" }
 androidx-wear-ongoing = { module = "androidx.wear:wear-ongoing", version.ref = "androidx-wear-ongoing" }
 androidx-wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "androidx-wear-compose" }
 androidx-wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "androidx-wear-compose" }
@@ -96,6 +99,7 @@ androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle
 kotlinx-atomicfu = { group = "org.jetbrains.kotlinx", name = "atomicfu", version.ref = "kotlinx-atomicfu" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 

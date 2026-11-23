@@ -422,6 +422,15 @@ actual class PlatformFeature {
   again the hints that the client lost. The queue DJ menu (`QueueDjViewModel`) and the stations
   screen show their cache and use only these changes. A show on a queue does not lock the queue DJ.
 
+- **Watch link**: the watches have no sign-in. `WatchConfigPublisher` (`watchlink/`) sends the address and
+  the token of the phone session to the paired watch: on each authenticated session, and `SignedOut` on a
+  logout or a rejected token. Other session states send nothing, so a reconnect keeps the watch configured.
+  A WebRTC session sends `RemoteOnly`, because the watches cannot speak WebRTC. `WatchLink` has one
+  implementation for each platform: the Wearable Data Layer on Android (`WearDataLayerLink`) and the
+  WatchConnectivity application context on iOS (`WatchConnectivityLink`). `WatchLinkContract` is the wire
+  format; the Wear app imports it, and `PhoneConfigReceiver.swift` repeats its keys. The watch shares the
+  phone token. See `.claude/wear-app.md` and `.claude/watch-app.md`.
+
 ## Session Lifecycle
 
 - `api/SessionMachine.kt` holds the connection lifecycle of the MA session. `transition` is a pure

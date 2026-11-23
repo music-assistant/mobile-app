@@ -20,8 +20,12 @@ struct StatusMessage {
             symbol = "music.note"
         } else if status == WatchSessionStatus.notConfigured {
             headline = "No server"
-            detail = "Set ma.host and ma.token in local.properties"
-            symbol = "exclamationmark.triangle"
+            detail = "Sign in with Music Assistant on your iPhone"
+            symbol = "iphone"
+        } else if status == WatchSessionStatus.remoteOnly {
+            headline = "Remote access only"
+            detail = "Connect your iPhone to the server directly"
+            symbol = "iphone.slash"
         } else if status == WatchSessionStatus.unauthorized {
             headline = "Token rejected"
             detail = state.statusMessage

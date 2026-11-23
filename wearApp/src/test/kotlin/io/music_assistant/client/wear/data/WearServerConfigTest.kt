@@ -2,7 +2,6 @@ package io.music_assistant.client.wear.data
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -24,10 +23,11 @@ class WearServerConfigTest {
     }
 
     @Test
-    fun `is not configured without a host or a token`() {
-        assertTrue(config.isConfigured)
-        assertFalse(config.copy(token = "").isConfigured)
-        assertFalse(config.copy(host = "").isConfigured)
+    fun `puts the base path of a reverse proxy before the websocket path`() {
+        val proxied = config.copy(basePath = "/ma")
+        assertEquals("ws://ma.local:8095/ma/ws", proxied.wsUrl)
+        assertEquals("http://ma.local:8095/ma", proxied.webUrl)
+        assertEquals("ws://ma.local:8095/ma/ws", config.copy(basePath = "ma/").wsUrl)
     }
 
     @Test

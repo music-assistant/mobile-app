@@ -6,7 +6,9 @@
     <string name="reconnecting">Reconnecting…</string>
     <string name="not_configured">No server configured</string>
     <string name="unauthorized">Token rejected</string>
-    <string name="not_configured_hint">Set ma.host and ma.token in local.properties</string>
+    <string name="phone_sign_in_hint">Sign in with Music Assistant on your phone</string>
+    <string name="remote_only">Remote access only</string>
+    <string name="remote_only_hint">Connect your phone to the server directly</string>
     <string name="no_players">No players</string>
     <string name="nothing_playing">Nothing playing</string>
 

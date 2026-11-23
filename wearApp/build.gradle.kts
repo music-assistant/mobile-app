@@ -1,33 +1,10 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
 }
-
-/**
- * Server coordinates and the long-lived token, read from the git-ignored
- * `local.properties` at the repository root. Keeping them out of the sources means the
- * token never reaches a commit, and swapping servers is a rebuild rather than an edit.
- *
- * Add to `local.properties`:
- * ```
- * ma.host=192.168.1.10
- * ma.port=8095
- * ma.tls=false
- * ma.token=<long-lived access token>
- * ```
- * A missing value falls back to the Music Assistant defaults and an empty token, which
- * the watch surfaces as "Not configured" instead of failing the build.
- */
-val localProperties = Properties().apply {
-    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
-}
-
-fun localProperty(key: String, fallback: String): String =
-    (localProperties[key] as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: fallback
 
 android {
     namespace = "io.music_assistant.client.wear"
@@ -41,15 +18,6 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1019
         versionName = "0.18.0"
-
-        buildConfigField("String", "MA_HOST", "\"${localProperty("ma.host", "homeassistant.local")}\"")
-        buildConfigField("int", "MA_PORT", localProperty("ma.port", "8095"))
-        buildConfigField("boolean", "MA_TLS", localProperty("ma.tls", "false"))
-        buildConfigField("String", "MA_TOKEN", "\"${localProperty("ma.token", "")}\"")
-    }
-
-    buildFeatures {
-        buildConfig = true
     }
 
     packaging {
@@ -108,6 +76,9 @@ dependencies {
 
     implementation(libs.androidx.wear)
     implementation(libs.androidx.wear.ongoing)
+    // The phone app sends the server and the token through the Data Layer (`PhoneLinkStore`).
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.wear.compose.material3)
     implementation(libs.androidx.wear.compose.foundation)
     implementation(libs.androidx.wear.compose.navigation)

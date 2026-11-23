@@ -4,13 +4,15 @@
 // developer account, set the MA_* values as environment variables for xcodebuild, or in a
 // git-ignored Local.xcconfig next to this file (Xcode does not see shell variables).
 //
-//   MA_TEAM_ID           Apple developer team id
+//   MA_TEAM_ID           Apple developer team id, the same as the iOS app
+//   MA_BUNDLE_ID         bundle identifier of the iOS app, for example com.example.music-assistant
 //   MA_WATCH_BUNDLE_ID   bundle identifier, for example com.example.music-assistant.watchkitapp
 TEAM_ID = $(MA_TEAM_ID:default=GUYFAK8DC6)
 DEVELOPMENT_TEAM = $(TEAM_ID)
 
-// A watch-only app can carry any identifier. It keeps the phone app's `.watchkitapp` suffix
-// so that pairing it to the iOS app later is a build-setting change and not a new app record.
+// The iOS app is the companion: it sends the server and the token through WatchConnectivity.
+// The watch identifier must start with the companion identifier, so the two pair.
+MA_COMPANION_BUNDLE_ID = $(MA_BUNDLE_ID:default=io.music-assistant.mobile-client)
 PRODUCT_BUNDLE_IDENTIFIER = $(MA_WATCH_BUNDLE_ID:default=io.music-assistant.mobile-client.watchkitapp)
 
 // :watchShared builds arm64_32 and arm64 for the watch and arm64 for the simulator, which

@@ -7,21 +7,21 @@ import io.ktor.http.encodeURLQueryComponent
 /**
  * Where the watch finds Music Assistant, and how it authenticates.
  *
- * The values are generated from `local.properties` into `WatchBuildConfig` (see the module's
- * `build.gradle.kts`). The token is a long-lived access token for now; the real sign-in flow
- * replaces it later without touching anything else in this module.
+ * The iPhone app sends the values through WatchConnectivity ([PhoneLink]). The token is the
+ * token of the phone session, so a sign-out on the phone signs the watch out too.
  */
 data class WatchServerConfig(
     val host: String,
     val port: Int,
     val isTls: Boolean,
+    /** "" or "/seg[/seg]": the path of a server behind a reverse proxy. */
+    val basePath: String = "",
     val token: String,
 ) {
-    val webUrl: String = "${if (isTls) "https" else "http"}://$host:$port"
-    val wsUrl: String = "${if (isTls) "wss" else "ws"}://$host:$port/ws"
+    private val path = basePath.trim().trim('/').takeIf { it.isNotEmpty() }?.let { "/$it" } ?: ""
 
-    /** False when `local.properties` carries no token, which the UI reports instead of retrying. */
-    val isConfigured: Boolean = host.isNotBlank() && token.isNotBlank()
+    val webUrl: String = "${if (isTls) "https" else "http"}://$host:$port$path"
+    val wsUrl: String = "${if (isTls) "wss" else "ws"}://$host:$port$path/ws"
 
     /**
      * The URL the watch fetches artwork from.
@@ -73,13 +73,5 @@ data class WatchServerConfig(
          * background and the thumbnail in the queue list, and the server caches by size.
          */
         const val ARTWORK_SIZE: Int = 512
-
-        /** The coordinates generated from `local.properties` at build time. */
-        fun fromBuildConfig(): WatchServerConfig = WatchServerConfig(
-            host = WatchBuildConfig.HOST,
-            port = WatchBuildConfig.PORT,
-            isTls = WatchBuildConfig.TLS,
-            token = WatchBuildConfig.TOKEN,
-        )
     }
 }

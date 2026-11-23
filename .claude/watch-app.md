@@ -43,25 +43,32 @@ guarded by a source hash so a no-op rebuild does not pay for a cold Gradle daemo
 `:watchShared` builds no Intel simulator slice, as `:composeApp` builds none for iOS, and
 without the exclusion Xcode asks for one and the framework step stops.
 
-Signing follows the iOS project: `MA_TEAM_ID` and `MA_WATCH_BUNDLE_ID` override the defaults,
-as environment variables or in a git-ignored `watchApp/Configuration/Local.xcconfig`.
+Signing follows the iOS project: `MA_TEAM_ID`, `MA_BUNDLE_ID` (the iOS app, the companion) and
+`MA_WATCH_BUNDLE_ID` override the defaults, as environment variables or in a git-ignored
+`watchApp/Configuration/Local.xcconfig`. The watch identifier must start with the iOS identifier,
+and both apps need the same team, or WatchConnectivity does not pair them.
 
 ## Server configuration
 
-The same `local.properties` placeholder as the Wear app, at the repository root:
+The iPhone app sends the server and its own token through WatchConnectivity. The watch has no
+sign-in. `WatchConfigPublisher` (composeApp, `watchlink/`) sends on each sign-in and on a
+sign-out or a rejected token; `WatchConnectivityLink` (iosMain) writes it as the application
+context, with the keys of `WatchLinkContract`. `PhoneConfigReceiver.swift` reads the context
+on activation and on each change, and `PlayerStore` hands it to
+`WatchPlayerController.configure` / `setRemoteOnly` / `clearServer`. A change reconnects a
+running session to the new server.
 
-```
-ma.host=192.168.1.10
-ma.port=8095
-ma.tls=false
-ma.token=<long-lived access token>
-```
+The watch shares the phone token: a sign-out on the phone signs the watch out
+(`NOT_CONFIGURED`), and the server lists one session for both. The system keeps the last
+application context on the watch, so the watch starts without the phone. That context is the
+only copy of the token on the watch. A phone that reaches the server through WebRTC only sends
+`remote_only`, and the watch says so (`REMOTE_ONLY`), because it cannot speak WebRTC. A client
+certificate (mTLS) is not sent.
 
-Kotlin Multiplatform has no `BuildConfig`, so `:watchShared:generateWatchBuildConfig` writes
-the four values into a generated `WatchBuildConfig` object that `WatchServerConfig.fromBuildConfig()`
-wraps. A missing token leaves the watch in `WatchSessionStatus.NOT_CONFIGURED`, which the
-screen reports instead of retrying. This is the placeholder for the real sign-in: replacing it
-means changing how `WatchServerConfig` is built, and nothing else.
+The watch app has the iOS app as its companion (`WKCompanionAppBundleIdentifier`,
+`WKRunsIndependentlyOfCompanionApp`). The iOS project does not embed the watch target yet, so
+install both from Xcode. For App Store delivery, add the watch target to the iOS app (Embed
+Watch Content).
 
 **Plain `http` reaches an IP address, an unqualified name and a `.local` name, and nothing
 else.** App Transport Security exempts exactly those three, which is why neither this app nor
@@ -244,9 +251,8 @@ is to avoid solid bright areas, and the dimmed layout does that whatever the pan
 ## Not implemented
 
 Browsing the library, search, favourites, shuffle and repeat, queue reordering, complications,
-Smart Stack widgets, the Now Playing media controls, and the phone-paired sign-in. The watch
-is a remote for what is already playing. There is no companion relationship with the iOS app:
-`WKWatchOnly` is set, and the watch talks to Music Assistant itself.
+Smart Stack widgets, and the Now Playing media controls. The watch is a remote for what is
+already playing. It gets the server from the iOS app, then it talks to Music Assistant itself.
 
 ## Strings
 

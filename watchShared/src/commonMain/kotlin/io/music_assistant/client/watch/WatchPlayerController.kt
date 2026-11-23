@@ -2,6 +2,7 @@ package io.music_assistant.client.watch
 
 import io.music_assistant.client.watch.data.MaRepository
 import io.music_assistant.client.watch.data.MaSession
+import io.music_assistant.client.watch.data.PhoneLink
 import io.music_assistant.client.watch.data.SessionState
 import io.music_assistant.client.watch.data.WatchPreferences
 import io.music_assistant.client.watch.data.WatchServerConfig
@@ -9,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -40,27 +42,30 @@ class WatchSubscription internal constructor(private val job: Job) {
  * moving parts.
  */
 class WatchPlayerController internal constructor(
-    config: WatchServerConfig,
     preferences: WatchPreferences,
     deviceName: String,
 ) {
-    /** What the app uses: the server from `local.properties`, this watch's own storage. */
+    /**
+     * What the app uses: this watch's own storage. The server comes from the iPhone app,
+     * through [configure], [setRemoteOnly] and [clearServer].
+     */
     constructor() : this(
-        config = WatchServerConfig.fromBuildConfig(),
         preferences = defaultWatchPreferences(),
         deviceName = watchDeviceName(),
     )
+
+    private val phoneLink = MutableStateFlow<PhoneLink>(PhoneLink.Unknown)
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     // Callbacks land on the main thread, because SwiftUI reads them straight into its state.
     private val callbackScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private val session = MaSession(config = config, scope = scope, deviceName = deviceName)
+    private val session = MaSession(phoneLink = phoneLink, scope = scope, deviceName = deviceName)
 
     private val repository = MaRepository(
         session = session,
-        config = config,
+        config = { (phoneLink.value as? PhoneLink.Configured)?.config },
         preferences = preferences,
         scope = scope,
     )
@@ -97,6 +102,28 @@ class WatchPlayerController internal constructor(
         session.stop()
     }
 
+    /**
+     * The server and the token that the iPhone app sent. A change reconnects a running
+     * session to the new server. Call it on the main thread, like [start] and [stop].
+     */
+    fun configure(host: String, port: Int, isTls: Boolean, basePath: String, token: String) {
+        phoneLink.value = if (host.isBlank() || token.isBlank()) {
+            PhoneLink.Unknown
+        } else {
+            PhoneLink.Configured(WatchServerConfig(host, port, isTls, basePath, token))
+        }
+    }
+
+    /** The iPhone reaches the server through WebRTC only, which the watch cannot use. */
+    fun setRemoteOnly() {
+        phoneLink.value = PhoneLink.RemoteOnly
+    }
+
+    /** The iPhone signed out, or the server rejected its token. */
+    fun clearServer() {
+        phoneLink.value = PhoneLink.SignedOut
+    }
+
     /** Delivers every snapshot, starting with the current one, until the handle is cancelled. */
     fun observe(onState: (WatchUiState) -> Unit): WatchSubscription =
         WatchSubscription(callbackScope.launch { states.collect(onState) })
@@ -124,6 +151,7 @@ class WatchPlayerController internal constructor(
         is SessionState.Reconnecting -> WatchSessionStatus.RECONNECTING
         is SessionState.Unauthorized -> WatchSessionStatus.UNAUTHORIZED
         SessionState.NotConfigured -> WatchSessionStatus.NOT_CONFIGURED
+        SessionState.RemoteOnly -> WatchSessionStatus.REMOTE_ONLY
     }
 
     private fun SessionState.message(): String? =

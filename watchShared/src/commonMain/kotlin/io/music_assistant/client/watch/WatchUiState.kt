@@ -18,6 +18,9 @@ enum class WatchSessionStatus {
     RECONNECTING,
     UNAUTHORIZED,
     NOT_CONFIGURED,
+
+    /** The iPhone reaches the server through WebRTC only, which the watch cannot use. */
+    REMOTE_ONLY,
 }
 
 /** Everything the watch screens render, in one snapshot. */

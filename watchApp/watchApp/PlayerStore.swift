@@ -12,6 +12,9 @@ final class PlayerStore {
     private let controller = WatchPlayerController()
     private var subscription: WatchSubscription?
 
+    /// The server and the token from the iPhone app. Held for the life of the store.
+    @ObservationIgnored private var phoneConfig: PhoneConfigReceiver?
+
     /// Everything the screens render.
     private(set) var state: WatchUiState
 
@@ -25,6 +28,29 @@ final class PlayerStore {
 
     init() {
         state = controller.currentState
+        phoneConfig = PhoneConfigReceiver { [weak self] config in
+            self?.apply(config)
+        }
+    }
+
+    /// Hands the server from the phone to the controller, which reconnects if it changed.
+    private func apply(_ config: PhoneConfig) {
+        switch config {
+        case let .configured(host, port, isTls, basePath, token):
+            controller.configure(
+                host: host,
+                port: Int32(port),
+                isTls: isTls,
+                basePath: basePath,
+                token: token
+            )
+        case .remoteOnly:
+            controller.setRemoteOnly()
+        case .signedOut:
+            controller.clearServer()
+        case .unknown:
+            break
+        }
     }
 
     // MARK: - Lifecycle

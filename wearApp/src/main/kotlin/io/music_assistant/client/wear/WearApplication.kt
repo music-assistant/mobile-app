@@ -5,8 +5,9 @@ import android.os.Build
 import io.music_assistant.client.wear.data.ArtworkLoader
 import io.music_assistant.client.wear.data.MaRepository
 import io.music_assistant.client.wear.data.MaSession
+import io.music_assistant.client.wear.data.PhoneLink
+import io.music_assistant.client.wear.data.PhoneLinkStore
 import io.music_assistant.client.wear.data.WearPreferences
-import io.music_assistant.client.wear.data.WearServerConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -31,16 +32,16 @@ class WearApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        val config = WearServerConfig.fromBuildConfig()
+        val phoneLink = PhoneLinkStore(this, scope).link
         session = MaSession(
-            config = config,
+            phoneLink = phoneLink,
             scope = scope,
             // Shown in the server's session list, so the user can tell the watch from the phone.
             deviceName = "${Build.MANUFACTURER} ${Build.MODEL} (Wear)",
         )
         repository = MaRepository(
             session = session,
-            config = config,
+            config = { (phoneLink.value as? PhoneLink.Configured)?.config },
             preferences = WearPreferences(this),
             scope = scope,
         )

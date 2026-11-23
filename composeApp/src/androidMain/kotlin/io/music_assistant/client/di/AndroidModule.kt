@@ -16,6 +16,8 @@ import io.music_assistant.client.utils.BackgroundUsageGuard
 import io.music_assistant.client.utils.FileSharer
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.sendspinClock
+import io.music_assistant.client.watchlink.WatchLink
+import io.music_assistant.client.watchlink.WearDataLayerLink
 import io.music_assistant.sendspin.android.AndroidDecoderFactory
 import io.music_assistant.sendspin.android.AndroidEncoderFactory
 import io.music_assistant.sendspin.android.AudioTrackSink
@@ -35,6 +37,7 @@ fun androidModule() = module {
     single<FileSharer> { AndroidFileSharer(androidContext()) }
     single<BackgroundUsageGuard> { AndroidBackgroundUsageGuard(androidContext()) }
     single<MdnsBrowser> { NsdMdnsBrowser(androidContext()) }
+    single<WatchLink> { WearDataLayerLink(androidContext()) }
     single<HttpClientFactory> {
         AndroidHttpClientFactory(androidContext(), get<SettingsRepository>().clientCertificateAlias)
     }

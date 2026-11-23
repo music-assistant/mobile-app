@@ -45,7 +45,8 @@ data class QueueItemsState(
 @OptIn(FlowPreview::class)
 class MaRepository(
     private val session: MaSession,
-    private val config: WearServerConfig,
+    /** The server of the running session, for the artwork URLs. Null while there is none. */
+    private val config: () -> WearServerConfig?,
     private val preferences: WearPreferences,
     private val scope: CoroutineScope,
 ) {
@@ -356,7 +357,7 @@ class MaRepository(
                 ?.toInt()?.coerceIn(0, MAX_VOLUME),
             title = dto.currentMedia?.title,
             artist = dto.currentMedia?.artist,
-            imageUrl = dto.currentMedia?.imageUrl?.let(config::rebaseImageUrl),
+            imageUrl = dto.currentMedia?.imageUrl?.let { config()?.rebaseImageUrl(it) },
             duration = dto.currentMedia?.duration,
         )
     }
@@ -391,7 +392,7 @@ class MaRepository(
         mediaItem?.artists?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
 
     private fun ServerQueueItemDto.artworkUrl(): String? =
-        (image ?: mediaItem?.image)?.let { config.artworkUrl(it, schemaVersion) }
+        (image ?: mediaItem?.image)?.let { config()?.artworkUrl(it, schemaVersion) }
 
     private fun <T> Result<JsonElement?>.decodeList(serializer: KSerializer<T>): List<T>? =
         getOrNull().decode(ListSerializer(serializer))

@@ -43,7 +43,8 @@ internal interface WatchPreferences {
 @OptIn(FlowPreview::class)
 internal class MaRepository(
     private val session: MaSession,
-    private val config: WatchServerConfig,
+    /** The server of the running session, for the artwork URLs. Null while there is none. */
+    private val config: () -> WatchServerConfig?,
     private val preferences: WatchPreferences,
     private val scope: CoroutineScope,
 ) {
@@ -356,7 +357,7 @@ internal class MaRepository(
                 ?.toInt()?.coerceIn(0, MAX_VOLUME),
             title = dto.currentMedia?.title,
             artist = dto.currentMedia?.artist,
-            imageUrl = dto.currentMedia?.imageUrl?.let(config::rebaseImageUrl),
+            imageUrl = dto.currentMedia?.imageUrl?.let { config()?.rebaseImageUrl(it) },
             duration = dto.currentMedia?.duration,
         )
     }
@@ -391,7 +392,7 @@ internal class MaRepository(
         mediaItem?.artists?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
 
     private fun ServerQueueItemDto.artworkUrl(): String? =
-        (image ?: mediaItem?.image)?.let { config.artworkUrl(it, schemaVersion) }
+        (image ?: mediaItem?.image)?.let { config()?.artworkUrl(it, schemaVersion) }
 
     private fun <T> Result<JsonElement?>.decodeList(serializer: KSerializer<T>): List<T>? =
         getOrNull().decode(ListSerializer(serializer))

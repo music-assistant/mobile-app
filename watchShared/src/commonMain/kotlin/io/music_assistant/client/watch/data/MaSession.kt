@@ -10,6 +10,7 @@ import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -54,8 +56,11 @@ internal sealed interface SessionState {
     /** The link dropped or never came up. [attempt] counts the retries so far. */
     data class Reconnecting(val attempt: Int) : SessionState
 
-    /** No host or no token in `local.properties`. */
+    /** The phone app has sent no server yet, or it signed out. */
     data object NotConfigured : SessionState
+
+    /** The phone reaches the server through WebRTC only, which the watch cannot use. */
+    data object RemoteOnly : SessionState
 }
 
 /** The WebSocket client, which only the platform source set can build. */
@@ -73,9 +78,12 @@ internal expect fun createWebSocketClient(): HttpClient
  * Frames are written and parsed here rather than through a WebSocket content converter: the
  * protocol is one JSON object per text frame, and owning the parse keeps a malformed frame
  * from tearing down the session.
+ *
+ * The server and the token come from the phone ([PhoneLink]). A new value ends the running
+ * connection and starts one to the new server, or reports why there is none.
  */
 internal class MaSession(
-    private val config: WatchServerConfig,
+    private val phoneLink: StateFlow<PhoneLink>,
     private val scope: CoroutineScope,
     private val deviceName: String,
 ) {
@@ -101,20 +109,41 @@ internal class MaSession(
     private var loop: Job? = null
     private var messageCounter = 0L
 
-    fun start() {
-        if (!config.isConfigured) {
-            _state.value = SessionState.NotConfigured
-            return
+    /** True between [start] and [stop]: the app is on screen. */
+    private var wanted = false
+
+    init {
+        // On the main thread, like start() and stop(), so the three never race on the loop.
+        scope.launch(Dispatchers.Main.immediate) {
+            phoneLink.drop(1).collect { if (wanted) restart() }
         }
+    }
+
+    fun start() {
+        wanted = true
         if (loop?.isActive == true) return
-        loop = scope.launch { runConnectionLoop() }
+        restart()
     }
 
     fun stop() {
+        wanted = false
+        endLoop()
+        _state.value = SessionState.Idle
+    }
+
+    private fun restart() {
+        endLoop()
+        when (val link = phoneLink.value) {
+            is PhoneLink.Configured -> loop = scope.launch { runConnectionLoop(link.config) }
+            PhoneLink.RemoteOnly -> _state.value = SessionState.RemoteOnly
+            PhoneLink.SignedOut, PhoneLink.Unknown -> _state.value = SessionState.NotConfigured
+        }
+    }
+
+    private fun endLoop() {
         loop?.cancel()
         loop = null
         socket = null
-        _state.value = SessionState.Idle
     }
 
     /**
@@ -145,26 +174,28 @@ internal class MaSession(
         }
     }
 
-    private suspend fun runConnectionLoop() {
+    private suspend fun runConnectionLoop(config: WatchServerConfig) {
         var attempt = 0
         while (currentCoroutineContext().isActive) {
             _state.value =
                 if (attempt == 0) SessionState.Connecting else SessionState.Reconnecting(attempt)
-            if (openSession()) return
+            if (openSession(config)) return
             attempt += 1
             delay(backoffMillis(attempt))
         }
     }
 
     /** Runs one connection to completion. Returns true when the server rejected the token. */
-    private suspend fun openSession(): Boolean {
+    private suspend fun openSession(config: WatchServerConfig): Boolean {
         var authRejected = false
+        var mine: DefaultClientWebSocketSession? = null
         try {
             client.webSocket(urlString = config.wsUrl) {
+                mine = this
                 socket = this
                 val info = maJson.decodeFromJsonElement(ServerInfoDto.serializer(), receiveJson())
                 val authJob = launch {
-                    when (val outcome = authenticate()) {
+                    when (val outcome = authenticate(config.token)) {
                         AuthOutcome.Granted -> {
                             _state.value = SessionState.Connected(info)
                             _sessionReady.emit(info)
@@ -192,7 +223,8 @@ internal class MaSession(
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             logger.w { "Session ended: ${e.message}" }
         } finally {
-            socket = null
+            // A loop that a new server replaced ends after the new one started: leave its socket.
+            if (socket === mine) socket = null
             failPending()
         }
         return authRejected
@@ -233,9 +265,9 @@ internal class MaSession(
         }
     }
 
-    private suspend fun authenticate(): AuthOutcome {
+    private suspend fun authenticate(token: String): AuthOutcome {
         val args = buildJsonObject {
-            put("token", JsonPrimitive(config.token))
+            put("token", JsonPrimitive(token))
             put("device_name", JsonPrimitive(deviceName))
         }
         return request(ApiCommands.AUTH, args).fold(

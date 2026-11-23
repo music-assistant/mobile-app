@@ -13,12 +13,14 @@ fun SessionState.statusLabel(): String? = when (this) {
     is SessionState.Reconnecting -> stringResource(R.string.reconnecting)
     is SessionState.Unauthorized -> stringResource(R.string.unauthorized)
     SessionState.NotConfigured -> stringResource(R.string.not_configured)
+    SessionState.RemoteOnly -> stringResource(R.string.remote_only)
 }
 
 /** The second line under [statusLabel]: only states the user can act on explain themselves. */
 @Composable
 fun SessionState.statusDetail(): String? = when (this) {
-    SessionState.NotConfigured -> stringResource(R.string.not_configured_hint)
+    SessionState.NotConfigured -> stringResource(R.string.phone_sign_in_hint)
+    SessionState.RemoteOnly -> stringResource(R.string.remote_only_hint)
     is SessionState.Unauthorized -> message
     else -> null
 }

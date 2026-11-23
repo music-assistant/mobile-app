@@ -4,7 +4,6 @@ import io.music_assistant.client.watch.data.ServerImageDto
 import io.music_assistant.client.watch.data.WatchServerConfig
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -25,10 +24,11 @@ class WatchServerConfigTest {
     }
 
     @Test
-    fun aMissingTokenLeavesTheWatchUnconfigured() {
-        assertTrue(plain.isConfigured)
-        assertFalse(plain.copy(token = "").isConfigured)
-        assertFalse(plain.copy(host = "").isConfigured)
+    fun aBasePathGoesBeforeTheWebSocketPath() {
+        val proxied = plain.copy(basePath = "/ma")
+        assertEquals("http://mass.local:8095/ma", proxied.webUrl)
+        assertEquals("ws://mass.local:8095/ma/ws", proxied.wsUrl)
+        assertEquals("ws://mass.local:8095/ma/ws", plain.copy(basePath = "ma/").wsUrl)
     }
 
     @Test

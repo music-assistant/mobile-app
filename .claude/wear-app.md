@@ -11,19 +11,30 @@ player or player group, and work the queue of the selected player.
 ./gradlew :wearApp:detekt
 ```
 
-Configure the server in `local.properties` at the repository root (git-ignored):
+## Server configuration
 
-```
-ma.host=192.168.1.10
-ma.port=8095
-ma.tls=false
-ma.token=<long-lived access token>
-```
+The phone app sends the server and its own token through the Wearable Data Layer. The watch
+has no sign-in. `WatchConfigPublisher` (composeApp, `watchlink/`) sends on each sign-in and on
+a sign-out or a rejected token. A reconnect or a background teardown says nothing about the
+token, so it sends nothing. `WearDataLayerLink` (androidMain) puts the data item
+`/ma/server-config` with the keys of `WatchLinkContract`, which this module imports from
+`:composeApp`, so the two sides cannot drift. `PhoneLinkStore` reads the stored item when the
+app starts and follows its changes; `MaSession` reconnects when the server changes.
 
-Gradle reads them into `BuildConfig`, which `WearServerConfig.fromBuildConfig()` wraps. A
-missing token leaves the watch in `SessionState.NotConfigured`, which the screen reports
-instead of retrying. This is the placeholder for the real sign-in: replacing it means
-changing how `WearServerConfig` is built, and nothing else.
+The watch shares the phone token: a sign-out on the phone signs the watch out
+(`SessionState.NotConfigured`), and the server lists one session for both. The Data Layer
+keeps the item on the watch, so the watch starts without the phone, and the item is the only
+copy of the token on the watch. A phone that reaches the server through WebRTC only sends
+`remote_only` (`SessionState.RemoteOnly`), because the watch cannot speak WebRTC. A client
+certificate (mTLS) is not sent.
+
+The Data Layer delivers the item only to an app with the same application id **and the same
+signing key** as the phone app. Debug builds share `~/.android/debug.keystore`. The release
+`selfSigned` config of this module also uses the debug key, so a release phone app signed with
+a different key sends nothing to it.
+
+To test on an emulator, pair a phone emulator and a Wear emulator (Android Studio, Device
+Manager → Pair Wearable), install both debug builds, and sign in on the phone.
 
 `minSdk` is 33 (Wear OS 4). `applicationId` is shared with the phone app, because Play pairs
 a watch APK to its phone app by application id; the version code carries a +1000 offset so
@@ -35,7 +46,8 @@ the two never collide in one release.
 it would pull Compose Multiplatform Material3, Navigation3, WebRTC, Sendspin, Coil and the
 extended icon pack into the watch APK, and its Koin graph assumes a phone (media session,
 microphone, foreground services, artwork disk cache). The watch needs eight commands and
-four event types, so `:wearApp` speaks the protocol itself and depends on no other module.
+four event types, so `:wearApp` speaks the protocol itself. From `:composeApp` it takes only the vector icons
+and `WatchLinkContract`, the wire format of the phone link.
 
 **The cost is duplication.** When the server renames a command, an argument or an event, the
 watch does not follow the phone automatically. `data/APICommands.kt` names its counterpart in
