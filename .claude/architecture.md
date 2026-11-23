@@ -292,7 +292,7 @@ actual class PlatformFeature {
   lets a guest control every player. See `.claude/party-guest-investigation.md`.
 - **Volume keys**: on Android, an opt-in setting gives the hardware volume keys to the selected remote player
   while the app is on screen. `MainActivity.onKeyDown` asks `VolumeButtonService.onVolumeKey`, which
-  sends the slider step commands through `RemoteVolumeTarget` (`MainDataSource`). The media session does not
+  decides and gives the reason when it does not take a key, and sends the slider step commands through `RemoteVolumeTarget` (`MainDataSource`). The media session does not
   change. See `.claude/volume-control.md`.
 - **Play history**: the server sends `playlog_updated` to all users. Ignore an event with the
   `userid` of a different user. A null `userid` applies to all users. The home screen loads its

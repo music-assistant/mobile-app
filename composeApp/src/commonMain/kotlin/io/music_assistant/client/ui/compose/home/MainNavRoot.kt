@@ -142,8 +142,8 @@ import musicassistantclient.composeapp.generated.resources.nav_settings
 import musicassistantclient.composeapp.generated.resources.nav_system
 import musicassistantclient.composeapp.generated.resources.not_connected_retry
 import musicassistantclient.composeapp.generated.resources.players_remote_volume_hint
+import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player
 import musicassistantclient.composeapp.generated.resources.volume_keys_in_call
-import musicassistantclient.composeapp.generated.resources.volume_keys_no_remote_player
 import musicassistantclient.composeapp.generated.resources.volume_keys_no_volume_control
 import musicassistantclient.composeapp.generated.resources.volume_keys_player_off
 import musicassistantclient.composeapp.generated.resources.volume_keys_setting_off
@@ -297,11 +297,16 @@ fun MainNavigationRoot(
                     val text = when (reason) {
                         UnroutedVolumeKey.NOT_SUPPORTED -> getString(Res.string.players_remote_volume_hint)
                         UnroutedVolumeKey.SETTING_OFF ->
-                            getString(Res.string.volume_keys_setting_off, viewedPlayerName)
+                            getString(
+                                Res.string.volume_keys_setting_off,
+                                viewedPlayerName,
+                                getString(Res.string.settings_volume_keys_control_player),
+                            )
                         UnroutedVolumeKey.IN_CALL -> getString(Res.string.volume_keys_in_call)
-                        UnroutedVolumeKey.NO_REMOTE_PLAYER -> getString(Res.string.volume_keys_no_remote_player)
                     }
-                    toastState.showToast(text, ToastDuration.SHORT)
+                    // The setting hint is a long sentence.
+                    val duration = if (reason == UnroutedVolumeKey.SETTING_OFF) ToastDuration.LONG else ToastDuration.SHORT
+                    toastState.showToast(text, duration)
                 }
             }
         }

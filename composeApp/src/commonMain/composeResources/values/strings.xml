@@ -654,8 +654,7 @@
   <string name="unsupported_install_link">Installation methods</string>
   <string name="unsupported_install_title">Unsupported installation</string>
   <string name="volume_keys_in_call">During a call, the volume buttons change the call volume.</string>
-  <string name="volume_keys_no_remote_player">The volume buttons changed the phone volume: no remote player is selected.</string>
   <string name="volume_keys_no_volume_control">The volume of %1$s cannot be changed</string>
   <string name="volume_keys_player_off">%1$s is off</string>
-  <string name="volume_keys_setting_off">The volume buttons change the phone volume. To control %1$s with them, turn on "Volume buttons control the selected player" in Settings.</string>
+  <string name="volume_keys_setting_off">The volume buttons change the device volume. To control %1$s with them, turn on "%2$s" in Settings.</string>
 </resources>

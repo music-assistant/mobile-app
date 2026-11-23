@@ -63,17 +63,22 @@ class VolumeButtonServiceTest {
         val service = service(backgroundScope)
 
         service.buttonPresses.test {
-            service.onVolumeKeyLeftToDevice(inCall = false)
+            assertFalse(service.onVolumeKey(up = true, isRepeat = false))
             assertEquals(UnroutedVolumeKey.SETTING_OFF, awaitItem())
 
             settings.setVolumeKeysControlSelectedPlayer(true)
-            service.onVolumeKeyLeftToDevice(inCall = true)
+            assertFalse(service.onVolumeKey(up = true, isRepeat = false, inCall = true))
             assertEquals(UnroutedVolumeKey.IN_CALL, awaitItem())
 
+            // Repeats of a press give no second reason.
+            assertFalse(service.onVolumeKey(up = true, isRepeat = true, inCall = true))
+            // The local player: the device volume, with no toast.
             target.selectedPlayer = playerData(isLocal = true)
-            service.onVolumeKeyLeftToDevice(inCall = false)
-            assertEquals(UnroutedVolumeKey.NO_REMOTE_PLAYER, awaitItem())
+            assertFalse(service.onVolumeKey(up = true, isRepeat = false))
+            expectNoEvents()
         }
+        runCurrent()
+        assertTrue(target.sent.isEmpty())
     }
 
     @Test

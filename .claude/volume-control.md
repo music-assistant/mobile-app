@@ -41,13 +41,15 @@ the app is on screen. They never change the device volume in this case. All othe
 - `MainActivity.onKeyDown` and `onKeyUp` get the volume keys only while the activity has window focus. So the
   home screen, the lock screen, a switched-off screen and other apps keep the device volume. The app does not
   track the lifecycle for this.
-- `VolumeButtonService.onVolumeKey` takes a key if the setting is on and the selected player is not the local
-  player. `RemoteVolumeTarget` (`MainDataSource`) gives the selected player and sends the step.
+- `VolumeButtonService.onVolumeKey` takes a key if the setting is on, the selected player is not the local
+  player, and no call holds the audio (`inCall`, from `MainActivity`). `RemoteVolumeTarget` (`MainDataSource`)
+  gives the selected player and sends the step. The same function decides why it does not take a key.
 - If the player cannot act on the key, the service sends no step and emits a `VolumeKeyRefusal`, once for each
   press and not for its repeats. `MainNavRoot` shows the reason as a toast: no connection to the server, the
   player is off, or the player has no volume control.
 - If the activity takes the `ACTION_DOWN` of a key, it also takes the repeats and the `ACTION_UP` of that key.
-  The activity does not take the keys during a call or VoIP (`AudioManager.mode` is not `MODE_NORMAL`).
+  The service does not take the keys during a call or VoIP (`MainActivity` passes `inCall` when
+  `AudioManager.mode` is not `MODE_NORMAL`).
 - The command is the same command as the step buttons beside the slider: `volume_up` or `volume_down`, or
   `group_volume_up` or `group_volume_down` if `PlayerData.usesGroupVolume` is true. The server applies its own
   volume step.
@@ -65,14 +67,14 @@ If a volume key changes the device volume while the shown player is remote, `Mai
 reason. `VolumeButtonService.buttonPresses` emits an `UnroutedVolumeKey` for each such press (on Android, once for
 each press and not for its repeats).
 
-- Android: `MainActivity` calls `VolumeButtonService.onVolumeKeyLeftToDevice` for each key that it does not take.
-  The service picks the reason and logs `Volume key left to the device: <reason>, selected=<id> local=<bool>`:
-  - `IN_CALL`: the audio mode is not `MODE_NORMAL` (a call or VoIP). Toast `volume_keys_in_call`. `MainActivity`
-    also logs the audio mode.
-  - `SETTING_OFF`: "Volume buttons control the selected player" is off. Toast `volume_keys_setting_off`, which
-    names the shown player and the setting.
-  - `NO_REMOTE_PLAYER`: the setting is on, but the key path's selected player is the local player or none, for
-    example while the player list reloads. Toast `volume_keys_no_remote_player`.
+- Android: `VolumeButtonService.onVolumeKey` returns false for a key it does not take, and gives the reason:
+  - `IN_CALL`: a call or VoIP holds the audio mode. Toast `volume_keys_in_call`.
+  - `SETTING_OFF`: "Volume buttons control the selected player" is off. Toast `volume_keys_setting_off` (long),
+    which names the shown player and the setting (`settings_volume_keys_control_player`).
+  - No remote player in the key path (the local player or none): no reason and no toast. The user isn't looking
+    at a remote player, or the UI is a moment ahead of `MainDataSource`.
+  - Each such press logs `Volume key left to the device: <reason>, selected=<id> local=<bool>`, at info level
+    when a remote player is selected and at debug level otherwise.
 - iOS: `SystemVolumeButtonObserver` (`iosApp/iosApp/iOSApp.swift`) observes `AVAudioSession.outputVolume`
   while the app is active, and calls `KmpHelper.onPlatformVolumeButtonPressed`. That emits `NOT_SUPPORTED`, and
   the toast stays "Volume buttons only work for the local player" (`players_remote_volume_hint`), because iOS
