@@ -570,6 +570,7 @@
   <string name="settings_history_direct">Direct</string>
   <string name="settings_history_webrtc">WebRTC (Remote Access)</string>
   <string name="settings_host">Host</string>
+  <string name="settings_local_network_onboarding_body_ios">When you connect to your server for the first time, iOS will ask for permission to access your local network. Tap Allow — without it the app cannot find or reach your server.</string>
   <string name="settings_local_network_onboarding_title_ios">Local network access</string>
   <string name="settings_local_network_prompt_ios">iOS asks for permission to use your local network. Tap Allow, because without it the app cannot find or reach your server.</string>
   <string name="settings_local_player">Sendspin Player</string>
@@ -603,6 +604,7 @@
   <string name="settings_share_crash_logs">Share crash logs</string>
   <string name="settings_share_logs">Share logs</string>
   <string name="settings_ssl_tls">SSL/TLS (wss://)</string>
+  <string name="settings_use_tls">Use TLS (wss://)</string>
   <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>
   <string name="settings_version_info">Version %1$s, Schema %2$s</string>
   <string name="settings_volume_keys_control_player">Volume buttons control the selected player</string>
