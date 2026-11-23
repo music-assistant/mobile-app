@@ -386,8 +386,8 @@ actual class PlatformFeature {
   5 s, the share ends.
   The handshake does not give the revision of the role. The router starts with `SourceDialect.SPEC`, and tries `RC1`
   if the status is `Refused`. That restarts the audio link one time. A share ends when the user stops it, when the
-  system ends the capture, when the server stops the stream, or when the audio link drops. With `RC1` the module
-  reports a silent input as `absent` (`PlayerState.Connected.sourceSignal`), and the server stops the source after
+  system ends the capture, when the server stops the stream, or when the audio link drops. Under both dialects the
+  module reports a silent input as `absent` (`PlayerState.Connected.sourceSignal`), and the server stops the source after
   a minute of it. The router then ends the share with `DeviceAudioShareEnd.Silence`. The roles go in
   `client/hello`, so the start and the end of a share restart the audio link.
 

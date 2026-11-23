@@ -295,13 +295,13 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     }
 
     @Test
-    fun theCurrentSpecNeverReportsAbsent() = sourceTest { h, capture ->
+    fun theCurrentSpecReportsAbsentToo() = sourceTest { h, capture ->
         val server = connectSource(h)
         server.sourceCommand("start")
         runCurrent()
         captureFor(capture, millis = 10_000, marker = 0)
-        assertEquals(listOf("present"), server.signals(), "line_sense was not advertised")
-        assertEquals(SourceSignal.Present, h.sourceSignal())
+        assertEquals(listOf("present", "absent"), server.signals(), "signal is required in the current spec")
+        assertEquals(SourceSignal.Absent, h.sourceSignal())
     }
 
     @Test

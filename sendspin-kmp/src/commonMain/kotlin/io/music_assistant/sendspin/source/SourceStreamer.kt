@@ -53,8 +53,6 @@ internal class SourceStreamer(
     /** Where the capture is collected and encoded. */
     private val encodeDispatcher: CoroutineDispatcher,
     private val health: SourceCodecHealth,
-    /** True when `client/hello` advertised `line_sense`: only then is the input signal sensed and reported. */
-    private val lineSense: Boolean,
 ) {
     private val logger = Logger.withTag("Sendspin.Source")
     private val _status = MutableStateFlow(SourceStatus.Off)
@@ -222,11 +220,12 @@ internal class SourceStreamer(
     private fun encoded(): Flow<SourceChunk> = flow {
         val format = config.capture.format
         val encoding = SourceEncoding(format, flacEncoder(format), health)
-        val detector = SignalDetector(format).takeIf { lineSense }
+        // Both dialects report the signal: `signal` is a required field of the source state.
+        val detector = SignalDetector(format)
         _signal.value = SourceSignal.Present
         try {
             config.capture.frames().collect { audio ->
-                detector?.let { _signal.value = it.onAudio(audio) }
+                _signal.value = detector.onAudio(audio)
                 encoding.encode(audio).forEach { emit(it) }
             }
         } finally {

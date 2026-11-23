@@ -69,9 +69,9 @@ public enum class SourceStatus {
 }
 
 /**
- * Whether the input has audio, as the source last reported it to the server. Only a server that
- * got `line_sense` ([SourceDialect.RC1]) is told [Absent]: it may then stop the source, and start
- * it again on [Present]. Every connection starts [Present].
+ * Whether the input has audio, as the source last reported it to the server in the `signal`
+ * field of its `client/state`, under both dialects. On [Absent] the server may stop the source,
+ * and start it again on [Present]. Every connection starts [Present].
  */
 public enum class SourceSignal {
     Present,

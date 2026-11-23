@@ -348,13 +348,14 @@ have: `client/hello` has the `source@v1_support` object, and a `start` needs no 
 rc1 server does not activate the role for the `SPEC` dialect. So start with `SPEC`, and change
 to `RC1` if the status is `Refused`.
 
-**Signal.** With `RC1`, `client/hello` advertises `line_sense`, and the player senses the
-captured PCM before it encodes it. After 5 seconds of a stream in which every sample stays at or
+**Signal.** Under both dialects, the player senses the captured PCM before it encodes it, and
+reports it in the `signal` field of the source state (`RC1` also advertises `line_sense` in
+`client/hello`). After 5 seconds of a stream in which every sample stays at or
 below 10 in 16-bit terms (about -70 dBFS, the top 16 bits of a 24 or 32-bit sample), the player
 sends `client/state` with the signal `absent`. The first block above that sends `present`. Each
 connection and each stream starts `present`. The signal keeps its value after a stream ends, so
-a server that stops a silent source does not get a `present` that would start it again. `SPEC`
-has no `line_sense`, so it always reports `present`. Other bit depths are always `present`.
+a server that stops a silent source does not get a `present` that would start it again. Other
+bit depths are always `present`.
 
 **Codec.** The stream is FLAC if the `EncoderFactory` gives an encoder. The stream is PCM if
 there is no factory, if the encoder fails, or if the encoder gives no codec header in 2 seconds

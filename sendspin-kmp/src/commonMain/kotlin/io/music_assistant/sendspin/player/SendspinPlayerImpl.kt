@@ -237,7 +237,6 @@ internal class SendspinPlayerImpl(
                             deps.clock,
                             deps.audioDispatcher,
                             sourceHealth,
-                            lineSense = sourceSupportFor(source.dialect)?.features?.lineSense == true,
                         )
                     }
                     supervisor.run(
