@@ -355,7 +355,9 @@ fun FullPlayerItem(
     val onPrimaryContainer = MaterialTheme.colorScheme.onPrimaryContainer
     val controlTint = colors.controlTint
     val artworkClickLabel = stringResource(Res.string.cd_lyrics_show)
-    var quietSignalOpen by remember(currentMedia?.itemId) { mutableStateOf(false) }
+    var quietSignalOpen by remember(
+        currentMedia?.queueItemId ?: currentMedia?.uri ?: currentMedia?.title,
+    ) { mutableStateOf(false) }
 
     // Across a horizontal fold the artwork ends above the crease, which leaves the controls, pushed
     // down by SpaceBetween, on the lower half. Without a fold the position is not measured, so a drag

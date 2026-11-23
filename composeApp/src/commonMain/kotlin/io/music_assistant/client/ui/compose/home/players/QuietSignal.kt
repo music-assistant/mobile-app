@@ -22,6 +22,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.quiet_signal_answer
+import musicassistantclient.composeapp.generated.resources.quiet_signal_bitter
+import musicassistantclient.composeapp.generated.resources.quiet_signal_close
+import musicassistantclient.composeapp.generated.resources.quiet_signal_continue
+import musicassistantclient.composeapp.generated.resources.quiet_signal_hopeful
+import musicassistantclient.composeapp.generated.resources.quiet_signal_leave
+import musicassistantclient.composeapp.generated.resources.quiet_signal_listen
+import musicassistantclient.composeapp.generated.resources.quiet_signal_neutral
+import musicassistantclient.composeapp.generated.resources.quiet_signal_opening
+import musicassistantclient.composeapp.generated.resources.quiet_signal_receive
+import musicassistantclient.composeapp.generated.resources.quiet_signal_walk
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
