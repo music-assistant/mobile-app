@@ -55,7 +55,11 @@ enum class DeviceAudioShareEnd(val message: StringResource) {
     ConnectionLost(Res.string.device_audio_end_connection_lost),
     Timeout(Res.string.device_audio_end_timeout),
 
-    /** The system did not accept the capture consent, so no capture started. */
+    /**
+     * The system did not accept the capture consent, so no capture started. It reuses the
+     * [Timeout] text on purpose: "did not start, try again" is what the user should do, and
+     * the cause (a stale consent token) means nothing to them.
+     */
     CaptureFailed(Res.string.device_audio_end_timeout),
 
     /** The local player is not paired with the server, which grants the source only to a paired one. */
