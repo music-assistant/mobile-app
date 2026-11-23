@@ -47,29 +47,40 @@ class VolumeButtonService(
     /** Each press that the selected remote player cannot act on, with the reason. */
     val refusals = _refusals.asSharedFlow()
 
-    private val _pendingVolumes = MutableStateFlow<Map<String, Float>>(emptyMap())
+    private val _pendingVolumes = MutableStateFlow<Map<String, PendingVolume>>(emptyMap())
 
     /**
-     * The level that the key presses of the last [PENDING_VOLUME_MS] step each remote player to,
+     * The level that the steps sent in the last [PENDING_VOLUME_MS] take each remote player to,
      * by player id. The player reports its new level only after the server reached it, so the
      * app shows this level until then; it uses the server's default steps ([nextVolume]).
      */
-    val pendingVolumes: StateFlow<Map<String, Float>> = _pendingVolumes.asStateFlow()
+    val pendingVolumes: StateFlow<Map<String, PendingVolume>> = _pendingVolumes.asStateFlow()
 
-    // Main thread only, like the key events.
+    // Only the send loop touches these, one step at a time.
     private val pendingExpiries = mutableMapOf<String, Job>()
+    private var sentSteps = 0L
 
     // Conflated: one step is in flight and only the latest press waits, so a held key steps once
     // per server round trip and a reversal replaces the waiting step. The server applies its own
     // volume step, like the taps beside the slider.
-    private val steps = Channel<Pair<PlayerData, PlayerAction>>(Channel.CONFLATED)
+    private val steps = Channel<Step>(Channel.CONFLATED)
+
+    private class Step(val player: PlayerData, val up: Boolean)
 
     init {
         scope.launch {
-            for ((player, action) in steps) {
+            for (step in steps) {
+                val action = volumeStep(step.player, step.up)
+                // The shown level follows the steps that leave, not the presses: a press that a
+                // later one replaced in the channel never reaches the server.
+                showPendingVolume(step.player, step.up)
                 // A failed step must not end the loop, or every later press is taken and lost.
-                runCatching { target.sendRemotePlayerAction(player, action) }
-                    .onFailure { log.e(it) { "Volume step $action for ${player.player.name} failed" } }
+                runCatching { target.sendRemotePlayerAction(step.player, action) }
+                    .onFailure {
+                        log.e(it) { "Volume step $action for ${step.player.player.name} failed" }
+                        // The server never got it: show the reported level again at once.
+                        dropPendingVolume(step.player.playerId)
+                    }
             }
         }
     }
@@ -113,8 +124,7 @@ class VolumeButtonService(
     private fun route(player: PlayerData, up: Boolean, isRepeat: Boolean): Boolean {
         when (val reason = refusalFor(player)) {
             null -> {
-                steps.trySend(player to volumeStep(player, up))
-                showPendingVolume(player, up)
+                steps.trySend(Step(player, up))
                 _remoteAdjust.tryEmit(player.playerId)
             }
 
@@ -125,13 +135,21 @@ class VolumeButtonService(
 
     private fun showPendingVolume(player: PlayerData, up: Boolean) {
         val id = player.playerId
-        val base = _pendingVolumes.value[id] ?: player.player.currentVolume ?: return
-        _pendingVolumes.update { it + (id to nextVolume(base, up)) }
+        val base = _pendingVolumes.value[id]?.level ?: player.player.currentVolume ?: return
+        val step = ++sentSteps
+        _pendingVolumes.update { it + (id to PendingVolume(nextVolume(base, up), step)) }
         pendingExpiries.remove(id)?.cancel()
         pendingExpiries[id] = scope.launch {
             delay(PENDING_VOLUME_MS)
-            _pendingVolumes.update { it - id }
+            // cancel() can't stop a job that is already past its delay, so remove only this
+            // step's level, never the one a newer step just wrote.
+            _pendingVolumes.update { if (it[id]?.step == step) it - id else it }
         }
+    }
+
+    private fun dropPendingVolume(id: String) {
+        pendingExpiries.remove(id)?.cancel()
+        _pendingVolumes.update { it - id }
     }
 
     private fun refusalFor(player: PlayerData): VolumeKeyRefusal.Reason? = when {
@@ -153,6 +171,9 @@ enum class UnroutedVolumeKey {
     /** A call or VoIP holds the audio mode. */
     IN_CALL,
 }
+
+/** A level that a sent volume step goes to; [step] tells the steps apart. */
+data class PendingVolume(val level: Float, val step: Long)
 
 /**
  * How long a pressed level shows after the last press. The server steps from the level it
