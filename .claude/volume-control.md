@@ -64,8 +64,8 @@ the app is on screen. They never change the device volume in this case. All othe
     with its own `volume_step` shows the server's level once the pending level expires.
   - It expires `PENDING_VOLUME_MS` (2 s) after the server answers the last step, like the server's
     `VOLUME_TARGET_EXPIRY`, so a slow round trip can't expire it while the step is in flight. An expiry removes
-    only the level of its own step. A step the server didn't take (`sendRemotePlayerAction` returns false)
-    removes the level at once.
+    only the level of its own step. A step the server didn't take removes the level at once:
+    `sendRemotePlayerAction` returns false for no answer and for an `error_code` answer.
 - The media session does not change. It stays local, because the session exists only while a playback service
   holds it. It follows `nowPlayingPlayer` and the car isolation, not the selected player.
 - The system volume panel does not show. `RemoteVolumeOverlay` shows the player name and its volume from the

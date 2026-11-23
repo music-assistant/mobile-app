@@ -1242,7 +1242,7 @@ class MainDataSource(
     override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction): Boolean =
         sendResolved(data, playerRequestFactory.resolve(data, action))
 
-    /** True if the server took the request. */
+    /** True if the server took the request: it answered, and not with an error. */
     private suspend fun sendResolved(data: PlayerData, action: PlayerAction): Boolean {
         val request = playerRequestFactory.buildRequest(data, action) ?: return false
         val result = apiClient.sendRequest(request)
@@ -1251,7 +1251,10 @@ class MainDataSource(
                 result.exceptionOrNull(),
             ) { "Failed to send player action request for ${data.player.name}: $action" }
         }
-        return result.isSuccess
+        // A received RPC error is still a successful transport response.
+        val taken = result.getOrNull()?.json?.containsKey("error_code") == false
+        if (result.isSuccess && !taken) log.w { "The server rejected $action for ${data.player.name}" }
+        return taken
     }
 
     /**

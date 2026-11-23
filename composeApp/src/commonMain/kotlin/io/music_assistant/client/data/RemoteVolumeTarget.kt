@@ -11,7 +11,8 @@ interface RemoteVolumeTarget {
 
     /**
      * Sends [action] to a player that is not the local player, and returns after the server
-     * answers: true if the server took it, false if the request failed or could not be built.
+     * answers: true if the server took it, false if the request failed, could not be built, or the
+     * server answered with an error.
      */
     suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction): Boolean
 }
