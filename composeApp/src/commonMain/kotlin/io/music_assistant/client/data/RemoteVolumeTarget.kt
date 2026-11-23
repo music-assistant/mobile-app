@@ -9,6 +9,9 @@ interface RemoteVolumeTarget {
     val selectedPlayer: PlayerData?
     val isReadyForCommands: StateFlow<Boolean>
 
-    /** Sends [action] to a player that is not the local player, and returns after the server answers. */
-    suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction)
+    /**
+     * Sends [action] to a player that is not the local player, and returns after the server
+     * answers: true if the server took it, false if the request failed or could not be built.
+     */
+    suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction): Boolean
 }

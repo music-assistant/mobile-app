@@ -1239,17 +1239,19 @@ class MainDataSource(
     override val isReadyForCommands: StateFlow<Boolean>
         get() = apiClient.isReadyForCommands
 
-    override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction) =
+    override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction): Boolean =
         sendResolved(data, playerRequestFactory.resolve(data, action))
 
-    private suspend fun sendResolved(data: PlayerData, action: PlayerAction) {
-        val request = playerRequestFactory.buildRequest(data, action) ?: return
+    /** True if the server took the request. */
+    private suspend fun sendResolved(data: PlayerData, action: PlayerAction): Boolean {
+        val request = playerRequestFactory.buildRequest(data, action) ?: return false
         val result = apiClient.sendRequest(request)
         if (result.isFailure) {
             log.e(
                 result.exceptionOrNull(),
             ) { "Failed to send player action request for ${data.player.name}: $action" }
         }
+        return result.isSuccess
     }
 
     /**

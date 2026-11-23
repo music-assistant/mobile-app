@@ -32,13 +32,13 @@ class VolumeButtonServiceTest {
         /** While set, each send suspends until it completes, like a server round trip. */
         var roundTrip: CompletableDeferred<Unit>? = null
 
-        /** While set, each send fails with it, like a dropped connection. */
-        var failure: Throwable? = null
+        /** While false, the server doesn't take a send, like a dropped connection or an error answer. */
+        var accepts = true
 
-        override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction) {
+        override suspend fun sendRemotePlayerAction(data: PlayerData, action: PlayerAction): Boolean {
             sent += action
             roundTrip?.await()
-            failure?.let { throw it }
+            return accepts
         }
     }
 
@@ -210,16 +210,36 @@ class VolumeButtonServiceTest {
     }
 
     @Test
+    fun slowRoundTripKeepsTheLevelUntilTheAnswer() = runTest {
+        val service = enabledServiceWith(playerData())
+        val trip = CompletableDeferred<Unit>()
+        target.roundTrip = trip
+
+        service.onVolumeKey(up = true, isRepeat = false)
+        runCurrent()
+        // Longer than the hold, still in flight (Remote Access).
+        advanceTimeBy(PENDING_VOLUME_MS + 1_000)
+        assertEquals(mapOf("remote" to 43f), service.levels())
+
+        trip.complete(Unit)
+        runCurrent()
+        advanceTimeBy(PENDING_VOLUME_MS - 1)
+        assertEquals(mapOf("remote" to 43f), service.levels())
+        advanceTimeBy(2)
+        assertTrue(service.levels().isEmpty())
+    }
+
+    @Test
     fun failedStepShowsTheReportedLevelAgain() = runTest {
         val service = enabledServiceWith(playerData())
-        target.failure = IllegalStateException("connection dropped")
+        target.accepts = false
 
         service.onVolumeKey(up = true, isRepeat = false)
         runCurrent()
         assertTrue(service.levels().isEmpty())
 
         // The next press starts again from the reported 40, and an old expiry doesn't touch it.
-        target.failure = null
+        target.accepts = true
         service.onVolumeKey(up = true, isRepeat = false)
         runCurrent()
         assertEquals(mapOf("remote" to 43f), service.levels())

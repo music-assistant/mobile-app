@@ -73,14 +73,19 @@ class VolumeButtonService(
                 val action = volumeStep(step.player, step.up)
                 // The shown level follows the steps that leave, not the presses: a press that a
                 // later one replaced in the channel never reaches the server.
-                showPendingVolume(step.player, step.up)
+                val shown = showPendingVolume(step.player, step.up)
                 // A failed step must not end the loop, or every later press is taken and lost.
-                runCatching { target.sendRemotePlayerAction(step.player, action) }
-                    .onFailure {
-                        log.e(it) { "Volume step $action for ${step.player.player.name} failed" }
-                        // The server never got it: show the reported level again at once.
-                        dropPendingVolume(step.player.playerId)
-                    }
+                val taken = runCatching { target.sendRemotePlayerAction(step.player, action) }
+                    .onFailure { log.e(it) { "Volume step $action for ${step.player.player.name} failed" } }
+                    .getOrDefault(false)
+                when {
+                    shown == null -> Unit
+                    // The server took it: hold the level from its answer, so a slow round trip
+                    // (Remote Access) can't let it expire while the step is still in flight.
+                    taken -> expirePendingVolume(step.player.playerId, shown)
+                    // The server never got it: show the reported level again at once.
+                    else -> dropPendingVolume(step.player.playerId)
+                }
             }
         }
     }
@@ -133,11 +138,18 @@ class VolumeButtonService(
         return true
     }
 
-    private fun showPendingVolume(player: PlayerData, up: Boolean) {
+    /** Shows the level [up] steps to, and returns its step number; null without a known level. */
+    private fun showPendingVolume(player: PlayerData, up: Boolean): Long? {
         val id = player.playerId
-        val base = _pendingVolumes.value[id]?.level ?: player.player.currentVolume ?: return
+        val base = _pendingVolumes.value[id]?.level ?: player.player.currentVolume ?: return null
         val step = ++sentSteps
         _pendingVolumes.update { it + (id to PendingVolume(nextVolume(base, up), step)) }
+        // No expiry while the step is in flight.
+        pendingExpiries.remove(id)?.cancel()
+        return step
+    }
+
+    private fun expirePendingVolume(id: String, step: Long) {
         pendingExpiries.remove(id)?.cancel()
         pendingExpiries[id] = scope.launch {
             delay(PENDING_VOLUME_MS)
