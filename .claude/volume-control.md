@@ -61,12 +61,20 @@ the app is on screen. They never change the device volume in this case. All othe
 
 ## Hint for a remote player
 
-If a volume key changes the device volume while a remote player is selected, `MainNavRoot` shows the toast
-"Volume buttons only work for the local player" (`players_remote_volume_hint`).
+If a volume key changes the device volume while the shown player is remote, `MainNavRoot` shows a toast with the
+reason. `VolumeButtonService.buttonPresses` emits an `UnroutedVolumeKey` for each such press (on Android, once for
+each press and not for its repeats).
 
-- Android: `MainActivity` calls `VolumeButtonService.onPlatformVolumeButtonPressed` for each key that it does
-  not take, once for each press.
+- Android: `MainActivity` calls `VolumeButtonService.onVolumeKeyLeftToDevice` for each key that it does not take.
+  The service picks the reason and logs `Volume key left to the device: <reason>, selected=<id> local=<bool>`:
+  - `IN_CALL`: the audio mode is not `MODE_NORMAL` (a call or VoIP). Toast `volume_keys_in_call`. `MainActivity`
+    also logs the audio mode.
+  - `SETTING_OFF`: "Volume buttons control the selected player" is off. Toast `volume_keys_setting_off`, which
+    names the shown player and the setting.
+  - `NO_REMOTE_PLAYER`: the setting is on, but the key path's selected player is the local player or none, for
+    example while the player list reloads. Toast `volume_keys_no_remote_player`.
 - iOS: `SystemVolumeButtonObserver` (`iosApp/iosApp/iOSApp.swift`) observes `AVAudioSession.outputVolume`
-  while the app is active, and calls `KmpHelper.onPlatformVolumeButtonPressed`. The observation needs an active
-  audio session. If the local player does not own the session, the observer activates it with `.mixWithOthers`,
-  so it does not stop the audio of another app.
+  while the app is active, and calls `KmpHelper.onPlatformVolumeButtonPressed`. That emits `NOT_SUPPORTED`, and
+  the toast stays "Volume buttons only work for the local player" (`players_remote_volume_hint`), because iOS
+  can't route the keys. The observation needs an active audio session. If the local player does not own the
+  session, the observer activates it with `.mixWithOthers`, so it does not stop the audio of another app.
