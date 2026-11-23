@@ -17,16 +17,21 @@ public class AndroidEncoderFactory : EncoderFactory {
 }
 
 /**
- * FLAC through the platform [MediaCodec]. The capture time travels through the codec
- * as the presentation time, so each output buffer comes back with the time of its
- * first sample. Any codec failure throws, and the player then continues with PCM.
+ * FLAC through the platform [MediaCodec]. Any codec failure throws, and the player then
+ * continues with PCM.
+ *
+ * The codec gets gapless presentation times, the position of each input in samples, and
+ * [CodecTimeline] maps each output back to the capture time of its first sample. The capture
+ * time itself can't go through the codec: the platform FLAC encoder stamps its output by
+ * counting samples from the first input and ignores later input times. After a capture
+ * stall, its times would stay behind the capture by the length of the stall, for the rest
+ * of the stream, and the sender would drop every chunk as too old.
  */
 internal class FlacEncoder(private val format: CaptureFormat) : AudioEncoder {
     private val bufferInfo = MediaCodec.BufferInfo()
     private var codec: MediaCodec? = null
 
-    /** Capture time of the first input. Presentation times are relative to it. */
-    private var baseMicros: Long? = null
+    private val timeline = CodecTimeline(format.sampleRate)
 
     override var header: ByteArray? = null
         private set
@@ -48,7 +53,6 @@ internal class FlacEncoder(private val format: CaptureFormat) : AudioEncoder {
 
     override fun encode(audio: CapturedAudio): List<EncodedAudio> {
         val current = checkNotNull(codec) { "FLAC encoder is released" }
-        val base = baseMicros ?: audio.captureTimeMicros.also { baseMicros = it }
         val encoded = ArrayList<EncodedAudio>()
         var offset = 0
         var refusals = 0
@@ -57,7 +61,7 @@ internal class FlacEncoder(private val format: CaptureFormat) : AudioEncoder {
             if (index < 0) {
                 // All input slots taken: free some by draining output, then retry.
                 check(++refusals <= MAX_INPUT_RETRIES) { "FLAC encoder accepts no input" }
-                drain(current, base, encoded)
+                drain(current, encoded)
                 continue
             }
             val buffer = checkNotNull(current.getInputBuffer(index)) { "input buffer is null" }
@@ -65,15 +69,17 @@ internal class FlacEncoder(private val format: CaptureFormat) : AudioEncoder {
             val room = buffer.remaining() / format.bytesPerFrame * format.bytesPerFrame
             val length = minOf(audio.pcm.size - offset, room)
             buffer.put(audio.pcm, offset, length)
-            current.queueInputBuffer(index, 0, length, audio.captureTimeMicros - base + micros(offset), 0)
+            val samples = length / format.bytesPerFrame
+            val presentationMicros = timeline.queue(audio.captureTimeMicros + micros(offset), samples)
+            current.queueInputBuffer(index, 0, length, presentationMicros, 0)
             offset += length
         }
-        drain(current, base, encoded)
+        drain(current, encoded)
         return encoded
     }
 
     /** Collects all ready output; never waits, because a FLAC block spans several inputs. */
-    private fun drain(codec: MediaCodec, base: Long, encoded: MutableList<EncodedAudio>) {
+    private fun drain(codec: MediaCodec, encoded: MutableList<EncodedAudio>) {
         while (true) {
             val index = codec.dequeueOutputBuffer(bufferInfo, 0L)
             when {
@@ -86,7 +92,8 @@ internal class FlacEncoder(private val format: CaptureFormat) : AudioEncoder {
                     val config = bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0
                     when {
                         config -> header = header ?: flacStreamHeader(bytes)
-                        bytes.isNotEmpty() -> encoded += EncodedAudio(bytes, base + bufferInfo.presentationTimeUs)
+                        bytes.isNotEmpty() ->
+                            encoded += EncodedAudio(bytes, timeline.captureTimeOf(bufferInfo.presentationTimeUs))
                     }
                     codec.releaseOutputBuffer(index, false)
                 }
