@@ -74,6 +74,9 @@ internal class LocalCommandQueue(
             // Enqueue first: the drain must see the entry when readiness flips.
             enqueue(action, request)
             requestRecovery()
+            // Readiness can flip between the check and the enqueue, and its wake-up then finds an
+            // empty queue. A second wake-up drains the entry, or does nothing while not ready.
+            wake.trySend(Unit)
             return
         }
         if (send(request).isFailure) {

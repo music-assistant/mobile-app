@@ -134,7 +134,8 @@ private val HTTP_PROXY_TYPE_REGEX = Regex("\"type\"\\s*:\\s*\"http-proxy-respons
 class WebRTCTransport(
     private val httpClient: HttpClient,
     private val remoteId: RemoteId,
-    parentScope: CoroutineScope,
+    /** Outlives the transport: it runs the teardown that [close] must not cancel. */
+    private val parentScope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
     private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
     /** A resumed session retries a failed first attempt, like a dropped connection. */
@@ -454,9 +455,9 @@ class WebRTCTransport(
         val mgr = manager
         manager = null
         if (mgr != null) {
-            // Uncancellable: close() cancels the scope right after this, and a teardown that never
+            // In the parent scope: close() cancels this scope right after, and a teardown that never
             // starts leaves the peer, its channels and signaling open.
-            scope.launch(NonCancellable) {
+            parentScope.launch {
                 mgr.disconnect()
                 httpProxy.cancelAll(IllegalStateException("WebRTC transport disconnected"))
             }

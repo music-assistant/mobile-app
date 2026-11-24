@@ -591,6 +591,16 @@ class KtorServiceClient(
      */
     private fun setAuthFailed(reason: String) = setAuthState(AuthProcessState.Failed(reason))
 
+    /** Nothing else ends an `InProgress` that a cancelled attempt leaves, so the next auth can start. */
+    private fun endCancelledAttempt() {
+        _sessionState.update { state ->
+            (state as? SessionState.Connected)
+                ?.takeIf { it.authProcessState == AuthProcessState.InProgress }
+                ?.update(authProcessState = AuthProcessState.NotStarted)
+                ?: state
+        }
+    }
+
     override suspend fun login(
         username: String,
         password: String,
@@ -620,6 +630,7 @@ class KtorServiceClient(
                 is AuthResolution.Authenticated -> handleLoginResponse(resolution.answer)
             }
         } catch (e: CancellationException) {
+            endCancelledAttempt()
             throw e
         } catch (e: Exception) {
             if (_sessionState.value !is SessionState.Connected) return
@@ -666,12 +677,12 @@ class KtorServiceClient(
                     // out from under us — otherwise a late retry could undo a logout. A
                     // manual token login never retries, and like a credential login it
                     // must proceed from a LoggedOut session.
-                    // `AwaitingAuth` also holds a retry until `server/hello` of a new connection
-                    // arrives: an auth sent before it is lost on a WebRTC reconnect.
+                    // An auth waits for `server/hello` of a new connection: one sent before it is
+                    // lost on a WebRTC reconnect.
                     shouldAttempt = {
                         val state = _sessionState.value
                         state is SessionState.Connected &&
-                            state.dataConnectionState is DataConnectionState.AwaitingAuth &&
+                            state.dataConnectionState !is DataConnectionState.AwaitingServerInfo &&
                             (!isAutoLogin || state.authProcessState != AuthProcessState.LoggedOut)
                     },
                     onAttempt = { setAuthState(AuthProcessState.InProgress) },
@@ -703,6 +714,7 @@ class KtorServiceClient(
                     onAuthorized(token, isAutoLogin, resolution.answer)
             }
         } catch (e: CancellationException) {
+            endCancelledAttempt()
             throw e
         } catch (e: Exception) {
             if (_sessionState.value !is SessionState.Connected) return

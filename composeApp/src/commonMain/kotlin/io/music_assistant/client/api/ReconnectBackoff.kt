@@ -8,6 +8,7 @@ package io.music_assistant.client.api
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Three-phase reconnection backoff.
@@ -40,6 +41,9 @@ fun reconnectBackoffMs(attempt: Int): Long = when (attempt) {
  */
 const val DEFAULT_MAX_RECONNECT_ATTEMPTS = 20
 
+/** How long the loop trusts an offline report before it tries a connect anyway. */
+const val OFFLINE_PROBE_INTERVAL_MS = 60_000L
+
 /**
  * Runs a reconnection loop with three‑phase backoff and a configurable attempt ceiling.
  *
@@ -67,23 +71,27 @@ suspend fun runReconnectionLoop(
         // Before the wait: a loop parked on a lost network must already report the
         // attempt, or the transport keeps reporting the dead connection as Connected.
         onAttemptStarting(attempt + 1)
-        if (networkAvailable != null && !networkAvailable.value) {
-            // Network is down — wait for it without burning attempts or applying backoff
-            networkAvailable.first { it }
+        val probing = if (networkAvailable != null && !networkAvailable.value) {
+            // Network is down — wait for it without burning attempts or applying backoff.
+            // A wrong offline report must not park the loop for good, so it probes after a while.
+            val back = withTimeoutOrNull(OFFLINE_PROBE_INTERVAL_MS) { networkAvailable.first { it } } != null
             // Short grace period after the network comes back: DNS resolution through
             // the new route (e.g. WireGuard tunnel) may take a few ms to stabilise.
             // Without this delay, a reconnect attempt that fails with
             // NSURLErrorCannotFindHost (Code=-1003) poisons the HTTP client's
             // connection pool for all subsequent retries.
-            delay(500)
+            if (back) delay(500)
+            !back
         } else {
             // Apply three-phase backoff. In infinite mode cap the backoff index at 9
             // so delay stays at 120s after the 10th attempt.
             val capped = if (infinite) attempt.coerceAtMost(9) else attempt
             delay(reconnectBackoffMs(capped))
+            false
         }
         if (tryConnect(attempt + 1)) return true
-        attempt++
+        // A probe while the network still reports offline uses up no attempt.
+        if (!probing) attempt++
     }
     return false
 }

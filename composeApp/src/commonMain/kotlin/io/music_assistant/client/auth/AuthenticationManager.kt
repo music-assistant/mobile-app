@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -65,6 +66,12 @@ class AuthenticationManager(
      * an aborted attempt, so a reconnect mid-round-trip retries instead of dead-ending.
      */
     private var pendingOAuthGrant: OAuthGrant? = null
+
+    /**
+     * True once [pendingOAuthGrant] went into an attempt. A grant that arrives while another
+     * attempt runs is not spent yet when that attempt ends, so the end spends it.
+     */
+    private var oauthGrantAttempted = false
 
     /** Guards against the two entry points spending [pendingOAuthGrant] twice. */
     private var spendingOAuthGrant = false
@@ -127,7 +134,6 @@ class AuthenticationManager(
                                 }
 
                                 is AuthProcessState.Failed -> {
-                                    clearPendingOAuthGrant()
                                     when (dataConnectionState.authProcessState.savedToken) {
                                         SavedToken.CLEAR -> {
                                             settings.setTokenForServer(
@@ -145,8 +151,14 @@ class AuthenticationManager(
                                         "AwaitingAuth(Failed): " +
                                             dataConnectionState.authProcessState.reason
                                     }
-                                    _authState.value =
-                                        AuthState.Error(dataConnectionState.authProcessState.reason)
+                                    unspentOAuthGrant()?.let {
+                                        log.i { "Spending the OAuth grant that arrived during the failed attempt" }
+                                        spendOAuthGrant(it)
+                                    } ?: run {
+                                        clearPendingOAuthGrant()
+                                        _authState.value =
+                                            AuthState.Error(dataConnectionState.authProcessState.reason)
+                                    }
                                 }
 
                                 AuthProcessState.LoggedOut -> {
@@ -164,6 +176,12 @@ class AuthenticationManager(
                         }
 
                         is DataConnectionState.Authenticated -> {
+                            unspentOAuthGrant()?.let {
+                                // The user signed in again while the saved token was in flight.
+                                log.i { "Spending the OAuth grant that arrived during the auto-login" }
+                                spendOAuthGrant(it)
+                                return@collect
+                            }
                             state.user?.let { user ->
                                 clearPendingOAuthGrant()
                                 log.i { "Authenticated" }
@@ -255,12 +273,15 @@ class AuthenticationManager(
     override suspend fun loginWithToken(token: String): Result<Unit> =
         manualLogin { serviceClient.authorize(token.trim(), isAutoLogin = false) }
 
-    /** A sign-in that the user starts: it lifts the logout block and shows its failure. */
+    /**
+     * A sign-in that the user starts: it lifts the logout block and shows its failure. It runs in
+     * the manager scope, so a login screen that closes does not drop a login that the server took.
+     */
     private suspend fun manualLogin(send: suspend () -> Unit): Result<Unit> {
         return try {
             _isLoggingOut.value = false
             _authState.value = AuthState.Loading
-            send()
+            scope.async { send() }.await()
             Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
@@ -421,6 +442,7 @@ class AuthenticationManager(
         awaitingOAuthCallback = false
         _isLoggingOut.value = false
         pendingOAuthGrant = grant
+        oauthGrantAttempted = false
         _authState.value = AuthState.Loading
 
         pendingOAuthWatchdog?.cancel()
@@ -455,6 +477,7 @@ class AuthenticationManager(
     private suspend fun spendOAuthGrant(grant: OAuthGrant) {
         if (spendingOAuthGrant) return
         spendingOAuthGrant = true
+        oauthGrantAttempted = true
         try {
             val token = when (grant) {
                 is OAuthGrant.Token -> grant.token
@@ -498,6 +521,8 @@ class AuthenticationManager(
         pendingOAuthGrant = OAuthGrant.Token(token)
         return token
     }
+
+    private fun unspentOAuthGrant(): OAuthGrant? = pendingOAuthGrant?.takeUnless { oauthGrantAttempted }
 
     private fun clearPendingOAuthGrant() {
         pendingOAuthGrant = null

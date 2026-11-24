@@ -560,12 +560,27 @@ class WebRTCConnectionManager(
         dataChannelStateJob = scope.launch {
             try {
                 channel.state.collect { state ->
-                    if (state == DataChannelState.Open) {
-                        diagnostics.event("ma-api ready; manager connected")
-                        _connectionState.value = WebRTCConnectionState.Connected(
-                            sessionId = sessionId,
-                            remoteId = remoteId,
-                        )
+                    when (state) {
+                        DataChannelState.Open -> {
+                            diagnostics.event("ma-api ready; manager connected")
+                            _connectionState.value = WebRTCConnectionState.Connected(
+                                sessionId = sessionId,
+                                remoteId = remoteId,
+                            )
+                        }
+
+                        // The peer can stay up without the API channel. Sends to a closed channel
+                        // fail silently, so nothing else would notice.
+                        DataChannelState.Closing, DataChannelState.Closed ->
+                            if (_connectionState.value is WebRTCConnectionState.Connected) {
+                                logger.e { "ma-api channel $state on a connected peer" }
+                                _connectionState.value = WebRTCConnectionState.Error(
+                                    WebRTCError.ConnectionError("ma-api channel closed"),
+                                )
+                                cleanup()
+                            }
+
+                        DataChannelState.Connecting -> Unit
                     }
                 }
             } catch (e: CancellationException) {
