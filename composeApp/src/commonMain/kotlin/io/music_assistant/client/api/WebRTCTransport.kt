@@ -13,6 +13,7 @@ import io.music_assistant.client.webrtc.WebRTCConnectionManager
 import io.music_assistant.client.webrtc.WebRTCHttpProxy
 import io.music_assistant.client.webrtc.model.RemoteId
 import io.music_assistant.client.webrtc.model.WebRTCConnectionState
+import io.music_assistant.client.webrtc.model.WebRTCError
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -249,10 +251,16 @@ class WebRTCTransport(
             mgr.diagnostics.event("transport attempt started reconnect=$isReconnect")
             mgr.connect(remoteId)
 
-            // Wait for terminal WebRTC connection state (Connected or Error)
-            val result = mgr.connectionState.first { connState ->
-                connState is WebRTCConnectionState.Connected || connState is WebRTCConnectionState.Error
-            }
+            // Wait for terminal WebRTC connection state (Connected or Error). The manager's own
+            // timeout ends when signaling connects, and a lost answer, stuck ICE or a channel that
+            // never opens give no Error, so the bound keeps the reconnect loop moving.
+            val result = withTimeoutOrNull(ATTEMPT_TIMEOUT_MS) {
+                mgr.connectionState.first { connState ->
+                    connState is WebRTCConnectionState.Connected || connState is WebRTCConnectionState.Error
+                }
+            } ?: WebRTCConnectionState.Error(
+                WebRTCError.ConnectionError("WebRTC setup timed out after ${ATTEMPT_TIMEOUT_MS}ms"),
+            )
 
             when (result) {
                 is WebRTCConnectionState.Connected -> {
@@ -446,7 +454,9 @@ class WebRTCTransport(
         val mgr = manager
         manager = null
         if (mgr != null) {
-            scope.launch {
+            // Uncancellable: close() cancels the scope right after this, and a teardown that never
+            // starts leaves the peer, its channels and signaling open.
+            scope.launch(NonCancellable) {
                 mgr.disconnect()
                 httpProxy.cancelAll(IllegalStateException("WebRTC transport disconnected"))
             }
@@ -479,3 +489,6 @@ class WebRTCTransport(
         return mgr
     }
 }
+
+// Longer than the manager's own 30 s setup timeout, so that one normally reports first.
+private const val ATTEMPT_TIMEOUT_MS = 60_000L

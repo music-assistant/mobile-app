@@ -12,6 +12,7 @@ import io.music_assistant.client.webrtc.model.WebRTCError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
@@ -611,47 +613,51 @@ class WebRTCConnectionManager(
      * Cleanup resources.
      */
     private suspend fun cleanup() {
-        diagnostics.event("cleanup started managerState=${_connectionState.value::class.simpleName}")
-        signalingMessageListenerJob?.cancel()
-        signalingMessageListenerJob = null
+        // Uncancellable: a handler that fails the connection calls this from inside a job that
+        // it cancels, and a cancelled teardown leaves the peer, the channels and signaling open.
+        withContext(NonCancellable) {
+            diagnostics.event("cleanup started managerState=${_connectionState.value::class.simpleName}")
+            signalingMessageListenerJob?.cancel()
+            signalingMessageListenerJob = null
 
-        iceCandidateJob?.cancel()
-        iceCandidateJob = null
+            iceCandidateJob?.cancel()
+            iceCandidateJob = null
 
-        dataChannelListenerJob?.cancel()
-        dataChannelListenerJob = null
+            dataChannelListenerJob?.cancel()
+            dataChannelListenerJob = null
 
-        connectionStateJob?.cancel()
-        connectionStateJob = null
+            connectionStateJob?.cancel()
+            connectionStateJob = null
 
-        messageListenerJob?.cancel()
-        messageListenerJob = null
+            messageListenerJob?.cancel()
+            messageListenerJob = null
 
-        dataChannelStateJob?.cancel()
-        dataChannelStateJob = null
+            dataChannelStateJob?.cancel()
+            dataChannelStateJob = null
 
-        connectionTimeoutJob?.cancel()
-        connectionTimeoutJob = null
+            connectionTimeoutJob?.cancel()
+            connectionTimeoutJob = null
 
-        iceDisconnectGraceJob?.cancel()
-        iceDisconnectGraceJob = null
+            iceDisconnectGraceJob?.cancel()
+            iceDisconnectGraceJob = null
 
-        dataChannel?.close()
-        dataChannel = null
+            dataChannel?.close()
+            dataChannel = null
 
-        sendspinDataChannelInternal?.close()
-        sendspinDataChannelInternal = null
+            sendspinDataChannelInternal?.close()
+            sendspinDataChannelInternal = null
 
-        httpProxyDataChannelInternal?.close()
-        httpProxyDataChannelInternal = null
+            httpProxyDataChannelInternal?.close()
+            httpProxyDataChannelInternal = null
 
-        peerConnection?.close()
-        peerConnection = null
+            peerConnection?.close()
+            peerConnection = null
 
-        signalingClient.disconnect()
+            signalingClient.disconnect()
 
-        currentSessionId = null
-        diagnostics.event("cleanup completed")
+            currentSessionId = null
+            diagnostics.event("cleanup completed")
+        }
     }
 
     companion object {
