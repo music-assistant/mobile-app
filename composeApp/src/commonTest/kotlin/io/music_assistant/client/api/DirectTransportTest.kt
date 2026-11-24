@@ -2,6 +2,7 @@ package io.music_assistant.client.api
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -59,5 +60,20 @@ class DirectTransportTest {
         assertEquals(TransportState.Connecting, seen.first())
         assertIs<TransportState.Failed>(seen.last())
         assertEquals(2, seen.size)
+    }
+
+    @Test
+    fun aCancellationThatIsNotTheTransportsOwnFailsTheConnect() = runTest {
+        // Ktor ends a dead Darwin socket with a CancellationException.
+        val transport = DirectTransport(
+            clientProvider = { throw CancellationException("Error receiving pong") },
+            connectionInfoProvider = { ConnectionInfo("localhost", 8095, isTls = false) },
+            parentScope = backgroundScope,
+            networkAvailable = network,
+        )
+        transport.connect()
+        runCurrent()
+
+        assertIs<TransportState.Failed>(transport.state.value)
     }
 }

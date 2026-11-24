@@ -4,9 +4,9 @@ import co.touchlab.kermit.Logger
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.int
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.concurrent.atomics.AtomicReference
@@ -14,6 +14,10 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /** Distinguishes loss of the request's connection from a server error. */
 internal class ConnectionLostException(message: String) : Exception(message)
+
+/** The server did not answer a request on a live connection in time. */
+internal class RequestTimeoutException(command: String, timeoutMs: Long) :
+    Exception("No answer to $command after ${timeoutMs}ms")
 
 /**
  * Handles RPC request/response correlation for the Music Assistant API.
@@ -62,7 +66,7 @@ class RpcEngine(
      */
     fun handleResponse(message: JsonObject): Boolean {
         val messageId = message["message_id"]?.jsonPrimitive?.contentOrNull ?: return false
-        val isPartial = message["partial"]?.jsonPrimitive?.boolean == true
+        val isPartial = message["partial"]?.jsonPrimitive?.booleanOrNull == true
 
         if (isPartial) {
             val resultArray = message["result"]?.jsonArray
@@ -93,7 +97,7 @@ class RpcEngine(
         val answer = Answer(finalMessage)
         if (answer.json.containsKey("error_code")) {
             logger.e { "RPC error for message $messageId: $answer" }
-            val errorCode = answer.json["error_code"]?.jsonPrimitive?.int
+            val errorCode = answer.json["error_code"]?.jsonPrimitive?.intOrNull
             if (errorCode == ERROR_CODE_AUTH_REQUIRED) {
                 onAuthError()
             } else {

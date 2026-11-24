@@ -342,4 +342,17 @@ class RpcEngineTest {
             )
         }
     }
+
+    @Test
+    fun malformedPartialAndErrorCodeStillCompleteTheRequest() {
+        val engine = engine()
+        var received: Answer? = null
+        engine.registerCallback("m1") { received = it.getOrThrow() }
+
+        engine.handleResponse(
+            message("""{"message_id": "m1", "partial": null, "error_code": "x", "result": []}"""),
+        )
+
+        assertNotNull(received)
+    }
 }

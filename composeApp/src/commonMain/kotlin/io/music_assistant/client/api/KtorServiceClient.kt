@@ -21,6 +21,7 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.NetworkMonitor
+import io.music_assistant.client.utils.SavedToken
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
@@ -479,7 +480,10 @@ class KtorServiceClient(
                 settings.setLastConnectionMode(effect.target.mode)
                 settings.addOrUpdateHistoryEntry(effect.target.historyEntry)
             }
-            Effect.EmitForeground -> _foregroundEvents.tryEmit(Unit)
+            Effect.EmitForeground -> {
+                _foregroundEvents.tryEmit(Unit)
+                (_sessionState.value as? SessionState.Connected)?.let(::retryFailedAutoLogin)
+            }
             Effect.ForceTransportReconnect -> (transport as? WebRTCTransport)?.forceReconnect()
             is Effect.Defer -> launch { dispatch(effect.event) }
             is Effect.Log -> logger.log(effect.severity, logger.tag, null, effect.message)
@@ -523,7 +527,17 @@ class KtorServiceClient(
         transportObserverJob?.cancel()
         // Undispatched: the collector subscribes before `connect()`, so the first message is not lost.
         transportObserverJob = launch(start = CoroutineStart.UNDISPATCHED) {
-            transport.messages.collect { handleIncomingMessage(it) }
+            transport.messages.collect { message ->
+                // One bad message must not end the collector: every later reply and event would
+                // be lost on a connection that still answers pings.
+                try {
+                    handleIncomingMessage(message)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.e(e) { "Dropped a message that failed to handle: ${message.toString().take(MESSAGE_LOG_CHARS)}" }
+                }
+            }
         }
     }
 
@@ -652,9 +666,12 @@ class KtorServiceClient(
                     // out from under us — otherwise a late retry could undo a logout. A
                     // manual token login never retries, and like a credential login it
                     // must proceed from a LoggedOut session.
+                    // `AwaitingAuth` also holds a retry until `server/hello` of a new connection
+                    // arrives: an auth sent before it is lost on a WebRTC reconnect.
                     shouldAttempt = {
                         val state = _sessionState.value
                         state is SessionState.Connected &&
+                            state.dataConnectionState is DataConnectionState.AwaitingAuth &&
                             (!isAutoLogin || state.authProcessState != AuthProcessState.LoggedOut)
                     },
                     onAttempt = { setAuthState(AuthProcessState.InProgress) },
@@ -673,7 +690,12 @@ class KtorServiceClient(
                 )
             ) {
                 AuthResolution.Aborted -> return
-                is AuthResolution.Surface -> setAuthFailed(resolution.message)
+                is AuthResolution.Surface -> setAuthState(
+                    AuthProcessState.Failed(
+                        resolution.message,
+                        if (isAutoLogin) SavedToken.KEEP_AND_RETRY else SavedToken.CLEAR,
+                    ),
+                )
                 is AuthResolution.Reject -> {
                     setAuthFailed(resolution.message)
                 }
@@ -808,10 +830,11 @@ class KtorServiceClient(
         }
     }
 
-    /** Auth recovery, outside the lifecycle machine: `AwaitingAuth(Failed)` after an auto-login. */
+    /** Auth recovery, outside the lifecycle machine: an automatic login that got no reply. */
     private fun retryFailedAutoLogin(state: SessionState.Connected) {
         val auth = (state.dataConnectionState as? DataConnectionState.AwaitingAuth)?.authProcessState
-        if (auth is AuthProcessState.Failed && state.wasAutoLogin && savedTokenForState(state) != null) {
+        val retryable = (auth as? AuthProcessState.Failed)?.savedToken == SavedToken.KEEP_AND_RETRY
+        if (retryable && savedTokenForState(state) != null) {
             logger.i { "JIT: bumping AwaitingAuth(Failed) → NotStarted to retry auto-login" }
             _sessionState.update {
                 (it as? SessionState.Connected)?.update(
@@ -842,7 +865,11 @@ class KtorServiceClient(
             return Result.failure(IllegalStateException("Not ready for commands"))
         }
         controlLog?.let { logger.i { "$it command sent" } }
-        val result = sendRequestRaw(request)
+        // A live connection can still leave a request without an answer. The bound frees the
+        // caller, for example the play lane of a queue. A cancel releases the callback.
+        val timeoutMs = requestTimeoutMs(request.command)
+        val result = withTimeoutOrNull(timeoutMs) { sendRequestRaw(request) }
+            ?: Result.failure(RequestTimeoutException(request.command, timeoutMs))
         controlLog?.let {
             if (result.isSuccess) {
                 logger.i { "$it command acked" }
@@ -932,6 +959,17 @@ class KtorServiceClient(
 
     companion object {
         private const val ENSURE_READY_TIMEOUT_MS = 10_000L
+
+        // The server answers `play_media` and announcements only after playback starts, and a
+        // library refresh only after it matched the providers, which can take minutes.
+        private const val REQUEST_TIMEOUT_MS = 180_000L
+        private const val MESSAGE_LOG_CHARS = 500
+        private const val REFRESH_ITEM_TIMEOUT_MS = 900_000L
+
+        private fun requestTimeoutMs(command: String) = when (command) {
+            APICommands.MUSIC_REFRESH_ITEM -> REFRESH_ITEM_TIMEOUT_MS
+            else -> REQUEST_TIMEOUT_MS
+        }
 
         // Silent reconnect re-auth failures tolerated before surfacing login — rides
         // through a flaky handoff without trapping the user if re-auth never recovers.
