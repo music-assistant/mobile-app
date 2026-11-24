@@ -13,21 +13,22 @@ import io.music_assistant.client.webrtc.WebRTCConnectionManager
 import io.music_assistant.client.webrtc.WebRTCHttpProxy
 import io.music_assistant.client.webrtc.model.RemoteId
 import io.music_assistant.client.webrtc.model.WebRTCConnectionState
+import io.music_assistant.client.webrtc.model.WebRTCError
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -133,11 +134,14 @@ private val HTTP_PROXY_TYPE_REGEX = Regex("\"type\"\\s*:\\s*\"http-proxy-respons
 class WebRTCTransport(
     private val httpClient: HttpClient,
     private val remoteId: RemoteId,
-    parentScope: CoroutineScope,
+    /** Outlives the transport: it runs the teardown that [close] must not cancel. */
+    private val parentScope: CoroutineScope,
     private val networkAvailable: StateFlow<Boolean>? = null,
     private val maxReconnectAttempts: Int = DEFAULT_MAX_RECONNECT_ATTEMPTS,
     /** A resumed session retries a failed first attempt, like a dropped connection. */
     private val retryInitialFailure: Boolean = false,
+    /** Runs on each state write, on the writing thread. See [TransportStateFlow]. */
+    onStateChange: () -> Unit = {},
 ) : Transport {
     private val logger = Logger.withTag("Session.WebRTCTransport")
 
@@ -159,7 +163,7 @@ class WebRTCTransport(
             exceptionHandler,
     )
 
-    private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
+    private val _state = TransportStateFlow(onStateChange)
     override val state = _state.asStateFlow()
 
     // Larger buffer: under image-burst load on the shared `ma-api` channel, RpcEngine can lag
@@ -242,19 +246,27 @@ class WebRTCTransport(
             cleanupManager()
             val mgr = createManager()
             manager = mgr
+            // Before connect: the manager drops a message that has no subscriber, and the server
+            // sends `server_info` as soon as `ma-api` opens.
+            startMessageListener(mgr)
             mgr.diagnostics.event("transport attempt started reconnect=$isReconnect")
             mgr.connect(remoteId)
 
-            // Wait for terminal WebRTC connection state (Connected or Error)
-            val result = mgr.connectionState.first { connState ->
-                connState is WebRTCConnectionState.Connected || connState is WebRTCConnectionState.Error
-            }
+            // Wait for terminal WebRTC connection state (Connected or Error). The manager's own
+            // timeout ends when signaling connects, and a lost answer, stuck ICE or a channel that
+            // never opens give no Error, so the bound keeps the reconnect loop moving.
+            val result = withTimeoutOrNull(ATTEMPT_TIMEOUT_MS) {
+                mgr.connectionState.first { connState ->
+                    connState is WebRTCConnectionState.Connected || connState is WebRTCConnectionState.Error
+                }
+            } ?: WebRTCConnectionState.Error(
+                WebRTCError.ConnectionError("WebRTC setup timed out after ${ATTEMPT_TIMEOUT_MS}ms"),
+            )
 
             when (result) {
                 is WebRTCConnectionState.Connected -> {
                     mgr.diagnostics.event("transport attempt succeeded reconnect=$isReconnect")
                     _state.value = TransportState.Connected
-                    startMessageListener(mgr)
                     startStateMonitor(mgr)
                 }
 
@@ -282,11 +294,15 @@ class WebRTCTransport(
 
     private fun startMessageListener(mgr: WebRTCConnectionManager) {
         messageListenerJob?.cancel()
-        messageListenerJob = scope.launch {
+        // Undispatched: subscribed before the caller connects the manager.
+        messageListenerJob = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             // Listener-local ownership avoids mutable reassembly state racing lifecycle teardown.
             val chunkReassembler = WebRTCChunkReassembler()
             try {
                 mgr.incomingMessages.collect { wireMessage ->
+                    // The session must see `Connected` before the first message of the connection.
+                    // A wait holds the manager's buffer, so nothing is dropped.
+                    state.first { it == TransportState.Connected }
                     try {
                         // New servers chunk messages that exceed libdatachannel's 256 KiB limit.
                         // Legacy servers still send whole messages, which pass through unchanged.
@@ -439,7 +455,9 @@ class WebRTCTransport(
         val mgr = manager
         manager = null
         if (mgr != null) {
-            scope.launch {
+            // In the parent scope: close() cancels this scope right after, and a teardown that never
+            // starts leaves the peer, its channels and signaling open.
+            parentScope.launch {
                 mgr.disconnect()
                 httpProxy.cancelAll(IllegalStateException("WebRTC transport disconnected"))
             }
@@ -472,3 +490,6 @@ class WebRTCTransport(
         return mgr
     }
 }
+
+// Longer than the manager's own 30 s setup timeout, so that one normally reports first.
+private const val ATTEMPT_TIMEOUT_MS = 60_000L

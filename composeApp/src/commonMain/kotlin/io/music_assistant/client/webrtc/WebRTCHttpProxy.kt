@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import io.music_assistant.client.utils.ARTWORK_MAX_BODY_BYTES
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -454,11 +455,13 @@ class WebRTCHttpProxy(
     }
 
     private fun nextRequestId(): String {
-        val n = requestCounter++
+        val n = requestCounter.getAndIncrement()
         return "req_${currentTimeMillis()}_$n"
     }
 
-    private var requestCounter = 0L
+    // Atomic: several requests (maxConcurrent) take an id at once, and a shared id gives one caller
+    // the body of the other.
+    private val requestCounter = atomic(0L)
 
     companion object {
         // 6 in-flight requests, raised from the original conservative `2` after real-workload

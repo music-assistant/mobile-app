@@ -20,11 +20,18 @@ public fun connectivityOnline(context: Context, scope: CoroutineScope): StateFlo
     val manager = context.applicationContext.getSystemService(ConnectivityManager::class.java)
     return callbackFlow {
         val callback = object : ConnectivityManager.NetworkCallback() {
+            // A late onLost for the old default can come after onAvailable for the new one.
+            @Volatile
+            private var current: Network? = null
+
             override fun onAvailable(network: Network) {
+                current = network
                 trySend(true)
             }
 
             override fun onLost(network: Network) {
+                if (network != current) return
+                current = null
                 trySend(false)
             }
         }

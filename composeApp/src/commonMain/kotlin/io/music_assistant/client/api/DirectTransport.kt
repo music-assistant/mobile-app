@@ -13,11 +13,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.Volatile
@@ -29,6 +29,8 @@ class DirectTransport(
     private val networkAvailable: StateFlow<Boolean>? = null,
     /** A resumed session retries a failed first attempt, like a dropped connection. */
     private val retryInitialFailure: Boolean = false,
+    /** Runs on each state write, on the writing thread. See [TransportStateFlow]. */
+    onStateChange: () -> Unit = {},
 ) : Transport {
     private val logger = Logger.withTag("Session.DirectTransport")
 
@@ -50,7 +52,7 @@ class DirectTransport(
             exceptionHandler,
     )
 
-    private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
+    private val _state = TransportStateFlow(onStateChange)
     override val state = _state.asStateFlow()
 
     private val _messages = MutableSharedFlow<JsonObject>(extraBufferCapacity = 10)
@@ -72,7 +74,9 @@ class DirectTransport(
                 // Returned normally = was connected, then connection dropped
                 if (wasConnected) startReconnection()
             } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
+                // Ktor ends a dead Darwin socket with a CancellationException. Only the
+                // cancellation of this job ends it; any other one is a lost connection.
+                if (e is kotlinx.coroutines.CancellationException) ensureActive()
                 if (wasConnected || retryInitialFailure) {
                     if (!wasConnected) logger.w { "Initial connection failed, retrying: ${e.message}" }
                     startReconnection()
@@ -123,7 +127,9 @@ class DirectTransport(
                         openWebSocket(connectionInfoProvider()) { connectedThisAttempt = true }
                         // Returned normally = was connected, then dropped — signal success for fresh cycle
                         true
-                    } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+                    } catch (e: Exception) {
+                        // As in connect(): a cancellation that is not ours is a failed attempt.
+                        if (e is kotlinx.coroutines.CancellationException) currentCoroutineContext().ensureActive()
                         logger.w { "Reconnect attempt $attempt failed: ${e.message}" }
                         // If we reached Connected during this attempt, treat the drop as a
                         // fresh-cycle trigger so the next reconnect starts at attempt 0.

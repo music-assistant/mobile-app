@@ -1,6 +1,7 @@
 package io.music_assistant.client.di
 
 import io.ktor.client.plugins.websocket.WebSockets
+import io.ktor.client.plugins.websocket.pingInterval
 import io.ktor.serialization.kotlinx.KotlinxWebsocketSerializationConverter
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.myJson
@@ -8,6 +9,7 @@ import io.music_assistant.client.webrtc.SignalingClient
 import kotlinx.coroutines.CoroutineScope
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Koin module for WebRTC components.
@@ -25,6 +27,9 @@ val webrtcModule = module {
         get<HttpClientFactory>().create {
             install(WebSockets) {
                 contentConverter = KotlinxWebsocketSerializationConverter(myJson)
+                // Darwin has no engine ping, so without this a half-open signaling or
+                // announcement socket on iOS is never found.
+                pingInterval = 10.seconds
             }
         }
     }

@@ -21,6 +21,7 @@ import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.HttpClientFactory
 import io.music_assistant.client.utils.NetworkMonitor
+import io.music_assistant.client.utils.SavedToken
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.currentTimeMillis
 import io.music_assistant.client.utils.myJson
@@ -34,6 +35,7 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
@@ -51,6 +53,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -153,7 +156,14 @@ class KtorServiceClient(
     // --- Transport (written only by the lifecycle effects, under lifecycleLock) ---
     @kotlin.concurrent.Volatile
     private var transport: Transport? = null
+    private var transportTarget: SessionTarget? = null
     private var transportObserverJob: Job? = null
+
+    // Under lifecycleLock. The transport state that the machine saw last, the depth of the running
+    // dispatch, and a state change that waits for that dispatch to finish.
+    private var dispatchedTransportState: TransportState = TransportState.Disconnected
+    private var dispatchDepth = 0
+    private var transportChangePending = false
 
     // Safety valve for a connect that neither completes nor fails (e.g. a half-open
     // socket / hung WebRTC signaling with no transport-level connect timeout). Without
@@ -401,10 +411,39 @@ class KtorServiceClient(
      * caller's thread. The lock is reentrant: an effect that fails pending requests can resume a
      * caller that dispatches again, and that caller already sees the published state.
      */
-    private fun dispatch(event: SessionEvent) = synchronized(lifecycleLock) {
-        val step = transition(lifecycle, _sessionState.value, event, env())
-        lifecycle = step.lifecycle
-        step.effects.forEach(::perform)
+    private fun dispatch(event: SessionEvent): Unit = synchronized(lifecycleLock) {
+        dispatchDepth++
+        try {
+            val step = transition(lifecycle, _sessionState.value, event, env())
+            lifecycle = step.lifecycle
+            step.effects.forEach(::perform)
+        } finally {
+            dispatchDepth--
+        }
+        if (dispatchDepth == 0 && transportChangePending) {
+            transportChangePending = false
+            dispatchTransportState()
+        }
+    }
+
+    /**
+     * Called by the transport of [gen] on each state write, on the writing thread. The machine sees
+     * the change before the transport continues, so a message never overtakes the `Connected` that
+     * came before it. A write that an effect makes (a disconnect) waits until the running dispatch
+     * has run all its effects, so a step is never cut by a nested one.
+     */
+    private fun onTransportStateChange(gen: Int): Unit = synchronized(lifecycleLock) {
+        if (gen != lifecycle.gen) return
+        if (dispatchDepth > 0) transportChangePending = true else dispatchTransportState()
+    }
+
+    /** Under lifecycleLock. Reads the current value, so the last dispatch always has the latest state. */
+    private fun dispatchTransportState() {
+        val target = transportTarget ?: return
+        val current = transport?.state?.value ?: return
+        if (current == dispatchedTransportState) return
+        dispatchedTransportState = current
+        dispatch(SessionEvent.Transport(lifecycle.gen, target, current))
     }
 
     private fun env() = Env(
@@ -422,10 +461,11 @@ class KtorServiceClient(
             is Effect.FailAll -> rpcEngine.failAll(ConnectionLostException(effect.cause))
             Effect.ResetSilentReauth -> silentReauth.reset()
             Effect.DropTransport -> {
-                // Cancelling the observer first keeps the dropped transport's own `Disconnected`
-                // from being read as user intent.
+                // The dropped transport has an old gen, so its own `Disconnected` is not read as
+                // user intent. Its late messages die with the observer.
                 transportObserverJob?.cancel()
                 transportObserverJob = null
+                transportTarget = null
                 transport?.disconnect()
                 transport?.close()
                 transport = null
@@ -433,11 +473,17 @@ class KtorServiceClient(
             Effect.DisconnectTransport -> transport?.disconnect()
             is Effect.OpenTransport -> openTransport(effect)
             Effect.CancelWatchdog -> connectWatchdogJob?.cancel()
+            is Effect.ArmServerInfoWatchdog -> startWatchdog(SERVER_INFO_TIMEOUT_MS) {
+                SessionEvent.ServerInfoTimeout(effect.gen)
+            }
             is Effect.RecordConnection -> {
                 settings.setLastConnectionMode(effect.target.mode)
                 settings.addOrUpdateHistoryEntry(effect.target.historyEntry)
             }
-            Effect.EmitForeground -> _foregroundEvents.tryEmit(Unit)
+            Effect.EmitForeground -> {
+                _foregroundEvents.tryEmit(Unit)
+                (_sessionState.value as? SessionState.Connected)?.let(::retryFailedAutoLogin)
+            }
             Effect.ForceTransportReconnect -> (transport as? WebRTCTransport)?.forceReconnect()
             is Effect.Defer -> launch { dispatch(effect.event) }
             is Effect.Log -> logger.log(effect.severity, logger.tag, null, effect.message)
@@ -457,6 +503,7 @@ class KtorServiceClient(
                 parentScope = this,
                 networkAvailable = networkMonitor.isAvailable,
                 retryInitialFailure = open.resume,
+                onStateChange = { onTransportStateChange(open.gen) },
             )
 
             is SessionTarget.WebRTC -> WebRTCTransport(
@@ -465,25 +512,31 @@ class KtorServiceClient(
                 parentScope = this,
                 networkAvailable = networkMonitor.isAvailable,
                 retryInitialFailure = open.resume,
+                onStateChange = { onTransportStateChange(open.gen) },
             )
         }
         transport = newTransport
-        observeTransport(newTransport, open.target, open.gen)
+        transportTarget = open.target
+        // The initial `Disconnected` is not a change: it would overwrite the `Connecting` just published.
+        dispatchedTransportState = TransportState.Disconnected
+        observeMessages(newTransport)
         newTransport.connect()
     }
 
-    private fun observeTransport(transport: Transport, target: SessionTarget, gen: Int) {
+    private fun observeMessages(transport: Transport) {
         transportObserverJob?.cancel()
-        transportObserverJob = launch {
-            // State collector. `drop(1)` skips the StateFlow's initial-value replay
-            // (`TransportState.Disconnected`, the default), which would otherwise overwrite
-            // the `SessionState.Connecting` we just set before the transport's own coroutine
-            // has had a chance to flip to `Connecting`.
-            launch {
-                transport.state.drop(1).collect { dispatch(SessionEvent.Transport(gen, target, it)) }
-            }
-            launch {
-                transport.messages.collect { handleIncomingMessage(it) }
+        // Undispatched: the collector subscribes before `connect()`, so the first message is not lost.
+        transportObserverJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            transport.messages.collect { message ->
+                // One bad message must not end the collector: every later reply and event would
+                // be lost on a connection that still answers pings.
+                try {
+                    handleIncomingMessage(message)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.e(e) { "Dropped a message that failed to handle: ${message.toString().take(MESSAGE_LOG_CHARS)}" }
+                }
             }
         }
     }
@@ -494,11 +547,14 @@ class KtorServiceClient(
      * ([kickRecovery]) can reconnect. Re-armed on every connect attempt and cancelled
      * once the transport connects. A no-op if the session has progressed by then.
      */
-    private fun startConnectWatchdog(gen: Int) {
+    private fun startConnectWatchdog(gen: Int) = startWatchdog(CONNECT_TIMEOUT_MS) { SessionEvent.WatchdogFired(gen) }
+
+    /** One watchdog at a time: the connect phase, then the wait for `server/hello`. */
+    private fun startWatchdog(timeoutMs: Long, event: () -> SessionEvent) {
         connectWatchdogJob?.cancel()
         connectWatchdogJob = launch {
-            delay(CONNECT_TIMEOUT_MS)
-            dispatch(SessionEvent.WatchdogFired(gen))
+            delay(timeoutMs)
+            dispatch(event())
         }
     }
 
@@ -535,6 +591,16 @@ class KtorServiceClient(
      */
     private fun setAuthFailed(reason: String) = setAuthState(AuthProcessState.Failed(reason))
 
+    /** Nothing else ends an `InProgress` that a cancelled attempt leaves, so the next auth can start. */
+    private fun endCancelledAttempt() {
+        _sessionState.update { state ->
+            (state as? SessionState.Connected)
+                ?.takeIf { it.authProcessState == AuthProcessState.InProgress }
+                ?.update(authProcessState = AuthProcessState.NotStarted)
+                ?: state
+        }
+    }
+
     override suspend fun login(
         username: String,
         password: String,
@@ -564,6 +630,7 @@ class KtorServiceClient(
                 is AuthResolution.Authenticated -> handleLoginResponse(resolution.answer)
             }
         } catch (e: CancellationException) {
+            endCancelledAttempt()
             throw e
         } catch (e: Exception) {
             if (_sessionState.value !is SessionState.Connected) return
@@ -610,9 +677,12 @@ class KtorServiceClient(
                     // out from under us — otherwise a late retry could undo a logout. A
                     // manual token login never retries, and like a credential login it
                     // must proceed from a LoggedOut session.
+                    // An auth waits for `server/hello` of a new connection: one sent before it is
+                    // lost on a WebRTC reconnect.
                     shouldAttempt = {
                         val state = _sessionState.value
                         state is SessionState.Connected &&
+                            state.dataConnectionState !is DataConnectionState.AwaitingServerInfo &&
                             (!isAutoLogin || state.authProcessState != AuthProcessState.LoggedOut)
                     },
                     onAttempt = { setAuthState(AuthProcessState.InProgress) },
@@ -631,7 +701,12 @@ class KtorServiceClient(
                 )
             ) {
                 AuthResolution.Aborted -> return
-                is AuthResolution.Surface -> setAuthFailed(resolution.message)
+                is AuthResolution.Surface -> setAuthState(
+                    AuthProcessState.Failed(
+                        resolution.message,
+                        if (isAutoLogin) SavedToken.KEEP_AND_RETRY else SavedToken.CLEAR,
+                    ),
+                )
                 is AuthResolution.Reject -> {
                     setAuthFailed(resolution.message)
                 }
@@ -639,6 +714,7 @@ class KtorServiceClient(
                     onAuthorized(token, isAutoLogin, resolution.answer)
             }
         } catch (e: CancellationException) {
+            endCancelledAttempt()
             throw e
         } catch (e: Exception) {
             if (_sessionState.value !is SessionState.Connected) return
@@ -679,9 +755,12 @@ class KtorServiceClient(
                     }
                     null
                 }
-                if (serverInfo != null) {
-                    _sessionState.update {
-                        (it as? SessionState.Connected)?.update(serverInfo = serverInfo) ?: it
+                serverInfo?.let { info ->
+                    val state = _sessionState.updateAndGet {
+                        (it as? SessionState.Connected)?.update(serverInfo = info) ?: it
+                    }
+                    if (state !is SessionState.Connected) {
+                        logger.w { "Dropped server/hello: the session is ${stateLabel(state)}" }
                     }
                 }
             }
@@ -763,10 +842,11 @@ class KtorServiceClient(
         }
     }
 
-    /** Auth recovery, outside the lifecycle machine: `AwaitingAuth(Failed)` after an auto-login. */
+    /** Auth recovery, outside the lifecycle machine: an automatic login that got no reply. */
     private fun retryFailedAutoLogin(state: SessionState.Connected) {
         val auth = (state.dataConnectionState as? DataConnectionState.AwaitingAuth)?.authProcessState
-        if (auth is AuthProcessState.Failed && state.wasAutoLogin && savedTokenForState(state) != null) {
+        val retryable = (auth as? AuthProcessState.Failed)?.savedToken == SavedToken.KEEP_AND_RETRY
+        if (retryable && savedTokenForState(state) != null) {
             logger.i { "JIT: bumping AwaitingAuth(Failed) → NotStarted to retry auto-login" }
             _sessionState.update {
                 (it as? SessionState.Connected)?.update(
@@ -797,7 +877,11 @@ class KtorServiceClient(
             return Result.failure(IllegalStateException("Not ready for commands"))
         }
         controlLog?.let { logger.i { "$it command sent" } }
-        val result = sendRequestRaw(request)
+        // A live connection can still leave a request without an answer. The bound frees the
+        // caller, for example the play lane of a queue. A cancel releases the callback.
+        val timeoutMs = requestTimeoutMs(request.command)
+        val result = withTimeoutOrNull(timeoutMs) { sendRequestRaw(request) }
+            ?: Result.failure(RequestTimeoutException(request.command, timeoutMs))
         controlLog?.let {
             if (result.isSuccess) {
                 logger.i { "$it command acked" }
@@ -887,6 +971,17 @@ class KtorServiceClient(
 
     companion object {
         private const val ENSURE_READY_TIMEOUT_MS = 10_000L
+
+        // The server answers `play_media` and announcements only after playback starts, and a
+        // library refresh only after it matched the providers, which can take minutes.
+        private const val REQUEST_TIMEOUT_MS = 180_000L
+        private const val MESSAGE_LOG_CHARS = 500
+        private const val REFRESH_ITEM_TIMEOUT_MS = 900_000L
+
+        private fun requestTimeoutMs(command: String) = when (command) {
+            APICommands.MUSIC_REFRESH_ITEM -> REFRESH_ITEM_TIMEOUT_MS
+            else -> REQUEST_TIMEOUT_MS
+        }
 
         // Silent reconnect re-auth failures tolerated before surfacing login — rides
         // through a flaky handoff without trapping the user if re-auth never recovers.

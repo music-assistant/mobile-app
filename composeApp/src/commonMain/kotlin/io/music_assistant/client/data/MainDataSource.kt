@@ -547,7 +547,10 @@ class MainDataSource(
                 }
         }
         launch {
-            apiClient.sessionState.collect { sessionState ->
+            // A server info refresh (`core_state_updated`) makes a new state of the same session.
+            // A re-subscribe would lose the events of the gap, so only a change of the connection,
+            // the auth step or the token counts.
+            apiClient.sessionState.distinctUntilChangedBy(::sessionKey).collect { sessionState ->
                 log.i { "SessionState changed: ${sessionState::class.simpleName}" }
 
                 when (sessionState) {
@@ -1998,3 +2001,11 @@ class MainDataSource(
         }
     }
 }
+
+private fun sessionKey(state: SessionState): Any = (state as? SessionState.Connected)?.let {
+    when (val dcs = it.dataConnectionState) {
+        is DataConnectionState.Authenticated -> it::class to dcs.token
+        is DataConnectionState.AwaitingAuth -> it::class to dcs.authProcessState
+        DataConnectionState.AwaitingServerInfo -> it::class to dcs
+    }
+} ?: state

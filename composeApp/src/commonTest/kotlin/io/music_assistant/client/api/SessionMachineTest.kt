@@ -204,7 +204,11 @@ class SessionMachineTest {
             authProcessState = AuthProcessState.NotStarted,
         )
         assertEquals(
-            listOf(Effect.CancelWatchdog, Effect.Publish(SessionState.Connected.WebRTC(remoteId, expected))),
+            listOf(
+                Effect.CancelWatchdog,
+                Effect.Publish(SessionState.Connected.WebRTC(remoteId, expected)),
+                Effect.ArmServerInfoWatchdog(GEN),
+            ),
             result.actions,
         )
     }
@@ -245,6 +249,40 @@ class SessionMachineTest {
         assertEquals(
             emptyList(),
             step(SessionState.Reconnecting.Direct(1, info, data), SessionEvent.WatchdogFired(GEN)).effects,
+        )
+    }
+
+    // --- Server info watchdog ---
+
+    @Test
+    fun aConnectionWithTheServerInfoArmsNoServerInfoWatchdog() {
+        val result = step(
+            SessionState.Reconnecting.Direct(1, info, data),
+            SessionEvent.Transport(GEN, direct, TransportState.Connected),
+        )
+
+        assertTrue(result.actions.none { it is Effect.ArmServerInfoWatchdog })
+    }
+
+    @Test
+    fun aServerInfoTimeoutReconnectsASessionThatStillWaitsForTheServerInfo() {
+        val awaiting = SessionState.Connected.Direct(info, ConnectionData())
+        val result = step(awaiting, SessionEvent.ServerInfoTimeout(GEN), env = env(savedConnectionInfo = info))
+
+        assertEquals(startEffects(direct, resume = true), result.actions)
+    }
+
+    @Test
+    fun aStaleOrSatisfiedServerInfoTimeoutDoesNothing() {
+        val awaiting = SessionState.Connected.Direct(info, ConnectionData())
+        assertEquals(emptyList(), step(awaiting, SessionEvent.ServerInfoTimeout(GEN - 1)).effects)
+        assertEquals(
+            emptyList(),
+            step(SessionState.Connected.Direct(info, data), SessionEvent.ServerInfoTimeout(GEN)).effects,
+        )
+        assertEquals(
+            emptyList(),
+            step(SessionState.Reconnecting.Direct(1, info, data), SessionEvent.ServerInfoTimeout(GEN)).effects,
         )
     }
 
@@ -326,6 +364,7 @@ class SessionMachineTest {
                 listOf(
                     Effect.CancelWatchdog,
                     Effect.Publish(SessionState.Connected.Direct(info, ConnectionData())),
+                    Effect.ArmServerInfoWatchdog(GEN),
                     Effect.RecordConnection(direct),
                 ),
                 result.actions,
