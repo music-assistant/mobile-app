@@ -3,6 +3,7 @@ package io.music_assistant.client.ui.compose.settings.sections
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -102,7 +103,7 @@ fun SendspinSettingsSection(
     isSavable: Boolean,
     isResettable: Boolean,
     isConfirmationPending: Boolean,
-    onEnabledChange: (Boolean) -> Unit,
+    onEnabledChanged: (Boolean) -> Unit,
     onSettingsChange: ((SendspinPlayerSettings) -> SendspinPlayerSettings) -> Unit,
     onSave: () -> Unit,
     onReset: () -> Unit,
@@ -115,23 +116,7 @@ fun SendspinSettingsSection(
 
     var showAdvancedConfig by rememberSaveable { mutableStateOf(settings.hasNonDefaultAdvancedSettings()) }
 
-    Column {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = stringResource(Res.string.settings_local_player),
-                style = MaterialTheme.typography.titleLargeEmphasized,
-            )
-            Switch(
-                checked = enabled,
-                onCheckedChange = onEnabledChange,
-            )
-        }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -139,6 +124,14 @@ fun SendspinSettingsSection(
             ),
             shape = RoundedCornerShape(12.dp),
         ) {
+            Box(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
+                SectionTitle(
+                    text = stringResource(Res.string.settings_local_player),
+                    enabled = enabled,
+                    onEnabledChanged = onEnabledChanged,
+                )
+            }
+
             Text(
                 text = stringResource(Res.string.settings_sendspin_intro),
                 style = MaterialTheme.typography.bodyMedium,

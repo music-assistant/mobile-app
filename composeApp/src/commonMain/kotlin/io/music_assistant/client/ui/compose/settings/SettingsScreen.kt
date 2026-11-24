@@ -218,7 +218,7 @@ fun SettingsScreen(goHome: () -> Unit) {
                     isSavable = isSendspinSavable,
                     isResettable = isSendspinResettable,
                     isConfirmationPending = isSendspinConfirmationPending,
-                    onEnabledChange = sendspinViewModel::setEnabled,
+                    onEnabledChanged = sendspinViewModel::setEnabled,
                     onSettingsChange = sendspinViewModel::update,
                     onSave = sendspinViewModel::save,
                     onReset = sendspinViewModel::reset,
