@@ -772,6 +772,7 @@ class FakeServiceClient : ServiceClient {
                             user = User("-1", username, username, "user"),
                             wasAutoLogin = isAutoLogin,
                             token = token,
+                            needsServerReauth = false,
                         ),
                     )
                 }
@@ -1058,7 +1059,10 @@ class FakeServiceClient : ServiceClient {
                     is SessionState.Reconnecting.Direct -> {
                         SessionState.Connected.Direct(
                             connectionInfo = it.connectionInfo,
-                            connectionData = it.connectionData,
+                            connectionData = it.connectionData.copy(
+                                needsServerReauth = true,
+                                authProcessState = AuthProcessState.NotStarted,
+                            ),
                         )
                     }
 
