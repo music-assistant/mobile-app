@@ -13,6 +13,7 @@ import io.music_assistant.client.settings.ConnectionHistoryEntry
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.DataConnectionState
+import io.music_assistant.client.utils.SavedToken
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.mainDispatcher
 import io.music_assistant.client.utils.resultAs
@@ -127,11 +128,18 @@ class AuthenticationManager(
 
                                 is AuthProcessState.Failed -> {
                                     clearPendingOAuthGrant()
-                                    settings.setTokenForServer(
-                                        dataConnectionState.serverInfo.serverId,
-                                        null,
-                                    )
-                                    log.i { "Cleared token for server due to auth failure" }
+                                    when (dataConnectionState.authProcessState.savedToken) {
+                                        SavedToken.CLEAR -> {
+                                            settings.setTokenForServer(
+                                                dataConnectionState.serverInfo.serverId,
+                                                null,
+                                            )
+                                            log.i { "Cleared token for server due to auth failure" }
+                                        }
+
+                                        SavedToken.KEEP_AND_RETRY ->
+                                            log.i { "Kept token for server: the auth got no reply" }
+                                    }
 
                                     log.i {
                                         "AwaitingAuth(Failed): " +

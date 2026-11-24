@@ -14,6 +14,7 @@ import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.settings.SettingsRepository
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.ConnectionData
+import io.music_assistant.client.utils.SavedToken
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.WebRTCHttpProxy
@@ -293,6 +294,26 @@ class AuthenticationManagerTest {
                 "A token arriving into a failed auth state must still be spent, not left to " +
                     "expire on the watchdog",
             )
+        } finally {
+            manager.close()
+        }
+    }
+
+    @Test
+    fun `an automatic login without a reply keeps the saved token and a refusal clears it`() = runTest {
+        val client = StubServiceClient()
+        val settings = SettingsRepository(MapSettings(), MapSettings())
+        val manager = AuthenticationManager(client, settings)
+        try {
+            settings.setTokenForServer(SERVER_INFO.serverId, "saved")
+            client.sessionState.value =
+                awaitingAuth(AuthProcessState.Failed("no reply", SavedToken.KEEP_AND_RETRY))
+            runCurrent()
+            assertEquals("saved", settings.getTokenForServer(SERVER_INFO.serverId))
+
+            client.sessionState.value = awaitingAuth(AuthProcessState.Failed("refused"))
+            runCurrent()
+            assertEquals(null, settings.getTokenForServer(SERVER_INFO.serverId))
         } finally {
             manager.close()
         }
