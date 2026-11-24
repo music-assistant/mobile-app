@@ -119,8 +119,7 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
         block: suspend TestScope.(Harness, FakeCapture) -> Unit,
     ) {
         val capture = FakeCapture()
-        val source = SourceConfig(capture, dialect)
-        playerTest(sharedPsk = SHARED_PSK, source = source, encoders = encoders) { h ->
+        playerTest(sharedPsk = SHARED_PSK, source = SourceConfig(capture, dialect), encoders = encoders) { h ->
             block(h, capture)
         }
     }
@@ -412,8 +411,7 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
     /**
      * Drives a PCM stream for 1 s, stalls the transport for 1 s, runs 1 s, stalls it for 3 s,
      * and runs 1 s more. Each block is captured 20 ms before it is handed over, as a real
-     * 20 ms read is. The ages are the time from capture to arrival at the server. The reports
-     * also go to the test output, for a comparison between builds.
+     * 20 ms read is. The ages are the time from capture to arrival at the server.
      */
     private suspend fun TestScope.measureStalls(h: Harness, capture: FakeCapture): List<StallReport> {
         val server = connectSource(h)
@@ -460,19 +458,18 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
         val steady = run(STEADY_MILLIS)
         return listOf(stall(SHORT_STALL_MILLIS), stall(LONG_STALL_MILLIS))
             .map { it.copy(steadyAgeMs = steady.max()) }
-            .onEach { println("source latency: $it") }
     }
 
-    private fun assertStallBound(reports: List<StallReport>, maxLatencyMs: Int) = reports.forEach { report ->
+    private fun assertStallBound(reports: List<StallReport>) = reports.forEach { report ->
         assertEquals(BLOCK_MILLIS.toLong(), report.steadyAgeMs, "one block of delay in steady state: $report")
-        assertTrue(report.queuedChunks <= maxLatencyMs / BLOCK_MILLIS + 1, "queue bound: $report")
-        assertTrue(report.maxQueuedAgeMs in 0..maxLatencyMs, "age bound of the backlog: $report")
+        assertTrue(report.queuedChunks <= MAX_LATENCY_MILLIS / BLOCK_MILLIS + 1, "queue bound: $report")
+        assertTrue(report.maxQueuedAgeMs in 0..MAX_LATENCY_MILLIS, "age bound of the backlog: $report")
         assertEquals(BLOCK_MILLIS.toLong(), report.maxAgeAfterMs, "live again after the backlog: $report")
     }
 
     @Test
     fun aStalledLinkSendsNoAudioOlderThanTheAgeLimit() = sourceTest { h, capture ->
-        assertStallBound(measureStalls(h, capture), maxLatencyMs = MAX_LATENCY_MILLIS)
+        assertStallBound(measureStalls(h, capture))
     }
 
     @Test
@@ -580,7 +577,6 @@ private data class StallReport(
 private const val BLOCK_MILLIS = 20
 
 /** The source's age limit for audio at send time. */
-
 private const val MAX_LATENCY_MILLIS = 500
 private const val STEADY_MILLIS = 1_000
 private const val RECOVERY_MILLIS = 1_000
