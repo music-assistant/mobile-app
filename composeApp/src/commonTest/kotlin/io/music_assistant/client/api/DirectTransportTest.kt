@@ -17,12 +17,16 @@ class DirectTransportTest {
     // Offline, so the reconnection loop reports its first attempt and parks.
     private val network = MutableStateFlow(false)
 
-    private fun TestScope.transport(retryInitialFailure: Boolean) = DirectTransport(
+    private fun TestScope.transport(
+        retryInitialFailure: Boolean,
+        onStateChange: () -> Unit = {},
+    ) = DirectTransport(
         clientProvider = { client },
         connectionInfoProvider = { ConnectionInfo("localhost", 8095, isTls = false) },
         parentScope = backgroundScope,
         networkAvailable = network,
         retryInitialFailure = retryInitialFailure,
+        onStateChange = onStateChange,
     )
 
     @Test
@@ -42,5 +46,18 @@ class DirectTransportTest {
 
         assertEquals(TransportState.Reconnecting(1), transport.state.value)
         transport.disconnect()
+    }
+
+    @Test
+    fun eachStateWriteIsReportedAtOnceWithItsValue() = runTest {
+        val seen = mutableListOf<TransportState>()
+        lateinit var transport: DirectTransport
+        transport = transport(retryInitialFailure = false) { seen += transport.state.value }
+        transport.connect()
+        runCurrent()
+
+        assertEquals(TransportState.Connecting, seen.first())
+        assertIs<TransportState.Failed>(seen.last())
+        assertEquals(2, seen.size)
     }
 }

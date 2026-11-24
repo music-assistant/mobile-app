@@ -27,6 +27,10 @@ import io.music_assistant.client.webrtc.model.RemoteId
 // so it never trips a merely-slow connect, but bounded so `Connecting` can't wedge.
 internal const val CONNECT_TIMEOUT_MS = 20_000L
 
+// The server sends `server/hello` first on every connection. Without it the session cannot
+// authenticate, and no other event ends the wait, so a lost hello must not wedge the session.
+internal const val SERVER_INFO_TIMEOUT_MS = 15_000L
+
 /** What the session connects to. Everything that differs between the two transports is here. */
 internal sealed class SessionTarget {
     /** The value of `SettingsRepository.setLastConnectionMode`, also the log label. */
@@ -121,6 +125,7 @@ internal sealed interface SessionEvent {
     data class SendFailed(val command: String, val error: Exception) : SessionEvent
     data class Transport(val gen: Int, val target: SessionTarget, val state: TransportState) : SessionEvent
     data class WatchdogFired(val gen: Int) : SessionEvent
+    data class ServerInfoTimeout(val gen: Int) : SessionEvent
 }
 
 internal sealed interface Effect {
@@ -137,6 +142,9 @@ internal sealed interface Effect {
     /** Arm the watchdog, create and observe the transport for [gen], connect it. */
     data class OpenTransport(val target: SessionTarget, val resume: Boolean, val gen: Int) : Effect
     data object CancelWatchdog : Effect
+
+    /** Replace the watchdog with one that dispatches [SessionEvent.ServerInfoTimeout] for [gen]. */
+    data class ArmServerInfoWatchdog(val gen: Int) : Effect
 
     /** Save the connection mode and the provisional history entry of a fresh connection. */
     data class RecordConnection(val target: SessionTarget) : Effect
@@ -241,6 +249,15 @@ private class Transition(
                     )
                     effects += Effect.DisconnectTransport
                 }
+
+            is SessionEvent.ServerInfoTimeout -> {
+                val awaiting = (state as? SessionState.Connected)?.dataConnectionState ==
+                    DataConnectionState.AwaitingServerInfo
+                if (event.gen == lifecycle.gen && awaiting) {
+                    log("No server/hello ${SERVER_INFO_TIMEOUT_MS}ms after connect — reconnecting", Severity.Warn)
+                    resume("no server/hello")
+                }
+            }
         }
     }
 
@@ -306,6 +323,7 @@ private class Transition(
                     preserved
                 }
                 effects += Effect.Publish(target.connected(data))
+                if (data.serverInfo == null) effects += Effect.ArmServerInfoWatchdog(lifecycle.gen)
                 log("Transport→Connected (wasReconnecting=$wasReconnecting, dcs=${dcsLabel(data.dataConnectionState)})")
                 if (wasReconnecting) {
                     log("${target.mode} reconnection successful — awaiting AuthenticationManager re-auth")

@@ -14,10 +14,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlin.concurrent.Volatile
@@ -29,6 +27,8 @@ class DirectTransport(
     private val networkAvailable: StateFlow<Boolean>? = null,
     /** A resumed session retries a failed first attempt, like a dropped connection. */
     private val retryInitialFailure: Boolean = false,
+    /** Runs on each state write, on the writing thread. See [TransportStateFlow]. */
+    onStateChange: () -> Unit = {},
 ) : Transport {
     private val logger = Logger.withTag("Session.DirectTransport")
 
@@ -50,7 +50,7 @@ class DirectTransport(
             exceptionHandler,
     )
 
-    private val _state = MutableStateFlow<TransportState>(TransportState.Disconnected)
+    private val _state = TransportStateFlow(onStateChange)
     override val state = _state.asStateFlow()
 
     private val _messages = MutableSharedFlow<JsonObject>(extraBufferCapacity = 10)

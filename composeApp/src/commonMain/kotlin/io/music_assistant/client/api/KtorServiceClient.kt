@@ -34,6 +34,7 @@ import kotlinx.atomicfu.locks.synchronized
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.Job
@@ -51,6 +52,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -153,7 +155,14 @@ class KtorServiceClient(
     // --- Transport (written only by the lifecycle effects, under lifecycleLock) ---
     @kotlin.concurrent.Volatile
     private var transport: Transport? = null
+    private var transportTarget: SessionTarget? = null
     private var transportObserverJob: Job? = null
+
+    // Under lifecycleLock. The transport state that the machine saw last, the depth of the running
+    // dispatch, and a state change that waits for that dispatch to finish.
+    private var dispatchedTransportState: TransportState = TransportState.Disconnected
+    private var dispatchDepth = 0
+    private var transportChangePending = false
 
     // Safety valve for a connect that neither completes nor fails (e.g. a half-open
     // socket / hung WebRTC signaling with no transport-level connect timeout). Without
@@ -401,10 +410,39 @@ class KtorServiceClient(
      * caller's thread. The lock is reentrant: an effect that fails pending requests can resume a
      * caller that dispatches again, and that caller already sees the published state.
      */
-    private fun dispatch(event: SessionEvent) = synchronized(lifecycleLock) {
-        val step = transition(lifecycle, _sessionState.value, event, env())
-        lifecycle = step.lifecycle
-        step.effects.forEach(::perform)
+    private fun dispatch(event: SessionEvent): Unit = synchronized(lifecycleLock) {
+        dispatchDepth++
+        try {
+            val step = transition(lifecycle, _sessionState.value, event, env())
+            lifecycle = step.lifecycle
+            step.effects.forEach(::perform)
+        } finally {
+            dispatchDepth--
+        }
+        if (dispatchDepth == 0 && transportChangePending) {
+            transportChangePending = false
+            dispatchTransportState()
+        }
+    }
+
+    /**
+     * Called by the transport of [gen] on each state write, on the writing thread. The machine sees
+     * the change before the transport continues, so a message never overtakes the `Connected` that
+     * came before it. A write that an effect makes (a disconnect) waits until the running dispatch
+     * has run all its effects, so a step is never cut by a nested one.
+     */
+    private fun onTransportStateChange(gen: Int): Unit = synchronized(lifecycleLock) {
+        if (gen != lifecycle.gen) return
+        if (dispatchDepth > 0) transportChangePending = true else dispatchTransportState()
+    }
+
+    /** Under lifecycleLock. Reads the current value, so the last dispatch always has the latest state. */
+    private fun dispatchTransportState() {
+        val target = transportTarget ?: return
+        val current = transport?.state?.value ?: return
+        if (current == dispatchedTransportState) return
+        dispatchedTransportState = current
+        dispatch(SessionEvent.Transport(lifecycle.gen, target, current))
     }
 
     private fun env() = Env(
@@ -422,10 +460,11 @@ class KtorServiceClient(
             is Effect.FailAll -> rpcEngine.failAll(ConnectionLostException(effect.cause))
             Effect.ResetSilentReauth -> silentReauth.reset()
             Effect.DropTransport -> {
-                // Cancelling the observer first keeps the dropped transport's own `Disconnected`
-                // from being read as user intent.
+                // The dropped transport has an old gen, so its own `Disconnected` is not read as
+                // user intent. Its late messages die with the observer.
                 transportObserverJob?.cancel()
                 transportObserverJob = null
+                transportTarget = null
                 transport?.disconnect()
                 transport?.close()
                 transport = null
@@ -433,6 +472,9 @@ class KtorServiceClient(
             Effect.DisconnectTransport -> transport?.disconnect()
             is Effect.OpenTransport -> openTransport(effect)
             Effect.CancelWatchdog -> connectWatchdogJob?.cancel()
+            is Effect.ArmServerInfoWatchdog -> startWatchdog(SERVER_INFO_TIMEOUT_MS) {
+                SessionEvent.ServerInfoTimeout(effect.gen)
+            }
             is Effect.RecordConnection -> {
                 settings.setLastConnectionMode(effect.target.mode)
                 settings.addOrUpdateHistoryEntry(effect.target.historyEntry)
@@ -457,6 +499,7 @@ class KtorServiceClient(
                 parentScope = this,
                 networkAvailable = networkMonitor.isAvailable,
                 retryInitialFailure = open.resume,
+                onStateChange = { onTransportStateChange(open.gen) },
             )
 
             is SessionTarget.WebRTC -> WebRTCTransport(
@@ -465,26 +508,22 @@ class KtorServiceClient(
                 parentScope = this,
                 networkAvailable = networkMonitor.isAvailable,
                 retryInitialFailure = open.resume,
+                onStateChange = { onTransportStateChange(open.gen) },
             )
         }
         transport = newTransport
-        observeTransport(newTransport, open.target, open.gen)
+        transportTarget = open.target
+        // The initial `Disconnected` is not a change: it would overwrite the `Connecting` just published.
+        dispatchedTransportState = TransportState.Disconnected
+        observeMessages(newTransport)
         newTransport.connect()
     }
 
-    private fun observeTransport(transport: Transport, target: SessionTarget, gen: Int) {
+    private fun observeMessages(transport: Transport) {
         transportObserverJob?.cancel()
-        transportObserverJob = launch {
-            // State collector. `drop(1)` skips the StateFlow's initial-value replay
-            // (`TransportState.Disconnected`, the default), which would otherwise overwrite
-            // the `SessionState.Connecting` we just set before the transport's own coroutine
-            // has had a chance to flip to `Connecting`.
-            launch {
-                transport.state.drop(1).collect { dispatch(SessionEvent.Transport(gen, target, it)) }
-            }
-            launch {
-                transport.messages.collect { handleIncomingMessage(it) }
-            }
+        // Undispatched: the collector subscribes before `connect()`, so the first message is not lost.
+        transportObserverJob = launch(start = CoroutineStart.UNDISPATCHED) {
+            transport.messages.collect { handleIncomingMessage(it) }
         }
     }
 
@@ -494,11 +533,14 @@ class KtorServiceClient(
      * ([kickRecovery]) can reconnect. Re-armed on every connect attempt and cancelled
      * once the transport connects. A no-op if the session has progressed by then.
      */
-    private fun startConnectWatchdog(gen: Int) {
+    private fun startConnectWatchdog(gen: Int) = startWatchdog(CONNECT_TIMEOUT_MS) { SessionEvent.WatchdogFired(gen) }
+
+    /** One watchdog at a time: the connect phase, then the wait for `server/hello`. */
+    private fun startWatchdog(timeoutMs: Long, event: () -> SessionEvent) {
         connectWatchdogJob?.cancel()
         connectWatchdogJob = launch {
-            delay(CONNECT_TIMEOUT_MS)
-            dispatch(SessionEvent.WatchdogFired(gen))
+            delay(timeoutMs)
+            dispatch(event())
         }
     }
 
@@ -679,9 +721,12 @@ class KtorServiceClient(
                     }
                     null
                 }
-                if (serverInfo != null) {
-                    _sessionState.update {
-                        (it as? SessionState.Connected)?.update(serverInfo = serverInfo) ?: it
+                serverInfo?.let { info ->
+                    val state = _sessionState.updateAndGet {
+                        (it as? SessionState.Connected)?.update(serverInfo = info) ?: it
+                    }
+                    if (state !is SessionState.Connected) {
+                        logger.w { "Dropped server/hello: the session is ${stateLabel(state)}" }
                     }
                 }
             }
