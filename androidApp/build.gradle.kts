@@ -22,7 +22,7 @@ android {
         applicationId = "io.music_assistant.client"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 20
+        versionCode = 21
         versionName = appVersionName
     }
     packaging {
