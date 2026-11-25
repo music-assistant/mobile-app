@@ -76,6 +76,15 @@ jobs:
       - name: Build release AAB
         run: ./gradlew :androidApp:bundleRelease
 
+      # Keeps the signed bundle when Play rejects the edit (a missing policy
+      # declaration drops the uploaded bundle), so it can be uploaded by hand.
+      - name: Keep the AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: aab-${{ steps.version.outputs.code }}
+          path: androidApp/build/outputs/bundle/release/androidApp-release.aab
+          retention-days: 7
+
       - name: Generate Play Store release notes
         env:
           GH_TOKEN: ${{ github.token }}
