@@ -11,6 +11,7 @@
 | `nav` | Helpers on top of Navigation3 |
 | `ui-utils` | Compose UI helpers, for example `DeviceChrome` |
 | `sendspin-kmp` | Sendspin player library, published to GitHub Packages. Run its tests with `./gradlew :sendspin-kmp:testAndroidHostTest`. See `sendspin-kmp/README.md`. |
+| `wearApp` | Wear OS remote control. Its own Android app, with its own thin client; it shares only the vector icons, through `composeApp`. See `.claude/wear-app.md`. |
 
 ## Source Sets
 

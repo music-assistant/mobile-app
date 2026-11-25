@@ -80,3 +80,6 @@ tmp/
 
 # Personal iOS signing overrides (see iosApp/Configuration/Config.xcconfig)
 iosApp/Configuration/Local.xcconfig
+
+# Personal watchOS signing overrides (see watchApp/Configuration/Config.xcconfig)
+watchApp/Configuration/Local.xcconfig

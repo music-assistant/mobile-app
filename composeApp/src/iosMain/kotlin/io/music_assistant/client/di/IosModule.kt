@@ -21,6 +21,8 @@ import io.music_assistant.client.utils.IosBackgroundUsageGuard
 import io.music_assistant.client.utils.IosFileSharer
 import io.music_assistant.client.utils.IosHttpClientFactory
 import io.music_assistant.client.utils.KeychainClientIdentity
+import io.music_assistant.client.watchlink.WatchConnectivityLink
+import io.music_assistant.client.watchlink.WatchLink
 import io.music_assistant.sendspin.api.AudioSink
 import io.music_assistant.sendspin.api.DecoderFactory
 import org.koin.dsl.bind
@@ -37,6 +39,7 @@ fun iosModule() = module {
     single<FileSharer> { IosFileSharer() }
     single<BackgroundUsageGuard> { IosBackgroundUsageGuard() }
     single { KeychainClientIdentity() }
+    single<WatchLink> { WatchConnectivityLink() }
     single { IosMdnsBrowser() } bind MdnsBrowser::class
     single<HttpClientFactory> {
         IosHttpClientFactory(get<SettingsRepository>().clientCertificateAlias, get())

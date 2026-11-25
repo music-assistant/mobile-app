@@ -37,3 +37,8 @@ include(":nav")
 include(":ui-utils")
 
 include(":sendspin-kmp")
+include(":wearApp")
+
+// The watchOS client: `:watchShared` is its Kotlin Multiplatform half, linked into
+// `watchApp/watchApp.xcodeproj` as the `MaWatchKit` framework.
+include(":watchShared")

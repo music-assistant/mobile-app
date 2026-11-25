@@ -27,6 +27,10 @@ The (official) Music Assistant Mobile app is a cross-platform client application
   - Apple CarPlay support for the built-in player, see [CarPlay](docs/app-documentation/carplay.md);
   - *known issue:* artwork may be missing in certain setups, for example peer-to-peer mesh VPN setups such as Tailscale. We're aware of this and looking into it, but we don't have an ETA on a fix yet.
     - Why: iOS App Transport Security (ATS) blocks image requests to insecure hosts, with an exception for local networks. On your LAN, artwork loads fine, but over Tailscale and similar VPNs the server appears to the phone as a remote host, so ATS kicks in and blocks the requests.
+- Watch apps (Wear OS 4 or later, watchOS 10 or later), still in development:
+  - remote control for your Music Assistant players: play/pause, skip, volume, player selection and the queue;
+  - no sign-in on the watch: the phone app sends the server and its login to the watch;
+  - the watch connects to the server directly, so remote access over WebRTC only is not supported.
 
 ### Server compatibility
 

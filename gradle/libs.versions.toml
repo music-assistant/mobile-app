@@ -13,6 +13,17 @@ androidx-espresso-core = "3.7.0"
 androidx-lifecycle = "2.11.0"
 androidx-material = "1.14.0"
 androidx-test-junit = "1.3.0"
+# Wear OS client. Pinned separately from the phone app: the watch module uses the
+# androidx Compose artifacts directly, not Compose Multiplatform.
+androidx-wear-compose = "1.7.1"
+# `androidx.wear.ambient`, for the always-on screen. Its own release line, not the Compose one.
+androidx-wear = "1.3.0"
+# Ongoing Activity: what keeps a Wear app on screen past the first minute of ambient.
+androidx-wear-ongoing = "1.0.0"
+# Wearable Data Layer: the phone hands the server and token to the Wear OS app.
+play-services-wearable = "19.0.0"
+androidx-compose = "1.12.1"
+androidx-lifecycle-android = "2.11.0"
 
 compose-multiplatform = "1.12.0"
 junit = "4.13.2"
@@ -69,6 +80,17 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-material = { group = "com.google.android.material", name = "material", version.ref = "androidx-material" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "androidx-constraintlayout" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "androidx-media" }
+androidx-wear = { module = "androidx.wear:wear", version.ref = "androidx-wear" }
+play-services-wearable = { module = "com.google.android.gms:play-services-wearable", version.ref = "play-services-wearable" }
+androidx-wear-ongoing = { module = "androidx.wear:wear-ongoing", version.ref = "androidx-wear-ongoing" }
+androidx-wear-compose-material3 = { module = "androidx.wear.compose:compose-material3", version.ref = "androidx-wear-compose" }
+androidx-wear-compose-foundation = { module = "androidx.wear.compose:compose-foundation", version.ref = "androidx-wear-compose" }
+androidx-wear-compose-navigation = { module = "androidx.wear.compose:compose-navigation", version.ref = "androidx-wear-compose" }
+androidx-compose-runtime = { module = "androidx.compose.runtime:runtime", version.ref = "androidx-compose" }
+androidx-compose-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "androidx-compose" }
+androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "androidx-compose" }
+androidx-lifecycle-viewmodel-compose-android = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "androidx-lifecycle-android" }
+androidx-lifecycle-runtime-compose-android = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle-android" }
 androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "androidx-car-app" }
 androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "androidx-browser" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
@@ -77,6 +99,7 @@ androidx-lifecycle-runtime-compose = { group = "org.jetbrains.androidx.lifecycle
 kotlinx-atomicfu = { group = "org.jetbrains.kotlinx", name = "atomicfu", version.ref = "kotlinx-atomicfu" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-swing = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "kotlinx-coroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
@@ -117,6 +140,9 @@ concentus = { module = "io.github.jaredmdobson:concentus", version.ref = "concen
 kmpalette-core = { module = "com.kmpalette:kmpalette-core", version.ref = "kmpalette" }
 kmpalette-extensions-network = { module = "com.kmpalette:extensions-network", version.ref = "kmpalette" }
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
+# The HCT/quantizer half of MaterialKolor, without its Compose Material3 surface. The Wear
+# app seeds its own `androidx.wear.compose.material3.ColorScheme` from the artwork with it.
+material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "materialKolor" }
 
 androidx-navigation3-ui = { module = "org.jetbrains.androidx.navigation3:navigation3-ui", version.ref = "androidxNavigation3UI" }
 androidx-navigation3-material3-adaptive = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation3", version.ref = "androidxNavigation3Material" }

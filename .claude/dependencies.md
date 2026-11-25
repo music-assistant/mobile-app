@@ -31,6 +31,18 @@
 - **cryptography-kotlin** (0.6.0) - Crypto primitives (JDK provider on Android, CryptoKit on iOS)
 - **BouncyCastle** (`bcprov-jdk18on` 1.85.2, `sendspin-kmp`) - X25519 and ChaCha20-Poly1305 on Android
 
+## Wear OS (`wearApp` only)
+- **androidx.wear-ongoing** (1.0.0) - `OngoingActivity`, the playing chip. Without one, Wear evicts an ambient app after 60 s.
+- **androidx.wear** (1.3.0) - `androidx.wear.ambient.AmbientLifecycleObserver`, which opts the watch activity into the always-on screen and reports its low-bit requirement. Its own release line, not the Wear Compose one; nothing else in the artifact is used. Wear Compose's own `rememberAmbientModeManager` would replace it, but that goes through the Wear SDK unguarded and so needs a newer watch than this module's `minSdk` of 33.
+- **Wear Compose** (1.7.1) - `compose-material3` (Material 3 Expressive for watches), `compose-foundation` (`TransformingLazyColumn`, rotary), `compose-navigation` (`SwipeDismissableNavHost`). Pinned against the androidx Compose artifacts (1.12.1), not Compose Multiplatform: the watch module shares no UI with the phone app.
+- **play-services-wearable** (19.0.0) - The Wearable Data Layer. The phone app (`composeApp` androidMain, `WearDataLayerLink`) puts the server and the token in a data item, and the watch (`PhoneLinkStore`) reads it. `kotlinx-coroutines-play-services` gives the watch `Task.await()`.
+- **material-color-utilities** (5.0.1) - The HCT/quantizer half of MaterialKolor, without its Compose Material3 surface. Seeds the watch's `androidx.wear.compose.material3.ColorScheme` from the cover art.
+
+## watchOS (`watchShared` + `watchApp` only)
+- **WatchConnectivity** (system framework) - The iPhone app (`composeApp` iosMain, `WatchConnectivityLink`) sends the server and the token as the application context, and `PhoneConfigReceiver.swift` reads it. The static `ComposeApp` framework autolinks it.
+- **Ktor Darwin** - `NSURLSession` behind the Ktor client, including its WebSocket. The one engine that builds for the watchOS targets; the Wear app uses OkHttp for the same job.
+- No UI library. The watch app is SwiftUI against the `MaWatchKit` framework, and nothing else. There is no equivalent of the Wear app's **material-color-utilities**: the album reaches the screen as the blurred cover behind it rather than as a generated colour scheme, so nothing is quantized or scored.
+
 ## Utilities
 - **Kermit** - Multiplatform logging
 - **QRose encoder** (`qrose-encoder-matrix` 1.3.1) - Makes the QR bit matrix of the party invite. It has no Compose dependency. `QrCode` draws the matrix.

@@ -87,6 +87,9 @@ import io.music_assistant.client.utils.LocalNetworkPermissionGate
 import io.music_assistant.client.utils.NetworkMonitor
 import io.music_assistant.client.utils.appVersion
 import io.music_assistant.client.utils.currentTimeMillis
+import io.music_assistant.client.utils.mainDispatcher
+import io.music_assistant.client.watchlink.WatchConfigPublisher
+import io.music_assistant.client.watchlink.WatchLink
 import io.music_assistant.sendspin.api.SendspinKeyStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -159,6 +162,15 @@ fun sharedModule(
                 get(),
             )
         }  // Eager - needs to start monitoring immediately
+        // Eager - sends the server and token to the paired watch from the first session on.
+        // A platform without a watch link gets a no-op.
+        single(createdAtStart = true) {
+            WatchConfigPublisher(
+                sessionState = get<ServiceClient>().sessionState,
+                link = getOrNull<WatchLink>() ?: WatchLink {},
+                scope = CoroutineScope(SupervisorJob() + mainDispatcher),
+            )
+        }
         // Expose the AuthCoordinator surface for viewmodels; same singleton instance.
         single<AuthCoordinator> { get<AuthenticationManager>() }
         single { MediaSessionBridge() }
