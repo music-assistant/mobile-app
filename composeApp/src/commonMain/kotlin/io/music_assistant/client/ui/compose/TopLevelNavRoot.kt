@@ -89,7 +89,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val initialScreen = when {
         sessionState is SessionState.Connected &&
                 (sessionState as SessionState.Connected).dataConnectionState is
-                DataConnectionState.Authenticated -> Nav.Main
+                        DataConnectionState.Authenticated -> Nav.Main
 
         authManager.willAutoLoginOnLaunch -> Nav.Main
         else -> Nav.Connect
@@ -133,26 +133,22 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
             is SessionState.Connected -> {
                 val connectedState = sessionState as SessionState.Connected
-                val connState = connectedState.dataConnectionState
 
                 when {
-                    // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
-                    connState is DataConnectionState.Authenticated -> {
+                    connectedState.dataConnectionState is DataConnectionState.Authenticated -> {
                         if (backStack.last() !is Nav.Main) {
                             backStack.clear()
                             backStack.add(Nav.Main)
                         }
                     }
 
-                    else -> {
+                    connectedState.authProcessState is AuthProcessState.Failed || connectedState.user == null -> {
                         if (backStack.last() !is Nav.Connect) {
                             backStack.clear()
                             backStack.add(Nav.Connect)
                         }
                     }
                 }
-                // Other Connected sub-states intentionally don't navigate here — we let
-                // Disconnected handling drive Settings redirects to avoid racing reconnection.
             }
 
             is SessionState.Connecting -> {
