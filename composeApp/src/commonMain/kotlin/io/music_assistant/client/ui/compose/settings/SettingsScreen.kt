@@ -79,6 +79,7 @@ import io.music_assistant.client.ui.compose.settings.sections.CarSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.ConnectionSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
 import io.music_assistant.client.ui.compose.settings.sections.InterfaceSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.LogsSection
 import io.music_assistant.client.ui.compose.settings.sections.MiscSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.SectionCard
 import io.music_assistant.client.ui.compose.settings.sections.SectionTitle
@@ -239,8 +240,6 @@ fun SettingsScreen(goHome: () -> Unit) {
                 )
 
                 // Misc settings - always visible
-                val shareLogsTitle = stringResource(Res.string.settings_share_logs)
-                val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
                 val allowLandscape by viewModel.allowLandscapeOnAllDevices
                     .collectAsStateWithLifecycle()
                 val volumeKeysControlPlayer by viewModel.volumeKeysControlSelectedPlayer
@@ -251,6 +250,11 @@ fun SettingsScreen(goHome: () -> Unit) {
                     onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
                     volumeKeysControlPlayer = volumeKeysControlPlayer,
                     onVolumeKeysControlPlayerChange = { viewModel.setVolumeKeysControlSelectedPlayer(it) },
+                )
+
+                val shareLogsTitle = stringResource(Res.string.settings_share_logs)
+                val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
+                LogsSection(
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,

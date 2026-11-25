@@ -27,6 +27,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.Defaults
 import io.music_assistant.client.ui.compose.ScreenSemantics
 import io.music_assistant.client.ui.compose.settings.sections.ConnectionSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.LogsSection
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidBasePath
@@ -35,6 +36,8 @@ import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.mass
 import musicassistantclient.composeapp.generated.resources.settings_exit_app
+import musicassistantclient.composeapp.generated.resources.settings_share_crash_logs
+import musicassistantclient.composeapp.generated.resources.settings_share_logs
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -51,6 +54,8 @@ fun ConnectScreen(onExitApp: () -> Unit) {
     val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
     val connectAttemptInFlight by viewModel.connectAttemptInFlight
         .collectAsStateWithLifecycle()
+    val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
+    val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
 
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf(Defaults.PORT.toString()) }
@@ -213,6 +218,16 @@ fun ConnectScreen(onExitApp: () -> Unit) {
                     )
                 }
             }
+
+            val shareLogsTitle = stringResource(Res.string.settings_share_logs)
+            val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
+            LogsSection(
+                onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
+                hasCrashLog = hasCrashLog,
+                isPreparingShare = isPreparingShare,
+                onShareCrashLog = { viewModel.shareCrashLog(shareCrashLogsTitle) },
+                onDeleteCrashLog = { viewModel.deleteCrashLog() },
+            )
         }
     }
 }
