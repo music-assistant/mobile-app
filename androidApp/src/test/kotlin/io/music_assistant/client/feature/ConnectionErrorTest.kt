@@ -17,8 +17,8 @@ import io.music_assistant.client.support.pages.clickBack
 import io.music_assistant.client.support.pages.clickOnMedia
 import io.music_assistant.client.support.pages.clickSettings
 import io.music_assistant.client.support.rules.createTestRuleChain
+import io.music_assistant.client.support.withGate
 import io.music_assistant.client.ui.compose.home.HomeScreenSemantics
-import kotlinx.coroutines.CompletableDeferred
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.nav_discover
 import org.junit.Rule
@@ -78,11 +78,11 @@ class ConnectionErrorTest {
         serviceClient.setReconnecting(true)
         albumPage.assertReconnectingBanner(true)
 
-        val authorizeGate = CompletableDeferred<Unit>()
-        serviceClient.authorizeGate = authorizeGate
-        serviceClient.setReconnecting(false)
-        composeTestRule.waitForIdle()
-        authorizeGate.complete(Unit)
+        // Make sure reconnecting takes a meaningful amount of time
+        composeTestRule.withGate {
+            serviceClient.authorizeGate = it
+            serviceClient.setReconnecting(false)
+        }
 
         albumPage.assertOnPage()
             .clickBack(artistPage)
