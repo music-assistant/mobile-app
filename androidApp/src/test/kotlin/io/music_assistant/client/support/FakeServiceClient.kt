@@ -12,6 +12,7 @@ import io.music_assistant.client.data.model.server.AudioOutputDetails
 import io.music_assistant.client.data.model.server.AudioProcessingChain
 import io.music_assistant.client.data.model.server.AuthProvider
 import io.music_assistant.client.data.model.server.EventType
+import io.music_assistant.client.data.model.server.MIN_SERVER_SCHEMA_VERSION
 import io.music_assistant.client.data.model.server.PlayerState
 import io.music_assistant.client.data.model.server.SERVER_2_11_SCHEMA
 import io.music_assistant.client.data.model.server.Scope
@@ -88,8 +89,8 @@ class FakeServiceClient : ServiceClient {
     val accessToken = "token"
     var serverId = "serverId"
 
-    // 63 (server 2.10.0) and higher turn on the search source picker.
-    var schemaVersion = 39
+    // The oldest supported server (2.10.0). A lower value shows the "server too old" dialog.
+    var schemaVersion = MIN_SERVER_SCHEMA_VERSION
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)

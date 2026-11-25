@@ -6,6 +6,9 @@ import kotlinx.serialization.Serializable
 /** Highest server schema_version this client is built and tested against. */
 const val LOCAL_SCHEMA_VERSION = 65
 
+/** API schema of server 2.10.0, the oldest server this client supports. Server 2.9 speaks schema 31. */
+const val MIN_SERVER_SCHEMA_VERSION = 63
+
 /**
  * API schema of server 2.11.0. Every 2.11 behaviour change in the app gates on this one constant,
  * so an earlier 2.11 beta gets the 2.10 behaviour. The value follows the `dev` branch until 2.11.0

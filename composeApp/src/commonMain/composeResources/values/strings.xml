@@ -508,6 +508,8 @@
   <string name="sendspin_failed_unauthorized">The server did not accept this device as a player. Sign in again.</string>
   <string name="sendspin_failed_unpaired">The server removed this device. Pair it again in the settings.</string>
   <string name="server_id_mismatch_error">Server ID was changed. Re-authentication required.</string>
+  <string name="server_too_old_dialog_message">This Music Assistant server is too old for this app, so some features do not work. Update the server to version 2.10 or newer.</string>
+  <string name="server_too_old_dialog_title">Server update needed</string>
   <string name="settings_about_description">Music Assistant is a free, open-source, self-hosted music server. Connect to your server below to browse your library and control playback throughout your home.</string>
   <string name="settings_about_learn_more">Learn more at music-assistant.io →</string>
   <string name="settings_accent_color">Accent color</string>
