@@ -39,6 +39,7 @@ import io.music_assistant.client.utils.myJson
 import io.music_assistant.client.utils.update
 import io.music_assistant.client.webrtc.DataChannelWrapper
 import io.music_assistant.client.webrtc.model.RemoteId
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +92,11 @@ class FakeServiceClient : ServiceClient {
 
     // The oldest supported server (2.10.0). A lower value shows the "server too old" dialog.
     var schemaVersion = MIN_SERVER_SCHEMA_VERSION
+
+    /**
+     * Allows setting a gate for [authorize] calls to complete
+     */
+    var authorizeGate: CompletableDeferred<Unit>? = null
 
     private val _sessionState: MutableStateFlow<SessionState> =
         MutableStateFlow(SessionState.Disconnected.Initial)
@@ -762,6 +768,9 @@ class FakeServiceClient : ServiceClient {
             failAuth("Invalid or expired token")
             return
         }
+
+        authorizeGate?.await()
+
         _sessionState.update {
             when (it) {
                 is SessionState.Connected.Direct -> {
