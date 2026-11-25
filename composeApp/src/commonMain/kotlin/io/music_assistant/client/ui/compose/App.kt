@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +29,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.music_assistant.client.api.ServiceClient
+import io.music_assistant.client.data.model.server.MIN_SERVER_SCHEMA_VERSION
 import io.music_assistant.client.ui.BackgroundRestrictionViewModel
 import io.music_assistant.client.ui.SchemaVersionWarningViewModel
 import io.music_assistant.client.ui.SchemaWarning
@@ -46,6 +48,7 @@ import io.music_assistant.client.ui.theme.isDark
 import io.music_assistant.client.ui.utils.DeviceChrome
 import io.music_assistant.client.ui.utils.LocalDeviceChrome
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.action_ok
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_dismiss
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_message
 import musicassistantclient.composeapp.generated.resources.background_usage_dialog_open_settings
@@ -53,6 +56,8 @@ import musicassistantclient.composeapp.generated.resources.background_usage_dial
 import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_exit
 import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_message
 import musicassistantclient.composeapp.generated.resources.schema_incompatible_dialog_title
+import musicassistantclient.composeapp.generated.resources.server_too_old_dialog_message
+import musicassistantclient.composeapp.generated.resources.server_too_old_dialog_title
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -160,17 +165,17 @@ private fun BackgroundRestrictionDialog() {
  * re-shown on every fresh server-info arrival:
  * - [SchemaWarning.CLIENT_INCOMPATIBLE] — terminal: the client is below the server's minimum
  *   supported schema, so it can't function. Exit-only; any dismissal closes the app.
- * - [SchemaWarning.SERVER_AHEAD] — informational: the server is newer than the client, some
- *   features may misbehave. Dismissible; auth proceeds underneath.
+ * - [SchemaWarning.SERVER_TOO_OLD] — the server is below [MIN_SERVER_SCHEMA_VERSION], so some
+ *   commands fail. Dismissible; a dismissal holds until the activity is gone, because a
+ *   backgrounded session drops the server info and the warning arrives again on each reconnect.
+ * - [SchemaWarning.SERVER_AHEAD] — not shown (#930).
  */
 @OptIn(KoinExperimentalAPI::class)
 @Composable
 private fun SchemaVersionWarningDialog() {
     val viewModel = koinViewModel<SchemaVersionWarningViewModel>()
     val warning by viewModel.warning.collectAsStateWithLifecycle()
-    // Transient hide for the dismissible warning; reset whenever a fresh warning arrives.
-    var hidden by remember { mutableStateOf(false) }
-    LaunchedEffect(warning) { hidden = false }
+    var dismissed by rememberSaveable { mutableStateOf<SchemaWarning?>(null) }
     when (warning) {
         null -> Unit
 
@@ -185,6 +190,19 @@ private fun SchemaVersionWarningDialog() {
                     }
                 },
             )
+
+        SchemaWarning.SERVER_TOO_OLD ->
+            if (dismissed != SchemaWarning.SERVER_TOO_OLD) {
+                val dismiss = { dismissed = SchemaWarning.SERVER_TOO_OLD }
+                AlertDialog(
+                    onDismissRequest = dismiss,
+                    title = { Text(stringResource(Res.string.server_too_old_dialog_title)) },
+                    text = { Text(stringResource(Res.string.server_too_old_dialog_message)) },
+                    confirmButton = {
+                        TextButton(onClick = dismiss) { Text(stringResource(Res.string.action_ok)) }
+                    },
+                )
+            }
 
         SchemaWarning.SERVER_AHEAD -> Unit
     }

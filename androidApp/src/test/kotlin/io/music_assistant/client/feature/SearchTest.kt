@@ -94,6 +94,8 @@ class SearchTest {
         serviceClient.addItems(libraryAlbum)
         serviceClient.addToLibrary(libraryAlbum)
         serviceClient.addItems(globalAlbum)
+        // The switch shows below the source picker schema only. Such a server is below the supported floor.
+        serviceClient.schemaVersion = SEARCH_PROVIDERS_MIN_SCHEMA - 1
 
         launchLoggedInApp(composeTestRule, serviceClient)
             .clickSearch()
