@@ -34,6 +34,6 @@ The top bar has three theme buttons:
 - **Auto icon** — Use the theme of your device settings.
 - **Moon icon** — Use the dark theme.
 
-Before you sign in, the screen also shows the **EXIT APP** button. Tap it to close the app.
+Before you sign in, the screen also shows a cross at the top left. Tap it to close the app.
 
 ![Screenshot of the settings screen](screenshots/app-settings/app-settings.jpeg)
