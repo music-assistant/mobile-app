@@ -8,6 +8,7 @@ import io.music_assistant.client.support.Qualifiers
 import io.music_assistant.client.support.ServerMediaItemFixtures
 import io.music_assistant.client.support.get
 import io.music_assistant.client.support.launchLoggedInApp
+import io.music_assistant.client.support.pages.AuthenticatePage
 import io.music_assistant.client.support.pages.ConnectPage
 import io.music_assistant.client.support.pages.HomePage
 import io.music_assistant.client.support.pages.assertNoNetworkBanner
@@ -110,5 +111,18 @@ class ConnectionErrorTest {
         // opens instead of the connection failing.
         serviceClient.serverId = "2"
         connectPage.connect()
+    }
+
+    @Test
+    fun `can log out and log in after authorizing with a token fails`() {
+        launchLoggedInApp(composeTestRule, serviceClient)
+
+        serviceClient.setReconnecting(true)
+
+        serviceClient.accessToken = "new"
+        serviceClient.setReconnecting(false)
+        AuthenticatePage(composeTestRule)
+            .logout()
+            .login(serviceClient.username, serviceClient.password)
     }
 }

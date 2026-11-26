@@ -133,6 +133,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
 
             is SessionState.Connected -> {
                 val connectedState = sessionState as SessionState.Connected
+                val authProcessState = connectedState.authProcessState
 
                 when {
                     connectedState.dataConnectionState is DataConnectionState.Authenticated -> {
@@ -142,7 +143,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                         }
                     }
 
-                    connectedState.authProcessState is AuthProcessState.Failed || connectedState.user == null -> {
+                    authProcessState is AuthProcessState.LoggedOut || authProcessState is AuthProcessState.Failed -> {
                         if (backStack.last() !is Nav.Connect) {
                             backStack.clear()
                             backStack.add(Nav.Connect)

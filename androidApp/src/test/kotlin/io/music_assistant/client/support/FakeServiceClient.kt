@@ -87,7 +87,7 @@ class FakeServiceClient : ServiceClient {
 
     val username = "user"
     val password = "password"
-    val accessToken = "token"
+    var accessToken = "token"
     var serverId = "serverId"
 
     // The oldest supported server (2.10.0). A lower value shows the "server too old" dialog.
