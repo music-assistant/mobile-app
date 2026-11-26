@@ -11,7 +11,9 @@ internal sealed interface ServerMessage {
     data object AuthOk : ServerMessage
     data class Hello(val serverName: String) : ServerMessage
     data class Activate(val payload: ServerActivatePayload) : ServerMessage
-    data class Time(val payload: ServerTimePayload) : ServerMessage
+
+    /** The session sets [receivedAtMicros], the local receive time of the reply; the codec leaves it null. */
+    data class Time(val payload: ServerTimePayload, val receivedAtMicros: Long? = null) : ServerMessage
     data class State(val payload: JsonElement?) : ServerMessage
     data class Command(val player: PlayerCommandObject?, val source: SourceCommandObject? = null) : ServerMessage
     data class StreamStart(val player: StreamStartPlayer?) : ServerMessage

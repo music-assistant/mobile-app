@@ -64,5 +64,14 @@ public interface SendspinTransport {
 
 public sealed interface Frame {
     public data class Text(val text: String) : Frame
-    public class Binary(public val bytes: ByteArray) : Frame
+
+    /**
+     * [receivedAtMicros] is the [SendspinDeps.clock] time at which the connection delivered the
+     * message, taken as close to its arrival as the transport can. The clock filter reads it as
+     * the receive time of a `server/time` reply. Null makes the session take the time when it
+     * reads the frame, which is later by the queue in between.
+     */
+    public class Binary(public val bytes: ByteArray, public val receivedAtMicros: Long?) : Frame {
+        public constructor(bytes: ByteArray) : this(bytes, null)
+    }
 }

@@ -8,6 +8,7 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readText
 import io.music_assistant.sendspin.api.Frame
+import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.SendspinTransport
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
@@ -22,6 +23,7 @@ import io.ktor.websocket.Frame as WsFrame
  */
 internal class WebSocketTransport private constructor(
     private val session: DefaultClientWebSocketSession,
+    private val clock: MonotonicClock,
 ) : SendspinTransport {
     private val frames = Channel<Frame>(INBOUND_CAPACITY)
 
@@ -38,7 +40,8 @@ internal class WebSocketTransport private constructor(
             for (frame in session.incoming) {
                 when (frame) {
                     is WsFrame.Text -> frames.send(Frame.Text(frame.readText()))
-                    is WsFrame.Binary -> frames.send(Frame.Binary(frame.readBytes()))
+                    // Stamped as Ktor delivers it, ahead of the queue to the session.
+                    is WsFrame.Binary -> frames.send(Frame.Binary(frame.readBytes(), clock.nowMicros()))
                     else -> Unit // Close, Ping, Pong: Ktor handles them.
                 }
             }
@@ -65,7 +68,7 @@ internal class WebSocketTransport private constructor(
     companion object {
         private const val INBOUND_CAPACITY = 64
 
-        suspend fun connect(client: HttpClient, url: String): WebSocketTransport =
-            WebSocketTransport(client.webSocketSession(url))
+        suspend fun connect(client: HttpClient, url: String, clock: MonotonicClock): WebSocketTransport =
+            WebSocketTransport(client.webSocketSession(url), clock)
     }
 }

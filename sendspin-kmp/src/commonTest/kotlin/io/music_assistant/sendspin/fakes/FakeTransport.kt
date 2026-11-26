@@ -38,8 +38,8 @@ class FakeTransport : SendspinTransport {
         fromServer.trySend(Frame.Text(text))
     }
 
-    fun serverSends(bytes: ByteArray) {
-        fromServer.trySend(Frame.Binary(bytes))
+    fun serverSends(bytes: ByteArray, receivedAtMicros: Long? = null) {
+        fromServer.trySend(Frame.Binary(bytes, receivedAtMicros))
     }
 
     /** The connection ends; [cause] marks a failure, null a clean close. */

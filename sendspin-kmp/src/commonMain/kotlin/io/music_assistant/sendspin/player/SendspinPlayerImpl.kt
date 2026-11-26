@@ -108,7 +108,7 @@ internal class SendspinPlayerImpl(
     /** Noise primitives; a test seam only, the app never chooses them. */
     private val crypto: NoiseCrypto = CryptographyKotlinNoiseCrypto(),
     /** One connector per enabled lifetime; injectable so tests can watch its close. */
-    private val connectorFactory: (HttpClient) -> TransportConnector = TransportConnector::ktor,
+    private val connectorFactory: (HttpClient) -> TransportConnector = { TransportConnector.ktor(it, deps.clock) },
 ) : SendspinPlayer {
     private val logger = Logger.withTag("Sendspin.Player")
     private val _state = MutableStateFlow<PlayerState>(PlayerState.Disabled)
@@ -306,7 +306,7 @@ internal class SendspinPlayerImpl(
 
         override suspend fun onMessage(message: ServerMessage) {
             when (message) {
-                is ServerMessage.Time -> clockSync.onReply(message.payload)
+                is ServerMessage.Time -> clockSync.onReply(message.payload, message.receivedAtMicros)
                 is ServerMessage.StreamStart -> message.player?.let { format ->
                     if (held.value) _events.tryEmit(PlayerEvent.StreamStartedWhileHeld(playerId))
                     pipeline.apply(

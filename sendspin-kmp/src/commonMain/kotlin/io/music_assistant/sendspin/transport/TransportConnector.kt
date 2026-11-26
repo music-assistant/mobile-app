@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.pingInterval
 import io.music_assistant.sendspin.api.Endpoint
+import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.SendspinTransport
 import kotlin.time.Duration.Companion.seconds
 
@@ -37,15 +38,18 @@ internal class TransportConnector(
     companion object {
         private val PING_INTERVAL = 5.seconds
 
-        /** Production connector: WebSockets over a client derived from the app's; closed with the connector. */
-        fun ktor(httpClient: HttpClient): TransportConnector {
+        /**
+         * Production connector: WebSockets over a client derived from the app's; closed with the connector.
+         * [clock] stamps each inbound binary frame.
+         */
+        fun ktor(httpClient: HttpClient, clock: MonotonicClock): TransportConnector {
             val wsClient = httpClient.config {
                 install(WebSockets) {
                     pingInterval = PING_INTERVAL
                 }
             }
             return TransportConnector(
-                openWebSocket = { url -> WebSocketTransport.connect(wsClient, url) },
+                openWebSocket = { url -> WebSocketTransport.connect(wsClient, url, clock) },
                 release = wsClient::close,
             )
         }

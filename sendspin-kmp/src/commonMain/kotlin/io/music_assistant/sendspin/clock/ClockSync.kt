@@ -36,10 +36,10 @@ internal class ClockSync(private val clock: MonotonicClock) {
     @Volatile
     private var lastAcceptedMicros = 0L
 
-    /** A `server/time` reply; timestamped on arrival. */
-    fun onReply(payload: ServerTimePayload) {
-        val sample =
-            ClockSample(payload.clientTransmitted, payload.serverReceived, payload.serverTransmitted, clock.nowMicros())
+    /** A `server/time` reply. [receivedAtMicros] is its transport receive time; null takes the time now. */
+    fun onReply(payload: ServerTimePayload, receivedAtMicros: Long? = null) {
+        val t4 = receivedAtMicros ?: clock.nowMicros()
+        val sample = ClockSample(payload.clientTransmitted, payload.serverReceived, payload.serverTransmitted, t4)
         synchronized(lock) { burst += sample }
         _replies.update { it + 1 }
     }

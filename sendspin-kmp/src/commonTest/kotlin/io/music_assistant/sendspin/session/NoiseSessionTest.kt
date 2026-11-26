@@ -480,6 +480,20 @@ internal class SpecNoiseSessionTest : NoiseSessionScenarios(WireVersion.SPEC_1_0
     }
 
     @Test
+    fun aTimeReplyCarriesTheReceiveTimeOfTheTransport() = sessionTest { f ->
+        val server = activated(f)
+        server.sendJson(TIME_REPLY, receivedAtMicros = 1_234L)
+        assertEquals(1_234L, assertIs<ServerMessage.Time>(f.nextMessage()).receivedAtMicros)
+    }
+
+    @Test
+    fun aTimeReplyWithoutATransportStampGetsTheSessionClock() = sessionTest { f ->
+        val server = activated(f)
+        server.sendJson(TIME_REPLY)
+        assertEquals(SESSION_CLOCK_MICROS, assertIs<ServerMessage.Time>(f.nextMessage()).receivedAtMicros)
+    }
+
+    @Test
     fun unknownPskIdInTheInitialHandshakeCompletesWithTheSentinel() = sessionTest { f ->
         val server = FakeServer(f, ByteArray(32) { 0x55 })
         server.establish(verifyWith = SendspinPsk.SENTINEL_PSK)
@@ -583,3 +597,6 @@ internal class SpecNoiseSessionTest : NoiseSessionScenarios(WireVersion.SPEC_1_0
         assertIsNot<UnsupportedCoreVersionException>(failure)
     }
 }
+
+private const val TIME_REPLY =
+    """{"type":"server/time","payload":{"client_transmitted":1,"server_received":2,"server_transmitted":3}}"""

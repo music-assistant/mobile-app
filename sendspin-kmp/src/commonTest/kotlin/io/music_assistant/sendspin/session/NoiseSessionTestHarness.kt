@@ -84,6 +84,7 @@ internal abstract class NoiseSessionTestHarness(protected val wire: WireVersion)
             ),
             crypto = crypto,
             trustStore = trustStore,
+            clock = { SESSION_CLOCK_MICROS },
         )
         val events = Channel<Event>(Channel.UNLIMITED)
         val handler = object : SessionHandler {
@@ -149,5 +150,8 @@ internal abstract class NoiseSessionTestHarness(protected val wire: WireVersion)
     protected companion object {
         const val AWAIT_MILLIS = 5_000L
         const val PAIRING_CATEGORY = "pr"
+
+        /** The session clock: the receive time of a frame that the transport did not stamp. */
+        const val SESSION_CLOCK_MICROS = 7_000_000L
     }
 }

@@ -188,7 +188,8 @@ private class DataChannelTransport(private val wrapper: DataChannelWrapper) : Se
             send(
                 when (message) {
                     is DataChannelInbound.Text -> Frame.Text(message.text)
-                    is DataChannelInbound.Binary -> Frame.Binary(message.bytes)
+                    // The same time base as `sendspinClock`, which the player's clock filter uses.
+                    is DataChannelInbound.Binary -> Frame.Binary(message.bytes, message.receivedAtMicros)
                 },
             )
         }
