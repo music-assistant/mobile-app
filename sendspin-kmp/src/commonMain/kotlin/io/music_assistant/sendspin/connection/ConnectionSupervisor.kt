@@ -156,7 +156,7 @@ internal class ConnectionSupervisor(
         } catch (e: Throwable) {
             return DropReason.ConnectFailed(e)
         }
-        val session = NoiseSession(transport, sessionConfig, crypto, trustStore)
+        val session = NoiseSession(transport, sessionConfig, crypto, trustStore, clock)
         val observing = object : SessionHandler {
             override fun onReady(info: SessionInfo) {
                 _state.value = ConnectionState.Active(info, activated = false)

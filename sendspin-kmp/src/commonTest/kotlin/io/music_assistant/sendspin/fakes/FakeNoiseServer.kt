@@ -129,9 +129,10 @@ internal class FakeNoiseServer(
         transport.serverSends(message("server/error") { put("reason", reason) })
     }
 
-    suspend fun sendJson(text: String) {
+    /** [receivedAtMicros] is the transport stamp of each frame; null leaves the frames unstamped. */
+    suspend fun sendJson(text: String, receivedAtMicros: Long? = null) {
         NoiseFraming.encode(wire, NoiseFraming.TYPE_JSON, text.encodeToByteArray()).forEach {
-            transport.serverSends(noise.encrypt(it))
+            transport.serverSends(noise.encrypt(it), receivedAtMicros)
         }
     }
 

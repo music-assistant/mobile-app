@@ -1,9 +1,13 @@
 package io.music_assistant.client.webrtc
 
+import io.music_assistant.client.utils.monotonicMicros
+
 /** One inbound data-channel message, preserving the text/binary distinction. */
 sealed interface DataChannelInbound {
     class Text(val text: String) : DataChannelInbound
-    class Binary(val bytes: ByteArray) : DataChannelInbound
+
+    /** [receivedAtMicros] is [monotonicMicros] when the channel delivered the message, before any queue. */
+    class Binary(val bytes: ByteArray, val receivedAtMicros: Long = monotonicMicros()) : DataChannelInbound
 }
 
 /**

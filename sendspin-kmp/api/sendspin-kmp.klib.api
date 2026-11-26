@@ -259,9 +259,12 @@ sealed interface io.music_assistant.sendspin.api/Endpoint { // io.music_assistan
 sealed interface io.music_assistant.sendspin.api/Frame { // io.music_assistant.sendspin.api/Frame|null[0]
     final class Binary : io.music_assistant.sendspin.api/Frame { // io.music_assistant.sendspin.api/Frame.Binary|null[0]
         constructor <init>(kotlin/ByteArray) // io.music_assistant.sendspin.api/Frame.Binary.<init>|<init>(kotlin.ByteArray){}[0]
+        constructor <init>(kotlin/ByteArray, kotlin/Long?) // io.music_assistant.sendspin.api/Frame.Binary.<init>|<init>(kotlin.ByteArray;kotlin.Long?){}[0]
 
         final val bytes // io.music_assistant.sendspin.api/Frame.Binary.bytes|{}bytes[0]
             final fun <get-bytes>(): kotlin/ByteArray // io.music_assistant.sendspin.api/Frame.Binary.bytes.<get-bytes>|<get-bytes>(){}[0]
+        final val receivedAtMicros // io.music_assistant.sendspin.api/Frame.Binary.receivedAtMicros|{}receivedAtMicros[0]
+            final fun <get-receivedAtMicros>(): kotlin/Long? // io.music_assistant.sendspin.api/Frame.Binary.receivedAtMicros.<get-receivedAtMicros>|<get-receivedAtMicros>(){}[0]
     }
 
     final class Text : io.music_assistant.sendspin.api/Frame { // io.music_assistant.sendspin.api/Frame.Text|null[0]

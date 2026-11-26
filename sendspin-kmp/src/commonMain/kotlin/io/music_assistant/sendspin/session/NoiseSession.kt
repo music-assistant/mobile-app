@@ -2,6 +2,7 @@ package io.music_assistant.sendspin.session
 
 import co.touchlab.kermit.Logger
 import io.music_assistant.sendspin.api.Frame
+import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.SendspinTransport
 import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.identity.SendspinTrustStore
@@ -63,6 +64,8 @@ internal class NoiseSession(
     private val config: SessionConfig,
     private val crypto: NoiseCrypto,
     private val trustStore: SendspinTrustStore,
+    /** Stamps a binary frame that the transport delivers without a receive time. */
+    private val clock: MonotonicClock,
 ) {
     private val logger = Logger.withTag("Sendspin.NoiseSession")
 
@@ -155,7 +158,8 @@ internal class NoiseSession(
             for (frame in transport.inbound) {
                 when (frame) {
                     is Frame.Text -> throw HandshakeFailedException("text frame in transport mode")
-                    is Frame.Binary -> handleCiphertext(frame.bytes, this, handler)
+                    is Frame.Binary ->
+                        handleCiphertext(frame.bytes, frame.receivedAtMicros ?: clock.nowMicros(), this, handler)
                 }
             }
         } catch (e: CancellationException) {
@@ -193,11 +197,24 @@ internal class NoiseSession(
 
     // --- Inbound ---
 
-    private suspend fun handleCiphertext(bytes: ByteArray, scope: CoroutineScope, handler: SessionHandler) {
+    /**
+     * [receivedAtMicros] belongs to this frame. A fragmented message completes on its final
+     * fragment, so its receive time is the time of that fragment, as the spec defines it.
+     */
+    private suspend fun handleCiphertext(
+        bytes: ByteArray,
+        receivedAtMicros: Long,
+        scope: CoroutineScope,
+        handler: SessionHandler,
+    ) {
         val secure = channel ?: throw NoiseException("ciphertext before secure channel")
         val message = secure.decoder.decode(secure.noise.decrypt(bytes)) ?: return
         when {
-            message.type == NoiseFraming.TYPE_JSON -> route(parseJson(message.payload), scope, handler)
+            message.type == NoiseFraming.TYPE_JSON -> {
+                val parsed = parseJson(message.payload)
+                val stamped = (parsed as? ServerMessage.Time)?.copy(receivedAtMicros = receivedAtMicros) ?: parsed
+                route(stamped, scope, handler)
+            }
 
             NoiseFraming.isPlayerAudioType(message.type) ->
                 when (val parsed = BinaryFrames.parse(config.wire, message.type, message.payload)) {
