@@ -245,8 +245,15 @@ internal class SourceStreamer(
         }
 
     private companion object {
-        const val BACKLOG_CHUNKS = 32
+        /** Audio older than this at send time is dropped. */
         const val MAX_BACKLOG_MICROS = 500_000L
+
+        /**
+         * 500 ms of 20 ms PCM chunks, plus one; more would only hold audio that the age check
+         * drops anyway. A FLAC chunk is longer, so for FLAC the queue holds more than 500 ms and
+         * the age check alone bounds it.
+         */
+        const val BACKLOG_CHUNKS = 26
         const val END_TIMEOUT_MILLIS = 1_000L
         const val DROP_LOG_INTERVAL = 50
     }

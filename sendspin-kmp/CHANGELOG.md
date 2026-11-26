@@ -4,6 +4,9 @@ All changes to `io.github.music-assistant:sendspin-kmp` are in this file.
 
 ## Unreleased
 
+- The source send queue holds 26 chunks, 500 ms of 20 ms PCM, instead of 32. More would only
+  hold audio that the 500 ms age check drops anyway. A FLAC chunk is longer, so for FLAC the age
+  check alone bounds the queue, as before.
 - Source signal: under both dialects, the source now reports `client/state.source.signal =
   "absent"` after 5 seconds of silence in a stream (every sample at or below about -70 dBFS), and
   `"present"` on the first block above it. The server can then stop a silent source (Music

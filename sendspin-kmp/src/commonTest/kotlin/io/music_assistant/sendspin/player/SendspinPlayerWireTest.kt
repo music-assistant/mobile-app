@@ -406,6 +406,74 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
         assertContentEquals(live, server.sourceChunks.single().second)
     }
 
+    // --- source latency: a 20 ms capture into a link that stalls ---
+
+    /**
+     * Drives a PCM stream for 1 s, stalls the transport for 1 s, runs 1 s, stalls it for 3 s,
+     * and runs 1 s more. Each block is captured 20 ms before it is handed over, as a real
+     * 20 ms read is. The ages are the time from capture to arrival at the server.
+     *
+     * This checks the age limit across a stall, not the queue's size: the queue holds more
+     * than the age limit's worth of PCM, so the age check alone decides what goes out.
+     */
+    private suspend fun TestScope.measureStalls(h: Harness, capture: FakeCapture): List<StallReport> {
+        val server = connectSource(h)
+        server.sourceCommand("start")
+        runCurrent()
+        val transport = h.handedOut.last()
+        val ages = mutableListOf<Long>()
+        var captured = 0
+        fun arrivals(): List<Long> = server.sourceChunks.drop(ages.size)
+            .map { (timestamp, _) -> (currentTime * 1_000 - timestamp) / 1_000 }
+            .also { ages += it }
+
+        suspend fun run(millis: Int): List<Long> = buildList {
+            repeat(millis / BLOCK_MILLIS) {
+                capture.capture(currentTime * 1_000 - BLOCK_MILLIS * 1_000L)
+                captured++
+                runCurrent()
+                addAll(arrivals())
+                advanceTimeBy(BLOCK_MILLIS.toLong())
+            }
+        }
+
+        suspend fun stall(millis: Int): StallReport {
+            val capturedBefore = captured
+            val arrivedBefore = ages.size
+            transport.stalled.value = true
+            run(millis)
+            transport.stalled.value = false
+            runCurrent()
+            val burst = arrivals()
+            val after = run(RECOVERY_MILLIS)
+            return StallReport(
+                stallMillis = millis,
+                steadyAgeMs = 0,
+                inFlightAgeMs = burst.firstOrNull() ?: -1,
+                queuedChunks = (burst.size - 1).coerceAtLeast(0),
+                maxQueuedAgeMs = burst.drop(1).maxOrNull() ?: -1,
+                maxAgeAfterMs = after.maxOrNull() ?: -1,
+                // The chunk in flight was captured before the stall.
+                lostChunks = (captured - capturedBefore) - (ages.size - arrivedBefore - 1),
+            )
+        }
+
+        val steady = run(STEADY_MILLIS)
+        return listOf(stall(SHORT_STALL_MILLIS), stall(LONG_STALL_MILLIS))
+            .map { it.copy(steadyAgeMs = steady.max()) }
+    }
+
+    private fun assertAgeLimitAcrossStalls(reports: List<StallReport>) = reports.forEach { report ->
+        assertEquals(BLOCK_MILLIS.toLong(), report.steadyAgeMs, "one block of delay in steady state: $report")
+        assertTrue(report.maxQueuedAgeMs in 0..MAX_LATENCY_MILLIS, "age bound of the backlog: $report")
+        assertEquals(BLOCK_MILLIS.toLong(), report.maxAgeAfterMs, "live again after the backlog: $report")
+    }
+
+    @Test
+    fun aStalledLinkSendsNoAudioOlderThanTheAgeLimit() = sourceTest { h, capture ->
+        assertAgeLimitAcrossStalls(measureStalls(h, capture))
+    }
+
     @Test
     fun flacStreamsWithItsCodecHeader() = sourceTest(encoders = FakeEncoderFactory()) { h, capture ->
         val server = connectSource(h)
@@ -493,3 +561,26 @@ private fun FakeNoiseServer.helloPayload(): JsonObject =
 private fun JsonObject.codec(): String = getValue("codec").jsonPrimitive.content
 
 private fun JsonObject.roles(): List<String> = getValue("supported_roles").jsonArray.map { it.jsonPrimitive.content }
+
+/** What the server got around one stall of the link. Ages in ms from capture to arrival. */
+private data class StallReport(
+    val stallMillis: Int,
+    val steadyAgeMs: Long,
+    /** The chunk whose send was in progress when the link stalled: it cannot be called back. */
+    val inFlightAgeMs: Long,
+    /** The queued chunks that the client sent when the link came back. It dropped the older ones. */
+    val queuedChunks: Int,
+    val maxQueuedAgeMs: Long,
+    /** The worst age in the second after the link came back. */
+    val maxAgeAfterMs: Long,
+    val lostChunks: Int,
+)
+
+private const val BLOCK_MILLIS = 20
+
+/** The source's age limit for audio at send time. */
+private const val MAX_LATENCY_MILLIS = 500
+private const val STEADY_MILLIS = 1_000
+private const val RECOVERY_MILLIS = 1_000
+private const val SHORT_STALL_MILLIS = 1_000
+private const val LONG_STALL_MILLIS = 3_000

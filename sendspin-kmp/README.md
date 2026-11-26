@@ -364,7 +364,10 @@ is 20 ms. `AndroidEncoderFactory` gives a `MediaCodec` FLAC encoder for 16-bit i
 
 **Time.** Each chunk has the server time of its first sample. The player converts the capture
 time with the clock filter. If the link stalls, the player drops the audio that is older than
-500 ms.
+500 ms when its turn to send comes. The queue to the link holds 500 ms of 20 ms PCM chunks and
+drops the oldest chunk when it is full; FLAC chunks are longer, so for FLAC the age check alone
+bounds it. The chunk that was in transit when the link stalled still goes out late, because a
+sent frame cannot be called back.
 
 ## Connection lifecycle
 
