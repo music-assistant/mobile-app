@@ -162,7 +162,6 @@ fun SettingsScreen(goHome: () -> Unit) {
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
 
-    // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
         goHome()
     }

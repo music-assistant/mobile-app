@@ -122,7 +122,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 if (sessionState is SessionState.Disconnected.Backgrounded) {
                     // Backgrounded — preserve current screen for instant foreground reconnect
                 } else {
-                    // Navigate to Settings for all other disconnected states
+                    // Navigate to Connect for all other disconnected states
                     // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
                     if (backStack.last() !is Nav.Connect) {
                         backStack.clear()
