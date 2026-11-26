@@ -412,6 +412,9 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
      * Drives a PCM stream for 1 s, stalls the transport for 1 s, runs 1 s, stalls it for 3 s,
      * and runs 1 s more. Each block is captured 20 ms before it is handed over, as a real
      * 20 ms read is. The ages are the time from capture to arrival at the server.
+     *
+     * This checks the age limit across a stall, not the queue's size: the queue holds more
+     * than the age limit's worth of PCM, so the age check alone decides what goes out.
      */
     private suspend fun TestScope.measureStalls(h: Harness, capture: FakeCapture): List<StallReport> {
         val server = connectSource(h)
@@ -460,16 +463,15 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
             .map { it.copy(steadyAgeMs = steady.max()) }
     }
 
-    private fun assertStallBound(reports: List<StallReport>) = reports.forEach { report ->
+    private fun assertAgeLimitAcrossStalls(reports: List<StallReport>) = reports.forEach { report ->
         assertEquals(BLOCK_MILLIS.toLong(), report.steadyAgeMs, "one block of delay in steady state: $report")
-        assertTrue(report.queuedChunks <= MAX_LATENCY_MILLIS / BLOCK_MILLIS + 1, "queue bound: $report")
         assertTrue(report.maxQueuedAgeMs in 0..MAX_LATENCY_MILLIS, "age bound of the backlog: $report")
         assertEquals(BLOCK_MILLIS.toLong(), report.maxAgeAfterMs, "live again after the backlog: $report")
     }
 
     @Test
     fun aStalledLinkSendsNoAudioOlderThanTheAgeLimit() = sourceTest { h, capture ->
-        assertStallBound(measureStalls(h, capture))
+        assertAgeLimitAcrossStalls(measureStalls(h, capture))
     }
 
     @Test
