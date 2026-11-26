@@ -300,6 +300,7 @@ internal data class ClientStatePayload(
 internal data class SourceStateObject(val signal: String) {
     companion object {
         val PRESENT = SourceStateObject("present")
+        val ABSENT = SourceStateObject("absent")
     }
 }
 

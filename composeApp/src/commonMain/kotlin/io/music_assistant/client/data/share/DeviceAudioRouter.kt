@@ -8,6 +8,7 @@ import io.music_assistant.client.data.play.PlayRequest
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SourceDialect
+import io.music_assistant.sendspin.api.SourceSignal
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.WireVersion
 import kotlinx.atomicfu.locks.SynchronizedObject
@@ -19,7 +20,9 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.dropWhile
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
@@ -32,6 +35,7 @@ import musicassistantclient.composeapp.generated.resources.device_audio_end_conn
 import musicassistantclient.composeapp.generated.resources.device_audio_end_refused
 import musicassistantclient.composeapp.generated.resources.device_audio_end_revoked
 import musicassistantclient.composeapp.generated.resources.device_audio_end_server_stopped
+import musicassistantclient.composeapp.generated.resources.device_audio_end_silence
 import musicassistantclient.composeapp.generated.resources.device_audio_end_timeout
 import musicassistantclient.composeapp.generated.resources.device_audio_end_unpaired
 import org.jetbrains.compose.resources.StringResource
@@ -52,6 +56,9 @@ enum class DeviceAudioShareEnd(val message: StringResource) {
     CaptureRevoked(Res.string.device_audio_end_revoked),
     ServerRefused(Res.string.device_audio_end_refused),
     ServerStopped(Res.string.device_audio_end_server_stopped),
+
+    /** The server stopped the stream after the source reported no signal: its line-sense autostop. */
+    Silence(Res.string.device_audio_end_silence),
     ConnectionLost(Res.string.device_audio_end_connection_lost),
     Timeout(Res.string.device_audio_end_timeout),
 
@@ -73,7 +80,8 @@ enum class DeviceAudioShareEnd(val message: StringResource) {
  * capture runs ([DeviceAudioSource.config]). Only the server starts the stream, so the router
  * waits until the server accepts the source and then sends an ordinary play request for the
  * source uri through [play]. A share ends when the user stops it, when the system ends the
- * capture, when the server stops the stream, or when the audio link drops: a start command
+ * capture, when the server stops the stream (also after a minute of silence, with the
+ * source's `signal`), or when the audio link drops: a start command
  * does not survive a reconnect. The end of a share stops the player that played it.
  */
 class DeviceAudioRouter(
@@ -175,8 +183,20 @@ class DeviceAudioRouter(
                 ensureActive()
                 _state.value = DeviceAudioShareState.Active
             }
+            val longSilence = MutableStateFlow(false)
+            val silenceWatch = launch {
+                playerState.map { (it as? PlayerState.Connected)?.sourceSignal }.distinctUntilChanged()
+                    .collectLatest { signal ->
+                        longSilence.value = false
+                        if (signal == SourceSignal.Absent) {
+                            delay(SILENCE_STOP_MS)
+                            longSilence.value = true
+                        }
+                    }
+            }
             sourceStatus.first { it != SourceStatus.Streaming }
-            end(streamEndCause())
+            silenceWatch.cancel()
+            end(streamEndCause(longSilence.value))
         }
     }
 
@@ -184,10 +204,9 @@ class DeviceAudioRouter(
      * Why the stream stopped. A capture that ended stops the stream too, and its cause wins: the
      * capture clears before the stream reports the end.
      */
-    private fun streamEndCause(): DeviceAudioShareEnd? = when {
+    private fun streamEndCause(longSilence: Boolean): DeviceAudioShareEnd? = when {
         share.capture.value == null -> captureEndCause()
-        playerState.value is PlayerState.Connected -> DeviceAudioShareEnd.ServerStopped
-        else -> DeviceAudioShareEnd.ConnectionLost
+        else -> serverEndCause(playerState.value, longSilence)
     }
 
     /** The user ends the share. */
@@ -232,6 +251,17 @@ class DeviceAudioRouter(
         } ?: false.also { log.w { "The server does not list $uri" } }
     }
 
+    /**
+     * A stop is the server's silence autostop only if the signal was absent for about its hold
+     * ([longSilence]). An earlier stop while the signal is absent has another cause, for example
+     * other media started on the player. The signal keeps its value after the stream ends.
+     */
+    private fun serverEndCause(player: PlayerState, longSilence: Boolean): DeviceAudioShareEnd = when {
+        player !is PlayerState.Connected -> DeviceAudioShareEnd.ConnectionLost
+        player.sourceSignal == SourceSignal.Absent && longSilence -> DeviceAudioShareEnd.Silence
+        else -> DeviceAudioShareEnd.ServerStopped
+    }
+
     private fun endAndNull(cause: DeviceAudioShareEnd): String? {
         end(cause)
         return null
@@ -254,7 +284,8 @@ class DeviceAudioRouter(
         // the player after a stop, and the player then shows no queue: give the queue back.
         val played = playedQueueId
         playedQueueId = null
-        played?.let { releasePlayer(it, cause != DeviceAudioShareEnd.ServerStopped) }
+        val serverEnded = cause == DeviceAudioShareEnd.ServerStopped || cause == DeviceAudioShareEnd.Silence
+        played?.let { releasePlayer(it, !serverEnded) }
         share.stop()
         cause?.let { scope.launch { errorBus.emit(describe(it.message)) } }
         job?.cancel()
@@ -277,5 +308,11 @@ class DeviceAudioRouter(
 
         /** The server gives a source 5 s to send audio after its start command. */
         const val STREAM_WAIT_MS = 10_000L
+
+        /**
+         * The server stops a source 60 s after it reports `absent` (its line-sense hold). A stop
+         * after this much absence counts as that autostop; the margin covers the report delay.
+         */
+        const val SILENCE_STOP_MS = 50_000L
     }
 }

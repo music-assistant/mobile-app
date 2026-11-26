@@ -8,6 +8,7 @@ import io.music_assistant.sendspin.api.EncoderFactory
 import io.music_assistant.sendspin.api.MonotonicClock
 import io.music_assistant.sendspin.api.SourceConfig
 import io.music_assistant.sendspin.api.SourceDialect
+import io.music_assistant.sendspin.api.SourceSignal
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.clock.ClockSync
 import io.music_assistant.sendspin.session.Activation
@@ -24,6 +25,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -65,6 +68,16 @@ internal class SourceStreamer(
         if (status == SourceStatus.Ready && !reported) SourceStatus.Off else status
     }.distinctUntilChanged()
 
+    private val _signal = MutableStateFlow(SourceSignal.Present)
+
+    /**
+     * The signal for `client/state`. Each connection and each stream starts [SourceSignal.Present],
+     * so a silent stream is a change to [SourceSignal.Absent] that the server acts on. The value
+     * stays after the stream ends: a `present` right after a stop would let the server start the
+     * source again.
+     */
+    val signal: StateFlow<SourceSignal> = _signal.asStateFlow()
+
     /**
      * The number of the `start` in effect, or null while stopped. Each start gets a new
      * number, so a stop and a start in quick succession still end one stream and open another.
@@ -88,6 +101,7 @@ internal class SourceStreamer(
         playback = false
         authorized.value = null
         reported.value = false
+        _signal.value = SourceSignal.Present
         _status.value = SourceStatus.Off
     }
 
@@ -206,8 +220,14 @@ internal class SourceStreamer(
     private fun encoded(): Flow<SourceChunk> = flow {
         val format = config.capture.format
         val encoding = SourceEncoding(format, flacEncoder(format), health)
+        // Both dialects report the signal: `signal` is a required field of the source state.
+        val detector = SignalDetector(format)
+        _signal.value = SourceSignal.Present
         try {
-            config.capture.frames().collect { audio -> encoding.encode(audio).forEach { emit(it) } }
+            config.capture.frames().collect { audio ->
+                _signal.value = detector.onAudio(audio)
+                encoding.encode(audio).forEach { emit(it) }
+            }
         } finally {
             encoding.release()
         }

@@ -5,6 +5,7 @@ import io.music_assistant.sendspin.api.PlayerEvent
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SourceConfig
 import io.music_assistant.sendspin.api.SourceDialect
+import io.music_assistant.sendspin.api.SourceSignal
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.WireVersion
 import io.music_assistant.sendspin.fakes.FakeCapture
@@ -217,6 +218,90 @@ internal class SpecSendspinPlayerTest : SendspinPlayerScenarios(WireVersion.SPEC
         capture.capture(currentTime * 1_000)
         runCurrent()
         assertEquals(2, server.clientStreamStarts.size, "a new start opens a new stream")
+    }
+
+    /** [millis] of input in 500 ms blocks, each captured live; [marker] 0 is digital silence. */
+    private fun TestScope.captureFor(capture: FakeCapture, millis: Int, marker: Byte) {
+        repeat(millis / 500) {
+            capture.capture(currentTime * 1_000, millis = 500, marker = marker)
+            advanceTimeBy(500)
+            runCurrent()
+        }
+    }
+
+    private fun FakeNoiseServer.signals(): List<String> =
+        clientStates.map { it.getValue("source").jsonObject.getValue("signal").jsonPrimitive.content }
+
+    private fun Harness.sourceSignal(): SourceSignal = (player.state.value as PlayerState.Connected).sourceSignal
+
+    @Test
+    fun rc1ReportsAbsentAfterFiveSecondsOfSilenceAndPresentWhenAudioReturns() = sourceTest(
+        SourceDialect.RC1,
+    ) { h, capture ->
+        val server = connectSource(h)
+        server.sourceCommand("start")
+        runCurrent()
+        captureFor(capture, millis = 4_500, marker = 0)
+        assertEquals(listOf("present"), server.signals(), "the hold has not passed")
+        assertEquals(SourceSignal.Present, h.sourceSignal())
+
+        captureFor(capture, millis = 500, marker = 0)
+        assertEquals(listOf("present", "absent"), server.signals())
+        assertEquals(SourceSignal.Absent, h.sourceSignal())
+        assertEquals(0, server.clientStates.last().player().getValue("output_delay_ms").jsonPrimitive.content.toInt())
+
+        capture.capture(currentTime * 1_000, marker = 1)
+        runCurrent()
+        assertEquals(listOf("present", "absent", "present"), server.signals(), "the first loud block is enough")
+        assertEquals(SourceSignal.Present, h.sourceSignal())
+    }
+
+    @Test
+    fun rc1KeepsAbsentAfterTheStopAndStartsANewStreamPresent() = sourceTest(SourceDialect.RC1) { h, capture ->
+        val server = connectSource(h)
+        server.sourceCommand("start")
+        runCurrent()
+        captureFor(capture, millis = 5_000, marker = 0)
+        assertEquals("absent", server.signals().last())
+
+        // The server's line-sense autostop: a present now would let it start the source again.
+        server.sourceCommand("stop")
+        runCurrent()
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertEquals(listOf("present", "absent"), server.signals())
+        assertEquals(SourceSignal.Absent, h.sourceSignal())
+
+        // A new stream starts present, so a silent one is a new change to absent.
+        server.sourceCommand("start")
+        runCurrent()
+        capture.capture(currentTime * 1_000, marker = 0)
+        runCurrent()
+        assertEquals(listOf("present", "absent", "present"), server.signals())
+    }
+
+    @Test
+    fun shortGapsInTheAudioDoNotReportAbsent() = sourceTest(SourceDialect.RC1) { h, capture ->
+        val server = connectSource(h)
+        server.sourceCommand("start")
+        runCurrent()
+        repeat(3) {
+            captureFor(capture, millis = 4_500, marker = 0)
+            capture.capture(currentTime * 1_000, marker = 1)
+            runCurrent()
+        }
+        assertEquals(listOf("present"), server.signals())
+        assertEquals(SourceSignal.Present, h.sourceSignal())
+    }
+
+    @Test
+    fun theCurrentSpecReportsAbsentToo() = sourceTest { h, capture ->
+        val server = connectSource(h)
+        server.sourceCommand("start")
+        runCurrent()
+        captureFor(capture, millis = 10_000, marker = 0)
+        assertEquals(listOf("present", "absent"), server.signals(), "signal is required in the current spec")
+        assertEquals(SourceSignal.Absent, h.sourceSignal())
     }
 
     @Test

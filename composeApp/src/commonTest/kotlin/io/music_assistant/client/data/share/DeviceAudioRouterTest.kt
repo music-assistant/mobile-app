@@ -11,6 +11,7 @@ import io.music_assistant.sendspin.api.ClockQuality
 import io.music_assistant.sendspin.api.Endpoint
 import io.music_assistant.sendspin.api.PlayerState
 import io.music_assistant.sendspin.api.SourceDialect
+import io.music_assistant.sendspin.api.SourceSignal
 import io.music_assistant.sendspin.api.SourceStatus
 import io.music_assistant.sendspin.api.WireVersion
 import kotlinx.coroutines.CoroutineScope
@@ -252,6 +253,68 @@ class DeviceAudioRouterTest {
         assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
         assertEquals("device_audio_end_server_stopped", h.errors.messages.first())
         assertEquals(listOf("kitchen" to false), h.released, "no stop: the server stopped the player already")
+    }
+
+    @Test
+    fun `a stop after the source reported no signal ends the share as silence`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        h.status(SourceStatus.Streaming)
+        runCurrent()
+        h.player.value = connected(SourceStatus.Streaming).copy(sourceSignal = SourceSignal.Absent)
+        runCurrent()
+        assertEquals(DeviceAudioShareState.Active, h.router.state.value, "the server decides when silence ends it")
+
+        // The server's line-sense autostop, a minute later.
+        advanceTimeBy(60_000)
+        h.player.value = connected(SourceStatus.Ready).copy(sourceSignal = SourceSignal.Absent)
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_silence", h.errors.messages.first())
+        assertEquals(listOf("kitchen" to false), h.released, "no stop: the server stopped the player already")
+    }
+
+    @Test
+    fun `a stop soon after the signal went absent is not called silence`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        h.status(SourceStatus.Streaming)
+        runCurrent()
+        h.player.value = connected(SourceStatus.Streaming).copy(sourceSignal = SourceSignal.Absent)
+        runCurrent()
+
+        // Paused for 10 s, then someone starts other media on the player.
+        advanceTimeBy(10_000)
+        h.player.value = connected(SourceStatus.Ready).copy(sourceSignal = SourceSignal.Absent)
+        runCurrent()
+
+        assertEquals(DeviceAudioShareState.Idle, h.router.state.value)
+        assertEquals("device_audio_end_server_stopped", h.errors.messages.first())
+    }
+
+    @Test
+    fun `audio that returns resets the silence time`() = runTest {
+        val h = Harness(this)
+        h.startShare()
+        h.status(SourceStatus.Ready)
+        runCurrent()
+        h.status(SourceStatus.Streaming)
+        runCurrent()
+        h.player.value = connected(SourceStatus.Streaming).copy(sourceSignal = SourceSignal.Absent)
+        advanceTimeBy(45_000)
+        h.player.value = connected(SourceStatus.Streaming).copy(sourceSignal = SourceSignal.Present)
+        runCurrent()
+        h.player.value = connected(SourceStatus.Streaming).copy(sourceSignal = SourceSignal.Absent)
+        advanceTimeBy(20_000)
+        h.player.value = connected(SourceStatus.Ready).copy(sourceSignal = SourceSignal.Absent)
+        runCurrent()
+
+        assertEquals("device_audio_end_server_stopped", h.errors.messages.first())
     }
 
     @Test
