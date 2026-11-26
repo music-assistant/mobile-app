@@ -1,7 +1,9 @@
-# Settings Screen
+# Settings Screens
 
-The Settings screen connects the app to a server, signs the user in, and holds the local player settings and the
-app settings.
+The app has two screens in the settings area. The **Connect** screen connects the app to a server and signs the
+user in. The **Settings** screen holds the server info, sign-in, the local player settings and the app settings.
+`TopLevelNavRoot` routes between them: `Nav.Connect` while the session is disconnected, the auth failed or the
+user logged out; `Nav.Settings` is reached from the home screen once connected.
 
 ## Files
 
@@ -9,14 +11,20 @@ All paths are under `composeApp/src/commonMain/kotlin/io/music_assistant/client/
 
 | File | Content |
 |------|---------|
-| `ui/compose/settings/SettingsScreen.kt` | `SettingsScreen` and the connection, server, login and Misc sections |
+| `ui/compose/settings/ConnectScreen.kt` | `ConnectScreen`: logo, exit button, connection and Logs sections |
+| `ui/compose/settings/SettingsScreen.kt` | `SettingsScreen`, the connection tabs, the server info and login sections |
 | `ui/compose/settings/SettingsViewModel.kt` | Connection, discovery, history, client certificate, log sharing, Misc settings |
-| `ui/compose/settings/sections/Sendspin.kt` | `SendspinSettingsSection` and its subsections |
+| `ui/compose/settings/sections/SettingsSection.kt` | `SectionCard` and `SectionTitle` (the title can hold an enable switch) |
+| `ui/compose/settings/sections/AboutSettingsSection.kt` | About description and app version |
+| `ui/compose/settings/sections/ConnectionSettingsSection.kt` | `ServerInfoSection` and `LoginSection` for a connected session |
+| `ui/compose/settings/sections/InterfaceSettingsSection.kt` | Accent color picker |
+| `ui/compose/settings/sections/LogsSection.kt` | Share logs and crash logs |
+| `ui/compose/settings/sections/MiscSettingsSection.kt` | Landscape and volume key settings |
+| `ui/compose/settings/sections/SendspinSettingsSection.kt` | `SendspinSettingsSection` and its subsections |
 | `ui/compose/settings/SendspinSettingsViewModel.kt` | Local player settings, with a draft |
+| `ui/compose/settings/sections/CarSettingsSection.kt` | `CarSettingsSection` |
 | `ui/compose/settings/sections/DiscoveredServersList.kt` | Servers found with mDNS |
 | `ui/compose/settings/ClientCertificateRow.kt` | `ClientCertificateSetting` (expect) and `ClientCertificateRow` |
-| `ui/compose/settings/AccentColorSection.kt` | Accent color picker |
-| `ui/compose/settings/CarActionsSettings.kt` | `CarSection` |
 | `ui/compose/auth/AuthenticationPanel.kt` | Provider tabs, login forms, signed-in user, logout |
 | `ui/compose/auth/AuthenticationViewModel.kt` | Provider list and login actions |
 | `auth/AuthenticationManager.kt` | Login, token, OAuth and logout logic (`AuthCoordinator`) |
@@ -31,33 +39,28 @@ All paths are under `composeApp/src/commonMain/kotlin/io/music_assistant/client/
 - `SendspinSettingsViewModel` gets the settings repository and a check that tells if the local player plays.
   It exposes `enabled`, `draft`, `isSavable`, `isResettable` and `isConfirmationPending`.
 
-## Screen layout
+## Connect screen
 
-The screen shows these parts from top to bottom:
+`ConnectScreen` shows while the user is not signed in. From top to bottom:
 
-1. `AppVersionSection`: the app version and a link to the app documentation.
-2. "Exit app" button, if the user is not signed in.
+1. A close (X) button at the top left. It exits the app.
+2. The app logo and name.
 3. The part that the session state selects:
 
 | Session state | Content |
 |---------------|---------|
-| `Disconnected` | `AboutSection`, the local network onboarding card, `ConnectionMethodTabs`, the connection error |
+| `Disconnected` | The local network onboarding card, `ConnectionMethodTabs`, the connection error |
 | `Connecting`, `Reconnecting` | `ConnectingSection` with a Cancel button |
-| `Connected` | `ServerInfoSection`, `LoginSection` |
-| `Connected` and `Authenticated` | Also `SendspinSettingsSection`, and `CarSection` if the local player is on |
+| `Connected` | `ConnectionSettingsSection` (server info and login) |
 
-4. `AccentColorSection`, always.
-5. `MiscSection`, always.
+4. `LogsSection`, always.
 
-The back button and the back gesture go to the home screen only if the user is signed in. Otherwise back exits
-the app. The light, system and dark toggle is in the top bar (`ThemeChooser`).
-
-## Connection
+### Connection
 
 `ConnectionMethodTabs` has two tabs: "Direct" and "WebRTC" (Remote Access, marked experimental). The tab is the
 `preferredConnectionMethod` setting.
 
-### Direct tab
+#### Direct tab
 
 - `DiscoveredServersList` is above the fields:
   - A Music Assistant server advertises `_mass._tcp`. The TXT record holds the server info of `get_server_info`.
@@ -81,14 +84,14 @@ the app. The light, system and dark toggle is in the top bar (`ThemeChooser`).
 - History button. It opens `ConnectionHistoryDialog`. A row fills the fields of its tab. Delete removes the row
   and the token of its server.
 
-### WebRTC tab
+#### WebRTC tab
 
 - Remote ID field, with a QR scanner button. The app converts the ID to uppercase and checks it with
   `RemoteId.isValid`.
 - Connect button and history button, as on the Direct tab.
 - See `.claude/webrtc-completion-summary.md` for the connection.
 
-### Automatic retry
+#### Automatic retry
 
 The screen retries one time after `Disconnected.Error`. It does not retry for Remote Access.
 
@@ -97,7 +100,7 @@ The screen retries one time after `Disconnected.Error`. It does not retry for Re
   fields. The first attempt on a new install can fail because of the permission prompt.
 - The flag stays set while the screen is open.
 
-### Client certificate (mTLS)
+#### Client certificate (mTLS)
 
 - `ClientCertificateSetting` is an expect composable. Both platforms use `ClientCertificateRow`, which shows
   the alias with **Choose** and **Clear**.
@@ -108,6 +111,22 @@ The screen retries one time after `Disconnected.Error`. It does not retry for Re
 - If a backup brings back the alias without the Keychain item, the iOS row clears the alias.
 - The app keeps one certificate (`SettingsRepository.clientCertificateAlias`) for all servers.
 - See the HTTP Clients section of `.claude/architecture.md` for the TLS clients.
+
+## Settings screen
+
+`SettingsScreen` shows these parts from top to bottom:
+
+1. `AboutSettingsSection`: the app description, the app version and a link to the app documentation.
+2. `ConnectionSettingsSection`: `ServerInfoSection` and `LoginSection` for the connected session, with the
+   Disconnect button.
+3. `SendspinSettingsSection`.
+4. `CarSettingsSection`, if the local player is on.
+5. `InterfaceSettingsSection` (accent color), always.
+6. `MiscSettingsSection`, always.
+7. `LogsSection`, always.
+
+The back button and the back gesture always go to the home screen. The light, system and dark toggle is in the
+top bar (`ThemeChooser`).
 
 ## Server info
 
@@ -172,8 +191,8 @@ authorization.
 1. The user taps Logout. `AuthenticationViewModel.logout` calls `AuthenticationManager.logout`.
 2. The manager deletes the token of the current server and calls `ServiceClient.logout`.
 3. The client sets `AuthProcessState.LoggedOut`, removes the user and sends `auth/logout`.
-4. The server revokes the token and closes the socket. The client connects again without a login, and the
-   panel shows the login form.
+4. The server revokes the token and closes the socket. The client connects again without a login, and
+   `TopLevelNavRoot` routes back to the Connect screen, which shows the login form.
 
 The app does not disconnect on logout. A provider load that the logout started stops with the old socket.
 
@@ -184,7 +203,8 @@ token stays in the settings, so the next connection signs in with it.
 
 ## Local player
 
-`SendspinSettingsSection` controls the built-in Sendspin player.
+`SendspinSettingsSection` controls the built-in Sendspin player. Like the other sections it is a `SectionCard`
+whose `SectionTitle` holds the switch.
 
 - The switch in the title turns the local player on or off (`sendspinEnabled`). It applies at once.
 - `DeviceNameSection`: the player name. The clear button restores "My Phone".
@@ -206,10 +226,12 @@ a token, so the player connects only after sign-in. See the Sendspin section of 
 
 ## Car
 
-`CarSection` shows only while the user is signed in and the local player is on. It has the car tabs, the car
+`CarSettingsSection` shows only while the local player is on. It has the car tabs, the car
 item actions and, with `canConfigurePlayers`, the car DSP actions.
 
-## Accent color
+## Interface
+
+`InterfaceSettingsSection` holds the accent color picker:
 
 - One swatch for each `AccentColor` that the platform can give, in the primary color of that accent in the
   current theme. The line under the swatches names the current choice.
@@ -218,7 +240,14 @@ item actions and, with `canConfigurePlayers`, the car DSP actions.
 
 ## Misc
 
+`MiscSettingsSection` holds:
+
 - "Allow landscape on all devices".
 - "Volume buttons control the selected player", only where `supportsVolumeKeyRouting` is true (Android). See
   `.claude/volume-control.md`.
+
+## Logs
+
+`LogsSection` is its own section on both the Connect screen and the Settings screen:
+
 - "Share logs". If a crash log exists, "Share crash logs" and a delete button.

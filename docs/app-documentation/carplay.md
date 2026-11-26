@@ -8,7 +8,7 @@ CarPlay always plays on the app [Local Player](local-sendspin-player-settings.md
 
 Do these steps on the iPhone before you connect to the car:
 
-1. [Connect the app to your Music Assistant server](app-settings.md).
+1. [Connect the app to your Music Assistant server](connecting.md).
 2. [Enable the Local Player](local-sendspin-player-settings.md).
 3. Open the app one time, so that it connects and signs in.
 

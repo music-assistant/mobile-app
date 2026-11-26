@@ -5,7 +5,7 @@
 ## 📚 Table of Contents
 
 **Onboarding**
-- [First time setup](app-settings.md)
+- [First time setup](connecting.md)
   - [Connect to Server — Direct Connection](connection-to-server-direct.md)
   - [Connect to Server — WebRTC](connection-to-server-webrtc.md) (Experimental)
 - [Local Sendspin Player](local-sendspin-player-settings.md)

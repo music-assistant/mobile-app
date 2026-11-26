@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,7 +34,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,7 +46,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +55,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -78,37 +74,35 @@ import io.music_assistant.client.ui.compose.common.UnsupportedInstallCard
 import io.music_assistant.client.ui.compose.common.clearFocusOnScroll
 import io.music_assistant.client.ui.compose.common.toDisplayString
 import io.music_assistant.client.ui.compose.nav.TopBarLayout
+import io.music_assistant.client.ui.compose.settings.sections.AboutSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.CarSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.ConnectionSettingsSection
 import io.music_assistant.client.ui.compose.settings.sections.DiscoveredServersList
+import io.music_assistant.client.ui.compose.settings.sections.InterfaceSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.LogsSection
+import io.music_assistant.client.ui.compose.settings.sections.MiscSettingsSection
+import io.music_assistant.client.ui.compose.settings.sections.SectionCard
+import io.music_assistant.client.ui.compose.settings.sections.SectionTitle
 import io.music_assistant.client.ui.compose.settings.sections.SendspinSettingsSection
 import io.music_assistant.client.ui.theme.AccentColor
 import io.music_assistant.client.ui.theme.ThemeSetting
 import io.music_assistant.client.ui.theme.ThemeViewModel
 import io.music_assistant.client.ui.theme.isDark
-import io.music_assistant.client.utils.AppVersion
-import io.music_assistant.client.utils.DataConnectionState
 import io.music_assistant.client.utils.LocalNetworkOnboardingResources
 import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.isIpPort
 import io.music_assistant.client.utils.isValidBasePath
 import io.music_assistant.client.utils.isValidHost
-import io.music_assistant.client.utils.supportsVolumeKeyRouting
 import io.music_assistant.client.webrtc.model.RemoteId
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.auth_title
 import musicassistantclient.composeapp.generated.resources.cd_connection_history
-import musicassistantclient.composeapp.generated.resources.cd_delete_crash_logs
 import musicassistantclient.composeapp.generated.resources.cd_scan_qr_code
 import musicassistantclient.composeapp.generated.resources.common_back
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_delete
 import musicassistantclient.composeapp.generated.resources.common_done
 import musicassistantclient.composeapp.generated.resources.nav_settings
-import musicassistantclient.composeapp.generated.resources.settings_about_description
-import musicassistantclient.composeapp.generated.resources.settings_about_learn_more
-import musicassistantclient.composeapp.generated.resources.settings_allow_landscape
-import musicassistantclient.composeapp.generated.resources.settings_allow_landscape_hint
-import musicassistantclient.composeapp.generated.resources.settings_app_documentation
-import musicassistantclient.composeapp.generated.resources.settings_app_version_info
 import musicassistantclient.composeapp.generated.resources.settings_connect
 import musicassistantclient.composeapp.generated.resources.settings_connect_saved
 import musicassistantclient.composeapp.generated.resources.settings_connect_webrtc
@@ -122,10 +116,8 @@ import musicassistantclient.composeapp.generated.resources.settings_connection_e
 import musicassistantclient.composeapp.generated.resources.settings_connection_method
 import musicassistantclient.composeapp.generated.resources.settings_connection_webrtc
 import musicassistantclient.composeapp.generated.resources.settings_disconnect
-import musicassistantclient.composeapp.generated.resources.settings_exit_app
 import musicassistantclient.composeapp.generated.resources.settings_history_direct
 import musicassistantclient.composeapp.generated.resources.settings_history_webrtc
-import musicassistantclient.composeapp.generated.resources.settings_misc
 import musicassistantclient.composeapp.generated.resources.settings_no_saved_connections
 import musicassistantclient.composeapp.generated.resources.settings_port
 import musicassistantclient.composeapp.generated.resources.settings_port_home_assistant_hint
@@ -144,8 +136,6 @@ import musicassistantclient.composeapp.generated.resources.settings_share_crash_
 import musicassistantclient.composeapp.generated.resources.settings_share_logs
 import musicassistantclient.composeapp.generated.resources.settings_ssl_tls
 import musicassistantclient.composeapp.generated.resources.settings_version_info
-import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player
-import musicassistantclient.composeapp.generated.resources.settings_volume_keys_control_player_hint
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_description
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_disclaimer
 import musicassistantclient.composeapp.generated.resources.settings_webrtc_info
@@ -155,18 +145,14 @@ import org.publicvalue.multiplatform.qrcode.CameraPosition
 import org.publicvalue.multiplatform.qrcode.CodeType
 import org.publicvalue.multiplatform.qrcode.ScannerWithPermissions
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
+fun SettingsScreen(goHome: () -> Unit) {
     val themeViewModel = koinViewModel<ThemeViewModel>()
     val theme = themeViewModel.theme.collectAsStateWithLifecycle(ThemeSetting.FollowSystem)
     val accent = themeViewModel.accentColor.collectAsStateWithLifecycle(AccentColor.DEFAULT)
     val viewModel = koinViewModel<SettingsViewModel>()
     val savedConnectionInfo by viewModel.savedConnectionInfo.collectAsStateWithLifecycle()
     val sessionState by viewModel.sessionState.collectAsStateWithLifecycle()
-    val connectionHistory by viewModel.connectionHistory.collectAsStateWithLifecycle()
-    val dataConnection = (sessionState as? SessionState.Connected)?.dataConnectionState
-    val isAuthenticated = dataConnection is DataConnectionState.Authenticated
     val sendspinViewModel = koinViewModel<SendspinSettingsViewModel>()
     val sendspinEnabled by sendspinViewModel.enabled.collectAsStateWithLifecycle()
     val sendspinDraft by sendspinViewModel.draft.collectAsStateWithLifecycle()
@@ -175,18 +161,9 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     val isSendspinConfirmationPending by sendspinViewModel.isConfirmationPending.collectAsStateWithLifecycle()
     val hasCrashLog by viewModel.hasCrashLog.collectAsStateWithLifecycle()
     val isPreparingShare by viewModel.isPreparingShare.collectAsStateWithLifecycle()
-    val localNetworkOnboardingShown by viewModel.localNetworkOnboardingShown
-        .collectAsStateWithLifecycle()
-    val localNetworkBlocked by viewModel.localNetworkBlocked.collectAsStateWithLifecycle()
-    val probeGranted by viewModel.lastLocalNetworkProbeGranted.collectAsStateWithLifecycle()
 
-    // Only allow back navigation when authenticated
     BackHandler(enabled = true) {
-        if (isAuthenticated) {
-            goHome()
-        } else {
-            exitApp()
-        }
+        goHome()
     }
 
     TopBarLayout(
@@ -202,13 +179,11 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     }
                 },
                 navigationIcon = {
-                    if (isAuthenticated) {
-                        IconButton(onClick = goHome) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                stringResource(Res.string.common_back),
-                            )
-                        }
+                    IconButton(onClick = goHome) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            stringResource(Res.string.common_back),
+                        )
                     }
                 },
             )
@@ -222,7 +197,6 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
                     .clearFocusOnScroll()
                     .verticalScroll(rememberScrollState())
                     // Settings sits outside AdaptiveNavigationBarLayout, so nothing else reserves
@@ -230,211 +204,56 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
                     .windowInsetsPadding(WindowInsets.navigationBars),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                AppVersionSection(viewModel.appVersion)
+                AboutSettingsSection(viewModel.appVersion)
 
-                var ipAddress by remember { mutableStateOf("") }
-                var port by remember { mutableStateOf(Defaults.PORT.toString()) }
-                var isTls by remember { mutableStateOf(false) }
-                var basePath by remember { mutableStateOf("") }
+                ConnectionSettingsSection(
+                    sessionState = sessionState,
+                    connectionInfo = savedConnectionInfo,
+                    onDisconnect = { viewModel.disconnect() },
+                )
 
-                LaunchedEffect(savedConnectionInfo) {
-                    savedConnectionInfo?.let {
-                        ipAddress = it.host
-                        port = it.port.toString()
-                        isTls = it.isTls
-                        basePath = it.basePath
-                    }
+                SendspinSettingsSection(
+                    enabled = sendspinEnabled,
+                    settings = sendspinDraft,
+                    isSavable = isSendspinSavable,
+                    isResettable = isSendspinResettable,
+                    isConfirmationPending = isSendspinConfirmationPending,
+                    onEnabledChanged = sendspinViewModel::setEnabled,
+                    onSettingsChange = sendspinViewModel::update,
+                    onSave = sendspinViewModel::save,
+                    onReset = sendspinViewModel::reset,
+                    onConfirm = sendspinViewModel::confirm,
+                    onDismiss = sendspinViewModel::dismiss,
+                )
+
+                // Car options route to the local player — only meaningful when
+                // it's reachable (authenticated) and enabled.
+                if (sendspinEnabled) {
+                    CarSettingsSection()
                 }
 
-                // Track if we've already attempted auto-reconnect
-                // Sticky for the screen's lifetime: once the iOS permission is determined,
-                // retries no longer wait on the prompt, so suppressing repeats is intended.
-                var autoReconnectAttempted by remember { mutableStateOf(false) }
-
-                // Auto-reconnect on error ONLY if user hasn't changed the connection info
-                // This prevents auto-reconnect to old server when user is trying to connect to new server
-                // Does NOT auto-reconnect when user is using WebRTC (different failure mode)
-                val preferredMethod by viewModel.preferredConnectionMethod.collectAsStateWithLifecycle()
-                LaunchedEffect(sessionState) {
-                    val errorState = sessionState as? SessionState.Disconnected.Error
-                    val connInfo = savedConnectionInfo
-                    if (errorState != null &&
-                        !autoReconnectAttempted &&
-                        preferredMethod != "webrtc"
-                    ) {
-                        if (connInfo != null) {
-                            // Only auto-reconnect if text fields match saved connection info
-                            // (i.e., user hasn't changed anything)
-                            val userChangedConnectionInfo =
-                                ipAddress != connInfo.host ||
-                                        port != connInfo.port.toString() ||
-                                        isTls != connInfo.isTls ||
-                                        basePath != connInfo.basePath
-
-                            if (!userChangedConnectionInfo) {
-                                // User is trying to reconnect to same server - auto-retry
-                                autoReconnectAttempted = true
-                                viewModel.attemptConnection(
-                                    connInfo.host,
-                                    connInfo.port.toString(),
-                                    connInfo.isTls,
-                                    connInfo.basePath,
-                                )
-                            }
-                            // If user changed connection info, don't auto-retry - let them manually retry
-                        } else if (errorState.reason?.let(viewModel::isLikelyLocalNetworkBlocked) == true) {
-                            // Fresh install (no saved connection): retry once — the first
-                            // attempt is consumed by the platform permission prompt.
-                            autoReconnectAttempted = true
-                            viewModel.attemptConnection(ipAddress, port, isTls, basePath)
-                        }
-                    }
-                }
-
-                if (!isAuthenticated) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                    ) {
-                        OutlinedButton(onClick = exitApp) { Text(stringResource(Res.string.settings_exit_app)) }
-                    }
-                }
-
-                val connectAttemptInFlight by viewModel.connectAttemptInFlight
-                    .collectAsStateWithLifecycle()
-
-                when (sessionState) {
-                    is SessionState.Disconnected -> {
-                        AboutSection()
-                        LocalNetworkOnboardingCard(
-                            resources = viewModel.localNetworkOnboardingResources,
-                            visible = viewModel.isLocalNetworkOnboardingVisible(
-                                connectionHistory,
-                                localNetworkOnboardingShown,
-                            ),
-                            onGotIt = viewModel::dismissLocalNetworkOnboarding,
-                        )
-                        ConnectionMethodTabs(
-                            viewModel = viewModel,
-                            ipAddress = ipAddress,
-                            port = port,
-                            isTls = isTls,
-                            onIpAddressChange = { ipAddress = it },
-                            onPortChange = { port = it },
-                            onTlsChange = { isTls = it },
-                            basePath = basePath,
-                            onBasePathChange = { basePath = it },
-                            onServerSelected = { connection ->
-                                ipAddress = connection.host
-                                port = connection.port.toString()
-                                isTls = connection.isTls
-                                basePath = connection.basePath
-                                viewModel.attemptConnection(
-                                    connection.host,
-                                    connection.port.toString(),
-                                    connection.isTls,
-                                    connection.basePath,
-                                )
-                            },
-                            onDirectConnect = {
-                                viewModel.attemptConnection(
-                                    ipAddress.ifBlank { Defaults.URI },
-                                    port,
-                                    isTls,
-                                    basePath,
-                                )
-                            },
-                            directConnectEnabled = ipAddress.ifBlank { Defaults.URI }.isValidHost() &&
-                                    port.isIpPort() &&
-                                    basePath.isValidBasePath() &&
-                                    !connectAttemptInFlight,
-                            sessionState = sessionState,
-                            connectionHistory = connectionHistory,
-                            localNetworkBlocked = localNetworkBlocked,
-                            probeGranted = probeGranted,
-                        )
-                    }
-
-                    SessionState.Connecting -> {
-                        ConnectingSection(
-                            ipAddress = ipAddress.ifBlank { Defaults.URI },
-                            port = port,
-                            preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() },
-                        )
-                    }
-
-                    is SessionState.Reconnecting -> {
-                        ConnectingSection(
-                            ipAddress = ipAddress.ifBlank { Defaults.URI },
-                            port = port,
-                            preferredMethod = preferredMethod,
-                            onCancel = { viewModel.disconnect() },
-                        )
-                    }
-
-                    is SessionState.Connected -> {
-                        val connectedState = sessionState as SessionState.Connected
-
-                        // Server Info Section (always shown when connected)
-                        ServerInfoSection(
-                            connectionInfo = savedConnectionInfo,
-                            serverInfo = connectedState.serverInfo,
-                            isWebRTC = connectedState is SessionState.Connected.WebRTC,
-                            onDisconnect = { viewModel.disconnect() },
-                        )
-
-                        LoginSection(connectedState.user)
-
-                        when (dataConnection) {
-                            is DataConnectionState.Authenticated -> {
-                                // State 4: Connected and authenticated
-
-                                // Local Player Section
-                                SendspinSettingsSection(
-                                    enabled = sendspinEnabled,
-                                    settings = sendspinDraft,
-                                    isSavable = isSendspinSavable,
-                                    isResettable = isSendspinResettable,
-                                    isConfirmationPending = isSendspinConfirmationPending,
-                                    onEnabledChange = sendspinViewModel::setEnabled,
-                                    onSettingsChange = sendspinViewModel::update,
-                                    onSave = sendspinViewModel::save,
-                                    onReset = sendspinViewModel::reset,
-                                    onConfirm = sendspinViewModel::confirm,
-                                    onDismiss = sendspinViewModel::dismiss,
-                                )
-
-                                // Car options route to the local player — only meaningful when
-                                // it's reachable (authenticated) and enabled.
-                                if (sendspinEnabled) {
-                                    CarSection()
-                                }
-                            }
-
-                            else -> Unit
-                        }
-                    }
-                }
-
-                AccentColorSection(
-                    current = accent.value,
-                    darkTheme = theme.value.isDark(),
-                    onChange = themeViewModel::setAccentColor,
+                InterfaceSettingsSection(
+                    currentAccent = accent.value,
+                    isDarkTheme = theme.value.isDark(),
+                    onChangeAccent = themeViewModel::setAccentColor,
                 )
 
                 // Misc settings - always visible
-                val shareLogsTitle = stringResource(Res.string.settings_share_logs)
-                val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
                 val allowLandscape by viewModel.allowLandscapeOnAllDevices
                     .collectAsStateWithLifecycle()
                 val volumeKeysControlPlayer by viewModel.volumeKeysControlSelectedPlayer
                     .collectAsStateWithLifecycle()
-                MiscSection(
+
+                MiscSettingsSection(
                     allowLandscape = allowLandscape,
                     onAllowLandscapeChange = { viewModel.setAllowLandscapeOnAllDevices(it) },
                     volumeKeysControlPlayer = volumeKeysControlPlayer,
                     onVolumeKeysControlPlayerChange = { viewModel.setVolumeKeysControlSelectedPlayer(it) },
+                )
+
+                val shareLogsTitle = stringResource(Res.string.settings_share_logs)
+                val shareCrashLogsTitle = stringResource(Res.string.settings_share_crash_logs)
+                LogsSection(
                     onShareLogs = { viewModel.shareLogs(shareLogsTitle) },
                     hasCrashLog = hasCrashLog,
                     isPreparingShare = isPreparingShare,
@@ -448,176 +267,8 @@ fun SettingsScreen(goHome: () -> Unit, exitApp: () -> Unit) {
     }
 }
 
-// Section Composables
-
 @Composable
-private fun MiscSection(
-    allowLandscape: Boolean,
-    onAllowLandscapeChange: (Boolean) -> Unit,
-    volumeKeysControlPlayer: Boolean,
-    onVolumeKeysControlPlayerChange: (Boolean) -> Unit,
-    onShareLogs: () -> Unit,
-    hasCrashLog: Boolean,
-    isPreparingShare: Boolean,
-    onShareCrashLog: () -> Unit,
-    onDeleteCrashLog: () -> Unit,
-) {
-    SectionCard {
-        SectionTitle(stringResource(Res.string.settings_misc))
-        CheckboxSetting(
-            checked = allowLandscape,
-            onCheckedChange = onAllowLandscapeChange,
-            label = stringResource(Res.string.settings_allow_landscape),
-            hint = stringResource(Res.string.settings_allow_landscape_hint),
-        )
-        if (supportsVolumeKeyRouting) {
-            CheckboxSetting(
-                checked = volumeKeysControlPlayer,
-                onCheckedChange = onVolumeKeysControlPlayerChange,
-                label = stringResource(Res.string.settings_volume_keys_control_player),
-                hint = stringResource(Res.string.settings_volume_keys_control_player_hint),
-            )
-        }
-        OutlinedButton(
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !isPreparingShare,
-            onClick = onShareLogs,
-        ) {
-            if (isPreparingShare) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    strokeWidth = 2.dp,
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-            }
-            Text(stringResource(Res.string.settings_share_logs))
-        }
-        if (hasCrashLog) {
-            Spacer(modifier = Modifier.size(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    enabled = !isPreparingShare,
-                    onClick = onShareCrashLog,
-                ) {
-                    Text(stringResource(Res.string.settings_share_crash_logs))
-                }
-                OutlinedButton(
-                    enabled = !isPreparingShare,
-                    onClick = onDeleteCrashLog,
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = stringResource(Res.string.cd_delete_crash_logs),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CheckboxSetting(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    label: String,
-    hint: String,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-        )
-        Text(
-            text = label,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-    }
-    Text(
-        // Aligned under the label: the checkbox occupies a 48.dp touch target.
-        modifier = Modifier.padding(start = 48.dp, bottom = 12.dp),
-        text = hint,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-internal fun SectionCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-        ),
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-internal fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(bottom = 12.dp),
-    )
-}
-
-@Composable
-private fun AppVersionSection(appVersion: AppVersion) {
-    val uriHandler = LocalUriHandler.current
-    SectionCard {
-        Text(
-            text = stringResource(Res.string.settings_app_version_info, appVersion.name, appVersion.code),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-        )
-        Spacer(modifier = Modifier.size(4.dp))
-        Text(
-            text = stringResource(Res.string.settings_app_documentation),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.github.io/mobile-app/") },
-        )
-    }
-}
-
-@Composable
-private fun AboutSection() {
-    val uriHandler = LocalUriHandler.current
-    SectionCard {
-        Text(
-            text = stringResource(Res.string.settings_about_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(modifier = Modifier.size(4.dp))
-        Text(
-            text = stringResource(Res.string.settings_about_learn_more),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.clickable { uriHandler.openUri("https://music-assistant.io") },
-        )
-    }
-}
-
-@Composable
-private fun LocalNetworkOnboardingCard(
+fun LocalNetworkOnboardingCard(
     resources: LocalNetworkOnboardingResources?,
     visible: Boolean,
     onGotIt: () -> Unit,
@@ -657,9 +308,8 @@ private fun ExperimentalPill() {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ConnectionMethodTabs(
+fun ConnectionMethodTabs(
     viewModel: SettingsViewModel,
     ipAddress: String,
     port: String,
@@ -1166,7 +816,7 @@ private fun QrScanDialog(
 }
 
 @Composable
-private fun ConnectingSection(
+fun ConnectingSection(
     ipAddress: String,
     port: String,
     preferredMethod: String?,
@@ -1200,7 +850,7 @@ private fun ConnectingSection(
 }
 
 @Composable
-private fun ServerInfoSection(
+fun ServerInfoSection(
     connectionInfo: ConnectionInfo?,
     serverInfo: ServerInfo?,
     isWebRTC: Boolean = false,
@@ -1276,7 +926,7 @@ private fun ServerInfoSection(
 }
 
 @Composable
-private fun LoginSection(user: User?) {
+fun LoginSection(user: User?) {
     SectionCard {
         SectionTitle(stringResource(Res.string.auth_title))
 

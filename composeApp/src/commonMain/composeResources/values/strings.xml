@@ -607,6 +607,7 @@
   <string name="settings_server_host_invalid">Enter only the host name or the IP address, without a protocol, a port or a path.</string>
   <string name="settings_share_crash_logs">Share crash logs</string>
   <string name="settings_share_logs">Share logs</string>
+  <string name="settings_logs">Logs</string>
   <string name="settings_ssl_tls">SSL/TLS (wss://)</string>
   <string name="settings_use_tls">Use TLS (wss://)</string>
   <string name="settings_use_tls_wss">Use secure connection (WSS/TLS)</string>

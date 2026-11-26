@@ -1,22 +1,37 @@
 package io.music_assistant.client.support.pages
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import io.music_assistant.client.support.get
+import io.music_assistant.client.ui.compose.ScreenSemantics
 import musicassistantclient.composeapp.generated.resources.Res
+import musicassistantclient.composeapp.generated.resources.app_name
 import musicassistantclient.composeapp.generated.resources.auth_login
+import musicassistantclient.composeapp.generated.resources.auth_logout
+import musicassistantclient.composeapp.generated.resources.auth_title
 import musicassistantclient.composeapp.generated.resources.auth_token
 import musicassistantclient.composeapp.generated.resources.auth_use_token
+import musicassistantclient.composeapp.generated.resources.settings_server
 
 class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
     override fun assert() {
-        composeTestRule.onNodeWithText("Server").assertIsDisplayed()
-        composeTestRule.onNodeWithText("homeassistant.local:8095").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Authentication").assertIsDisplayed()
+        composeTestRule.onNode(
+            hasTestTag(ScreenSemantics.TITLE_TAG).and(hasText(Res.string.app_name.get())),
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.settings_server.get()).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Res.string.auth_title.get()).assertIsDisplayed()
+    }
+
+    fun logout(): AuthenticatePage {
+        composeTestRule.onNodeWithText(Res.string.auth_logout.get()).performClick()
+        return this
     }
 
     fun login(username: String, password: String): HomePage {
@@ -44,8 +59,8 @@ class AuthenticatePage(private val composeTestRule: ComposeTestRule) : Page {
     }
 
     private fun fillLogin(username: String, password: String) {
-        composeTestRule.onNodeWithText("Username").assertIsDisplayed().performTextInput(username)
-        composeTestRule.onNodeWithText("Password").assertIsDisplayed().performTextInput(password)
+        composeTestRule.onNodeWithText("Username").assertIsDisplayed().performTextReplacement(username)
+        composeTestRule.onNodeWithText("Password").assertIsDisplayed().performTextReplacement(password)
         composeTestRule.onNodeWithText("Login").assertIsDisplayed().performClick()
     }
 

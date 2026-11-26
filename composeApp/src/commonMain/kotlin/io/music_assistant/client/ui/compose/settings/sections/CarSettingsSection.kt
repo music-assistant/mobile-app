@@ -1,4 +1,4 @@
-package io.music_assistant.client.ui.compose.settings
+package io.music_assistant.client.ui.compose.settings.sections
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,6 +49,8 @@ import io.music_assistant.client.ui.compose.common.items.labelRes
 import io.music_assistant.client.ui.compose.common.items.title
 import io.music_assistant.client.ui.compose.common.items.toItemAction
 import io.music_assistant.client.ui.compose.library.CustomizeLibraryCategoriesDialog
+import io.music_assistant.client.ui.compose.settings.CarActionsViewModel
+import io.music_assistant.client.ui.compose.settings.CarDspSettingsDialog
 import musicassistantclient.composeapp.generated.resources.Res
 import musicassistantclient.composeapp.generated.resources.common_cancel
 import musicassistantclient.composeapp.generated.resources.common_done
@@ -70,7 +72,7 @@ private val KIND_LABEL_WIDTH = 110.dp
  * per-browsable-kind bulk lists), and a "Tabs" row customizes the Android Auto root tabs.
  */
 @Composable
-fun CarSection() {
+fun CarSettingsSection() {
     val viewModel = koinViewModel<CarActionsViewModel>()
     var showSheet by remember { mutableStateOf(false) }
     var showEnqueue by remember { mutableStateOf(false) }

@@ -5,7 +5,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,6 +28,7 @@ import io.music_assistant.client.ui.compose.common.AutoLoginSplash
 import io.music_assistant.client.ui.compose.common.ConnectionStatusOverlay
 import io.music_assistant.client.ui.compose.home.MainNavigationRoot
 import io.music_assistant.client.ui.compose.nav.exitApp
+import io.music_assistant.client.ui.compose.settings.ConnectScreen
 import io.music_assistant.client.ui.compose.settings.SettingsScreen
 import io.music_assistant.client.utils.AuthProcessState
 import io.music_assistant.client.utils.BottomSheetSceneStrategy
@@ -39,7 +39,6 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val serviceClient: ServiceClient = koinInject()
@@ -90,10 +89,10 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
     val initialScreen = when {
         sessionState is SessionState.Connected &&
                 (sessionState as SessionState.Connected).dataConnectionState is
-                DataConnectionState.Authenticated -> Nav.Main
+                        DataConnectionState.Authenticated -> Nav.Main
 
         authManager.willAutoLoginOnLaunch -> Nav.Main
-        else -> Nav.Settings
+        else -> Nav.Connect
     }
 
     val backStack = rememberNavBackStack(
@@ -104,6 +103,7 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                     polymorphic(NavKey::class) {
                         subclass(Nav.Main::class, Nav.Main.serializer())
                         subclass(Nav.Settings::class, Nav.Settings.serializer())
+                        subclass(Nav.Connect::class, Nav.Connect.serializer())
                     }
                 }
             },
@@ -122,40 +122,34 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 if (sessionState is SessionState.Disconnected.Backgrounded) {
                     // Backgrounded — preserve current screen for instant foreground reconnect
                 } else {
-                    // Navigate to Settings for all other disconnected states
+                    // Navigate to Connect for all other disconnected states
                     // This includes: ByUser, Initial, NoServerData, and Error (max attempts reached)
-                    if (backStack.last() !is Nav.Settings) {
+                    if (backStack.last() !is Nav.Connect) {
                         backStack.clear()
-                        backStack.add(Nav.Settings)
+                        backStack.add(Nav.Connect)
                     }
                 }
             }
 
             is SessionState.Connected -> {
                 val connectedState = sessionState as SessionState.Connected
-                val connState = connectedState.dataConnectionState
+                val authProcessState = connectedState.authProcessState
 
                 when {
-                    // Auto-navigate to Home ONLY when authenticated via auto-login with saved token
-                    connState is DataConnectionState.Authenticated && connectedState.wasAutoLogin -> {
+                    connectedState.dataConnectionState is DataConnectionState.Authenticated -> {
                         if (backStack.last() !is Nav.Main) {
                             backStack.clear()
                             backStack.add(Nav.Main)
                         }
                     }
 
-                    // Transport is up but auth was rejected (disabled user, expired/invalid token).
-                    // Necessary because initial screen is biased to Main on auto-login launches;
-                    // without this, the splash would dismiss and reveal Main behind a failed auth.
-                    connectedState.authProcessState is AuthProcessState.Failed -> {
-                        if (backStack.last() !is Nav.Settings) {
+                    authProcessState is AuthProcessState.LoggedOut || authProcessState is AuthProcessState.Failed -> {
+                        if (backStack.last() !is Nav.Connect) {
                             backStack.clear()
-                            backStack.add(Nav.Settings)
+                            backStack.add(Nav.Connect)
                         }
                     }
                 }
-                // Other Connected sub-states intentionally don't navigate here — we let
-                // Disconnected handling drive Settings redirects to avoid racing reconnection.
             }
 
             is SessionState.Connecting -> {
@@ -186,6 +180,14 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
             popTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             predictivePopTransitionSpec = { EnterTransition.None togetherWith ExitTransition.None },
             entryProvider = entryProvider {
+                entry<Nav.Connect> {
+                    ConnectScreen(
+                        onExitApp = {
+                            exitApp()
+                        },
+                    )
+                }
+
                 entry<Nav.Main> {
                     MainNavigationRoot(
                         goToSettings = { backStack.add(Nav.Settings) },
@@ -195,11 +197,9 @@ fun TopLevelNavRoot(modifier: Modifier = Modifier) {
                 entry<Nav.Settings> {
                     SettingsScreen(
                         goHome = {
-                            ->
                             backStack.clear()
                             backStack.add(Nav.Main)
                         },
-                        exitApp = { exitApp() },
                     )
                 }
             },
@@ -230,4 +230,7 @@ private sealed interface Nav : NavKey {
 
     @Serializable
     data object Settings : Nav
+
+    @Serializable
+    data object Connect : Nav
 }

@@ -8,7 +8,7 @@ Android Auto always plays on the app's [Local Player](local-sendspin-player-sett
 
 Do these steps on the phone before you connect to the car:
 
-1. [Connect the app to your Music Assistant server](app-settings.md).
+1. [Connect the app to your Music Assistant server](connecting.md).
 2. [Enable the Local Player](local-sendspin-player-settings.md).
 3. Open the app one time, so that it connects and signs in.
 
