@@ -70,8 +70,7 @@ class ConnectionErrorTest {
         val album = ServerMediaItemFixtures.album(artist = artist)
         serviceClient.addItems(album)
 
-        val homePage = launchLoggedInApp(composeTestRule, serviceClient)
-        val artistPage = homePage
+        val artistPage = launchLoggedInApp(composeTestRule, serviceClient)
             .clickOnMedia(artist, withinTag = HomeScreenSemantics.rowTag("recently_added_artists"))
         val albumPage = artistPage
             .clickOnMedia(album, Res.string.nav_discover.get())
