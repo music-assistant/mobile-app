@@ -479,13 +479,6 @@ private fun QueueList(
                         )
                     }
                 }
-                item {
-                    EdgeButton(
-                        onClick = {},
-                    ) {
-                        Text("haaj")
-                    }
-                }
             }
         }
     }
