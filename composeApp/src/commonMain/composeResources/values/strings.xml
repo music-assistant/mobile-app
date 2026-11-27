@@ -662,4 +662,7 @@
   <string name="volume_keys_no_volume_control">The volume of %1$s cannot be changed</string>
   <string name="volume_keys_player_off">%1$s is off</string>
   <string name="volume_keys_setting_off">The volume buttons change the device volume. To control %1$s with them, turn on "%2$s" in Settings.</string>
+  <string name="action_share_item">Share</string>
+  <string name="share_link_failed">Could not create a share link</string>
+  <string name="share_music_assistant_link">Music Assistant</string>
 </resources>

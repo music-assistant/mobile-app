@@ -69,12 +69,15 @@ import io.music_assistant.client.data.model.client.items.Track
 import io.music_assistant.client.data.model.client.items.image
 import io.music_assistant.client.imageloader.rememberArtworkRequest
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.MenuItem
 import io.music_assistant.client.ui.compose.common.NoOverscroll
 import io.music_assistant.client.ui.compose.common.action.QueueAction
 import io.music_assistant.client.ui.compose.common.icons.PlayIcon
 import io.music_assistant.client.ui.compose.common.icons.TrackIcon
 import io.music_assistant.client.ui.compose.common.items.DISABLED_ITEM_ALPHA
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
+import io.music_assistant.client.ui.compose.common.items.rememberShareLinkLauncher
+import io.music_assistant.client.ui.compose.common.items.shareLinkMenuOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.contentColorByLuminance
 import io.music_assistant.client.utils.conditional
@@ -284,7 +287,8 @@ fun Queue(
                     // correct across consecutive drags.
                     var dragStartIndex by remember { mutableStateOf<Int?>(null) }
                     var dragEndIndex by remember { mutableStateOf<Int?>(null) }
-                    var menuItemId by remember { mutableStateOf<String?>(null) }
+                    var menuItemId by remember(queueData.info.id) { mutableStateOf<String?>(null) }
+                    val shareLink = rememberShareLinkLauncher()
                     val listState = rememberLazyListState()
 
                     // Flattened rows: real queue items, plus chapter rows under the
@@ -418,6 +422,7 @@ fun Queue(
                                 val isCurrent = item.id == currentItemId
                                 val isPlayed = queueRow.queueIndex < currentItemIndex
                                 val isPlayable = item.isPlayable
+                                val shareOption = shareLink?.let { shareLinkMenuOption(item.track as? Track, it) }
 
                                 ReorderableItem(
                                     state = reorderableLazyListState,
@@ -438,7 +443,7 @@ fun Queue(
                                                 .fillMaxWidth()
                                                 .clip(shape = RoundedCornerShape(8.dp))
                                                 .conditional(
-                                                    condition = isPlayed,  // Treat unplayable like played items
+                                                    condition = isPlayed && shareOption == null,
                                                     ifTrue = {
                                                         clickable(isPlayable) {  // Only clickable if playable
                                                             queueAction(
@@ -451,7 +456,7 @@ fun Queue(
                                                     ifFalse = {
                                                         combinedClickable(
                                                             onClick = {
-                                                                if (!isCurrent && isPlayable) {
+                                                                if ((isPlayed || !isCurrent) && isPlayable) {
                                                                     queueAction(
                                                                         QueueAction.PlayQueueItem(
                                                                             queueData.info.id,
@@ -559,60 +564,63 @@ fun Queue(
                                             expanded = menuItemId == item.id,
                                             onDismissRequest = { menuItemId = null },
                                         ) {
-                                            val track = item.track as? Track
-                                            val mixSeed = (item.track as? AppMediaItem)?.takeIf { it.canStartEndlessMix }
-                                            if (mixSeed != null && onStartEndlessMix != null) {
+                                            shareOption?.MenuItem { menuItemId = null }
+                                            if (!isPlayed) {
+                                                val track = item.track as? Track
+                                                val mixSeed = (item.track as? AppMediaItem)?.takeIf { it.canStartEndlessMix }
+                                                if (mixSeed != null && onStartEndlessMix != null) {
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(stringResource(Res.string.action_start_endless_mix))
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(
+                                                                imageVector = Icons.Default.CellTower,
+                                                                contentDescription = null,
+                                                            )
+                                                        },
+                                                        onClick = {
+                                                            onStartEndlessMix(mixSeed)
+                                                            menuItemId = null
+                                                        },
+                                                    )
+                                                }
+                                                if (track != null && onAddToPlaylist != null) {
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(stringResource(Res.string.action_add_to_playlist))
+                                                        },
+                                                        leadingIcon = {
+                                                            Icon(
+                                                                imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
+                                                                contentDescription = null,
+                                                            )
+                                                        },
+                                                        onClick = {
+                                                            onAddToPlaylist(track)
+                                                            menuItemId = null
+                                                        },
+                                                    )
+                                                }
                                                 DropdownMenuItem(
-                                                    text = {
-                                                        Text(stringResource(Res.string.action_start_endless_mix))
-                                                    },
+                                                    text = { Text(stringResource(Res.string.common_delete)) },
                                                     leadingIcon = {
                                                         Icon(
-                                                            imageVector = Icons.Default.CellTower,
+                                                            imageVector = Icons.Default.Delete,
                                                             contentDescription = null,
                                                         )
                                                     },
                                                     onClick = {
-                                                        onStartEndlessMix(mixSeed)
-                                                        menuItemId = null
-                                                    },
-                                                )
-                                            }
-                                            if (track != null && onAddToPlaylist != null) {
-                                                DropdownMenuItem(
-                                                    text = {
-                                                        Text(stringResource(Res.string.action_add_to_playlist))
-                                                    },
-                                                    leadingIcon = {
-                                                        Icon(
-                                                            imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
-                                                            contentDescription = null,
+                                                        queueAction(
+                                                            QueueAction.RemoveItems(
+                                                                queueData.info.id,
+                                                                listOf(item.id),
+                                                            ),
                                                         )
-                                                    },
-                                                    onClick = {
-                                                        onAddToPlaylist(track)
                                                         menuItemId = null
                                                     },
                                                 )
                                             }
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(Res.string.common_delete)) },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Delete,
-                                                        contentDescription = null,
-                                                    )
-                                                },
-                                                onClick = {
-                                                    queueAction(
-                                                        QueueAction.RemoveItems(
-                                                            queueData.info.id,
-                                                            listOf(item.id),
-                                                        ),
-                                                    )
-                                                    menuItemId = null
-                                                },
-                                            )
                                         }
                                     }
                                 }

@@ -93,7 +93,9 @@ import io.music_assistant.client.ui.compose.common.items.ProgressBadge
 import io.music_assistant.client.ui.compose.common.items.localizedSubtitle
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
 import io.music_assistant.client.ui.compose.common.items.rememberArtistNavigation
+import io.music_assistant.client.ui.compose.common.items.rememberShareLinkLauncher
 import io.music_assistant.client.ui.compose.common.items.resolveDetailOverflowActions
+import io.music_assistant.client.ui.compose.common.items.shareLinkMenuOption
 import io.music_assistant.client.ui.compose.common.items.toOverflowOption
 import io.music_assistant.client.ui.compose.common.painters.rememberPlaceholderPainter
 import io.music_assistant.client.ui.compose.common.providers.ProviderIconFetcher
@@ -398,6 +400,8 @@ private fun ItemOverflow(
 
     val copyPlayLink = listOfNotNull(item.mediaUri?.takeIf { item.isPlayable }?.let { copyPlayLinkMenuOption(it) })
 
+    val shareLink = rememberShareLinkLauncher()?.let { shareLinkMenuOption(item, it) }
+
     val canonical = resolveDetailOverflowActions(
         item = item,
         canEditLibrary = LocalGrantedScopes.current.canEditLibrary,
@@ -419,7 +423,7 @@ private fun ItemOverflow(
     }
     OverflowMenuButton(
         options = canonical + item.navigationOptions(navigateToItem, containerItem = item) + similarArtists +
-            lyrics + refresh + export + copyPlayLink + dynamicColorsMenuOption(),
+            lyrics + refresh + export + listOfNotNull(shareLink) + copyPlayLink + dynamicColorsMenuOption(),
     ) { onClick ->
         IconButton(onClick = onClick) {
             Icon(

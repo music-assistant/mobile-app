@@ -125,6 +125,8 @@ import io.music_assistant.client.ui.compose.common.icons.VolumeIcon
 import io.music_assistant.client.ui.compose.common.icons.VolumeMutedIcon
 import io.music_assistant.client.ui.compose.common.ignoreDragsFromBottomGestureZone
 import io.music_assistant.client.ui.compose.common.items.navigationOptions
+import io.music_assistant.client.ui.compose.common.items.rememberShareLinkLauncher
+import io.music_assistant.client.ui.compose.common.items.shareLinkMenuOption
 import io.music_assistant.client.ui.compose.common.rememberAnimatedPlayerColors
 import io.music_assistant.client.ui.compose.common.rememberDynamicColorsEnabled
 import io.music_assistant.client.ui.compose.common.rememberExtractedColorsSource
@@ -1345,6 +1347,7 @@ private fun PlayerOverflowMenu(
             player = if (currentPlayer.isLocal) DeepLinkBus.LOCAL_PLAYER else currentPlayer.playerId,
         )
     }
+    val shareLink = rememberShareLinkLauncher()?.let { shareLinkMenuOption(currentTrack, it) }
     val trackActions = buildList {
         currentTrack?.takeIf { onAddToPlaylist != null }?.let { track ->
             add(
@@ -1355,6 +1358,7 @@ private fun PlayerOverflowMenu(
                 ),
             )
         }
+        shareLink?.let(::add)
         copyPlayLink?.let(::add)
         addAll(navigationOptions)
     }
