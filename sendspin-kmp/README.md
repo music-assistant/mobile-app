@@ -82,7 +82,7 @@ token for each download, also for a public repository.
    project, add it to `dependencies`. Gradle selects the Android variant, an AAR.
 
    ```kotlin
-   implementation("io.github.music-assistant:sendspin-kmp:0.1.0")
+   implementation("io.github.music-assistant:sendspin-kmp:0.2.0")
    ```
 
 ### Android quick start

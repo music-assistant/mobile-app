@@ -2,6 +2,8 @@
 
 All changes to `io.github.music-assistant:sendspin-kmp` are in this file.
 
+## 0.3.0
+
 ## 0.2.0
 
 ### Changes that need action
