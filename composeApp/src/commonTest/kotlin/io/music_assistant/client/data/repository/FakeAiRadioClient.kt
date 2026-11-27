@@ -7,6 +7,7 @@ import io.music_assistant.client.data.model.server.EventType
 import io.music_assistant.client.data.model.server.StubServiceClient
 import io.music_assistant.client.data.model.server.events.Event
 import io.music_assistant.client.data.model.server.events.ProviderEvent
+import io.music_assistant.client.utils.SessionState
 import io.music_assistant.client.utils.myJson
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -24,6 +25,7 @@ class FakeAiRadioClient(val results: MutableMap<String, String?>) : StubServiceC
     val sent = mutableListOf<Request>()
     val eventFlow = MutableSharedFlow<Event<out Any>>()
     val ready = MutableStateFlow(true)
+    override val sessionState = MutableStateFlow<SessionState>(SessionState.Disconnected.Initial)
 
     /** When set for a command, its answer waits until the deferred completes. */
     val holds = mutableMapOf<String, CompletableDeferred<Unit>>()

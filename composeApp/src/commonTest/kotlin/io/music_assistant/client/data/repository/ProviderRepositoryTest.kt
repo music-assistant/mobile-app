@@ -1,9 +1,14 @@
 package io.music_assistant.client.data.repository
 
 import io.music_assistant.client.api.APICommands
+import io.music_assistant.client.api.ConnectionInfo
 import io.music_assistant.client.data.model.server.EventType
+import io.music_assistant.client.data.model.server.ServerProviderInstance
+import io.music_assistant.client.data.model.server.User
 import io.music_assistant.client.data.model.server.events.ProvidersUpdatedEvent
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.utils.ConnectionData
+import io.music_assistant.client.utils.SessionState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
@@ -93,5 +98,46 @@ class ProviderRepositoryTest {
         client.ready.value = true
         runCurrent()
         assertEquals(listOf("b"), repository.ids())
+    }
+
+    @Test
+    fun anEmptyProviderFilterShowsEveryInstance() {
+        val providers = listOf(
+            ServerProviderInstance("base", "Base", "ytmusic"),
+            ServerProviderInstance("allowed-a", "Allowed A", "ytmusic"),
+            ServerProviderInstance("allowed-b", "Allowed B", "ytmusic"),
+        )
+
+        assertEquals(providers, filterVisibleProviders(providers, emptyList()))
+    }
+
+    @Test
+    fun aProviderFilterKeepsOnlyAllowedInstances() {
+        val providers = listOf(
+            ServerProviderInstance("base", "Base", "ytmusic"),
+            ServerProviderInstance("allowed-a", "Allowed A", "ytmusic"),
+            ServerProviderInstance("allowed-b", "Allowed B", "ytmusic"),
+        )
+
+        assertEquals(
+            listOf(providers[1]),
+            filterVisibleProviders(providers, listOf("allowed-a")),
+        )
+    }
+
+    @Test
+    fun providersAreFilteredByTheActiveSessionUser() = runTest {
+        client.results[APICommands.PROVIDERS] = providersJson("base", "allowed-a", "allowed-b")
+        val repository = repository()
+
+        client.sessionState.value = SessionState.Connected.Direct(
+            connectionInfo = ConnectionInfo(host = "localhost", port = 8095, isTls = false),
+            connectionData = ConnectionData(
+                user = User(providerFilter = listOf("allowed-a")),
+            ),
+        )
+        runCurrent()
+
+        assertEquals(listOf("allowed-a"), repository.ids())
     }
 }

@@ -7,12 +7,15 @@ import io.music_assistant.client.data.model.server.ServerProviderInstance
 import io.music_assistant.client.data.model.server.ServerUserSummary
 import io.music_assistant.client.data.model.server.events.ProvidersUpdatedEvent
 import io.music_assistant.client.ui.compose.common.DataState
+import io.music_assistant.client.ui.compose.common.map
+import io.music_assistant.client.utils.HasConnectionData
 import io.music_assistant.client.utils.resultAs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -39,7 +42,19 @@ class ProviderRepository(
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     val providers: StateFlow<DataState<List<ServerProviderInstance>>> = apiClient.isReadyForCommands
-        .flatMapLatest { ready -> if (ready) sessionProviders() else flowOf(DataState.NoData()) }
+        .flatMapLatest { ready ->
+            if (ready) {
+                combine(sessionProviders(), apiClient.sessionState) { providers, session ->
+                    val allowedInstanceIds =
+                        (session as? HasConnectionData)?.user?.providerFilter.orEmpty()
+                    providers.map { allProviders ->
+                        filterVisibleProviders(allProviders, allowedInstanceIds)
+                    }
+                }
+            } else {
+                flowOf(DataState.NoData())
+            }
+        }
         .stateIn(scope, SharingStarted.Eagerly, DataState.NoData())
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -72,3 +87,14 @@ class ProviderRepository(
                 null
             }
 }
+
+internal fun filterVisibleProviders(
+    allProviders: List<ServerProviderInstance>,
+    allowedInstanceIds: List<String>,
+): List<ServerProviderInstance> =
+    allowedInstanceIds
+        .takeIf { it.isNotEmpty() }
+        ?.let { allowed ->
+            allProviders.filter { it.instanceId in allowed }
+        }
+        ?: allProviders

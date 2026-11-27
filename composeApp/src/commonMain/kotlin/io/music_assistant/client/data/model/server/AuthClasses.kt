@@ -17,6 +17,8 @@ data class User(
     @SerialName("username") val username: String? = null,
     @SerialName("display_name") val displayName: String? = null,
     @SerialName("role") val role: String? = null,
+    @SerialName("provider_filter") val providerFilter: List<String> = emptyList(),
+    @SerialName("player_filter") val playerFilter: List<String> = emptyList(),
 ) {
     val description: String
         get() = (displayName ?: username ?: "Unknown User") + if (role != null) " ($role)" else ""
